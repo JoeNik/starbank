@@ -28,7 +28,7 @@ class BankPage extends StatelessWidget {
                   controller: controller,
                   title: "存钱罐",
                   balance: baby.piggyBankBalance,
-                  icon: 'assets/images/6.png', // Reference piggy image
+                  icon: '🏦', // 使用 emoji 图标
                   color: Colors.orange.shade300,
                   isPiggy: true,
                   subtitle: "年化利率: 5%",
@@ -37,7 +37,7 @@ class BankPage extends StatelessWidget {
                   controller: controller,
                   title: "零花钱",
                   balance: baby.pocketMoneyBalance,
-                  icon: 'assets/images/5.png',
+                  icon: '💰', // 使用 emoji 图标
                   color: Colors.lightBlue.shade300,
                   isPiggy: false,
                   subtitle: "收益计入此钱包",
@@ -86,8 +86,10 @@ class BankPage extends StatelessWidget {
                   icon,
                   width: 48.w,
                   height: 48.w,
-                  errorBuilder: (_, __, ___) =>
-                      Icon(Icons.wallet, color: color, size: 48.sp),
+                  errorBuilder: (_, __, ___) => Text(
+                    icon,
+                    style: TextStyle(fontSize: 32.sp),
+                  ),
                 ),
                 SizedBox(width: 15.w),
                 Column(

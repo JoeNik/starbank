@@ -11,17 +11,24 @@ import 'pages/bank_page.dart';
 import 'pages/shop_page.dart';
 import 'pages/settings_page.dart';
 
+// 版本号位置
+// 两个地方需要同步更新：
+
+// pubspec.yaml
+//  第 19 行：version: 1.1.0+2
+// lib/pages/settings_page.dart
+//  第 8 行：const String appVersion = '1.1.0';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Initialize Storage Service
   final storageService = await Get.putAsync(() => StorageService().init());
-  
+
   // Initialize Other Services and Controllers
   Get.put(WebDavService());
   Get.put(UserController());
   Get.put(ShopController());
-  
+
   runApp(const MyApp());
 }
 
@@ -49,7 +56,6 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-
 
 class MainNavigationShell extends StatefulWidget {
   const MainNavigationShell({super.key});
@@ -83,7 +89,8 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
         unselectedItemColor: Colors.grey,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: '主页'),
-          BottomNavigationBarItem(icon: Icon(Icons.account_balance), label: '银行'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.account_balance), label: '银行'),
           BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: '商店'),
           BottomNavigationBarItem(icon: Icon(Icons.settings), label: '设置'),
         ],

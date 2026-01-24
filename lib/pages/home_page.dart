@@ -914,8 +914,7 @@ class HomePage extends StatelessWidget {
             if (nameController.text.isNotEmpty) {
               controller.addBaby(
                 nameController.text,
-                selectedAvatar.value ??
-                    'assets/images/1.png', // Fallback to default asset
+                selectedAvatar.value ?? '', // 使用默认 emoji 头像
               );
               Get.back();
             }
