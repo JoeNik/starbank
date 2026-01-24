@@ -91,17 +91,15 @@ class UserController extends GetxController {
     final baby = babies[babyIndex];
 
     // 删除相关日志
-    final logsToDelete = _storage.logBox.values
-        .where((l) => l.babyId == babyId)
-        .toList();
+    final logsToDelete =
+        _storage.logBox.values.where((l) => l.babyId == babyId).toList();
     for (var log in logsToDelete) {
       log.delete();
     }
 
     // 删除相关商品
-    final productsToDelete = _storage.productBox.values
-        .where((p) => p.babyId == babyId)
-        .toList();
+    final productsToDelete =
+        _storage.productBox.values.where((p) => p.babyId == babyId).toList();
     for (var product in productsToDelete) {
       product.delete();
     }
@@ -148,8 +146,7 @@ class UserController extends GetxController {
 
   void transferToPiggy(double amount) {
     if (currentBaby.value == null ||
-        currentBaby.value!.pocketMoneyBalance < amount)
-      return;
+        currentBaby.value!.pocketMoneyBalance < amount) return;
 
     currentBaby.value!.pocketMoneyBalance -= amount;
     currentBaby.value!.piggyBankBalance += amount;
@@ -277,5 +274,18 @@ class UserController extends GetxController {
   void deleteAction(int index) {
     _storage.actionBox.deleteAt(index);
     actions.removeAt(index);
+  }
+
+  /// 更新快捷记录
+  void updateAction(int index, String name, double value, String iconName) {
+    if (index < 0 || index >= actions.length) return;
+
+    final action = actions[index];
+    action.name = name;
+    action.value = value;
+    action.iconName = iconName;
+    action.type = value > 0 ? 'reward' : 'punish';
+    action.save();
+    actions.refresh();
   }
 }

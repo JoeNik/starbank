@@ -6,6 +6,7 @@ import '../models/baby.dart';
 import '../models/log.dart';
 import '../theme/app_theme.dart';
 import '../widgets/image_utils.dart';
+import 'action_settings_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -182,7 +183,7 @@ class HomePage extends StatelessWidget {
     return GestureDetector(
       onTap: () => controller.switchBaby(baby.id),
       child: Container(
-        width: 60.w,
+        width: 64.w,
         margin: EdgeInsets.only(right: 8.w),
         child: AnimatedScale(
           scale: isSelected ? 1.1 : 1.0,
@@ -191,26 +192,42 @@ class HomePage extends StatelessWidget {
             padding: EdgeInsets.all(3.w),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(
-                color: isSelected ? AppTheme.primary : Colors.grey.shade300,
-                width: isSelected ? 3.w : 1.w,
-              ),
+              // 选中时使用渐变边框效果
+              gradient: isSelected
+                  ? const LinearGradient(
+                      colors: [
+                        Color(0xFFFF6B9D), // 粉红
+                        Color(0xFFFF8E53), // 橙色
+                        Color(0xFFFFC371), // 金色
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : null,
+              color: isSelected ? null : Colors.grey.shade200,
               boxShadow: isSelected
                   ? [
                       BoxShadow(
-                        color: AppTheme.primary.withOpacity(0.4),
-                        blurRadius: 12,
+                        color: const Color(0xFFFF6B9D).withOpacity(0.5),
+                        blurRadius: 15,
                         spreadRadius: 2,
                       ),
                     ]
                   : [],
             ),
-            child: ClipOval(
-              child: ImageUtils.displayImage(
-                baby.avatarPath,
-                width: 48.w,
-                height: 48.w,
-                fit: BoxFit.cover,
+            child: Container(
+              padding: EdgeInsets.all(2.w),
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white,
+              ),
+              child: ClipOval(
+                child: ImageUtils.displayImage(
+                  baby.avatarPath,
+                  width: 52.w,
+                  height: 52.w,
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
           ),
@@ -343,15 +360,26 @@ class HomePage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            "快捷记录",
-            style: TextStyle(
-              fontSize: 18.sp,
-              fontWeight: FontWeight.w900,
-              color: AppTheme.textMain,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "快捷记录",
+                style: TextStyle(
+                  fontSize: 18.sp,
+                  fontWeight: FontWeight.w900,
+                  color: AppTheme.textMain,
+                ),
+              ),
+              // 管理快捷记录按钮
+              IconButton(
+                icon: Icon(Icons.settings_outlined,
+                    color: AppTheme.textSub, size: 20.sp),
+                onPressed: () => Get.to(() => const ActionSettingsPage()),
+              ),
+            ],
           ),
-          SizedBox(height: 12.h),
+          SizedBox(height: 8.h),
           Obx(
             () => GridView.builder(
               shrinkWrap: true,
@@ -375,22 +403,30 @@ class HomePage extends StatelessWidget {
   }
 
   Widget _buildQuickActionCard(UserController controller, action) {
+    final isPositive = action.value > 0;
     return GestureDetector(
-      onTap: () => controller.updateStars(action.value.toInt(), action.name),
+      onTap: () => _confirmQuickAction(controller, action),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20.r),
           border: Border.all(color: Colors.grey.shade100),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
               action.iconName.isNotEmpty ? action.iconName : "⭐️",
-              style: TextStyle(fontSize: 24.sp),
+              style: TextStyle(fontSize: 28.sp),
             ),
-            SizedBox(height: 5.h),
+            SizedBox(height: 6.h),
             Text(
               action.name,
               style: TextStyle(
@@ -398,17 +434,113 @@ class HomePage extends StatelessWidget {
                 fontWeight: FontWeight.bold,
                 color: AppTheme.textMain,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
             Text(
-              "${action.value > 0 ? '+' : ''}${action.value.toInt()}",
+              "${isPositive ? '+' : ''}${action.value.toInt()}",
               style: TextStyle(
                 fontSize: 14.sp,
                 fontWeight: FontWeight.w900,
-                color: action.value > 0 ? Colors.green : Colors.red,
+                color: isPositive ? Colors.green : Colors.red,
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// 快捷记录点击确认弹框，防止误触
+  void _confirmQuickAction(UserController controller, action) {
+    final isPositive = action.value > 0;
+    final baby = controller.currentBaby.value;
+    if (baby == null) return;
+
+    Get.dialog(
+      AlertDialog(
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
+        title: Row(
+          children: [
+            Text(
+              action.iconName.isNotEmpty ? action.iconName : "⭐️",
+              style: TextStyle(fontSize: 32.sp),
+            ),
+            SizedBox(width: 12.w),
+            Expanded(
+              child: Text(
+                action.name,
+                style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '确定为 ${baby.name} ${isPositive ? "增加" : "扣除"} ${action.value.abs().toInt()} 颗星星吗？',
+              style: TextStyle(fontSize: 15.sp, color: AppTheme.textSub),
+            ),
+            SizedBox(height: 16.h),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  '${baby.starCount}',
+                  style: TextStyle(
+                    fontSize: 24.sp,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textMain,
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12.w),
+                  child: Icon(
+                    Icons.arrow_forward,
+                    color: isPositive ? Colors.green : Colors.red,
+                  ),
+                ),
+                Text(
+                  '${baby.starCount + action.value.toInt()}',
+                  style: TextStyle(
+                    fontSize: 24.sp,
+                    fontWeight: FontWeight.bold,
+                    color: isPositive ? Colors.green : Colors.red,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: Text('取消', style: TextStyle(color: AppTheme.textSub)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              controller.updateStars(action.value.toInt(), action.name);
+              Get.back();
+              // 成功反馈
+              Get.snackbar(
+                isPositive ? '🌟 获得星星！' : '💔 扣除星星',
+                '${action.name}: ${isPositive ? "+" : ""}${action.value.toInt()}',
+                snackPosition: SnackPosition.TOP,
+                duration: const Duration(seconds: 2),
+                backgroundColor: isPositive
+                    ? Colors.green.withOpacity(0.9)
+                    : Colors.red.withOpacity(0.9),
+                colorText: Colors.white,
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isPositive ? Colors.green : Colors.red,
+            ),
+            child: const Text('确定'),
+          ),
+        ],
       ),
     );
   }
@@ -440,9 +572,8 @@ class HomePage extends StatelessWidget {
             ],
           ),
           Obx(() {
-            final starLogs = controller.logs
-                .where((l) => l.type == 'star')
-                .toList();
+            final starLogs =
+                controller.logs.where((l) => l.type == 'star').toList();
             if (starLogs.isEmpty) return const Center(child: Text("还没有记录哦"));
             return ListView.builder(
               shrinkWrap: true,
@@ -520,9 +651,8 @@ class HomePage extends StatelessWidget {
     // Determine title and color theme
     final title = isAdd ? "获得星星" : "扣除星星";
     final themeColor = isAdd ? Colors.orange : Colors.blueGrey;
-    final icon = isAdd
-        ? Icons.stars_rounded
-        : Icons.remove_circle_outline_rounded;
+    final icon =
+        isAdd ? Icons.stars_rounded : Icons.remove_circle_outline_rounded;
 
     // Default reason options
     final List<String> defaultReasons = isAdd
@@ -639,8 +769,7 @@ class HomePage extends StatelessWidget {
                             !isCustomReason.value && selectedReason.value == r,
                         selectedColor: themeColor.withOpacity(0.2),
                         labelStyle: TextStyle(
-                          color:
-                              (!isCustomReason.value &&
+                          color: (!isCustomReason.value &&
                                   selectedReason.value == r)
                               ? themeColor
                               : Colors.grey,
@@ -705,8 +834,8 @@ class HomePage extends StatelessWidget {
                     final val = int.tryParse(countController.text) ?? 1;
                     final reason = isCustomReason.value
                         ? (customReasonController.text.isEmpty
-                              ? "自定义操作"
-                              : customReasonController.text)
+                            ? "自定义操作"
+                            : customReasonController.text)
                         : selectedReason.value;
 
                     controller.updateStars(isAdd ? val : -val, reason);

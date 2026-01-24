@@ -71,21 +71,16 @@ class WebDavService extends GetxService {
       final Map<String, dynamic> backupData = {};
 
       // Convert objects to JSON maps
-      backupData['user'] = _storage.userBox.values
-          .map((e) => e.toJson())
-          .toList();
-      backupData['actions'] = _storage.actionBox.values
-          .map((e) => e.toJson())
-          .toList();
-      backupData['logs'] = _storage.logBox.values
-          .map((e) => e.toJson())
-          .toList();
-      backupData['products'] = _storage.productBox.values
-          .map((e) => e.toJson())
-          .toList();
-      backupData['babies'] = _storage.babyBox.values
-          .map((e) => e.toJson())
-          .toList();
+      backupData['user'] =
+          _storage.userBox.values.map((e) => e.toJson()).toList();
+      backupData['actions'] =
+          _storage.actionBox.values.map((e) => e.toJson()).toList();
+      backupData['logs'] =
+          _storage.logBox.values.map((e) => e.toJson()).toList();
+      backupData['products'] =
+          _storage.productBox.values.map((e) => e.toJson()).toList();
+      backupData['babies'] =
+          _storage.babyBox.values.map((e) => e.toJson()).toList();
 
       backupData['timestamp'] = DateTime.now().toIso8601String();
 
@@ -105,12 +100,50 @@ class WebDavService extends GetxService {
       // upload
       await _client!.write(remotePath, utf8.encode(jsonString));
 
+      // 清理旧备份
+      await _cleanupOldBackups();
+
       Get.snackbar('成功', '备份已存至: $remotePath');
       return true;
     } catch (e) {
       Get.snackbar('错误', '备份失败: $e');
       return false;
     }
+  }
+
+  /// 获取最大备份数量设置
+  int get maxBackupCount {
+    return _storage.settingsBox.get('max_backup_count', defaultValue: 10)
+        as int;
+  }
+
+  /// 设置最大备份数量
+  void setMaxBackupCount(int count) {
+    _storage.settingsBox.put('max_backup_count', count);
+  }
+
+  /// 清理超过数量限制的旧备份
+  Future<void> _cleanupOldBackups() async {
+    if (_client == null) return;
+
+    try {
+      final maxCount = maxBackupCount;
+      if (maxCount <= 0) return; // 0 表示不限制
+
+      final files = await listBackups();
+      if (files.length <= maxCount) return;
+
+      // 按文件名排序（时间戳格式，越新越大）
+      files.sort();
+
+      // 删除最早的备份，直到达到限制
+      final toDelete = files.sublist(0, files.length - maxCount);
+      for (final path in toDelete) {
+        try {
+          await _client!.remove(path);
+        } catch (_) {}
+      }
+    } catch (_) {}
   }
 
   /// 从WebDAV恢复数据

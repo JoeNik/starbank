@@ -54,9 +54,11 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _buildConfigCard(),
-            SizedBox(height: 20.h),
+            SizedBox(height: 16.h),
+            _buildBackupSettingsCard(),
+            SizedBox(height: 16.h),
             _buildActionCard(),
-            SizedBox(height: 20.h),
+            SizedBox(height: 16.h),
             _buildBackupListCard(),
           ],
         ),
@@ -117,6 +119,72 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
                 _loadBackups(); // Try to load backups directly
               },
               child: const Text("保存并连接"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 备份设置卡片
+  Widget _buildBackupSettingsCard() {
+    final maxCount = webDavService.maxBackupCount.obs;
+    final options = [5, 10, 20, 50, 0]; // 0 表示不限制
+
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+      child: Padding(
+        padding: EdgeInsets.all(16.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "备份设置",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.sp),
+            ),
+            SizedBox(height: 16.h),
+            Row(
+              children: [
+                Icon(Icons.storage_outlined,
+                    color: AppTheme.textSub, size: 20.sp),
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: Text(
+                    "最大备份数量",
+                    style: TextStyle(fontSize: 14.sp),
+                  ),
+                ),
+                Obx(() => DropdownButton<int>(
+                      value: maxCount.value,
+                      underline: const SizedBox(),
+                      borderRadius: BorderRadius.circular(12.r),
+                      items: options.map((count) {
+                        return DropdownMenuItem(
+                          value: count,
+                          child: Text(
+                            count == 0 ? '不限制' : '$count 个',
+                            style: TextStyle(fontSize: 14.sp),
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          maxCount.value = value;
+                          webDavService.setMaxBackupCount(value);
+                          Get.snackbar(
+                            '设置已保存',
+                            value == 0 ? '备份数量不限制' : '最多保留 $value 个备份',
+                            snackPosition: SnackPosition.BOTTOM,
+                          );
+                        }
+                      },
+                    )),
+              ],
+            ),
+            SizedBox(height: 8.h),
+            Text(
+              '超过限制时会自动删除最早的备份',
+              style: TextStyle(fontSize: 12.sp, color: AppTheme.textSub),
             ),
           ],
         ),
