@@ -4,6 +4,9 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../controllers/user_controller.dart';
 import 'webdav_settings_page.dart';
 
+/// 应用版本号 - 每次更新时同步修改 pubspec.yaml 中的 version
+const String appVersion = '1.1.0';
+
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
 
@@ -34,7 +37,6 @@ class SettingsPage extends StatelessWidget {
             ),
           ),
           SizedBox(height: 20.h),
-
           _buildSection("银行设置"),
           Card(
             shape: RoundedRectangleBorder(
@@ -57,7 +59,6 @@ class SettingsPage extends StatelessWidget {
             ),
           ),
           SizedBox(height: 20.h),
-
           _buildSection("数据与安全"),
           Card(
             shape: RoundedRectangleBorder(
@@ -75,13 +76,12 @@ class SettingsPage extends StatelessWidget {
               ],
             ),
           ),
-
           SizedBox(height: 40.h),
-          const Center(
+          Center(
             child: Text(
-              "Star Bank v1.0.0\nMade with ❤️ for Kids",
+              "Star Bank v$appVersion\nMade with ❤️ for Kids",
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey, fontSize: 12),
+              style: const TextStyle(color: Colors.grey, fontSize: 12),
             ),
           ),
         ],
