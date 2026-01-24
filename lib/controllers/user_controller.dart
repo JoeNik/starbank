@@ -172,46 +172,50 @@ class UserController extends GetxController {
     logs.insert(0, log);
   }
 
+  /// 检查并计算利息
+  /// 使用 'interest' 类型标记利息记录，按日期判断是否已产生收益
   void _checkInterest() {
     if (currentBaby.value == null) return;
     final baby = currentBaby.value!;
 
-    final lastDate = baby.lastInterestDate;
+    // 没有存款则不产生利息
+    if (baby.piggyBankBalance <= 0) return;
+
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
-    // First time init or reset if in future
-    if (lastDate == null || lastDate.isAfter(today)) {
-      baby.lastInterestDate = today;
+    // 检查今天是否已经产生过利息
+    final hasInterestToday = _storage.logBox.values.any((log) =>
+        log.babyId == baby.id &&
+        log.type == 'interest' &&
+        log.timestamp.year == today.year &&
+        log.timestamp.month == today.month &&
+        log.timestamp.day == today.day);
+
+    if (hasInterestToday) return; // 今天已产生利息，不重复计算
+
+    // 计算昨天的利息（每日结算一次）
+    final rate = currentInterestRate.value;
+    // 日利率 = 年化利率 / 365
+    final dailyRate = rate / 365.0;
+    final interest = baby.piggyBankBalance * dailyRate;
+
+    if (interest > 0.001) {
+      // 利息计入零花钱
+      baby.pocketMoneyBalance += interest;
       baby.save();
-      return;
-    }
 
-    final last = DateTime(lastDate.year, lastDate.month, lastDate.day);
-    final diff = today.difference(last).inDays;
+      // 使用 'interest' 类型记录利息
+      final log = Log(
+        timestamp: DateTime.now(),
+        description: '存钱罐利息收益',
+        changeAmount: interest,
+        type: 'interest', // 专门的利息类型
+        babyId: baby.id,
+      );
+      _storage.logBox.add(log);
+      logs.insert(0, log);
 
-    // DEBUG LOG
-    // debugPrint("Checking interest: last=${last.toString()}, today=${today.toString()}, diff=$diff");
-
-    if (diff > 0) {
-      final rate = currentInterestRate.value;
-      // Daily Interest = Principal * Rate / 365 * days
-      final interest = baby.piggyBankBalance * rate * (diff / 365.0);
-
-      if (interest > 0.001) {
-        // Interest goes to Pocket Money
-        baby.pocketMoneyBalance += interest;
-        _addLog(
-          interest,
-          '存钱罐利息 ($diff 天)',
-          'pocket',
-        ); // Log as pocket money change
-        // We also want to tag it specially so we can calculate total interest later
-        // The current logic uses '利息' in description to filter.
-      }
-
-      baby.lastInterestDate = today;
-      baby.save();
       if (currentBaby.value?.id == baby.id) {
         currentBaby.refresh();
       }
@@ -230,7 +234,7 @@ class UserController extends GetxController {
     return logs
         .where(
           (l) =>
-              l.description.contains('利息') &&
+              l.type == 'interest' &&
               l.timestamp.year == yesterday.year &&
               l.timestamp.month == yesterday.month &&
               l.timestamp.day == yesterday.day,
@@ -241,7 +245,7 @@ class UserController extends GetxController {
   double getTotalInterest() {
     if (currentBaby.value == null) return 0.0;
     return logs
-        .where((l) => l.description.contains('利息'))
+        .where((l) => l.type == 'interest')
         .fold(0.0, (sum, item) => sum + item.changeAmount);
   }
 

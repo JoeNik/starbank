@@ -15,14 +15,14 @@ import 'pages/settings_page.dart';
 // 两个地方需要同步更新：
 
 // pubspec.yaml
-//  第 19 行：version: 1.1.0+2
+//  第 19 行：version: 1.2.0+3
 // lib/pages/settings_page.dart
-//  第 8 行：const String appVersion = '1.1.0';
+//  第 8 行：const String appVersion = '1.2.0';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize Storage Service
-  final storageService = await Get.putAsync(() => StorageService().init());
+  await Get.putAsync(() => StorageService().init());
 
   // Initialize Other Services and Controllers
   Get.put(WebDavService());

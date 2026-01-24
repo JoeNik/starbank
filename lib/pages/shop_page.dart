@@ -133,59 +133,229 @@ class ShopPage extends StatelessWidget {
     final progress = controller.getProgress(product);
     final isDone = progress >= 1.0;
 
+    // 已兑换商品单独样式
+    if (product.isRedeemed) {
+      return _buildRedeemedProductCard(product);
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(28.r),
+        borderRadius: BorderRadius.circular(24.r),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // 图片区域 - 增大显示
+          Expanded(
+            flex: 5,
+            child: Container(
+              margin: EdgeInsets.all(10.w),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18.r),
+                gradient: product.imagePath.isEmpty
+                    ? LinearGradient(
+                        colors: [
+                          Colors.pink.shade100,
+                          Colors.orange.shade100,
+                          Colors.amber.shade100,
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                    : null,
+                color: product.imagePath.isNotEmpty
+                    ? AppTheme.bgYellow.withOpacity(0.3)
+                    : null,
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(18.r),
+                child: product.imagePath.isEmpty
+                    ? Center(
+                        child: Text(
+                          '🎁',
+                          style: TextStyle(fontSize: 48.sp),
+                        ),
+                      )
+                    : ImageUtils.displayImage(
+                        product.imagePath,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: double.infinity,
+                      ),
+              ),
+            ),
+          ),
+          // 信息区域
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  product.name,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14.sp,
+                    color: AppTheme.textMain,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                SizedBox(height: 4.h),
+                Row(
+                  children: [
+                    Icon(
+                      product.priceType == 'star'
+                          ? Icons.stars
+                          : Icons.monetization_on,
+                      size: 14.sp,
+                      color: product.priceType == 'star'
+                          ? Colors.amber
+                          : Colors.orange,
+                    ),
+                    SizedBox(width: 4.w),
+                    Text(
+                      "${product.price.toInt()}",
+                      style: TextStyle(
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textSub,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      "${(progress * 100).toInt()}%",
+                      style: TextStyle(
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.bold,
+                        color: isDone ? Colors.green : AppTheme.textSub,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 6.h),
+                // 进度条
+                Container(
+                  height: 6.h,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(3.r),
+                  ),
+                  child: FractionallySizedBox(
+                    widthFactor: progress > 1 ? 1 : progress,
+                    alignment: Alignment.centerLeft,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: isDone
+                              ? [Colors.green, Colors.teal]
+                              : [AppTheme.primary, AppTheme.primaryDark],
+                        ),
+                        borderRadius: BorderRadius.circular(3.r),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // 兑换按钮
+          Padding(
+            padding: EdgeInsets.fromLTRB(10.w, 4.h, 10.w, 10.h),
+            child: SizedBox(
+              height: 32.h,
+              child: ElevatedButton(
+                onPressed:
+                    isDone ? () => controller.redeemProduct(index) : null,
+                style: ElevatedButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  backgroundColor: isDone ? Colors.green : Colors.grey.shade200,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: Colors.grey.shade100,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10.r),
+                  ),
+                ),
+                child: Text(
+                  isDone ? "立刻兑换" : "努力中...",
+                  style: TextStyle(fontSize: 12.sp),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 已兑换商品卡片 - 单独展示
+  Widget _buildRedeemedProductCard(Product product) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(24.r),
+        border: Border.all(color: Colors.grey.shade200),
       ),
       child: Stack(
         children: [
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Image Area
+              // 图片区域
               Expanded(
-                flex: 4,
+                flex: 5,
                 child: Container(
-                  margin: EdgeInsets.all(8.w),
+                  margin: EdgeInsets.all(10.w),
                   decoration: BoxDecoration(
-                    color: AppTheme.bgYellow.withOpacity(0.5),
-                    borderRadius: BorderRadius.circular(22.r),
+                    borderRadius: BorderRadius.circular(18.r),
+                    color: Colors.grey.shade100,
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(20.r),
-                    child: product.imagePath.isEmpty
-                        ? Icon(
-                            Icons.favorite,
-                            color: AppTheme.primary.withOpacity(0.3),
-                            size: 40.sp,
-                          )
-                        : ImageUtils.displayImage(
-                            product.imagePath,
-                            fit: BoxFit.cover,
-                          ),
+                    borderRadius: BorderRadius.circular(18.r),
+                    child: ColorFiltered(
+                      colorFilter: const ColorFilter.mode(
+                        Colors.grey,
+                        BlendMode.saturation,
+                      ),
+                      child: product.imagePath.isEmpty
+                          ? Center(
+                              child: Text(
+                                '🎁',
+                                style: TextStyle(fontSize: 48.sp),
+                              ),
+                            )
+                          : ImageUtils.displayImage(
+                              product.imagePath,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              height: double.infinity,
+                            ),
+                    ),
                   ),
                 ),
               ),
-              // Info Area
+              // 信息区域
               Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       product.name,
                       style: TextStyle(
-                        fontWeight: FontWeight.w900,
-                        fontSize: 15.sp,
-                        color: AppTheme.textMain,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14.sp,
+                        color: Colors.grey,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -198,108 +368,58 @@ class ShopPage extends StatelessWidget {
                               ? Icons.stars
                               : Icons.monetization_on,
                           size: 14.sp,
-                          color: product.priceType == 'star'
-                              ? Colors.amber
-                              : Colors.orange,
+                          color: Colors.grey.shade400,
                         ),
                         SizedBox(width: 4.w),
                         Text(
                           "${product.price.toInt()}",
                           style: TextStyle(
-                            fontSize: 14.sp,
+                            fontSize: 13.sp,
                             fontWeight: FontWeight.bold,
-                            color: AppTheme.textSub,
+                            color: Colors.grey,
+                            decoration: TextDecoration.lineThrough,
                           ),
                         ),
                       ],
                     ),
-                    SizedBox(height: 8.h),
-                    // Progress Bar
-                    Container(
-                      height: 8.h,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(4.r),
-                      ),
-                      child: FractionallySizedBox(
-                        widthFactor: progress > 1 ? 1 : progress,
-                        alignment: Alignment.centerLeft,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [AppTheme.primary, AppTheme.primaryDark],
-                            ),
-                            borderRadius: BorderRadius.circular(4.r),
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 5.h),
-                    Center(
-                      child: Text(
-                        isDone ? "达成！去兑换吧" : "${(progress * 100).toInt()}% 进度",
-                        style: TextStyle(
-                          fontSize: 10.sp,
-                          color: isDone ? Colors.green : AppTheme.textSub,
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
-              // Action Button
+              // 已兑换标签
               Padding(
-                padding: EdgeInsets.all(8.w),
-                child: ElevatedButton(
-                  onPressed: (isDone && !product.isRedeemed)
-                      ? () => controller.redeemProduct(index)
-                      : null,
-                  style: ElevatedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(vertical: 8.h),
-                    backgroundColor:
-                        isDone ? Colors.green : Colors.grey.shade200,
-                    foregroundColor: Colors.white,
-                    disabledBackgroundColor: Colors.grey.shade100,
+                padding: EdgeInsets.fromLTRB(10.w, 4.h, 10.w, 10.h),
+                child: Container(
+                  height: 32.h,
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(10.r),
+                    border: Border.all(color: Colors.green.shade200),
                   ),
-                  child: Text(
-                    product.isRedeemed ? "奖励已发" : "立刻兑换",
-                    style: TextStyle(fontSize: 12.sp),
+                  child: Center(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.check_circle,
+                          size: 14.sp,
+                          color: Colors.green,
+                        ),
+                        SizedBox(width: 4.w),
+                        Text(
+                          "已兑换",
+                          style: TextStyle(
+                            fontSize: 12.sp,
+                            color: Colors.green,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ],
           ),
-          if (product.isRedeemed)
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.4),
-                  borderRadius: BorderRadius.circular(28.r),
-                ),
-                child: Center(
-                  child: RotationTransition(
-                    turns: const AlwaysStoppedAnimation(-15 / 360),
-                    child: Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 10.w,
-                        vertical: 5.h,
-                      ),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.red, width: 2),
-                        borderRadius: BorderRadius.circular(8.r),
-                      ),
-                      child: const Text(
-                        "COUPON USED",
-                        style: TextStyle(
-                          color: Colors.red,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
         ],
       ),
     );
