@@ -95,10 +95,16 @@ class WalletDetailsPage extends StatelessWidget {
       final babyId = controller.currentBaby.value?.id;
       if (babyId == null) return const SizedBox();
 
-      final type = isPiggy ? 'piggy' : 'pocket';
-      final logs = controller.logs
-          .where((l) => l.babyId == babyId && l.type == type)
-          .toList();
+      // 存钱罐只显示 piggy 类型
+      // 零花钱显示 pocket 和 interest 类型（利息收益计入零花钱）
+      final logs = controller.logs.where((l) {
+        if (l.babyId != babyId) return false;
+        if (isPiggy) {
+          return l.type == 'piggy';
+        } else {
+          return l.type == 'pocket' || l.type == 'interest';
+        }
+      }).toList();
 
       if (logs.isEmpty) {
         return Center(
@@ -139,16 +145,24 @@ class WalletDetailsPage extends StatelessWidget {
                 Container(
                   padding: EdgeInsets.all(10.w),
                   decoration: BoxDecoration(
-                    color: isPositive
-                        ? Colors.green.withOpacity(0.1)
-                        : Colors.red.withOpacity(0.1),
+                    color: log.type == 'interest'
+                        ? Colors.amber.withOpacity(0.15)
+                        : (isPositive
+                            ? Colors.green.withOpacity(0.1)
+                            : Colors.red.withOpacity(0.1)),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(
-                    isPositive ? Icons.add : Icons.remove,
-                    color: isPositive ? Colors.green : Colors.red,
-                    size: 20.sp,
-                  ),
+                  child: log.type == 'interest'
+                      ? Icon(
+                          Icons.savings,
+                          color: Colors.amber.shade700,
+                          size: 20.sp,
+                        )
+                      : Icon(
+                          isPositive ? Icons.add : Icons.remove,
+                          color: isPositive ? Colors.green : Colors.red,
+                          size: 20.sp,
+                        ),
                 ),
                 SizedBox(width: 16.w),
                 Expanded(
