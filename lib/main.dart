@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'services/storage_service.dart';
 import 'services/webdav_service.dart';
+import 'services/update_service.dart';
 import 'controllers/user_controller.dart';
 import 'controllers/shop_controller.dart';
 import 'pages/home_page.dart';
@@ -15,9 +16,9 @@ import 'pages/settings_page.dart';
 // 两个地方需要同步更新：
 
 // pubspec.yaml
-//  第 19 行：version: 1.2.0+3
+//  第 19 行：version: 1.3.0+4
 // lib/pages/settings_page.dart
-//  第 8 行：const String appVersion = '1.2.0';
+//  第 9 行：const String appVersion = '1.3.0';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -26,6 +27,7 @@ void main() async {
 
   // Initialize Other Services and Controllers
   Get.put(WebDavService());
+  Get.put(UpdateService());
   Get.put(UserController());
   Get.put(ShopController());
 
@@ -73,6 +75,15 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
     const ShopPage(),
     const SettingsPage(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    // 启动时延迟检查更新，避免影响启动体验
+    Future.delayed(const Duration(seconds: 2), () {
+      Get.find<UpdateService>().checkForUpdate();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

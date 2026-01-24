@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../controllers/user_controller.dart';
+import '../services/update_service.dart';
 import 'webdav_settings_page.dart';
 
 /// 应用版本号 - 每次更新时同步修改 pubspec.yaml 中的 version
-const String appVersion = '1.2.0';
+const String appVersion = '1.3.0';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -76,14 +77,56 @@ class SettingsPage extends StatelessWidget {
               ],
             ),
           ),
-          SizedBox(height: 40.h),
-          Center(
-            child: Text(
-              "Star Bank v$appVersion\nMade with ❤️ for Kids",
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.grey, fontSize: 12),
+          SizedBox(height: 20.h),
+          _buildSection("关于"),
+          Card(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16.r),
+            ),
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.system_update, color: Colors.blue),
+                  title: const Text("检查更新"),
+                  subtitle: Text("当前版本 v$appVersion"),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  onTap: () {
+                    Get.find<UpdateService>()
+                        .checkForUpdate(showNoUpdateMessage: true);
+                  },
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.info_outline, color: Colors.teal),
+                  title: const Text("关于应用"),
+                  subtitle: const Text("Star Bank - 儿童星星银行"),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  onTap: () => _showAboutDialog(),
+                ),
+              ],
             ),
           ),
+          SizedBox(height: 30.h),
+          Center(
+            child: Column(
+              children: [
+                Text(
+                  "Star Bank v$appVersion",
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 4.h),
+                const Text(
+                  "Made with ❤️ for Kids",
+                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 20.h),
         ],
       ),
     );
@@ -153,6 +196,73 @@ class SettingsPage extends StatelessWidget {
           Get.snackbar("错误", "请输入有效的数字");
         }
       },
+    );
+  }
+
+  void _showAboutDialog() {
+    Get.dialog(
+      AlertDialog(
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
+        title: Row(
+          children: [
+            Text('⭐', style: TextStyle(fontSize: 28.sp)),
+            SizedBox(width: 10.w),
+            const Text('Star Bank'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '儿童星星银行',
+              style: TextStyle(
+                fontSize: 16.sp,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 12.h),
+            Text(
+              '一款帮助家长培养孩子良好行为习惯的应用。\n\n'
+              '通过星星奖励机制，让孩子在完成任务后获得虚拟星星，'
+              '积累星星可以兑换心愿礼物。',
+              style: TextStyle(
+                fontSize: 14.sp,
+                color: Colors.grey.shade700,
+                height: 1.5,
+              ),
+            ),
+            SizedBox(height: 16.h),
+            Container(
+              padding: EdgeInsets.all(12.w),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(12.r),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.verified, color: Colors.blue, size: 20.sp),
+                  SizedBox(width: 8.w),
+                  Text(
+                    '版本 v$appVersion',
+                    style: TextStyle(
+                      color: Colors.blue,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text('确定'),
+          ),
+        ],
+      ),
     );
   }
 }
