@@ -184,12 +184,14 @@ class HomePage extends StatelessWidget {
       onTap: () => controller.switchBaby(baby.id),
       child: Container(
         width: 64.w,
+        height: 64.w, // 添加固定高度
         margin: EdgeInsets.only(right: 8.w),
         child: AnimatedScale(
           scale: isSelected ? 1.1 : 1.0,
           duration: const Duration(milliseconds: 200),
           child: Container(
-            padding: EdgeInsets.all(3.w),
+            width: 64.w,
+            height: 64.w,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               // 选中时使用渐变边框效果
@@ -215,18 +217,25 @@ class HomePage extends StatelessWidget {
                     ]
                   : [],
             ),
-            child: Container(
-              padding: EdgeInsets.all(2.w),
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white,
-              ),
-              child: ClipOval(
-                child: ImageUtils.displayImage(
-                  baby.avatarPath,
-                  width: 52.w,
-                  height: 52.w,
-                  fit: BoxFit.cover,
+            child: Center(
+              child: Container(
+                width: 56.w,
+                height: 56.w,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white,
+                ),
+                child: ClipOval(
+                  child: SizedBox(
+                    width: 52.w,
+                    height: 52.w,
+                    child: ImageUtils.displayImage(
+                      baby.avatarPath,
+                      width: 52.w,
+                      height: 52.w,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
                 ),
               ),
             ),
