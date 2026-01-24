@@ -7,6 +7,9 @@ on:
       - master
   workflow_dispatch:  # 允许手动触发
 
+permissions:
+  contents: write  # 允许创建 Release
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -33,9 +36,32 @@ jobs:
       - name: Build APK
         run: flutter build apk --release
       
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
+      # 获取版本号和时间戳用于 Release 标签
+      - name: Get version info
+        id: version
+        run: |
+          VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //' | tr -d ' \r')
+          TIMESTAMP=$(date +'%Y%m%d-%H%M%S')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "timestamp=$TIMESTAMP" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION-$TIMESTAMP" >> $GITHUB_OUTPUT
+      
+      # 重命名 APK 文件
+      - name: Rename APK
+        run: |
+          mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/star-bank-${{ steps.version.outputs.version }}.apk
+      
+      # 创建 Release 并上传 APK
+      - name: Create Release and Upload APK
+        uses: softprops/action-gh-release@v1
         with:
-          name: star-bank-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
-          retention-days: 30
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Star Bank ${{ steps.version.outputs.version }}
+          body: |
+            ## Star Bank 自动构建
+            - 版本: ${{ steps.version.outputs.version }}
+            - 构建时间: ${{ steps.version.outputs.timestamp }}
+            - 提交: ${{ github.sha }}
+          files: build/app/outputs/flutter-apk/star-bank-${{ steps.version.outputs.version }}.apk
+          draft: false
+          prerelease: false
