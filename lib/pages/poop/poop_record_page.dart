@@ -100,12 +100,6 @@ class _PoopRecordPageState extends State<PoopRecordPage> {
             tooltip: 'AI 分析',
             onPressed: () => Get.to(() => const PoopAIPage()),
           ),
-          // 设置按钮（智能体）
-          IconButton(
-            icon: const Icon(Icons.settings),
-            tooltip: '设置',
-            onPressed: _showSettingsDialog,
-          ),
         ],
       ),
       body: Column(
@@ -478,17 +472,18 @@ class _PoopRecordPageState extends State<PoopRecordPage> {
 
   /// 删除记录
   Future<void> _deleteRecord(PoopRecord record) async {
-    final confirm = await Get.dialog<bool>(
-      AlertDialog(
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
         title: const Text('确认删除'),
         content: const Text('确定要删除这条记录吗？'),
         actions: [
           TextButton(
-            onPressed: () => Get.back(result: false),
+            onPressed: () => Navigator.of(ctx).pop(false),
             child: const Text('取消'),
           ),
           TextButton(
-            onPressed: () => Get.back(result: true),
+            onPressed: () => Navigator.of(ctx).pop(true),
             child: const Text('删除', style: TextStyle(color: Colors.red)),
           ),
         ],
@@ -505,126 +500,151 @@ class _PoopRecordPageState extends State<PoopRecordPage> {
   /// 显示记录编辑对话框
   Future<Map<String, dynamic>?> _showRecordDialog(
       {PoopRecord? existing}) async {
-    final dateTime = (existing?.dateTime ?? _selectedDate.value).obs;
-    final note = TextEditingController(text: existing?.note ?? '');
-    final type = (existing?.type ?? 0).obs;
-    final color = (existing?.color ?? 0).obs;
+    DateTime selectedDateTime = existing?.dateTime ??
+        DateTime(
+          _selectedDate.value.year,
+          _selectedDate.value.month,
+          _selectedDate.value.day,
+          DateTime.now().hour,
+          DateTime.now().minute,
+        );
+    String noteText = existing?.note ?? '';
+    int typeValue = existing?.type ?? 0;
+    int colorValue = existing?.color ?? 0;
 
-    return Get.dialog<Map<String, dynamic>>(
-      AlertDialog(
-        title: Text(existing == null ? '添加记录' : '编辑记录'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 时间选择
-              Obx(() => ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.access_time),
-                    title: Text(
-                        DateFormat('yyyy-MM-dd HH:mm').format(dateTime.value)),
-                    trailing: const Icon(Icons.edit),
-                    onTap: () async {
-                      final date = await showDatePicker(
-                        context: context,
-                        initialDate: dateTime.value,
-                        firstDate: DateTime(2020),
-                        lastDate: DateTime.now(),
-                      );
-                      if (date != null) {
-                        final time = await showTimePicker(
+    return showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(existing == null ? '添加记录' : '编辑记录'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 时间选择
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.access_time),
+                      title: Text(DateFormat('yyyy-MM-dd HH:mm')
+                          .format(selectedDateTime)),
+                      trailing: const Icon(Icons.edit),
+                      onTap: () async {
+                        final date = await showDatePicker(
                           context: context,
-                          initialTime: TimeOfDay.fromDateTime(dateTime.value),
+                          initialDate: selectedDateTime,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime.now(),
                         );
-                        if (time != null) {
-                          dateTime.value = DateTime(
-                            date.year,
-                            date.month,
-                            date.day,
-                            time.hour,
-                            time.minute,
+                        if (date != null) {
+                          final time = await showTimePicker(
+                            context: context,
+                            initialTime:
+                                TimeOfDay.fromDateTime(selectedDateTime),
                           );
+                          if (time != null) {
+                            setDialogState(() {
+                              selectedDateTime = DateTime(
+                                date.year,
+                                date.month,
+                                date.day,
+                                time.hour,
+                                time.minute,
+                              );
+                            });
+                          }
                         }
-                      }
-                    },
-                  )),
+                      },
+                    ),
 
-              SizedBox(height: 16.h),
+                    SizedBox(height: 16.h),
 
-              // 类型选择
-              Text('便便类型',
-                  style: TextStyle(fontSize: 12.sp, color: Colors.grey)),
-              SizedBox(height: 8.h),
-              Obx(() => Wrap(
-                    spacing: 8.w,
-                    children: [
-                      _buildChoiceChip('正常', 0, type),
-                      _buildChoiceChip('稀便', 1, type),
-                      _buildChoiceChip('干硬', 2, type),
-                      _buildChoiceChip('其他', 3, type),
-                    ],
-                  )),
+                    // 类型选择
+                    Text('便便类型',
+                        style: TextStyle(fontSize: 12.sp, color: Colors.grey)),
+                    SizedBox(height: 8.h),
+                    Wrap(
+                      spacing: 8.w,
+                      children: [
+                        _buildDialogChip('正常', 0, typeValue,
+                            (v) => setDialogState(() => typeValue = v)),
+                        _buildDialogChip('稀便', 1, typeValue,
+                            (v) => setDialogState(() => typeValue = v)),
+                        _buildDialogChip('干硬', 2, typeValue,
+                            (v) => setDialogState(() => typeValue = v)),
+                        _buildDialogChip('其他', 3, typeValue,
+                            (v) => setDialogState(() => typeValue = v)),
+                      ],
+                    ),
 
-              SizedBox(height: 16.h),
+                    SizedBox(height: 16.h),
 
-              // 颜色选择
-              Text('颜色', style: TextStyle(fontSize: 12.sp, color: Colors.grey)),
-              SizedBox(height: 8.h),
-              Obx(() => Wrap(
-                    spacing: 8.w,
-                    children: [
-                      _buildChoiceChip('正常黄色', 0, color),
-                      _buildChoiceChip('绿色', 1, color),
-                      _buildChoiceChip('黑色', 2, color),
-                      _buildChoiceChip('其他', 3, color),
-                    ],
-                  )),
+                    // 颜色选择
+                    Text('颜色',
+                        style: TextStyle(fontSize: 12.sp, color: Colors.grey)),
+                    SizedBox(height: 8.h),
+                    Wrap(
+                      spacing: 8.w,
+                      children: [
+                        _buildDialogChip('正常黄色', 0, colorValue,
+                            (v) => setDialogState(() => colorValue = v)),
+                        _buildDialogChip('绿色', 1, colorValue,
+                            (v) => setDialogState(() => colorValue = v)),
+                        _buildDialogChip('黑色', 2, colorValue,
+                            (v) => setDialogState(() => colorValue = v)),
+                        _buildDialogChip('其他', 3, colorValue,
+                            (v) => setDialogState(() => colorValue = v)),
+                      ],
+                    ),
 
-              SizedBox(height: 16.h),
+                    SizedBox(height: 16.h),
 
-              // 备注
-              TextField(
-                controller: note,
-                decoration: const InputDecoration(
-                  labelText: '备注（可选）',
-                  hintText: '如：量多、有奶瓣等',
-                  border: OutlineInputBorder(),
+                    // 备注
+                    TextFormField(
+                      initialValue: noteText,
+                      decoration: const InputDecoration(
+                        labelText: '备注（可选）',
+                        hintText: '如：量多、有奶瓣等',
+                        border: OutlineInputBorder(),
+                      ),
+                      maxLines: 2,
+                      onChanged: (v) => noteText = v,
+                    ),
+                  ],
                 ),
-                maxLines: 2,
               ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('取消'),
-          ),
-          ElevatedButton(
-            onPressed: () => Get.back(result: {
-              'dateTime': dateTime.value,
-              'note': note.text,
-              'type': type.value,
-              'color': color.value,
-            }),
-            child: const Text('保存'),
-          ),
-        ],
-      ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(null),
+                  child: const Text('取消'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(ctx).pop({
+                    'dateTime': selectedDateTime,
+                    'note': noteText,
+                    'type': typeValue,
+                    'color': colorValue,
+                  }),
+                  child: const Text('保存'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
-  Widget _buildChoiceChip(String label, int value, RxInt selected) {
+  Widget _buildDialogChip(
+      String label, int value, int selected, Function(int) onSelect) {
     return ChoiceChip(
       label: Text(label),
-      selected: selected.value == value,
-      onSelected: (s) => selected.value = value,
+      selected: selected == value,
+      onSelected: (s) {
+        if (s) onSelect(value);
+      },
     );
-  }
-
-  /// 设置对话框
-  void _showSettingsDialog() {
-    Get.snackbar('提示', '智能体设置功能开发中', snackPosition: SnackPosition.BOTTOM);
   }
 }

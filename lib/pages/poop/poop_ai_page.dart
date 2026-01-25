@@ -8,7 +8,6 @@ import '../../models/ai_chat.dart';
 import '../../controllers/user_controller.dart';
 import '../../services/openai_service.dart';
 import '../../theme/app_theme.dart';
-import '../openai_settings_page.dart';
 
 /// 便便 AI 分析页面
 class PoopAIPage extends StatefulWidget {
@@ -21,39 +20,41 @@ class PoopAIPage extends StatefulWidget {
 class _PoopAIPageState extends State<PoopAIPage> {
   final UserController _userController = Get.find<UserController>();
 
-  // AI 服务
-  OpenAIService? _openAIService;
+  // AI 服务（全局）
+  late OpenAIService _openAIService;
 
   // 时间范围
-  final Rx<DateTime> _startDate =
-      DateTime.now().subtract(const Duration(days: 7)).obs;
-  final Rx<DateTime> _endDate = DateTime.now().obs;
+  DateTime _startDate = DateTime.now().subtract(const Duration(days: 7));
+  DateTime _endDate = DateTime.now();
 
   // 记录
-  final RxList<PoopRecord> _records = <PoopRecord>[].obs;
+  List<PoopRecord> _records = [];
 
   // 对话历史
-  final RxList<AIChat> _chatHistory = <AIChat>[].obs;
+  List<AIChat> _chatHistory = [];
 
   // 当前分析结果
-  final RxString _currentResponse = ''.obs;
+  String _currentResponse = '';
 
   // 加载状态
-  final RxBool _isLoading = false.obs;
-  final RxBool _isAnalyzing = false.obs;
+  bool _isLoading = true;
+  bool _isAnalyzing = false;
 
-  // 自定义 Prompt
-  final RxString _customPrompt = '''你是一位专业的儿科健康顾问。请根据宝宝的排便记录，分析以下内容：
+  // 自定义 Prompt（保存到 Hive）
+  String _customPrompt = '''你是一位专业的儿科健康顾问。请根据宝宝的排便记录，分析以下内容：
 1. 排便频率是否正常
 2. 排便时间规律性
 3. 便便类型和颜色是否健康
 4. 给出改善建议
 
-请用通俗易懂的语言回答，便于家长理解。'''
-      .obs;
+请用通俗易懂的语言回答，便于家长理解。''';
+
+  // 当前选择的模型
+  String _selectedModel = '';
 
   late Box<PoopRecord> _recordBox;
   late Box<AIChat> _chatBox;
+  late Box _settingsBox;
 
   @override
   void initState() {
@@ -62,14 +63,10 @@ class _PoopAIPageState extends State<PoopAIPage> {
   }
 
   Future<void> _initData() async {
-    _isLoading.value = true;
+    setState(() => _isLoading = true);
 
-    // 获取 OpenAI 服务
-    try {
-      _openAIService = Get.find<OpenAIService>();
-    } catch (e) {
-      // 服务未初始化
-    }
+    // 获取 OpenAI 服务（全局已初始化）
+    _openAIService = Get.find<OpenAIService>();
 
     // 打开数据库
     if (!Hive.isAdapterRegistered(11)) {
@@ -81,11 +78,21 @@ class _PoopAIPageState extends State<PoopAIPage> {
 
     _recordBox = await Hive.openBox<PoopRecord>('poop_records');
     _chatBox = await Hive.openBox<AIChat>('ai_chats');
+    _settingsBox = await Hive.openBox('poop_ai_settings');
+
+    // 加载保存的 prompt
+    _customPrompt = _settingsBox.get('prompt', defaultValue: _customPrompt);
+    _selectedModel = _settingsBox.get('selected_model', defaultValue: '');
+
+    // 如果没有选择模型，使用默认配置的模型
+    if (_selectedModel.isEmpty && _openAIService.currentConfig.value != null) {
+      _selectedModel = _openAIService.currentConfig.value!.selectedModel;
+    }
 
     _loadRecords();
     _loadChatHistory();
 
-    _isLoading.value = false;
+    setState(() => _isLoading = false);
   }
 
   void _loadRecords() {
@@ -95,13 +102,12 @@ class _PoopAIPageState extends State<PoopAIPage> {
     final records = _recordBox.values
         .where((r) =>
             r.babyId == babyId &&
-            r.dateTime
-                .isAfter(_startDate.value.subtract(const Duration(days: 1))) &&
-            r.dateTime.isBefore(_endDate.value.add(const Duration(days: 1))))
+            r.dateTime.isAfter(_startDate.subtract(const Duration(days: 1))) &&
+            r.dateTime.isBefore(_endDate.add(const Duration(days: 1))))
         .toList()
       ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
 
-    _records.assignAll(records);
+    setState(() => _records = records);
   }
 
   void _loadChatHistory() {
@@ -113,32 +119,14 @@ class _PoopAIPageState extends State<PoopAIPage> {
         .toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-    _chatHistory.assignAll(chats);
+    setState(() => _chatHistory = chats);
   }
 
   /// 执行 AI 分析
   Future<void> _analyzeWithAI() async {
-    if (_openAIService == null || _openAIService!.currentConfig.value == null) {
-      final goToSettings = await Get.dialog<bool>(
-        AlertDialog(
-          title: const Text('未配置 AI'),
-          content: const Text('请先配置 OpenAI API 才能使用 AI 分析功能'),
-          actions: [
-            TextButton(
-              onPressed: () => Get.back(result: false),
-              child: const Text('取消'),
-            ),
-            ElevatedButton(
-              onPressed: () => Get.back(result: true),
-              child: const Text('去配置'),
-            ),
-          ],
-        ),
-      );
-
-      if (goToSettings == true) {
-        Get.to(() => const OpenAISettingsPage());
-      }
+    final config = _openAIService.currentConfig.value;
+    if (config == null) {
+      _showConfigMissingDialog();
       return;
     }
 
@@ -147,8 +135,10 @@ class _PoopAIPageState extends State<PoopAIPage> {
       return;
     }
 
-    _isAnalyzing.value = true;
-    _currentResponse.value = '';
+    setState(() {
+      _isAnalyzing = true;
+      _currentResponse = '';
+    });
 
     try {
       // 构建用户消息
@@ -158,19 +148,19 @@ class _PoopAIPageState extends State<PoopAIPage> {
       }).join('\n');
 
       final userMessage = '''宝宝信息：${baby.name}
-记录时间范围：${DateFormat('yyyy年MM月dd日').format(_startDate.value)} 至 ${DateFormat('yyyy年MM月dd日').format(_endDate.value)}
+记录时间范围：${DateFormat('yyyy年MM月dd日').format(_startDate)} 至 ${DateFormat('yyyy年MM月dd日').format(_endDate)}
 共 ${_records.length} 条记录
 
 排便记录：
 $recordsText''';
 
       // 调用 AI
-      final response = await _openAIService!.chat(
-        systemPrompt: _customPrompt.value,
+      final response = await _openAIService.chat(
+        systemPrompt: _customPrompt,
         userMessage: userMessage,
       );
 
-      _currentResponse.value = response;
+      setState(() => _currentResponse = response);
 
       // 保存对话记录
       final chat = AIChat(
@@ -186,12 +176,34 @@ $recordsText''';
     } catch (e) {
       Get.snackbar('分析失败', e.toString(), snackPosition: SnackPosition.BOTTOM);
     } finally {
-      _isAnalyzing.value = false;
+      setState(() => _isAnalyzing = false);
     }
+  }
+
+  void _showConfigMissingDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('未配置 AI'),
+        content: const Text('请先在「设置 → AI 设置」中配置 OpenAI API'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('知道了'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('AI 便便分析'),
@@ -206,69 +218,133 @@ $recordsText''';
             tooltip: '编辑智能体',
             onPressed: _showPromptEditor,
           ),
-          IconButton(
-            icon: const Icon(Icons.settings),
-            tooltip: 'AI 设置',
-            onPressed: () => Get.to(() => const OpenAISettingsPage()),
-          ),
         ],
       ),
-      body: Obx(() {
-        if (_isLoading.value) {
-          return const Center(child: CircularProgressIndicator());
-        }
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(16.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // AI 配置状态
+            _buildAIConfigStatus(),
 
-        return SingleChildScrollView(
-          padding: EdgeInsets.all(16.w),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 时间范围选择
-              _buildDateRangeSelector(),
+            SizedBox(height: 16.h),
 
-              SizedBox(height: 16.h),
+            // 时间范围选择
+            _buildDateRangeSelector(),
 
-              // 记录统计
-              _buildRecordsSummary(),
+            SizedBox(height: 16.h),
 
-              SizedBox(height: 16.h),
+            // 记录统计
+            _buildRecordsSummary(),
 
-              // 分析按钮
-              SizedBox(
-                width: double.infinity,
-                child: Obx(() => ElevatedButton.icon(
-                      onPressed: _isAnalyzing.value ? null : _analyzeWithAI,
-                      icon: _isAnalyzing.value
-                          ? SizedBox(
-                              width: 20.w,
-                              height: 20.w,
-                              child: const CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.psychology),
-                      label: Text(_isAnalyzing.value ? '分析中...' : '开始 AI 分析'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primary,
-                        padding: EdgeInsets.symmetric(vertical: 14.h),
-                      ),
-                    )),
+            SizedBox(height: 16.h),
+
+            // 分析按钮
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _isAnalyzing ? null : _analyzeWithAI,
+                icon: _isAnalyzing
+                    ? SizedBox(
+                        width: 20.w,
+                        height: 20.w,
+                        child: const CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.psychology),
+                label: Text(_isAnalyzing ? '分析中...' : '开始 AI 分析'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primary,
+                  padding: EdgeInsets.symmetric(vertical: 14.h),
+                ),
               ),
+            ),
 
-              SizedBox(height: 24.h),
+            SizedBox(height: 24.h),
 
-              // 分析结果
-              Obx(() {
-                if (_currentResponse.value.isEmpty) {
-                  return _buildEmptyState();
-                }
-                return _buildAnalysisResult();
-              }),
+            // 分析结果
+            if (_currentResponse.isEmpty)
+              _buildEmptyState()
+            else
+              _buildAnalysisResult(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// AI 配置状态
+  Widget _buildAIConfigStatus() {
+    final config = _openAIService.currentConfig.value;
+    final models = config?.models ?? [];
+
+    return Card(
+      child: Padding(
+        padding: EdgeInsets.all(12.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  config != null ? Icons.check_circle : Icons.warning,
+                  color: config != null ? Colors.green : Colors.orange,
+                  size: 20.sp,
+                ),
+                SizedBox(width: 8.w),
+                Text(
+                  config != null ? '已配置: ${config.name}' : '未配置 AI',
+                  style: TextStyle(
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            if (models.isNotEmpty) ...[
+              SizedBox(height: 12.h),
+              Text('选择模型:',
+                  style: TextStyle(fontSize: 12.sp, color: Colors.grey)),
+              SizedBox(height: 8.h),
+              SizedBox(
+                height: 36.h,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: models.length,
+                  itemBuilder: (context, index) {
+                    final model = models[index];
+                    final isSelected = model == _selectedModel;
+                    return Padding(
+                      padding: EdgeInsets.only(right: 8.w),
+                      child: ChoiceChip(
+                        label: Text(
+                          model.length > 15
+                              ? '${model.substring(0, 15)}...'
+                              : model,
+                          style: TextStyle(fontSize: 11.sp),
+                        ),
+                        selected: isSelected,
+                        onSelected: (s) async {
+                          if (s) {
+                            setState(() => _selectedModel = model);
+                            await _settingsBox.put('selected_model', model);
+                            // 同步更新全局配置
+                            config!.selectedModel = model;
+                            await _openAIService.updateConfig(config);
+                          }
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
             ],
-          ),
-        );
-      }),
+          ],
+        ),
+      ),
     );
   }
 
@@ -290,23 +366,22 @@ $recordsText''';
             Row(
               children: [
                 Expanded(
-                  child: Obx(() => OutlinedButton.icon(
-                        onPressed: () => _pickDate(true),
-                        icon: const Icon(Icons.calendar_today, size: 18),
-                        label:
-                            Text(DateFormat('MM/dd').format(_startDate.value)),
-                      )),
+                  child: OutlinedButton.icon(
+                    onPressed: () => _pickDate(true),
+                    icon: const Icon(Icons.calendar_today, size: 18),
+                    label: Text(DateFormat('MM/dd').format(_startDate)),
+                  ),
                 ),
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: 12.w),
                   child: const Text('至'),
                 ),
                 Expanded(
-                  child: Obx(() => OutlinedButton.icon(
-                        onPressed: () => _pickDate(false),
-                        icon: const Icon(Icons.calendar_today, size: 18),
-                        label: Text(DateFormat('MM/dd').format(_endDate.value)),
-                      )),
+                  child: OutlinedButton.icon(
+                    onPressed: () => _pickDate(false),
+                    icon: const Icon(Icons.calendar_today, size: 18),
+                    label: Text(DateFormat('MM/dd').format(_endDate)),
+                  ),
                 ),
               ],
             ),
@@ -330,8 +405,10 @@ $recordsText''';
     return ActionChip(
       label: Text(label),
       onPressed: () {
-        _endDate.value = DateTime.now();
-        _startDate.value = DateTime.now().subtract(Duration(days: days));
+        setState(() {
+          _endDate = DateTime.now();
+          _startDate = DateTime.now().subtract(Duration(days: days));
+        });
         _loadRecords();
       },
     );
@@ -340,56 +417,59 @@ $recordsText''';
   Future<void> _pickDate(bool isStart) async {
     final date = await showDatePicker(
       context: context,
-      initialDate: isStart ? _startDate.value : _endDate.value,
+      initialDate: isStart ? _startDate : _endDate,
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
     );
 
     if (date != null) {
-      if (isStart) {
-        _startDate.value = date;
-      } else {
-        _endDate.value = date;
-      }
+      setState(() {
+        if (isStart) {
+          _startDate = date;
+        } else {
+          _endDate = date;
+        }
+      });
       _loadRecords();
     }
   }
 
   Widget _buildRecordsSummary() {
-    return Obx(() => Card(
-          color: Colors.brown.shade50,
-          child: Padding(
-            padding: EdgeInsets.all(16.w),
-            child: Row(
-              children: [
-                Icon(Icons.analytics, color: Colors.brown, size: 32.sp),
-                SizedBox(width: 12.w),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '共 ${_records.length} 条记录',
-                        style: TextStyle(
-                          fontSize: 16.sp,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      if (_records.isNotEmpty)
-                        Text(
-                          '平均每天 ${(_records.length / (_endDate.value.difference(_startDate.value).inDays + 1)).toStringAsFixed(1)} 次',
-                          style: TextStyle(
-                            fontSize: 12.sp,
-                            color: Colors.grey,
-                          ),
-                        ),
-                    ],
+    final days = _endDate.difference(_startDate).inDays + 1;
+    return Card(
+      color: Colors.brown.shade50,
+      child: Padding(
+        padding: EdgeInsets.all(16.w),
+        child: Row(
+          children: [
+            Icon(Icons.analytics, color: Colors.brown, size: 32.sp),
+            SizedBox(width: 12.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '共 ${_records.length} 条记录',
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-              ],
+                  if (_records.isNotEmpty)
+                    Text(
+                      '平均每天 ${(_records.length / days).toStringAsFixed(1)} 次',
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        color: Colors.grey,
+                      ),
+                    ),
+                ],
+              ),
             ),
-          ),
-        ));
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildEmptyState() {
@@ -428,13 +508,13 @@ $recordsText''';
               ],
             ),
             Divider(height: 24.h),
-            Obx(() => SelectableText(
-                  _currentResponse.value,
-                  style: TextStyle(
-                    fontSize: 14.sp,
-                    height: 1.6,
-                  ),
-                )),
+            SelectableText(
+              _currentResponse,
+              style: TextStyle(
+                fontSize: 14.sp,
+                height: 1.6,
+              ),
+            ),
           ],
         ),
       ),
@@ -442,47 +522,45 @@ $recordsText''';
   }
 
   void _showHistoryDialog() {
-    Get.dialog(
-      AlertDialog(
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
         title: const Text('历史分析记录'),
         content: SizedBox(
           width: double.maxFinite,
           height: 400.h,
-          child: Obx(() {
-            if (_chatHistory.isEmpty) {
-              return const Center(child: Text('暂无历史记录'));
-            }
-            return ListView.builder(
-              itemCount: _chatHistory.length,
-              itemBuilder: (context, index) {
-                final chat = _chatHistory[index];
-                return Card(
-                  margin: EdgeInsets.only(bottom: 8.h),
-                  child: ListTile(
-                    title: Text(
-                      DateFormat('yyyy-MM-dd HH:mm').format(chat.createdAt),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: Text(
-                      chat.response.length > 50
-                          ? '${chat.response.substring(0, 50)}...'
-                          : chat.response,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    onTap: () {
-                      Get.back();
-                      _currentResponse.value = chat.response;
-                    },
-                  ),
-                );
-              },
-            );
-          }),
+          child: _chatHistory.isEmpty
+              ? const Center(child: Text('暂无历史记录'))
+              : ListView.builder(
+                  itemCount: _chatHistory.length,
+                  itemBuilder: (context, index) {
+                    final chat = _chatHistory[index];
+                    return Card(
+                      margin: EdgeInsets.only(bottom: 8.h),
+                      child: ListTile(
+                        title: Text(
+                          DateFormat('yyyy-MM-dd HH:mm').format(chat.createdAt),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Text(
+                          chat.response.length > 50
+                              ? '${chat.response.substring(0, 50)}...'
+                              : chat.response,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        onTap: () {
+                          Navigator.of(ctx).pop();
+                          setState(() => _currentResponse = chat.response);
+                        },
+                      ),
+                    );
+                  },
+                ),
         ),
         actions: [
           TextButton(
-            onPressed: () => Get.back(),
+            onPressed: () => Navigator.of(ctx).pop(),
             child: const Text('关闭'),
           ),
         ],
@@ -491,9 +569,10 @@ $recordsText''';
   }
 
   void _showPromptEditor() {
-    final controller = TextEditingController(text: _customPrompt.value);
-    Get.dialog(
-      AlertDialog(
+    final controller = TextEditingController(text: _customPrompt);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
         title: const Text('编辑智能体提示词'),
         content: SizedBox(
           width: double.maxFinite,
@@ -508,14 +587,16 @@ $recordsText''';
         ),
         actions: [
           TextButton(
-            onPressed: () => Get.back(),
+            onPressed: () => Navigator.of(ctx).pop(),
             child: const Text('取消'),
           ),
           ElevatedButton(
-            onPressed: () {
-              _customPrompt.value = controller.text;
-              Get.back();
-              Get.snackbar('成功', '提示词已更新', snackPosition: SnackPosition.BOTTOM);
+            onPressed: () async {
+              final newPrompt = controller.text;
+              await _settingsBox.put('prompt', newPrompt);
+              setState(() => _customPrompt = newPrompt);
+              Navigator.of(ctx).pop();
+              Get.snackbar('成功', '提示词已保存', snackPosition: SnackPosition.BOTTOM);
             },
             child: const Text('保存'),
           ),
