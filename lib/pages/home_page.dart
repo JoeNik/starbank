@@ -186,12 +186,66 @@ class _HomePageState extends State<HomePage> {
       AppModeController modeController) {
     final isPositive = action.value > 0;
     return GestureDetector(
-      onTap: () {
+      onTap: () async {
         if (modeController.isChildMode) {
           Get.snackbar('👀 只能看哦', '让爸爸妈妈来记录吧~');
           return;
         }
-        _handleQuickAction(controller, action);
+
+        // 添加二次确认
+        final confirm = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Row(
+              children: [
+                Text(action.iconName.isNotEmpty ? action.iconName : "📝"),
+                SizedBox(width: 8.w),
+                const Text('确认记录'),
+              ],
+            ),
+            content: Text.rich(
+              TextSpan(
+                children: [
+                  const TextSpan(text: '确定要记录 '),
+                  TextSpan(
+                    text: action.name,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primary,
+                    ),
+                  ),
+                  const TextSpan(text: ' 吗？\n\n'),
+                  TextSpan(
+                    text: '${action.value > 0 ? '+' : ''}${action.value} 星星',
+                    style: TextStyle(
+                      fontSize: 18.sp,
+                      fontWeight: FontWeight.bold,
+                      color: action.value > 0 ? Colors.orange : Colors.blue,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('取消', style: TextStyle(color: Colors.grey)),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primary,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('确定'),
+              ),
+            ],
+          ),
+        );
+
+        if (confirm == true) {
+          _handleQuickAction(controller, action);
+        }
       },
       child: Container(
         decoration: BoxDecoration(
@@ -250,12 +304,21 @@ class _HomePageState extends State<HomePage> {
     // 快捷记录对应的是星星增减
     controller.updateStars(action.value.toInt(), action.name);
 
-    Get.snackbar(
-      action.value > 0 ? '🎉 加油！' : '💪 继续努力',
-      '已记录: ${action.name} (${action.value > 0 ? '+' : ''}${action.value})',
+    Get.showSnackbar(GetSnackBar(
+      title: action.value > 0 ? '🎉 加油！' : '💪 继续努力',
+      message:
+          '已记录: ${action.name} (${action.value > 0 ? '+' : ''}${action.value})',
       snackPosition: SnackPosition.BOTTOM,
-      duration: const Duration(seconds: 2),
-    );
+      duration: const Duration(seconds: 4),
+      mainButton: TextButton(
+        onPressed: () {
+          Get.back(); // 关闭 Snackbar
+          controller.revertLastStarAction();
+          Get.snackbar('撤销成功', '已撤销上次操作', snackPosition: SnackPosition.BOTTOM);
+        },
+        child: const Text('撤销', style: TextStyle(color: Colors.white)),
+      ),
+    ));
   }
 
   /// 宝宝选择对话框（居中弹出）

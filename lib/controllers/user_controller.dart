@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../models/baby.dart';
 import '../models/action_item.dart';
@@ -129,6 +130,40 @@ class UserController extends GetxController {
     currentBaby.refresh();
 
     _addLog(change.toDouble(), reason, 'star');
+  }
+
+  /// 撤销上一次星星变动操作
+  Future<void> revertLastStarAction() async {
+    if (currentBaby.value == null || logs.isEmpty) return;
+
+    // 找到最近的一条属于当前宝宝的星星记录
+    int index = -1;
+    for (int i = 0; i < logs.length; i++) {
+      if (logs[i].type == 'star' && logs[i].babyId == currentBaby.value!.id) {
+        index = i;
+        break;
+      }
+    }
+
+    if (index != -1) {
+      final logToRevert = logs[index];
+
+      // 回滚星星
+      currentBaby.value!.starCount -= logToRevert.changeAmount.toInt();
+      currentBaby.value!.save();
+      currentBaby.refresh();
+
+      // 删除日志
+      try {
+        if (logToRevert.isInBox) {
+          await logToRevert.delete();
+        }
+      } catch (e) {
+        debugPrint("Error deleting log: $e");
+      }
+
+      logs.removeAt(index);
+    }
   }
 
   // Wallet Logic: piggyBank and pocketMoney
