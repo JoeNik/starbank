@@ -7,6 +7,7 @@ import '../models/baby.dart';
 import '../models/action_item.dart';
 import '../models/log.dart';
 import '../models/product.dart';
+import '../controllers/app_mode_controller.dart';
 
 /// WebDAV备份服务
 class WebDavService extends GetxService {
@@ -81,6 +82,14 @@ class WebDavService extends GetxService {
           _storage.productBox.values.map((e) => e.toJson()).toList();
       backupData['babies'] =
           _storage.babyBox.values.map((e) => e.toJson()).toList();
+
+      // 备份密码哈希
+      try {
+        final modeController = Get.find<AppModeController>();
+        if (modeController.hasPassword) {
+          backupData['passwordHash'] = modeController.passwordHash;
+        }
+      } catch (_) {}
 
       backupData['timestamp'] = DateTime.now().toIso8601String();
 
@@ -198,6 +207,14 @@ class WebDavService extends GetxService {
         for (var item in (backupData['babies'] as List)) {
           await _storage.babyBox.add(Baby.fromJson(item));
         }
+      }
+
+      // 恢复密码哈希
+      if (backupData['passwordHash'] != null) {
+        try {
+          final modeController = Get.find<AppModeController>();
+          await modeController.restorePasswordHash(backupData['passwordHash']);
+        } catch (_) {}
       }
 
       Get.snackbar(

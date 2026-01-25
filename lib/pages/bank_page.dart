@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../controllers/user_controller.dart';
+import '../controllers/app_mode_controller.dart';
 import '../theme/app_theme.dart';
 import '../widgets/image_utils.dart';
 import 'wallet_details_page.dart';
@@ -12,6 +13,7 @@ class BankPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final UserController controller = Get.find<UserController>();
+    final AppModeController modeController = Get.find<AppModeController>();
 
     return Scaffold(
       backgroundColor: AppTheme.bgBlue,
@@ -55,6 +57,7 @@ class BankPage extends StatelessWidget {
               children: [
                 _buildWalletCard(
                   controller: controller,
+                  modeController: modeController,
                   title: "存钱罐",
                   balance: baby.piggyBankBalance,
                   icon: '🏦', // 使用 emoji 图标
@@ -64,6 +67,7 @@ class BankPage extends StatelessWidget {
                 ),
                 _buildWalletCard(
                   controller: controller,
+                  modeController: modeController,
                   title: "零花钱",
                   balance: baby.pocketMoneyBalance,
                   icon: '💰', // 使用 emoji 图标
@@ -83,6 +87,7 @@ class BankPage extends StatelessWidget {
 
   Widget _buildWalletCard({
     required UserController controller,
+    required AppModeController modeController,
     required String title,
     required double balance,
     required String icon,
@@ -181,8 +186,13 @@ class BankPage extends StatelessWidget {
               children: [
                 Expanded(
                   child: _buildMiniButton(
-                    onTap: () =>
-                        _showWalletDialog(controller, title, true, isPiggy),
+                    onTap: () {
+                      if (modeController.isChildMode) {
+                        Get.snackbar('👀 只能看哦', '让爸爸妈妈来存钱吧~');
+                        return;
+                      }
+                      _showWalletDialog(controller, title, true, isPiggy);
+                    },
                     label: "存入",
                     color: color,
                   ),
@@ -190,8 +200,13 @@ class BankPage extends StatelessWidget {
                 SizedBox(width: 10.w),
                 Expanded(
                   child: _buildMiniButton(
-                    onTap: () =>
-                        _showWalletDialog(controller, title, false, isPiggy),
+                    onTap: () {
+                      if (modeController.isChildMode) {
+                        Get.snackbar('👀 只能看哦', '让爸爸妈妈来取钱吧~');
+                        return;
+                      }
+                      _showWalletDialog(controller, title, false, isPiggy);
+                    },
                     label: "取出",
                     color: Colors.grey.shade400,
                   ),

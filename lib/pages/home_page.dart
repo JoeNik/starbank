@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../controllers/user_controller.dart';
-// TODO: 后续实现儿童模式控制
-// import '../controllers/app_mode_controller.dart';
+import '../controllers/app_mode_controller.dart';
 import '../models/log.dart';
+import '../models/action_item.dart';
 import '../theme/app_theme.dart';
 import '../widgets/image_utils.dart';
 import 'action_settings_page.dart';
@@ -15,8 +15,7 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final UserController controller = Get.find<UserController>();
-    // TODO: 在儿童模式下禁用编辑功能
-    // final AppModeController modeController = Get.find<AppModeController>();
+    final AppModeController modeController = Get.find<AppModeController>();
 
     return Scaffold(
       body: Container(
@@ -30,14 +29,14 @@ class HomePage extends StatelessWidget {
         child: SafeArea(
           child: Column(
             children: [
-              _buildBabySelector(controller),
+              _buildBabySelector(controller, modeController),
               Expanded(
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
                   child: Column(
                     children: [
-                      _buildStarCard(controller),
-                      _buildActionGrid(controller),
+                      _buildStarCard(controller, modeController),
+                      _buildActionGrid(controller, modeController),
                       _buildRecentLogs(controller),
                       SizedBox(height: 20.h),
                     ],
@@ -51,7 +50,8 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildBabySelector(UserController controller) {
+  Widget _buildBabySelector(
+      UserController controller, AppModeController modeController) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
       child: Row(
@@ -140,12 +140,91 @@ class HomePage extends StatelessWidget {
             );
           }),
           const Spacer(),
-          IconButton(
-            icon: const Icon(Icons.edit_rounded, color: AppTheme.textSub),
-            onPressed: () => _showEditBabyDialog(controller),
-          ),
+          // 编辑按钮（儿童模式隐藏）
+          Obx(() => modeController.isChildMode
+              ? const SizedBox()
+              : IconButton(
+                  icon: const Icon(Icons.edit_rounded, color: AppTheme.textSub),
+                  onPressed: () => _showEditBabyDialog(controller),
+                )),
         ],
       ),
+    );
+  }
+
+  Widget _buildQuickActionCard(UserController controller, ActionItem action,
+      AppModeController modeController) {
+    final isPositive = action.value > 0;
+    return GestureDetector(
+      onTap: () {
+        if (modeController.isChildMode) {
+          Get.snackbar('👀 只能看哦', '让爸爸妈妈来记录吧~');
+          return;
+        }
+        _handleQuickAction(controller, action);
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20.r),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // 使用 iconName 作为 emoji
+            Text(action.iconName.isNotEmpty ? action.iconName : "⭐️",
+                style: TextStyle(fontSize: 32.sp)),
+            SizedBox(height: 8.h),
+            Text(
+              action.name,
+              style: TextStyle(
+                fontSize: 14.sp,
+                color: AppTheme.textMain,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            SizedBox(height: 4.h),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+              decoration: BoxDecoration(
+                color:
+                    (isPositive ? Colors.orange : Colors.blue).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8.r),
+              ),
+              child: Text(
+                '${isPositive ? '+' : ''}${action.value}',
+                style: TextStyle(
+                  fontSize: 12.sp,
+                  color: isPositive ? Colors.orange : Colors.blue,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _handleQuickAction(UserController controller, ActionItem action) {
+    // 快捷记录对应的是星星增减
+    controller.updateStars(action.value.toInt(), action.name);
+
+    Get.snackbar(
+      action.value > 0 ? '🎉 加油！' : '💪 继续努力',
+      '已记录: ${action.name} (${action.value > 0 ? '+' : ''}${action.value})',
+      snackPosition: SnackPosition.BOTTOM,
+      duration: const Duration(seconds: 2),
     );
   }
 
@@ -454,7 +533,8 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildStarCard(UserController controller) {
+  Widget _buildStarCard(
+      UserController controller, AppModeController modeController) {
     return Obx(() {
       final baby = controller.currentBaby.value;
       if (baby == null) return const SizedBox();
@@ -512,7 +592,13 @@ class HomePage extends StatelessWidget {
               children: [
                 Expanded(
                   child: _buildStarButton(
-                    onTap: () => _showStarAdjustDialog(controller, true),
+                    onTap: () {
+                      if (modeController.isChildMode) {
+                        Get.snackbar('👀 只能看哦', '让爸爸妈妈来加星星吧~');
+                        return;
+                      }
+                      _showStarAdjustDialog(controller, true);
+                    },
                     icon: Icons.add_circle,
                     label: "增加星星",
                     color: AppTheme.primary,
@@ -521,7 +607,13 @@ class HomePage extends StatelessWidget {
                 SizedBox(width: 16.w),
                 Expanded(
                   child: _buildStarButton(
-                    onTap: () => _showStarAdjustDialog(controller, false),
+                    onTap: () {
+                      if (modeController.isChildMode) {
+                        Get.snackbar('👀 只能看哦', '让爸爸妈妈来操作吧~');
+                        return;
+                      }
+                      _showStarAdjustDialog(controller, false);
+                    },
                     icon: Icons.remove_circle,
                     label: "扣除星星",
                     color: Colors.grey.shade400,
@@ -555,7 +647,8 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildActionGrid(UserController controller) {
+  Widget _buildActionGrid(
+      UserController controller, AppModeController modeController) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
       child: Column(
@@ -572,12 +665,14 @@ class HomePage extends StatelessWidget {
                   color: AppTheme.textMain,
                 ),
               ),
-              // 管理快捷记录按钮
-              IconButton(
-                icon: Icon(Icons.settings_outlined,
-                    color: AppTheme.textSub, size: 20.sp),
-                onPressed: () => Get.to(() => const ActionSettingsPage()),
-              ),
+              // 管理快捷记录按钮 (儿童模式隐藏)
+              Obx(() => modeController.isChildMode
+                  ? const SizedBox()
+                  : IconButton(
+                      icon: Icon(Icons.settings_outlined,
+                          color: AppTheme.textSub, size: 20.sp),
+                      onPressed: () => Get.to(() => const ActionSettingsPage()),
+                    )),
             ],
           ),
           SizedBox(height: 8.h),
@@ -594,152 +689,10 @@ class HomePage extends StatelessWidget {
               itemCount: controller.actions.length,
               itemBuilder: (context, index) {
                 final action = controller.actions[index];
-                return _buildQuickActionCard(controller, action);
+                return _buildQuickActionCard(
+                    controller, action, modeController);
               },
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuickActionCard(UserController controller, action) {
-    final isPositive = action.value > 0;
-    return GestureDetector(
-      onTap: () => _confirmQuickAction(controller, action),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20.r),
-          border: Border.all(color: Colors.grey.shade100),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.03),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              action.iconName.isNotEmpty ? action.iconName : "⭐️",
-              style: TextStyle(fontSize: 28.sp),
-            ),
-            SizedBox(height: 6.h),
-            Text(
-              action.name,
-              style: TextStyle(
-                fontSize: 12.sp,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.textMain,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            Text(
-              "${isPositive ? '+' : ''}${action.value.toInt()}",
-              style: TextStyle(
-                fontSize: 14.sp,
-                fontWeight: FontWeight.w900,
-                color: isPositive ? Colors.green : Colors.red,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// 快捷记录点击确认弹框，防止误触
-  void _confirmQuickAction(UserController controller, action) {
-    final isPositive = action.value > 0;
-    final baby = controller.currentBaby.value;
-    if (baby == null) return;
-
-    Get.dialog(
-      AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
-        title: Row(
-          children: [
-            Text(
-              action.iconName.isNotEmpty ? action.iconName : "⭐️",
-              style: TextStyle(fontSize: 32.sp),
-            ),
-            SizedBox(width: 12.w),
-            Expanded(
-              child: Text(
-                action.name,
-                style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '确定为 ${baby.name} ${isPositive ? "增加" : "扣除"} ${action.value.abs().toInt()} 颗星星吗？',
-              style: TextStyle(fontSize: 15.sp, color: AppTheme.textSub),
-            ),
-            SizedBox(height: 16.h),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  '${baby.starCount}',
-                  style: TextStyle(
-                    fontSize: 24.sp,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.textMain,
-                  ),
-                ),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 12.w),
-                  child: Icon(
-                    Icons.arrow_forward,
-                    color: isPositive ? Colors.green : Colors.red,
-                  ),
-                ),
-                Text(
-                  '${baby.starCount + action.value.toInt()}',
-                  style: TextStyle(
-                    fontSize: 24.sp,
-                    fontWeight: FontWeight.bold,
-                    color: isPositive ? Colors.green : Colors.red,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: Text('取消', style: TextStyle(color: AppTheme.textSub)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              controller.updateStars(action.value.toInt(), action.name);
-              Get.back();
-              // 成功反馈
-              Get.snackbar(
-                isPositive ? '🌟 获得星星！' : '💔 扣除星星',
-                '${action.name}: ${isPositive ? "+" : ""}${action.value.toInt()}',
-                snackPosition: SnackPosition.TOP,
-                duration: const Duration(seconds: 2),
-                backgroundColor: isPositive
-                    ? Colors.green.withOpacity(0.9)
-                    : Colors.red.withOpacity(0.9),
-                colorText: Colors.white,
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: isPositive ? Colors.green : Colors.red,
-            ),
-            child: const Text('确定'),
           ),
         ],
       ),

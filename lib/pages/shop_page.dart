@@ -3,6 +3,8 @@ import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../controllers/shop_controller.dart';
 import '../controllers/user_controller.dart';
+// 引入 AppModeController
+import '../controllers/app_mode_controller.dart';
 import '../models/product.dart';
 import '../theme/app_theme.dart';
 import '../widgets/image_utils.dart';
@@ -14,6 +16,8 @@ class ShopPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final ShopController shopController = Get.find<ShopController>();
     final UserController userController = Get.find<UserController>();
+    // 获取模式控制器
+    final AppModeController modeController = Get.find<AppModeController>();
 
     return Scaffold(
       backgroundColor: AppTheme.bgYellow,
@@ -60,13 +64,16 @@ class ShopPage extends StatelessWidget {
             );
           }),
           SizedBox(width: 4.w),
-          IconButton(
-            icon: const Icon(
-              Icons.add_circle_outline_rounded,
-              color: AppTheme.textSub,
-            ),
-            onPressed: () => _showAddProductDialog(shopController),
-          ),
+          // 添加按钮（儿童模式隐藏）
+          Obx(() => modeController.isChildMode
+              ? const SizedBox()
+              : IconButton(
+                  icon: const Icon(
+                    Icons.add_circle_outline_rounded,
+                    color: AppTheme.textSub,
+                  ),
+                  onPressed: () => _showAddProductDialog(shopController),
+                )),
           SizedBox(width: 8.w),
         ],
       ),
@@ -112,8 +119,8 @@ class ShopPage extends StatelessWidget {
                       final product = activeProducts[index];
                       final originalIndex =
                           shopController.products.indexOf(product);
-                      return _buildNiceProductCard(
-                          shopController, product, originalIndex);
+                      return _buildNiceProductCard(shopController, product,
+                          originalIndex, modeController);
                     },
                   ),
                 ],
@@ -179,6 +186,7 @@ class ShopPage extends StatelessWidget {
   }
 
   Widget _buildEmptyState(ShopController controller) {
+    final modeController = Get.find<AppModeController>();
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -186,14 +194,16 @@ class ShopPage extends StatelessWidget {
           Icon(Icons.redeem_rounded, size: 80.sp, color: Colors.grey.shade300),
           SizedBox(height: 20.h),
           Text(
-            "快去给宝贝添加一些心仪的礼物吧！",
+            modeController.isChildMode ? "暂时没有礼物哦~" : "快去给宝贝添加一些心仪的礼物吧！",
             style: TextStyle(color: Colors.grey.shade600),
           ),
           SizedBox(height: 30.h),
-          ElevatedButton(
-            onPressed: () => _showAddProductDialog(controller),
-            child: const Text("添加第一件礼物"),
-          ),
+          // 儿童模式隐藏添加按钮
+          if (!modeController.isChildMode)
+            ElevatedButton(
+              onPressed: () => _showAddProductDialog(controller),
+              child: const Text("添加第一件礼物"),
+            ),
         ],
       ),
     );
@@ -203,6 +213,7 @@ class ShopPage extends StatelessWidget {
     ShopController controller,
     Product product,
     int index,
+    AppModeController modeController,
   ) {
     final progress = controller.getProgress(product);
     final isDone = progress >= 1.0;
@@ -348,8 +359,15 @@ class ShopPage extends StatelessWidget {
             child: SizedBox(
               height: 32.h,
               child: ElevatedButton(
-                onPressed:
-                    isDone ? () => controller.redeemProduct(index) : null,
+                onPressed: isDone
+                    ? () {
+                        if (modeController.isChildMode) {
+                          Get.snackbar('👀 只能看哦', '让爸爸妈妈来兑换礼物吧！');
+                          return;
+                        }
+                        controller.redeemProduct(index);
+                      }
+                    : null,
                 style: ElevatedButton.styleFrom(
                   padding: EdgeInsets.zero,
                   backgroundColor: isDone ? Colors.green : Colors.grey.shade200,
@@ -507,8 +525,15 @@ class ShopPage extends StatelessWidget {
     // Reactive variable for the image
     final Rx<String?> selectedImage = Rx<String?>(null);
 
-    Get.bottomSheet(
-      Container(
+    // 使用原生 showModalBottomSheet 替代 Get.bottomSheet
+    final context = Get.context;
+    if (context == null) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
         padding: EdgeInsets.all(24.w),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -624,7 +649,8 @@ class ShopPage extends StatelessWidget {
                           imagePath: selectedImage.value ?? '',
                         ),
                       );
-                      Get.back();
+                      // 使用 Navigator.pop 替代 Get.back
+                      Navigator.of(ctx).pop();
                     }
                   },
                   child: const Text("添加心愿"),

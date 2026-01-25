@@ -512,28 +512,31 @@ class _RiddlePageState extends State<RiddlePage> {
                     )),
               ),
               // 引擎指示器
-              Obx(() => _currentEngine.value.isNotEmpty
-                  ? GestureDetector(
-                      onTap: _showEngineSelectionDialog,
-                      child: Container(
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 8.w, vertical: 4.h),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12.r),
-                          border:
-                              Border.all(color: Colors.blue.withOpacity(0.3)),
-                        ),
-                        child: Text(
-                          '引擎优化',
-                          style: TextStyle(
-                            fontSize: 10.sp,
-                            color: Colors.blue,
-                          ),
+              GestureDetector(
+                onTap: _showEngineSelectionDialog,
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12.r),
+                    border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.settings_voice,
+                          size: 14.sp, color: Colors.blue),
+                      SizedBox(width: 4.w),
+                      Text(
+                        '语音设置',
+                        style: TextStyle(
+                          fontSize: 10.sp,
+                          color: Colors.blue,
                         ),
                       ),
-                    )
-                  : const SizedBox()),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
           SizedBox(height: 8.h),
