@@ -24,13 +24,14 @@ class OpenAIConfigAdapter extends TypeAdapter<OpenAIConfig> {
       models: (fields[4] as List).cast<String>(),
       selectedModel: fields[5] as String,
       isDefault: fields[6] as bool,
+      enableWebSearch: fields[7] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, OpenAIConfig obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -44,7 +45,9 @@ class OpenAIConfigAdapter extends TypeAdapter<OpenAIConfig> {
       ..writeByte(5)
       ..write(obj.selectedModel)
       ..writeByte(6)
-      ..write(obj.isDefault);
+      ..write(obj.isDefault)
+      ..writeByte(7)
+      ..write(obj.enableWebSearch);
   }
 
   @override

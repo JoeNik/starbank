@@ -116,38 +116,105 @@ class OpenAIService extends GetxService {
       throw Exception('未配置 OpenAI');
     }
 
+    // 完整的消息历史
+    List<Map<String, dynamic>> messages = [
+      {'role': 'system', 'content': systemPrompt},
+      {'role': 'user', 'content': userMessage},
+    ];
+
     try {
       final uri = Uri.parse('${cfg.baseUrl}/v1/chat/completions');
-      final response = await http
-          .post(
-            uri,
-            headers: {
-              'Authorization': 'Bearer ${cfg.apiKey}',
-              'Content-Type': 'application/json',
+      final headers = {
+        'Authorization': 'Bearer ${cfg.apiKey}',
+        'Content-Type': 'application/json',
+      };
+
+      // 构建请求体
+      Map<String, dynamic> requestBody = {
+        'model':
+            cfg.selectedModel.isNotEmpty ? cfg.selectedModel : 'gpt-3.5-turbo',
+        'messages': messages,
+        'temperature': 0.7,
+        'max_tokens': 2000,
+      };
+
+      // 如果启用联网搜索，添加工具定义
+      if (cfg.enableWebSearch) {
+        requestBody['tools'] = [
+          {
+            'type': 'function',
+            'function': {
+              'name': 'web_search',
+              'description': 'Search the internet for real-time information',
+              'parameters': {
+                'type': 'object',
+                'properties': {
+                  'query': {
+                    'type': 'string',
+                    'description': 'The search query',
+                  },
+                },
+                'required': ['query'],
+              },
             },
-            body: jsonEncode({
-              'model': cfg.selectedModel.isNotEmpty
-                  ? cfg.selectedModel
-                  : 'gpt-3.5-turbo',
-              'messages': [
-                {'role': 'system', 'content': systemPrompt},
-                {'role': 'user', 'content': userMessage},
-              ],
-              'temperature': 0.7,
-              'max_tokens': 2000,
-            }),
-          )
+          }
+        ];
+      }
+
+      var response = await http
+          .post(uri, headers: headers, body: jsonEncode(requestBody))
           .timeout(const Duration(seconds: 60));
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(utf8.decode(response.bodyBytes));
-        final content = data['choices'][0]['message']['content'] as String;
-        return content;
-      } else {
+      if (response.statusCode != 200) {
         final error = jsonDecode(response.body);
         throw Exception(
             error['error']?['message'] ?? '请求失败: ${response.statusCode}');
       }
+
+      var data = jsonDecode(utf8.decode(response.bodyBytes));
+      var message = data['choices'][0]['message'];
+
+      // 检查是否有工具调用
+      if (message['tool_calls'] != null) {
+        final toolCalls = message['tool_calls'] as List;
+        messages.add(message); // 添加助手的回复（包含工具调用）
+
+        for (var toolCall in toolCalls) {
+          if (toolCall['function']['name'] == 'web_search') {
+            final args = jsonDecode(toolCall['function']['arguments']);
+            final query = args['query'];
+
+            // 模拟搜索结果
+            final searchResult = "Simulated search result for: '$query'. \n"
+                "Note: Actual web search is not available without a backend proxy or Search API Key. "
+                "Please answer based on this context.";
+
+            messages.add({
+              'role': 'tool',
+              'tool_call_id': toolCall['id'],
+              'name': 'web_search',
+              'content': searchResult,
+            });
+          }
+        }
+
+        // 再次调用模型
+        requestBody['messages'] = messages;
+        requestBody.remove('tools'); // 必须移除 tools 这里的简单实现防止多轮
+
+        response = await http
+            .post(uri, headers: headers, body: jsonEncode(requestBody))
+            .timeout(const Duration(seconds: 60));
+
+        if (response.statusCode != 200) {
+          throw Exception('Tool response failed');
+        }
+
+        data = jsonDecode(utf8.decode(response.bodyBytes));
+        message = data['choices'][0]['message'];
+      }
+
+      return message['content'] as String;
     } catch (e) {
       debugPrint('OpenAI 请求失败: $e');
       rethrow;

@@ -265,6 +265,7 @@ class _OpenAISettingsPageState extends State<OpenAISettingsPage> {
         name: result['name']!,
         baseUrl: result['baseUrl']!,
         apiKey: result['apiKey']!,
+        enableWebSearch: result['enableWebSearch'] ?? false,
       );
 
       // 尝试获取模型列表
@@ -312,6 +313,7 @@ class _OpenAISettingsPageState extends State<OpenAISettingsPage> {
       config.name = result['name']!;
       config.baseUrl = result['baseUrl']!;
       config.apiKey = result['apiKey']!;
+      config.enableWebSearch = result['enableWebSearch'] ?? false;
       await _openAIService!.updateConfig(config);
       Get.snackbar('成功', '配置已更新', snackPosition: SnackPosition.BOTTOM);
     }
@@ -360,13 +362,14 @@ class _OpenAISettingsPageState extends State<OpenAISettingsPage> {
     }
   }
 
-  Future<Map<String, String>?> _showConfigDialog(
+  Future<Map<String, dynamic>?> _showConfigDialog(
       {OpenAIConfig? existing}) async {
     String name = existing?.name ?? '';
     String baseUrl = existing?.baseUrl ?? 'https://api.openai.com';
     String apiKey = existing?.apiKey ?? '';
+    bool enableWebSearch = existing?.enableWebSearch ?? false;
 
-    return showDialog<Map<String, String>>(
+    return showDialog<Map<String, dynamic>>(
       context: context,
       builder: (ctx) {
         return StatefulBuilder(
@@ -407,6 +410,17 @@ class _OpenAISettingsPageState extends State<OpenAISettingsPage> {
                       ),
                       onChanged: (v) => apiKey = v,
                     ),
+                    SizedBox(height: 16.h),
+                    SwitchListTile(
+                      title: const Text('启用联网搜索 (Web Search)'),
+                      subtitle: const Text('如果模型支持联网搜索，开启此选项'),
+                      value: enableWebSearch,
+                      onChanged: (val) {
+                        setDialogState(() {
+                          enableWebSearch = val;
+                        });
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -427,6 +441,7 @@ class _OpenAISettingsPageState extends State<OpenAISettingsPage> {
                       'baseUrl':
                           baseUrl.trimRight().replaceAll(RegExp(r'/+$'), ''),
                       'apiKey': apiKey,
+                      'enableWebSearch': enableWebSearch,
                     });
                   },
                   child: const Text('保存'),

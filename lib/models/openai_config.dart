@@ -33,6 +33,10 @@ class OpenAIConfig extends HiveObject {
   @HiveField(6)
   bool isDefault;
 
+  /// 是否启用联网搜索
+  @HiveField(7)
+  bool enableWebSearch;
+
   OpenAIConfig({
     required this.id,
     required this.name,
@@ -41,6 +45,7 @@ class OpenAIConfig extends HiveObject {
     this.models = const [],
     this.selectedModel = '',
     this.isDefault = false,
+    this.enableWebSearch = false,
   });
 
   /// 转换为 JSON
@@ -52,6 +57,7 @@ class OpenAIConfig extends HiveObject {
         'models': models,
         'selectedModel': selectedModel,
         'isDefault': isDefault,
+        'enableWebSearch': enableWebSearch,
       };
 
   /// 从 JSON 创建
@@ -66,5 +72,6 @@ class OpenAIConfig extends HiveObject {
             [],
         selectedModel: json['selectedModel'] as String? ?? '',
         isDefault: json['isDefault'] as bool? ?? false,
+        enableWebSearch: json['enableWebSearch'] as bool? ?? false,
       );
 }
