@@ -46,12 +46,15 @@ class UserController extends GetxController {
     logs.assignAll(
       _storage.logBox.values.where((l) => l.babyId == babyId).toList().reversed,
     );
+    logs.refresh(); // 强制刷新日志列表
 
     _checkInterest();
   }
 
   void switchBaby(String id) {
     currentBaby.value = babies.firstWhere((b) => b.id == id);
+    currentBaby.refresh(); // 强制刷新
+    babies.refresh(); // 刷新列表
     _loadBabySpecificData();
   }
 
@@ -290,6 +293,20 @@ class UserController extends GetxController {
     action.iconName = iconName;
     action.type = value > 0 ? 'reward' : 'punish';
     action.save();
+    actions.refresh();
+  }
+
+  /// 重新排序快捷记录
+  void reorderAction(int oldIndex, int newIndex) {
+    if (newIndex > oldIndex) newIndex--;
+    final item = actions.removeAt(oldIndex);
+    actions.insert(newIndex, item);
+
+    // 重新保存到 Hive（需要清空后重新添加来保持顺序）
+    _storage.actionBox.clear();
+    for (var action in actions) {
+      _storage.actionBox.add(action);
+    }
     actions.refresh();
   }
 }

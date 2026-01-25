@@ -53,32 +53,291 @@ class HomePage extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
       child: Row(
         children: [
-          Expanded(
-            child: SizedBox(
-              height: 70.h,
-              child: Obx(
-                () => ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: controller.babies.length + 1,
-                  itemBuilder: (context, index) {
-                    if (index == controller.babies.length) {
-                      return _buildAddBabyButton(controller);
-                    }
-                    final baby = controller.babies[index];
-                    final isSelected =
-                        controller.currentBaby.value?.id == baby.id;
-                    return _buildBabyAvatar(baby, isSelected, controller);
-                  },
-                ),
+          // 当前宝宝头像和信息（点击弹出选择器）
+          Obx(() {
+            final baby = controller.currentBaby.value;
+            if (baby == null) {
+              return _buildAddBabyButton(controller);
+            }
+            return GestureDetector(
+              onTap: () => _showBabySelectorDialog(controller),
+              child: Row(
+                children: [
+                  // 头像 - 带渐变边框
+                  Container(
+                    width: 56.w,
+                    height: 56.w,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const LinearGradient(
+                        colors: [
+                          Color(0xFFFF6B9D),
+                          Color(0xFFFF8E53),
+                          Color(0xFFFFC371),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFFF6B9D).withOpacity(0.4),
+                          blurRadius: 12,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: Container(
+                      margin: EdgeInsets.all(3.w),
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                      ),
+                      child: ClipOval(
+                        child: ImageUtils.displayImage(
+                          baby.avatarPath,
+                          width: 50.w,
+                          height: 50.w,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 12.w),
+                  // 名字和星星数
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        baby.name,
+                        style: TextStyle(
+                          fontSize: 18.sp,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.textMain,
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          Icon(Icons.star, color: Colors.amber, size: 16.sp),
+                          SizedBox(width: 4.w),
+                          Text(
+                            '${baby.starCount} 颗星星',
+                            style: TextStyle(
+                              fontSize: 13.sp,
+                              color: AppTheme.textSub,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  SizedBox(width: 8.w),
+                  Icon(Icons.keyboard_arrow_down, color: AppTheme.textSub),
+                ],
               ),
-            ),
-          ),
+            );
+          }),
+          const Spacer(),
           IconButton(
             icon: const Icon(Icons.edit_rounded, color: AppTheme.textSub),
             onPressed: () => _showEditBabyDialog(controller),
           ),
         ],
       ),
+    );
+  }
+
+  /// 宝宝选择对话框（居中弹出）
+  void _showBabySelectorDialog(UserController controller) {
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(28.r),
+        ),
+        backgroundColor: const Color(0xFFFFF1F2),
+        child: Container(
+          padding: EdgeInsets.all(24.w),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 标题
+              Row(
+                children: [
+                  Text('👶', style: TextStyle(fontSize: 24.sp)),
+                  SizedBox(width: 10.w),
+                  Text(
+                    '选择宝宝',
+                    style: TextStyle(
+                      fontSize: 20.sp,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Get.back(),
+                  ),
+                ],
+              ),
+              SizedBox(height: 20.h),
+
+              // 宝宝列表
+              Obx(() {
+                final babies = controller.babies;
+                final currentId = controller.currentBaby.value?.id;
+
+                if (babies.isEmpty) {
+                  return Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20.h),
+                    child: const Text('还没有添加宝宝'),
+                  );
+                }
+
+                return Wrap(
+                  spacing: 20.w,
+                  runSpacing: 16.h,
+                  alignment: WrapAlignment.center,
+                  children: babies.map((baby) {
+                    final isSelected = baby.id == currentId;
+                    return GestureDetector(
+                      onTap: () {
+                        controller.switchBaby(baby.id);
+                        Get.back();
+                      },
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // 头像
+                          Container(
+                            width: 80.w,
+                            height: 80.w,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: isSelected
+                                  ? const LinearGradient(
+                                      colors: [
+                                        Color(0xFFFF6B9D),
+                                        Color(0xFFFF8E53),
+                                        Color(0xFFFFC371),
+                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    )
+                                  : null,
+                              color: isSelected ? null : Colors.white,
+                              boxShadow: isSelected
+                                  ? [
+                                      BoxShadow(
+                                        color: const Color(0xFFFF6B9D)
+                                            .withOpacity(0.3),
+                                        blurRadius: 12,
+                                        spreadRadius: 2,
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Container(
+                              margin: EdgeInsets.all(isSelected ? 3.w : 0),
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white,
+                              ),
+                              child: ClipOval(
+                                child: baby.avatarPath.isEmpty
+                                    ? Center(
+                                        child: Text('👶',
+                                            style: TextStyle(fontSize: 32.sp)),
+                                      )
+                                    : ImageUtils.displayImage(
+                                        baby.avatarPath,
+                                        width: 74.w,
+                                        height: 74.w,
+                                        fit: BoxFit.cover,
+                                      ),
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: 8.h),
+                          // 名字或星星数
+                          if (isSelected)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.check_circle,
+                                    color: Colors.green, size: 16.sp),
+                                SizedBox(width: 4.w),
+                                Text(
+                                  '${baby.starCount}',
+                                  style: TextStyle(
+                                    fontSize: 14.sp,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.green,
+                                  ),
+                                ),
+                              ],
+                            )
+                          else
+                            Text(
+                              baby.name,
+                              style: TextStyle(
+                                fontSize: 13.sp,
+                                color: AppTheme.textMain,
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                );
+              }),
+              SizedBox(height: 16.h),
+
+              // 添加宝宝按钮
+              GestureDetector(
+                onTap: () {
+                  Get.back(); // 先关闭选择对话框
+                  _showAddBabyDialog(controller);
+                },
+                child: Container(
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20.r),
+                    border:
+                        Border.all(color: AppTheme.primary.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.add_circle_outline,
+                          color: AppTheme.primary, size: 20.sp),
+                      SizedBox(width: 8.w),
+                      Text(
+                        '添加宝宝',
+                        style: TextStyle(
+                          color: AppTheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              SizedBox(height: 12.h),
+
+              // 提示
+              Text(
+                '点击头像切换宝宝',
+                style: TextStyle(
+                  color: Colors.grey.shade500,
+                  fontSize: 12.sp,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      barrierColor: Colors.black.withOpacity(0.4),
     );
   }
 
@@ -170,76 +429,6 @@ class HomePage extends StatelessWidget {
         label: const Text("删除", style: TextStyle(color: Colors.red)),
         style: OutlinedButton.styleFrom(
           side: const BorderSide(color: Colors.red),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBabyAvatar(
-    Baby baby,
-    bool isSelected,
-    UserController controller,
-  ) {
-    return GestureDetector(
-      onTap: () => controller.switchBaby(baby.id),
-      child: Container(
-        width: 64.w,
-        height: 64.w, // 添加固定高度
-        margin: EdgeInsets.only(right: 8.w),
-        child: AnimatedScale(
-          scale: isSelected ? 1.1 : 1.0,
-          duration: const Duration(milliseconds: 200),
-          child: Container(
-            width: 64.w,
-            height: 64.w,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              // 选中时使用渐变边框效果
-              gradient: isSelected
-                  ? const LinearGradient(
-                      colors: [
-                        Color(0xFFFF6B9D), // 粉红
-                        Color(0xFFFF8E53), // 橙色
-                        Color(0xFFFFC371), // 金色
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    )
-                  : null,
-              color: isSelected ? null : Colors.grey.shade200,
-              boxShadow: isSelected
-                  ? [
-                      BoxShadow(
-                        color: const Color(0xFFFF6B9D).withOpacity(0.5),
-                        blurRadius: 15,
-                        spreadRadius: 2,
-                      ),
-                    ]
-                  : [],
-            ),
-            child: Center(
-              child: Container(
-                width: 56.w,
-                height: 56.w,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white,
-                ),
-                child: ClipOval(
-                  child: SizedBox(
-                    width: 52.w,
-                    height: 52.w,
-                    child: ImageUtils.displayImage(
-                      baby.avatarPath,
-                      width: 52.w,
-                      height: 52.w,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
         ),
       ),
     );

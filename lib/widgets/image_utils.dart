@@ -31,17 +31,32 @@ class ImageUtils {
     BoxFit fit = BoxFit.cover,
     Widget? placeholder,
   }) {
+    // 空字符串或 null
     if (pathOrBase64 == null || pathOrBase64.isEmpty) {
       return placeholder ??
           const Center(child: Text('👶', style: TextStyle(fontSize: 32)));
     }
 
+    // 如果是 assets 路径
     if (pathOrBase64.startsWith('assets/')) {
       return Image.asset(pathOrBase64, width: width, height: height, fit: fit);
     }
 
-    if (pathOrBase64.length > 200) {
-      // Likely base64
+    // 如果是网络 URL
+    if (pathOrBase64.startsWith('http')) {
+      return Image.network(
+        pathOrBase64,
+        width: width,
+        height: height,
+        fit: fit,
+        errorBuilder: (context, error, stackTrace) {
+          return placeholder ?? const Icon(Icons.broken_image);
+        },
+      );
+    }
+
+    // 如果长度超过 100，可能是 base64
+    if (pathOrBase64.length > 100) {
       try {
         final cleanBase64 = pathOrBase64.replaceAll(RegExp(r'\s+'), '');
         return Image.memory(
@@ -60,16 +75,8 @@ class ImageUtils {
       }
     }
 
-    // Fallback to Network (if it's a URL in shop)
-    if (pathOrBase64.startsWith('http')) {
-      return Image.network(
-        pathOrBase64,
-        width: width,
-        height: height,
-        fit: fit,
-      );
-    }
-
+    // 其他情况（如 emoji 或无效字符串），返回 placeholder
+    // 不要尝试加载它们作为资源
     return placeholder ?? const Icon(Icons.image);
   }
 }

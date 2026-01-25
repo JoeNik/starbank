@@ -16,9 +16,9 @@ import 'pages/settings_page.dart';
 // 两个地方需要同步更新：
 
 // pubspec.yaml
-//  第 19 行：version: 1.3.0+4
+//  第 19 行：version: 1.4.0+5
 // lib/pages/settings_page.dart
-//  第 9 行：const String appVersion = '1.3.0';
+//  第 9 行：const String appVersion = '1.4.0';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 

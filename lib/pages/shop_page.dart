@@ -20,51 +20,42 @@ class ShopPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text("礼物商店"),
         actions: [
-          // 宝宝切换按钮
+          // 显示当前宝宝信息（只读，不可切换）
           Obx(() {
             final baby = userController.currentBaby.value;
             if (baby == null) return const SizedBox();
-            return GestureDetector(
-              onTap: () => _showBabySwitcher(userController),
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8.w),
-                child: Row(
-                  children: [
-                    Text(
-                      baby.name,
-                      style: TextStyle(
-                        color: AppTheme.textMain,
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w600,
+            return Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8.w),
+              child: Row(
+                children: [
+                  // 星星数量
+                  Text(
+                    '${baby.starCount}',
+                    style: TextStyle(
+                      color: AppTheme.textMain,
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(width: 8.w),
+                  // 头像
+                  Container(
+                    width: 36.w,
+                    height: 36.w,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppTheme.primary, width: 2),
+                    ),
+                    child: ClipOval(
+                      child: ImageUtils.displayImage(
+                        baby.avatarPath,
+                        width: 36.w,
+                        height: 36.w,
+                        fit: BoxFit.cover,
                       ),
                     ),
-                    SizedBox(width: 8.w),
-                    Container(
-                      width: 36.w,
-                      height: 36.w,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppTheme.primary, width: 2),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppTheme.primary.withOpacity(0.3),
-                            blurRadius: 8,
-                            spreadRadius: 1,
-                          ),
-                        ],
-                      ),
-                      child: ClipOval(
-                        child: ImageUtils.displayImage(
-                          baby.avatarPath,
-                          width: 36.w,
-                          height: 36.w,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    ),
-                    Icon(Icons.arrow_drop_down, color: AppTheme.textSub),
-                  ],
-                ),
+                  ),
+                ],
               ),
             );
           }),
@@ -84,23 +75,106 @@ class ShopPage extends StatelessWidget {
           if (shopController.products.isEmpty) {
             return _buildEmptyState(shopController);
           }
-          return GridView.builder(
-            padding: EdgeInsets.all(16.w),
+
+          // 分离未兑换和已兑换商品
+          final activeProducts = <Product>[];
+          final redeemedProducts = <Product>[];
+          for (int i = 0; i < shopController.products.length; i++) {
+            final product = shopController.products[i];
+            if (product.isRedeemed) {
+              redeemedProducts.add(product);
+            } else {
+              activeProducts.add(product);
+            }
+          }
+
+          return SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 0.75,
-              crossAxisSpacing: 16.w,
-              mainAxisSpacing: 16.w,
+            padding: EdgeInsets.all(16.w),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 心愿商品
+                if (activeProducts.isNotEmpty) ...[
+                  _buildSectionHeader('🎯 心愿清单', '${activeProducts.length}件'),
+                  SizedBox(height: 12.h),
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      childAspectRatio: 0.68, // 更大的图片
+                      crossAxisSpacing: 12.w,
+                      mainAxisSpacing: 12.w,
+                    ),
+                    itemCount: activeProducts.length,
+                    itemBuilder: (context, index) {
+                      final product = activeProducts[index];
+                      final originalIndex =
+                          shopController.products.indexOf(product);
+                      return _buildNiceProductCard(
+                          shopController, product, originalIndex);
+                    },
+                  ),
+                ],
+                // 已兑换商品
+                if (redeemedProducts.isNotEmpty) ...[
+                  SizedBox(height: 24.h),
+                  _buildSectionHeader('✅ 已兑换', '${redeemedProducts.length}件'),
+                  SizedBox(height: 12.h),
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3,
+                      childAspectRatio: 0.8,
+                      crossAxisSpacing: 10.w,
+                      mainAxisSpacing: 10.w,
+                    ),
+                    itemCount: redeemedProducts.length,
+                    itemBuilder: (context, index) {
+                      final product = redeemedProducts[index];
+                      return _buildRedeemedProductCard(product);
+                    },
+                  ),
+                ],
+                SizedBox(height: 20.h),
+              ],
             ),
-            itemCount: shopController.products.length,
-            itemBuilder: (context, index) {
-              final product = shopController.products[index];
-              return _buildNiceProductCard(shopController, product, index);
-            },
           );
         }),
       ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title, String count) {
+    return Row(
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 18.sp,
+            fontWeight: FontWeight.bold,
+            color: AppTheme.textMain,
+          ),
+        ),
+        SizedBox(width: 8.w),
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+          decoration: BoxDecoration(
+            color: AppTheme.primary.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(10.r),
+          ),
+          child: Text(
+            count,
+            style: TextStyle(
+              fontSize: 12.sp,
+              color: AppTheme.primary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -558,123 +632,6 @@ class ShopPage extends StatelessWidget {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  /// 宝宝切换底部弹出选择器
-  void _showBabySwitcher(UserController userController) {
-    Get.bottomSheet(
-      Container(
-        padding: EdgeInsets.all(20.w),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // 拖拽指示条
-            Container(
-              width: 40.w,
-              height: 4.h,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2.r),
-              ),
-            ),
-            SizedBox(height: 16.h),
-            Text(
-              '切换宝宝',
-              style: TextStyle(
-                fontSize: 18.sp,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: 20.h),
-            // 宝宝列表
-            Obx(() => Wrap(
-                  spacing: 16.w,
-                  runSpacing: 16.h,
-                  children: userController.babies.map((baby) {
-                    final isSelected =
-                        userController.currentBaby.value?.id == baby.id;
-                    return GestureDetector(
-                      onTap: () {
-                        userController.switchBaby(baby.id);
-                        Get.back();
-                      },
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 64.w,
-                            height: 64.w,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: isSelected
-                                  ? const LinearGradient(
-                                      colors: [
-                                        Color(0xFFFF6B9D),
-                                        Color(0xFFFF8E53),
-                                        Color(0xFFFFC371),
-                                      ],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    )
-                                  : null,
-                              color: isSelected ? null : Colors.grey.shade200,
-                              boxShadow: isSelected
-                                  ? [
-                                      BoxShadow(
-                                        color: const Color(0xFFFF6B9D)
-                                            .withOpacity(0.4),
-                                        blurRadius: 12,
-                                        spreadRadius: 2,
-                                      ),
-                                    ]
-                                  : [],
-                            ),
-                            child: Container(
-                              margin: EdgeInsets.all(3.w),
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white,
-                              ),
-                              child: ClipOval(
-                                child: ImageUtils.displayImage(
-                                  baby.avatarPath,
-                                  width: 58.w,
-                                  height: 58.w,
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                            ),
-                          ),
-                          SizedBox(height: 8.h),
-                          Text(
-                            baby.name,
-                            style: TextStyle(
-                              fontSize: 14.sp,
-                              fontWeight: isSelected
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                              color: isSelected
-                                  ? AppTheme.primary
-                                  : AppTheme.textMain,
-                            ),
-                          ),
-                          if (isSelected)
-                            Icon(Icons.check_circle,
-                                color: Colors.green, size: 18.sp),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                )),
-            SizedBox(height: 20.h),
-          ],
         ),
       ),
     );

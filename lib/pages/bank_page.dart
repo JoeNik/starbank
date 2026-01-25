@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../controllers/user_controller.dart';
 import '../theme/app_theme.dart';
+import '../widgets/image_utils.dart';
 import 'wallet_details_page.dart';
 
 class BankPage extends StatelessWidget {
@@ -14,11 +15,39 @@ class BankPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppTheme.bgBlue,
-      appBar: AppBar(title: const Text("我的银行")),
+      appBar: AppBar(
+        title: Obx(() {
+          final baby = controller.currentBaby.value;
+          if (baby == null) return const Text("我的银行");
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 32.w,
+                height: 32.w,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                ),
+                child: ClipOval(
+                  child: ImageUtils.displayImage(
+                    baby.avatarPath,
+                    width: 32.w,
+                    height: 32.w,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+              SizedBox(width: 10.w),
+              Text("${baby.name}的银行"),
+            ],
+          );
+        }),
+      ),
       body: SafeArea(
         child: Obx(() {
           final baby = controller.currentBaby.value;
-          if (baby == null) return const Center(child: Text("请先选择或添加宝宝"));
+          if (baby == null) return const Center(child: Text("请先在主页选择宝宝"));
 
           return SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
@@ -82,13 +111,19 @@ class BankPage extends StatelessWidget {
           children: [
             Row(
               children: [
-                Image.asset(
-                  icon,
+                // 直接使用 Text 显示 emoji
+                Container(
                   width: 48.w,
                   height: 48.w,
-                  errorBuilder: (_, __, ___) => Text(
-                    icon,
-                    style: TextStyle(fontSize: 32.sp),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(16.r),
+                  ),
+                  child: Center(
+                    child: Text(
+                      icon,
+                      style: TextStyle(fontSize: 28.sp),
+                    ),
                   ),
                 ),
                 SizedBox(width: 15.w),
@@ -197,51 +232,107 @@ class BankPage extends StatelessWidget {
       margin: EdgeInsets.symmetric(horizontal: 16.w),
       padding: EdgeInsets.all(20.w),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.6),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(24.r),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.calculate_rounded, color: AppTheme.textSub),
-              SizedBox(width: 8.w),
-              Obx(
-                () => Text(
-                  "利息收益 (年化 ${(controller.currentInterestRate.value * 100).toStringAsFixed(1)}%)",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.textMain,
-                  ),
+              Container(
+                padding: EdgeInsets.all(8.w),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade50,
+                  borderRadius: BorderRadius.circular(12.r),
                 ),
+                child: Text('💰', style: TextStyle(fontSize: 20.sp)),
+              ),
+              SizedBox(width: 12.w),
+              Text(
+                "利息收益",
+                style: TextStyle(
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textMain,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
+                child: Obx(() => Text(
+                      "年化 ${(controller.currentInterestRate.value * 100).toStringAsFixed(1)}%",
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        color: Colors.blue,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    )),
               ),
             ],
           ),
-          SizedBox(height: 10.h),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              Obx(
-                () => _buildCalcItem(
-                  "昨日收益",
-                  "¥${controller.getYesterdayInterest().toStringAsFixed(2)}",
-                ),
+          SizedBox(height: 16.h),
+          // 收益数据
+          Container(
+            padding: EdgeInsets.all(16.w),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.amber.shade50,
+                  Colors.orange.shade50,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-              Obx(
-                () => _buildCalcItem(
-                  "累计收益",
-                  "¥${controller.getTotalInterest().toStringAsFixed(2)}",
+              borderRadius: BorderRadius.circular(16.r),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                Obx(() => _buildCalcItem(
+                      "昨日收益",
+                      "¥${controller.getYesterdayInterest().toStringAsFixed(2)}",
+                      Colors.orange,
+                    )),
+                Container(
+                  width: 1,
+                  height: 40.h,
+                  color: Colors.orange.withOpacity(0.2),
                 ),
-              ),
-            ],
+                Obx(() => _buildCalcItem(
+                      "累计收益",
+                      "¥${controller.getTotalInterest().toStringAsFixed(2)}",
+                      Colors.green,
+                    )),
+              ],
+            ),
+          ),
+          SizedBox(height: 12.h),
+          // 收益计算器按钮
+          TextButton.icon(
+            onPressed: () => _showInterestCalculatorDialog(controller),
+            icon: const Icon(Icons.calculate_rounded, size: 18),
+            label: const Text('收益计算器'),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.blue,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildCalcItem(String label, String value) {
+  Widget _buildCalcItem(String label, String value, Color color) {
     return Column(
       children: [
         Text(
@@ -253,7 +344,225 @@ class BankPage extends StatelessWidget {
           style: TextStyle(
             fontSize: 16.sp,
             fontWeight: FontWeight.w900,
-            color: AppTheme.primaryDark,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 收益计算器对话框
+  void _showInterestCalculatorDialog(UserController controller) {
+    final amountController = TextEditingController();
+    final RxDouble rate = controller.currentInterestRate.value.obs;
+    final RxDouble dailyProfit = 0.0.obs;
+    final RxDouble monthlyProfit = 0.0.obs;
+    final RxDouble yearlyProfit = 0.0.obs;
+
+    void calculate() {
+      final amount = double.tryParse(amountController.text) ?? 0;
+      final r = rate.value;
+      yearlyProfit.value = amount * r;
+      monthlyProfit.value = yearlyProfit.value / 12;
+      dailyProfit.value = yearlyProfit.value / 365;
+    }
+
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24.r),
+        ),
+        child: Container(
+          padding: EdgeInsets.all(24.w),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 标题
+              Row(
+                children: [
+                  Text('💰', style: TextStyle(fontSize: 24.sp)),
+                  SizedBox(width: 10.w),
+                  Text(
+                    '收益计算器',
+                    style: TextStyle(
+                      fontSize: 20.sp,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Get.back(),
+                  ),
+                ],
+              ),
+              Text(
+                '预估您的储蓄收益',
+                style: TextStyle(color: Colors.grey, fontSize: 13.sp),
+              ),
+              SizedBox(height: 20.h),
+
+              // 存入金额
+              Container(
+                padding: EdgeInsets.all(16.w),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(16.r),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '存入金额',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14.sp,
+                      ),
+                    ),
+                    SizedBox(height: 8.h),
+                    TextField(
+                      controller: amountController,
+                      keyboardType:
+                          TextInputType.numberWithOptions(decimal: true),
+                      style: TextStyle(
+                          fontSize: 24.sp, fontWeight: FontWeight.bold),
+                      decoration: InputDecoration(
+                        prefixText: '¥ ',
+                        prefixStyle: TextStyle(
+                          fontSize: 24.sp,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey,
+                        ),
+                        hintText: '0',
+                        border: InputBorder.none,
+                      ),
+                      onChanged: (_) => calculate(),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 12.h),
+
+              // 年化利率
+              Container(
+                padding: EdgeInsets.all(16.w),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(16.r),
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      '年化利率',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14.sp,
+                      ),
+                    ),
+                    const Spacer(),
+                    Obx(() => Text(
+                          '${(rate.value * 100).toStringAsFixed(1)}',
+                          style: TextStyle(
+                            fontSize: 18.sp,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )),
+                    SizedBox(width: 4.w),
+                    Text(
+                      '%',
+                      style: TextStyle(
+                        fontSize: 16.sp,
+                        color: Colors.blue,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(width: 8.w),
+                    Column(
+                      children: [
+                        GestureDetector(
+                          onTap: () {
+                            if (rate.value < 0.20) {
+                              rate.value += 0.005;
+                              calculate();
+                            }
+                          },
+                          child: Icon(Icons.arrow_drop_up, size: 20.sp),
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            if (rate.value > 0.005) {
+                              rate.value -= 0.005;
+                              calculate();
+                            }
+                          },
+                          child: Icon(Icons.arrow_drop_down, size: 20.sp),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 16.h),
+
+              // 收益预估
+              Container(
+                padding: EdgeInsets.all(16.w),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.blue.shade50, Colors.purple.shade50],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16.r),
+                ),
+                child: Column(
+                  children: [
+                    Obx(() => _buildProfitRow('日收益', dailyProfit.value)),
+                    Divider(height: 16.h),
+                    Obx(() => _buildProfitRow('月收益', monthlyProfit.value)),
+                    Divider(height: 16.h),
+                    Obx(() => _buildProfitRow('年收益', yearlyProfit.value)),
+                  ],
+                ),
+              ),
+              SizedBox(height: 12.h),
+
+              // 提示
+              Row(
+                children: [
+                  Icon(Icons.lightbulb_outline,
+                      size: 14.sp, color: Colors.amber),
+                  SizedBox(width: 6.w),
+                  Expanded(
+                    child: Text(
+                      '实际收益以每日结算为准\n收益将自动加入零花钱余额',
+                      style: TextStyle(
+                        fontSize: 11.sp,
+                        color: Colors.grey,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfitRow(String label, double value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: TextStyle(color: AppTheme.textSub)),
+        Text(
+          '¥${value.toStringAsFixed(2)}',
+          style: TextStyle(
+            fontSize: 16.sp,
+            fontWeight: FontWeight.bold,
+            color: Colors.blue,
           ),
         ),
       ],
@@ -276,8 +585,12 @@ class BankPage extends StatelessWidget {
           ),
           SizedBox(height: 12.h),
           Obx(() {
+            // 包含存钱罐、零花钱和利息记录
             final moneyLogs = controller.logs
-                .where((l) => l.type == 'piggy' || l.type == 'pocket')
+                .where((l) =>
+                    l.type == 'piggy' ||
+                    l.type == 'pocket' ||
+                    l.type == 'interest')
                 .toList();
             if (moneyLogs.isEmpty) return const Center(child: Text("还没有记录哦"));
             return ListView.builder(

@@ -6,7 +6,7 @@ import '../services/update_service.dart';
 import 'webdav_settings_page.dart';
 
 /// 应用版本号 - 每次更新时同步修改 pubspec.yaml 中的 version
-const String appVersion = '1.3.0';
+const String appVersion = '1.4.0';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
