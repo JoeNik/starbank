@@ -249,6 +249,7 @@ class _PoopRecordPageState extends State<PoopRecordPage> {
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
                     '$day',
@@ -262,22 +263,22 @@ class _PoopRecordPageState extends State<PoopRecordPage> {
                   if (count > 0)
                     Container(
                       margin: EdgeInsets.only(top: 2.h),
-                      width: 18.w,
-                      height: 14.h,
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                      constraints: BoxConstraints(minWidth: 20.w),
                       decoration: BoxDecoration(
                         color: isSelected
                             ? Colors.white.withOpacity(0.9)
                             : Colors.brown.shade300,
-                        borderRadius: BorderRadius.circular(7.r),
+                        borderRadius: BorderRadius.circular(10.r),
                       ),
-                      child: Center(
-                        child: Text(
-                          '$count',
-                          style: TextStyle(
-                            fontSize: 10.sp,
-                            fontWeight: FontWeight.bold,
-                            color: isSelected ? AppTheme.primary : Colors.white,
-                          ),
+                      child: Text(
+                        '$count',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 10.sp,
+                          fontWeight: FontWeight.bold,
+                          color: isSelected ? AppTheme.primary : Colors.white,
                         ),
                       ),
                     ),

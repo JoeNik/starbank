@@ -5,9 +5,11 @@ import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
 import '../../models/poop_record.dart';
 import '../../models/ai_chat.dart';
+import '../../models/openai_config.dart';
 import '../../controllers/user_controller.dart';
 import '../../services/openai_service.dart';
 import '../../theme/app_theme.dart';
+import '../openai_settings_page.dart';
 
 /// 便便 AI 分析页面
 class PoopAIPage extends StatefulWidget {
@@ -49,7 +51,8 @@ class _PoopAIPageState extends State<PoopAIPage> {
 
 请用通俗易懂的语言回答，便于家长理解。''';
 
-  // 当前选择的模型
+  // 当前选择的配置和模型
+  OpenAIConfig? _selectedConfig;
   String _selectedModel = '';
 
   late Box<PoopRecord> _recordBox;
@@ -82,11 +85,24 @@ class _PoopAIPageState extends State<PoopAIPage> {
 
     // 加载保存的 prompt
     _customPrompt = _settingsBox.get('prompt', defaultValue: _customPrompt);
+
+    // 加载保存的配置ID和模型
+    final savedConfigId =
+        _settingsBox.get('selected_config_id', defaultValue: '');
     _selectedModel = _settingsBox.get('selected_model', defaultValue: '');
 
-    // 如果没有选择模型，使用默认配置的模型
-    if (_selectedModel.isEmpty && _openAIService.currentConfig.value != null) {
-      _selectedModel = _openAIService.currentConfig.value!.selectedModel;
+    // 查找保存的配置
+    if (savedConfigId.isNotEmpty) {
+      _selectedConfig =
+          _openAIService.configs.firstWhereOrNull((c) => c.id == savedConfigId);
+    }
+
+    // 如果没有选择配置，使用默认配置
+    _selectedConfig ??= _openAIService.currentConfig.value;
+
+    // 如果没有选择模型，使用配置的默认模型
+    if (_selectedModel.isEmpty && _selectedConfig != null) {
+      _selectedModel = _selectedConfig!.selectedModel;
     }
 
     _loadRecords();
@@ -124,8 +140,7 @@ class _PoopAIPageState extends State<PoopAIPage> {
 
   /// 执行 AI 分析
   Future<void> _analyzeWithAI() async {
-    final config = _openAIService.currentConfig.value;
-    if (config == null) {
+    if (_selectedConfig == null) {
       _showConfigMissingDialog();
       return;
     }
@@ -141,6 +156,11 @@ class _PoopAIPageState extends State<PoopAIPage> {
     });
 
     try {
+      // 临时设置当前配置和模型
+      final originalConfig = _openAIService.currentConfig.value;
+      _openAIService.currentConfig.value = _selectedConfig;
+      _selectedConfig!.selectedModel = _selectedModel;
+
       // 构建用户消息
       final baby = _userController.currentBaby.value!;
       final recordsText = _records.map((r) {
@@ -159,6 +179,9 @@ $recordsText''';
         systemPrompt: _customPrompt,
         userMessage: userMessage,
       );
+
+      // 恢复原配置
+      _openAIService.currentConfig.value = originalConfig;
 
       setState(() => _currentResponse = response);
 
@@ -185,11 +208,26 @@ $recordsText''';
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('未配置 AI'),
-        content: const Text('请先在「设置 → AI 设置」中配置 OpenAI API'),
+        content: const Text('请先配置 OpenAI API'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('知道了'),
+            child: const Text('取消'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              Get.to(() => const OpenAISettingsPage())?.then((_) {
+                // 返回时刷新配置
+                setState(() {
+                  _selectedConfig = _openAIService.currentConfig.value;
+                  if (_selectedConfig != null && _selectedModel.isEmpty) {
+                    _selectedModel = _selectedConfig!.selectedModel;
+                  }
+                });
+              });
+            },
+            child: const Text('去配置'),
           ),
         ],
       ),
@@ -208,6 +246,17 @@ $recordsText''';
       appBar: AppBar(
         title: const Text('AI 便便分析'),
         actions: [
+          // AI 设置入口
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: 'AI 设置',
+            onPressed: () {
+              Get.to(() => const OpenAISettingsPage())?.then((_) {
+                // 返回时刷新配置列表
+                setState(() {});
+              });
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.history),
             tooltip: '历史记录',
@@ -225,8 +274,8 @@ $recordsText''';
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // AI 配置状态
-            _buildAIConfigStatus(),
+            // AI 配置选择
+            _buildAIConfigSelector(),
 
             SizedBox(height: 16.h),
 
@@ -276,70 +325,132 @@ $recordsText''';
     );
   }
 
-  /// AI 配置状态
-  Widget _buildAIConfigStatus() {
-    final config = _openAIService.currentConfig.value;
-    final models = config?.models ?? [];
+  /// AI 配置选择器
+  Widget _buildAIConfigSelector() {
+    final configs = _openAIService.configs;
+    final models = _selectedConfig?.models ?? [];
 
     return Card(
       child: Padding(
-        padding: EdgeInsets.all(12.w),
+        padding: EdgeInsets.all(16.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 接口选择
             Row(
               children: [
-                Icon(
-                  config != null ? Icons.check_circle : Icons.warning,
-                  color: config != null ? Colors.green : Colors.orange,
-                  size: 20.sp,
-                ),
+                Icon(Icons.api, size: 20.sp, color: Colors.blue),
                 SizedBox(width: 8.w),
                 Text(
-                  config != null ? '已配置: ${config.name}' : '未配置 AI',
+                  '选择接口',
                   style: TextStyle(
                     fontSize: 14.sp,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                const Spacer(),
+                // 快速进入设置
+                TextButton.icon(
+                  onPressed: () {
+                    Get.to(() => const OpenAISettingsPage())?.then((_) {
+                      setState(() {});
+                    });
+                  },
+                  icon: Icon(Icons.add, size: 16.sp),
+                  label: const Text('管理'),
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.symmetric(horizontal: 8.w),
+                  ),
+                ),
               ],
             ),
-            if (models.isNotEmpty) ...[
-              SizedBox(height: 12.h),
-              Text('选择模型:',
-                  style: TextStyle(fontSize: 12.sp, color: Colors.grey)),
-              SizedBox(height: 8.h),
-              SizedBox(
-                height: 36.h,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: models.length,
-                  itemBuilder: (context, index) {
-                    final model = models[index];
-                    final isSelected = model == _selectedModel;
-                    return Padding(
-                      padding: EdgeInsets.only(right: 8.w),
-                      child: ChoiceChip(
-                        label: Text(
-                          model.length > 15
-                              ? '${model.substring(0, 15)}...'
-                              : model,
-                          style: TextStyle(fontSize: 11.sp),
-                        ),
-                        selected: isSelected,
-                        onSelected: (s) async {
-                          if (s) {
-                            setState(() => _selectedModel = model);
-                            await _settingsBox.put('selected_model', model);
-                            // 同步更新全局配置
-                            config!.selectedModel = model;
-                            await _openAIService.updateConfig(config);
-                          }
-                        },
-                      ),
-                    );
-                  },
+            SizedBox(height: 8.h),
+
+            if (configs.isEmpty)
+              Container(
+                padding: EdgeInsets.all(12.w),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(8.r),
                 ),
+                child: Row(
+                  children: [
+                    Icon(Icons.warning, color: Colors.orange, size: 20.sp),
+                    SizedBox(width: 8.w),
+                    const Expanded(child: Text('未配置 AI 接口，请先添加配置')),
+                  ],
+                ),
+              )
+            else
+              DropdownButtonFormField<OpenAIConfig>(
+                value: _selectedConfig,
+                decoration: InputDecoration(
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                ),
+                items: configs.map((config) {
+                  return DropdownMenuItem(
+                    value: config,
+                    child: Text(config.name),
+                  );
+                }).toList(),
+                onChanged: (config) async {
+                  setState(() {
+                    _selectedConfig = config;
+                    _selectedModel = config?.selectedModel ?? '';
+                  });
+                  if (config != null) {
+                    await _settingsBox.put('selected_config_id', config.id);
+                  }
+                },
+              ),
+
+            // 模型选择
+            if (models.isNotEmpty) ...[
+              SizedBox(height: 16.h),
+              Row(
+                children: [
+                  Icon(Icons.smart_toy, size: 20.sp, color: Colors.green),
+                  SizedBox(width: 8.w),
+                  Text(
+                    '选择模型',
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 8.h),
+              DropdownButtonFormField<String>(
+                value: models.contains(_selectedModel) ? _selectedModel : null,
+                decoration: InputDecoration(
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                  hintText: '请选择模型',
+                ),
+                isExpanded: true,
+                items: models.map((model) {
+                  return DropdownMenuItem(
+                    value: model,
+                    child: Text(
+                      model,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  );
+                }).toList(),
+                onChanged: (model) async {
+                  if (model != null) {
+                    setState(() => _selectedModel = model);
+                    await _settingsBox.put('selected_model', model);
+                  }
+                },
               ),
             ],
           ],
