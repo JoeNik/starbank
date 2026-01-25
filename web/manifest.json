@@ -1,6 +1,6 @@
 {
-    "name": "star_bank",
-    "short_name": "star_bank",
+    "name": "StarBank",
+    "short_name": "StarBank",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
