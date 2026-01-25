@@ -26,27 +26,23 @@ import 'pages/record_page.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Storage Service (核心服务，必须同步等待)
+  // Initialize Storage Service
   await Get.putAsync(() => StorageService().init());
 
-  // Initialize Other Controllers (同步注册，不阻塞)
+  // Initialize TTS Service (全局语音服务)
+  await Get.putAsync(() => TtsService().init());
+
+  // Initialize OpenAI Service (AI 服务)
+  await Get.putAsync(() => OpenAIService().init());
+
+  // Initialize Other Services and Controllers
   Get.put(WebDavService());
   Get.put(UpdateService());
   Get.put(UserController());
   Get.put(ShopController());
   Get.put(AppModeController());
 
-  // 启动应用
   runApp(const MyApp());
-
-  // 延迟初始化非核心服务（不阻塞启动）
-  Future.delayed(const Duration(milliseconds: 500), () async {
-    // Initialize TTS Service (语音服务)
-    await Get.putAsync(() => TtsService().init());
-
-    // Initialize OpenAI Service (AI 服务)
-    await Get.putAsync(() => OpenAIService().init());
-  });
 }
 
 class MyApp extends StatelessWidget {
