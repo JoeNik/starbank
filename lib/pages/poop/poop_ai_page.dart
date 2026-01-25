@@ -627,15 +627,60 @@ $recordsText''';
               data: _currentResponse,
               selectable: true,
               styleSheet: MarkdownStyleSheet(
-                p: TextStyle(fontSize: 14.sp, height: 1.6),
-                h1: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold),
-                h2: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
-                h3: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold),
-                listBullet: TextStyle(fontSize: 14.sp),
-                blockquoteDecoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(4),
+                p: TextStyle(
+                  fontSize: 14.sp,
+                  height: 1.8,
+                  color: Colors.grey.shade800,
                 ),
+                h1: TextStyle(
+                  fontSize: 20.sp,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.primary,
+                  height: 1.5,
+                ),
+                h2: TextStyle(
+                  fontSize: 18.sp,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.primaryDark,
+                  height: 1.4,
+                ),
+                h3: TextStyle(
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade700,
+                  height: 1.3,
+                ),
+                listBullet: TextStyle(
+                  fontSize: 14.sp,
+                  color: AppTheme.primary,
+                ),
+                listIndent: 24.w,
+                blockquote: TextStyle(
+                  fontSize: 14.sp,
+                  color: Colors.grey.shade600,
+                  fontStyle: FontStyle.italic,
+                ),
+                blockquoteDecoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8.r),
+                  border: Border(
+                    left: BorderSide(
+                      color: AppTheme.primary,
+                      width: 4.w,
+                    ),
+                  ),
+                ),
+                blockquotePadding: EdgeInsets.all(12.w),
+                code: TextStyle(
+                  fontSize: 13.sp,
+                  backgroundColor: Colors.grey.shade100,
+                  fontFamily: 'monospace',
+                ),
+                codeblockDecoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+                codeblockPadding: EdgeInsets.all(12.w),
               ),
             ),
           ],

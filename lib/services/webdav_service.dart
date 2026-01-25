@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 import 'package:webdav_client/webdav_client.dart' as webdav;
+import 'package:hive/hive.dart';
 import 'dart:convert';
 import 'storage_service.dart';
 import '../models/user_profile.dart';
@@ -82,6 +83,28 @@ class WebDavService extends GetxService {
           _storage.productBox.values.map((e) => e.toJson()).toList();
       backupData['babies'] =
           _storage.babyBox.values.map((e) => e.toJson()).toList();
+
+      // 备份便便记录
+      try {
+        final poopBox = await Hive.openBox<dynamic>('poop_records');
+        backupData['poopRecords'] = poopBox.values.map((e) {
+          if (e is Map) return e;
+          return (e as dynamic).toJson();
+        }).toList();
+      } catch (e) {
+        print('备份便便记录失败: $e');
+      }
+
+      // 备份 AI 聊天记录
+      try {
+        final chatBox = await Hive.openBox<dynamic>('ai_chats');
+        backupData['aiChats'] = chatBox.values.map((e) {
+          if (e is Map) return e;
+          return (e as dynamic).toJson();
+        }).toList();
+      } catch (e) {
+        print('备份 AI 聊天记录失败: $e');
+      }
 
       // 备份密码哈希
       try {
@@ -206,6 +229,36 @@ class WebDavService extends GetxService {
       if (backupData['babies'] != null) {
         for (var item in (backupData['babies'] as List)) {
           await _storage.babyBox.add(Baby.fromJson(item));
+        }
+      }
+
+      // 恢复便便记录
+      if (backupData['poopRecords'] != null) {
+        try {
+          final poopBox = await Hive.openBox<dynamic>('poop_records');
+          await poopBox.clear();
+          for (var item in (backupData['poopRecords'] as List)) {
+            // 使用 put 而不是 add，保留原 ID
+            final id = item['id'] as String;
+            await poopBox.put(id, item);
+          }
+        } catch (e) {
+          print('恢复便便记录失败: $e');
+        }
+      }
+
+      // 恢复 AI 聊天记录
+      if (backupData['aiChats'] != null) {
+        try {
+          final chatBox = await Hive.openBox<dynamic>('ai_chats');
+          await chatBox.clear();
+          for (var item in (backupData['aiChats'] as List)) {
+            // 使用 put 而不是 add，保留原 ID
+            final id = item['id'] as String;
+            await chatBox.put(id, item);
+          }
+        } catch (e) {
+          print('恢复 AI 聊天记录失败: $e');
         }
       }
 
