@@ -94,11 +94,44 @@ class _PoopRecordPageState extends State<PoopRecordPage> {
       appBar: AppBar(
         title: const Text('便便记录'),
         actions: [
-          // AI 分析按钮
-          IconButton(
-            icon: const Icon(Icons.psychology),
-            tooltip: 'AI 分析',
-            onPressed: () => Get.to(() => const PoopAIPage()),
+          // AI 分析按钮 - 使用更大更美观的样式
+          Padding(
+            padding: EdgeInsets.only(right: 8.w),
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF667eea), Color(0xFF764ba2)],
+                ),
+                borderRadius: BorderRadius.circular(12.r),
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12.r),
+                  onTap: () => Get.to(() => const PoopAIPage()),
+                  child: Padding(
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.psychology,
+                            color: Colors.white, size: 20.sp),
+                        SizedBox(width: 4.w),
+                        Text(
+                          'AI 分析',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
       ),

@@ -10,8 +10,16 @@ import '../widgets/image_utils.dart';
 import 'action_settings_page.dart';
 import 'settings_page.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  // 快捷记录是否展开
+  bool _isQuickActionsExpanded = false;
 
   @override
   Widget build(BuildContext context) {
@@ -660,50 +668,99 @@ class HomePage extends StatelessWidget {
       UserController controller, AppModeController modeController) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                "快捷记录",
-                style: TextStyle(
-                  fontSize: 18.sp,
-                  fontWeight: FontWeight.w900,
-                  color: AppTheme.textMain,
+      child: Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.r),
+        ),
+        child: Column(
+          children: [
+            // 标题栏 - 可点击折叠/展开
+            InkWell(
+              onTap: () {
+                setState(() {
+                  _isQuickActionsExpanded = !_isQuickActionsExpanded;
+                });
+              },
+              borderRadius: BorderRadius.vertical(
+                top: Radius.circular(16.r),
+                bottom: _isQuickActionsExpanded
+                    ? Radius.zero
+                    : Radius.circular(16.r),
+              ),
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.flash_on,
+                      color: AppTheme.primary,
+                      size: 20.sp,
+                    ),
+                    SizedBox(width: 8.w),
+                    Text(
+                      "快捷记录",
+                      style: TextStyle(
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textMain,
+                      ),
+                    ),
+                    const Spacer(),
+                    // 管理按钮 (儿童模式隐藏)
+                    Obx(() => modeController.isChildMode
+                        ? const SizedBox()
+                        : IconButton(
+                            icon: Icon(Icons.settings_outlined,
+                                color: AppTheme.textSub, size: 18.sp),
+                            onPressed: () =>
+                                Get.to(() => const ActionSettingsPage()),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          )),
+                    SizedBox(width: 8.w),
+                    // 展开/收起图标
+                    Icon(
+                      _isQuickActionsExpanded
+                          ? Icons.keyboard_arrow_up
+                          : Icons.keyboard_arrow_down,
+                      color: AppTheme.textSub,
+                    ),
+                  ],
                 ),
               ),
-              // 管理快捷记录按钮 (儿童模式隐藏)
-              Obx(() => modeController.isChildMode
-                  ? const SizedBox()
-                  : IconButton(
-                      icon: Icon(Icons.settings_outlined,
-                          color: AppTheme.textSub, size: 20.sp),
-                      onPressed: () => Get.to(() => const ActionSettingsPage()),
-                    )),
-            ],
-          ),
-          SizedBox(height: 8.h),
-          Obx(
-            () => GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                mainAxisSpacing: 12.h,
-                crossAxisSpacing: 12.w,
-                childAspectRatio: 0.9,
-              ),
-              itemCount: controller.actions.length,
-              itemBuilder: (context, index) {
-                final action = controller.actions[index];
-                return _buildQuickActionCard(
-                    controller, action, modeController);
-              },
             ),
-          ),
-        ],
+            // 快捷记录网格 - 可折叠
+            AnimatedCrossFade(
+              firstChild: const SizedBox(width: double.infinity),
+              secondChild: Padding(
+                padding: EdgeInsets.fromLTRB(12.w, 0, 12.w, 12.h),
+                child: Obx(
+                  () => GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3,
+                      mainAxisSpacing: 8.h,
+                      crossAxisSpacing: 8.w,
+                      childAspectRatio: 0.9,
+                    ),
+                    itemCount: controller.actions.length,
+                    itemBuilder: (context, index) {
+                      final action = controller.actions[index];
+                      return _buildQuickActionCard(
+                          controller, action, modeController);
+                    },
+                  ),
+                ),
+              ),
+              crossFadeState: _isQuickActionsExpanded
+                  ? CrossFadeState.showSecond
+                  : CrossFadeState.showFirst,
+              duration: const Duration(milliseconds: 300),
+            ),
+          ],
+        ),
       ),
     );
   }

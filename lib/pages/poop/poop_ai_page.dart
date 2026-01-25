@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import '../../models/poop_record.dart';
 import '../../models/ai_chat.dart';
 import '../../models/openai_config.dart';
@@ -622,11 +623,19 @@ $recordsText''';
               ],
             ),
             Divider(height: 24.h),
-            SelectableText(
-              _currentResponse,
-              style: TextStyle(
-                fontSize: 14.sp,
-                height: 1.6,
+            MarkdownBody(
+              data: _currentResponse,
+              selectable: true,
+              styleSheet: MarkdownStyleSheet(
+                p: TextStyle(fontSize: 14.sp, height: 1.6),
+                h1: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold),
+                h2: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
+                h3: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold),
+                listBullet: TextStyle(fontSize: 14.sp),
+                blockquoteDecoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(4),
+                ),
               ),
             ),
           ],
