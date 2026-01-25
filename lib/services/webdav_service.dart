@@ -106,6 +106,42 @@ class WebDavService extends GetxService {
         print('备份 AI 聊天记录失败: $e');
       }
 
+      // 备份 OpenAI 配置
+      try {
+        final openaiBox = await Hive.openBox<dynamic>('openai_configs');
+        backupData['openaiConfigs'] = openaiBox.values.map((e) {
+          if (e is Map) return e;
+          return (e as dynamic).toJson();
+        }).toList();
+      } catch (e) {
+        print('备份 OpenAI 配置失败: $e');
+      }
+
+      // 备份应用设置（包括 TTS、便便 AI 设置等）
+      try {
+        final appSettingsBox = await Hive.openBox('app_settings');
+        backupData['appSettings'] =
+            Map<String, dynamic>.from(appSettingsBox.toMap());
+      } catch (e) {
+        print('备份应用设置失败: $e');
+      }
+
+      try {
+        final ttsSettingsBox = await Hive.openBox('tts_settings');
+        backupData['ttsSettings'] =
+            Map<String, dynamic>.from(ttsSettingsBox.toMap());
+      } catch (e) {
+        print('备份 TTS 设置失败: $e');
+      }
+
+      try {
+        final poopAiSettingsBox = await Hive.openBox('poop_ai_settings');
+        backupData['poopAiSettings'] =
+            Map<String, dynamic>.from(poopAiSettingsBox.toMap());
+      } catch (e) {
+        print('备份便便 AI 设置失败: $e');
+      }
+
       // 备份密码哈希
       try {
         final modeController = Get.find<AppModeController>();
@@ -259,6 +295,60 @@ class WebDavService extends GetxService {
           }
         } catch (e) {
           print('恢复 AI 聊天记录失败: $e');
+        }
+      }
+
+      // 恢复 OpenAI 配置
+      if (backupData['openaiConfigs'] != null) {
+        try {
+          final openaiBox = await Hive.openBox<dynamic>('openai_configs');
+          await openaiBox.clear();
+          for (var item in (backupData['openaiConfigs'] as List)) {
+            final id = item['id'] as String;
+            await openaiBox.put(id, item);
+          }
+        } catch (e) {
+          print('恢复 OpenAI 配置失败: $e');
+        }
+      }
+
+      // 恢复应用设置
+      if (backupData['appSettings'] != null) {
+        try {
+          final appSettingsBox = await Hive.openBox('app_settings');
+          await appSettingsBox.clear();
+          final settings = backupData['appSettings'] as Map;
+          for (var entry in settings.entries) {
+            await appSettingsBox.put(entry.key, entry.value);
+          }
+        } catch (e) {
+          print('恢复应用设置失败: $e');
+        }
+      }
+
+      if (backupData['ttsSettings'] != null) {
+        try {
+          final ttsSettingsBox = await Hive.openBox('tts_settings');
+          await ttsSettingsBox.clear();
+          final settings = backupData['ttsSettings'] as Map;
+          for (var entry in settings.entries) {
+            await ttsSettingsBox.put(entry.key, entry.value);
+          }
+        } catch (e) {
+          print('恢复 TTS 设置失败: $e');
+        }
+      }
+
+      if (backupData['poopAiSettings'] != null) {
+        try {
+          final poopAiSettingsBox = await Hive.openBox('poop_ai_settings');
+          await poopAiSettingsBox.clear();
+          final settings = backupData['poopAiSettings'] as Map;
+          for (var entry in settings.entries) {
+            await poopAiSettingsBox.put(entry.key, entry.value);
+          }
+        } catch (e) {
+          print('恢复便便 AI 设置失败: $e');
         }
       }
 

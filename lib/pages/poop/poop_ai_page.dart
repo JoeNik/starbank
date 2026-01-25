@@ -717,6 +717,39 @@ $recordsText''';
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () async {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (confirmCtx) => AlertDialog(
+                                title: const Text('确认删除'),
+                                content: const Text('确定要删除这条分析记录吗？'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.of(confirmCtx).pop(false),
+                                    child: const Text('取消'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.of(confirmCtx).pop(true),
+                                    child: const Text('删除',
+                                        style: TextStyle(color: Colors.red)),
+                                  ),
+                                ],
+                              ),
+                            );
+
+                            if (confirm == true) {
+                              await _chatBox.delete(chat.id);
+                              _loadChatHistory();
+                              Navigator.of(ctx).pop();
+                              Get.snackbar('成功', '已删除分析记录',
+                                  snackPosition: SnackPosition.BOTTOM);
+                            }
+                          },
+                        ),
                         onTap: () {
                           Navigator.of(ctx).pop();
                           setState(() => _currentResponse = chat.response);

@@ -5,6 +5,7 @@ import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
 import '../../models/poop_record.dart';
 import '../../controllers/user_controller.dart';
+import '../../controllers/app_mode_controller.dart';
 import '../../theme/app_theme.dart';
 import 'poop_ai_page.dart';
 
@@ -146,12 +147,18 @@ class _PoopRecordPageState extends State<PoopRecordPage> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _addRecord,
-        backgroundColor: AppTheme.primary,
-        icon: const Icon(Icons.add),
-        label: const Text('记录'),
-      ),
+      floatingActionButton: Obx(() {
+        final modeController = Get.find<AppModeController>();
+        if (modeController.isChildMode) {
+          return const SizedBox(); // 儿童模式隐藏添加按钮
+        }
+        return FloatingActionButton.extended(
+          onPressed: _addRecord,
+          backgroundColor: AppTheme.primary,
+          icon: const Icon(Icons.add),
+          label: const Text('记录'),
+        );
+      }),
     );
   }
 
@@ -429,19 +436,21 @@ class _PoopRecordPageState extends State<PoopRecordPage> {
               ),
           ],
         ),
-        trailing: PopupMenuButton<String>(
-          onSelected: (value) {
-            if (value == 'edit') {
-              _editRecord(record);
-            } else if (value == 'delete') {
-              _deleteRecord(record);
-            }
-          },
-          itemBuilder: (context) => [
-            const PopupMenuItem(value: 'edit', child: Text('编辑')),
-            const PopupMenuItem(value: 'delete', child: Text('删除')),
-          ],
-        ),
+        trailing: Get.find<AppModeController>().isChildMode
+            ? null // 儿童模式下不显示菜单
+            : PopupMenuButton<String>(
+                onSelected: (value) {
+                  if (value == 'edit') {
+                    _editRecord(record);
+                  } else if (value == 'delete') {
+                    _deleteRecord(record);
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(value: 'edit', child: Text('编辑')),
+                  const PopupMenuItem(value: 'delete', child: Text('删除')),
+                ],
+              ),
       ),
     );
   }
