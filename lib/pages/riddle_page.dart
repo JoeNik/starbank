@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:flutter_tts/flutter_tts.dart';
-import 'package:hive/hive.dart';
 import '../data/riddle_data.dart';
 import '../theme/app_theme.dart';
+import '../services/tts_service.dart';
 import 'tts_settings_page.dart';
 
 /// 脑筋急转弯页面
@@ -16,8 +15,8 @@ class RiddlePage extends StatefulWidget {
 }
 
 class _RiddlePageState extends State<RiddlePage> {
-  // TTS 语音引擎
-  late FlutterTts _flutterTts;
+  // 使用全局 TTS 服务
+  final TtsService _tts = Get.find<TtsService>();
 
   // 题目列表
   late List<Map<String, String>> _riddles;
@@ -28,97 +27,14 @@ class _RiddlePageState extends State<RiddlePage> {
   // 是否显示答案
   final RxBool _showAnswer = false.obs;
 
-  // 是否正在播放语音
-  final RxBool _isSpeaking = false.obs;
-
-  // 语速设置 (0.5 - 2.0，Android TTS 标准范围)
-  final RxDouble _speechRate = 1.0.obs;
-
   // 页面控制器
   late PageController _pageController;
-
-  // 当前使用的引擎
-  final RxString _currentEngine = '系统默认'.obs;
-
-  // 设置存储
-  late Box _settingsBox;
 
   @override
   void initState() {
     super.initState();
     _loadRiddles();
     _pageController = PageController();
-    _initTts();
-  }
-
-  /// 初始化语音引擎
-  Future<void> _initTts() async {
-    _flutterTts = FlutterTts();
-
-    // 加载保存的设置
-    _settingsBox = await Hive.openBox('tts_settings');
-    _speechRate.value = _settingsBox.get('speech_rate', defaultValue: 1.0);
-    final savedPitch = _settingsBox.get('pitch', defaultValue: 1.0);
-    final savedVolume = _settingsBox.get('volume', defaultValue: 1.0);
-    final savedEngine = _settingsBox.get('tts_engine', defaultValue: '');
-
-    try {
-      // 应用所有保存的设置
-      await _flutterTts.setSpeechRate(_speechRate.value);
-      await _flutterTts.setPitch(savedPitch);
-      await _flutterTts.setVolume(savedVolume);
-
-      // 恢复引擎设置
-      if (savedEngine.isNotEmpty && GetPlatform.isAndroid) {
-        final engines = await _flutterTts.getEngines;
-        if (engines != null && engines.contains(savedEngine)) {
-          await _flutterTts.setEngine(savedEngine);
-          _currentEngine.value = _getEngineDisplayName(savedEngine);
-        }
-      }
-
-      // 注：声音设置需要在第三方 TTS 应用中配置，这里不做恢复
-
-      debugPrint(
-          'TTS 初始化完成，语速: ${_speechRate.value}, 音调: $savedPitch, 音量: $savedVolume');
-    } catch (e) {
-      debugPrint('TTS 初始化失败: $e');
-    }
-
-    // 监听播放状态
-    _flutterTts.setStartHandler(() {
-      _isSpeaking.value = true;
-    });
-
-    _flutterTts.setCompletionHandler(() {
-      _isSpeaking.value = false;
-    });
-
-    _flutterTts.setCancelHandler(() {
-      _isSpeaking.value = false;
-    });
-
-    _flutterTts.setErrorHandler((msg) {
-      _isSpeaking.value = false;
-      debugPrint('TTS Error: $msg');
-    });
-  }
-
-  /// 获取引擎显示名称
-  String _getEngineDisplayName(String engine) {
-    if (engine.contains('google')) return 'Google TTS';
-    if (engine.contains('samsung')) return '三星 TTS';
-    if (engine.contains('huawei')) return '华为 TTS';
-    if (engine.contains('xiaomi')) return '小米 TTS';
-    if (engine.contains('multi')) return 'MultiTTS';
-    return engine.split('.').last;
-  }
-
-  /// 更新语速并保存
-  Future<void> _updateSpeechRate(double rate) async {
-    _speechRate.value = rate;
-    await _flutterTts.setSpeechRate(rate);
-    await _settingsBox.put('speech_rate', rate);
   }
 
   /// 加载题目
@@ -129,29 +45,27 @@ class _RiddlePageState extends State<RiddlePage> {
 
   /// 播放题目语音
   Future<void> _speakQuestion() async {
-    if (_isSpeaking.value) {
-      await _flutterTts.stop();
-      _isSpeaking.value = false;
+    if (_tts.isSpeaking.value) {
+      await _tts.stop();
       return;
     }
     final question = _riddles[_currentIndex.value]['q']!;
-    await _flutterTts.speak(question);
+    await _tts.speak(question);
   }
 
   /// 播放答案语音
   Future<void> _speakAnswer() async {
-    if (_isSpeaking.value) {
-      await _flutterTts.stop();
-      _isSpeaking.value = false;
+    if (_tts.isSpeaking.value) {
+      await _tts.stop();
       return;
     }
     final answer = _riddles[_currentIndex.value]['a']!;
-    await _flutterTts.speak('答案是：$answer');
+    await _tts.speak('答案是：$answer');
   }
 
   /// 下一题
   void _nextRiddle() {
-    _flutterTts.stop();
+    _tts.stop();
     _showAnswer.value = false;
     if (_currentIndex.value < _riddles.length - 1) {
       _currentIndex.value++;
@@ -173,7 +87,7 @@ class _RiddlePageState extends State<RiddlePage> {
 
   /// 上一题
   void _prevRiddle() {
-    _flutterTts.stop();
+    _tts.stop();
     _showAnswer.value = false;
     if (_currentIndex.value > 0) {
       _currentIndex.value--;
@@ -221,7 +135,7 @@ class _RiddlePageState extends State<RiddlePage> {
                 onPageChanged: (index) {
                   _currentIndex.value = index;
                   _showAnswer.value = false;
-                  _flutterTts.stop();
+                  _tts.stop();
                 },
                 itemCount: _riddles.length,
                 itemBuilder: (context, index) {
@@ -305,10 +219,10 @@ class _RiddlePageState extends State<RiddlePage> {
                 Obx(() => ElevatedButton.icon(
                       onPressed: _speakQuestion,
                       icon: Icon(
-                        _isSpeaking.value ? Icons.stop : Icons.volume_up,
+                        _tts.isSpeaking.value ? Icons.stop : Icons.volume_up,
                         size: 20.sp,
                       ),
-                      label: Text(_isSpeaking.value ? '停止' : '读题目'),
+                      label: Text(_tts.isSpeaking.value ? '停止' : '读题目'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.amber,
                         foregroundColor: Colors.white,
@@ -433,10 +347,10 @@ class _RiddlePageState extends State<RiddlePage> {
           Obx(() => OutlinedButton.icon(
                 onPressed: _speakAnswer,
                 icon: Icon(
-                  _isSpeaking.value ? Icons.stop : Icons.volume_up,
+                  _tts.isSpeaking.value ? Icons.stop : Icons.volume_up,
                   size: 18.sp,
                 ),
-                label: Text(_isSpeaking.value ? '停止' : '读答案'),
+                label: Text(_tts.isSpeaking.value ? '停止' : '读答案'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.green,
                   side: BorderSide(color: Colors.green.shade300),
@@ -456,7 +370,7 @@ class _RiddlePageState extends State<RiddlePage> {
 
   @override
   void dispose() {
-    _flutterTts.stop();
+    _tts.stop();
     _pageController.dispose();
     super.dispose();
   }
@@ -489,7 +403,7 @@ class _RiddlePageState extends State<RiddlePage> {
                         Icon(Icons.speed, size: 18.sp, color: Colors.grey),
                         SizedBox(width: 4.w),
                         Text(
-                          '${_speechRate.value.toStringAsFixed(1)}x',
+                          '${_tts.speechRate.value.toStringAsFixed(1)}x',
                           style: TextStyle(
                             fontSize: 11.sp,
                             color: Colors.amber.shade700,
@@ -498,12 +412,12 @@ class _RiddlePageState extends State<RiddlePage> {
                         ),
                         Expanded(
                           child: Slider(
-                            value: _speechRate.value,
+                            value: _tts.speechRate.value,
                             min: 0.5,
                             max: 2.0,
                             divisions: 15,
                             activeColor: Colors.amber,
-                            onChanged: (value) => _updateSpeechRate(value),
+                            onChanged: (value) => _tts.setSpeechRate(value),
                           ),
                         ),
                       ],
@@ -513,8 +427,7 @@ class _RiddlePageState extends State<RiddlePage> {
               GestureDetector(
                 onTap: () async {
                   await Get.to(() => const TtsSettingsPage());
-                  // 返回后重新加载设置
-                  _initTts();
+                  // 设置页面会自动保存，不需要重新加载
                 },
                 child: Container(
                   padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
@@ -558,7 +471,7 @@ class _RiddlePageState extends State<RiddlePage> {
                 label: '换一批',
                 color: Colors.amber,
                 onTap: () {
-                  _flutterTts.stop();
+                  _tts.stop();
                   _loadRiddles();
                   _currentIndex.value = 0;
                   _showAnswer.value = false;

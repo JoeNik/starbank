@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'services/storage_service.dart';
 import 'services/webdav_service.dart';
 import 'services/update_service.dart';
+import 'services/tts_service.dart';
 import 'controllers/user_controller.dart';
 import 'controllers/shop_controller.dart';
 import 'controllers/app_mode_controller.dart';
@@ -26,6 +27,9 @@ void main() async {
 
   // Initialize Storage Service
   await Get.putAsync(() => StorageService().init());
+
+  // Initialize TTS Service (全局语音服务)
+  await Get.putAsync(() => TtsService().init());
 
   // Initialize Other Services and Controllers
   Get.put(WebDavService());

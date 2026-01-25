@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:flutter_tts/flutter_tts.dart';
-import 'package:hive/hive.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../services/tts_service.dart';
 
 /// TTS 语音设置页面
 /// 提供应用内个性化语音参数调整，不影响系统全局设置
@@ -15,142 +14,8 @@ class TtsSettingsPage extends StatefulWidget {
 }
 
 class _TtsSettingsPageState extends State<TtsSettingsPage> {
-  late FlutterTts _flutterTts;
-  late Box _settingsBox;
-
-  // 可调参数
-  final RxDouble _speechRate = 1.0.obs;
-  final RxDouble _pitch = 1.0.obs;
-  final RxDouble _volume = 1.0.obs;
-
-  // 引擎
-  final RxString _currentEngine = ''.obs;
-  final RxList<String> _engines = <String>[].obs;
-
-  // 加载状态
-  final RxBool _isLoading = true.obs;
-  final RxBool _isSpeaking = false.obs;
-
-  @override
-  void initState() {
-    super.initState();
-    _initTts();
-  }
-
-  Future<void> _initTts() async {
-    _flutterTts = FlutterTts();
-    _settingsBox = await Hive.openBox('tts_settings');
-
-    // 加载保存的设置
-    _speechRate.value = _settingsBox.get('speech_rate', defaultValue: 1.0);
-    _pitch.value = _settingsBox.get('pitch', defaultValue: 1.0);
-    _volume.value = _settingsBox.get('volume', defaultValue: 1.0);
-    _currentEngine.value = _settingsBox.get('tts_engine', defaultValue: '');
-
-    // 应用设置
-    await _flutterTts.setSpeechRate(_speechRate.value);
-    await _flutterTts.setPitch(_pitch.value);
-    await _flutterTts.setVolume(_volume.value);
-
-    // 获取引擎列表
-    if (GetPlatform.isAndroid) {
-      try {
-        final engines = await _flutterTts.getEngines;
-        if (engines != null && engines is List) {
-          _engines.addAll(engines.map((e) => e.toString()));
-        }
-
-        // 如果有保存的引擎，尝试设置
-        if (_currentEngine.value.isNotEmpty &&
-            _engines.contains(_currentEngine.value)) {
-          await _flutterTts.setEngine(_currentEngine.value);
-        }
-      } catch (e) {
-        debugPrint('获取引擎失败: $e');
-      }
-    }
-
-    // 监听状态
-    _flutterTts.setStartHandler(() => _isSpeaking.value = true);
-    _flutterTts.setCompletionHandler(() => _isSpeaking.value = false);
-    _flutterTts.setCancelHandler(() => _isSpeaking.value = false);
-    _flutterTts.setErrorHandler((msg) {
-      _isSpeaking.value = false;
-      Get.snackbar('语音错误', msg.toString(), snackPosition: SnackPosition.BOTTOM);
-    });
-
-    _isLoading.value = false;
-  }
-
-  Future<void> _speak(String text) async {
-    if (_isSpeaking.value) {
-      await _flutterTts.stop();
-      _isSpeaking.value = false; // 手动更新状态
-    } else {
-      await _flutterTts.speak(text);
-    }
-  }
-
-  Future<void> _saveSettings() async {
-    await _settingsBox.put('speech_rate', _speechRate.value);
-    await _settingsBox.put('pitch', _pitch.value);
-    await _settingsBox.put('volume', _volume.value);
-    await _settingsBox.put('tts_engine', _currentEngine.value);
-
-    Get.snackbar('保存成功', '语音设置已保存', snackPosition: SnackPosition.BOTTOM);
-  }
-
-  Future<void> _resetToDefault() async {
-    _speechRate.value = 1.0;
-    _pitch.value = 1.0;
-    _volume.value = 1.0;
-    _currentEngine.value = '';
-
-    await _flutterTts.setSpeechRate(1.0);
-    await _flutterTts.setPitch(1.0);
-    await _flutterTts.setVolume(1.0);
-
-    await _saveSettings();
-    Get.snackbar('已重置', '语音参数已恢复默认', snackPosition: SnackPosition.BOTTOM);
-  }
-
-  /// 打开系统 TTS 设置
-  Future<void> _openSystemTtsSettings() async {
-    try {
-      // Android 的 TTS 设置 Intent
-      const url = 'intent:#Intent;action=com.android.settings.TTS_SETTINGS;end';
-      final uri = Uri.parse(url);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri);
-      } else {
-        // 备用方案：打开系统设置
-        Get.snackbar(
-          '提示',
-          '请手动打开：设置 → 辅助功能 → 文字转语音',
-          snackPosition: SnackPosition.BOTTOM,
-          duration: const Duration(seconds: 5),
-        );
-      }
-    } catch (e) {
-      Get.snackbar(
-        '提示',
-        '请手动打开：设置 → 辅助功能 → 文字转语音\n或在第三方 TTS 应用中设置声音',
-        snackPosition: SnackPosition.BOTTOM,
-        duration: const Duration(seconds: 5),
-      );
-    }
-  }
-
-  String _getEngineDisplayName(String engine) {
-    if (engine.isEmpty) return '系统默认';
-    if (engine.contains('google')) return 'Google TTS';
-    if (engine.contains('samsung')) return '三星 TTS';
-    if (engine.contains('huawei')) return '华为 TTS';
-    if (engine.contains('xiaomi')) return '小米 TTS';
-    if (engine.contains('multi')) return 'MultiTTS';
-    if (engine.contains('iflytek')) return '讯飞 TTS';
-    return engine.split('.').last;
-  }
+  // 使用全局 TTS 服务
+  final TtsService _tts = Get.find<TtsService>();
 
   @override
   Widget build(BuildContext context) {
@@ -164,86 +29,64 @@ class _TtsSettingsPageState extends State<TtsSettingsPage> {
           ),
         ],
       ),
-      body: Obx(() => _isLoading.value
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: EdgeInsets.all(16.w),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 试听区域
-                  _buildTestSection(),
-                  SizedBox(height: 24.h),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(16.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 试听区域
+            _buildTestSection(),
+            SizedBox(height: 24.h),
 
-                  // 语速调节
-                  _buildSliderSection(
-                    title: '语速',
-                    value: _speechRate,
-                    min: 0.5,
-                    max: 2.0,
-                    icon: Icons.speed,
-                    description: '1.0 为正常语速',
-                    onChanged: (v) async {
-                      _speechRate.value = v;
-                      await _flutterTts.setSpeechRate(v);
-                    },
-                  ),
+            // 语速调节
+            _buildSliderSection(
+              title: '语速',
+              value: _tts.speechRate,
+              min: 0.5,
+              max: 2.0,
+              icon: Icons.speed,
+              description: '1.0 为正常语速',
+              onChanged: (v) => _tts.setSpeechRate(v),
+            ),
 
-                  // 音调调节
-                  _buildSliderSection(
-                    title: '音调',
-                    value: _pitch,
-                    min: 0.5,
-                    max: 2.0,
-                    icon: Icons.music_note,
-                    description: '1.0 为正常音调',
-                    onChanged: (v) async {
-                      _pitch.value = v;
-                      await _flutterTts.setPitch(v);
-                    },
-                  ),
+            // 音调调节
+            _buildSliderSection(
+              title: '音调',
+              value: _tts.pitch,
+              min: 0.5,
+              max: 2.0,
+              icon: Icons.music_note,
+              description: '1.0 为正常音调',
+              onChanged: (v) => _tts.setPitch(v),
+            ),
 
-                  // 音量调节
-                  _buildSliderSection(
-                    title: '音量',
-                    value: _volume,
-                    min: 0.0,
-                    max: 1.0,
-                    icon: Icons.volume_up,
-                    description: '1.0 为最大音量',
-                    onChanged: (v) async {
-                      _volume.value = v;
-                      await _flutterTts.setVolume(v);
-                    },
-                  ),
+            // 音量调节
+            _buildSliderSection(
+              title: '音量',
+              value: _tts.volume,
+              min: 0.0,
+              max: 1.0,
+              icon: Icons.volume_up,
+              description: '1.0 为最大音量',
+              onChanged: (v) => _tts.setVolume(v),
+            ),
 
-                  SizedBox(height: 16.h),
+            SizedBox(height: 16.h),
 
-                  // 引擎选择
-                  if (_engines.isNotEmpty) _buildEngineSection(),
+            // 引擎选择
+            Obx(() => _tts.engines.isNotEmpty
+                ? _buildEngineSection()
+                : const SizedBox()),
 
-                  SizedBox(height: 16.h),
+            SizedBox(height: 16.h),
 
-                  // 声音设置提示
-                  _buildVoiceHintSection(),
+            // 声音设置提示
+            _buildVoiceHintSection(),
 
-                  SizedBox(height: 32.h),
-
-                  // 保存按钮
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: _saveSettings,
-                      icon: const Icon(Icons.save),
-                      label: const Text('保存设置'),
-                      style: ElevatedButton.styleFrom(
-                        padding: EdgeInsets.symmetric(vertical: 14.h),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            )),
+            SizedBox(height: 32.h),
+          ],
+        ),
+      ),
     );
   }
 
@@ -271,12 +114,13 @@ class _TtsSettingsPageState extends State<TtsSettingsPage> {
                 Expanded(
                   child: Obx(() => ElevatedButton.icon(
                         onPressed: () => _speak('你好，这是语音测试。调整参数后可以再次试听。'),
-                        icon: Icon(
-                            _isSpeaking.value ? Icons.stop : Icons.play_arrow),
-                        label: Text(_isSpeaking.value ? '停止' : '试听'),
+                        icon: Icon(_tts.isSpeaking.value
+                            ? Icons.stop
+                            : Icons.play_arrow),
+                        label: Text(_tts.isSpeaking.value ? '停止' : '试听'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor:
-                              _isSpeaking.value ? Colors.red : Colors.blue,
+                              _tts.isSpeaking.value ? Colors.red : Colors.blue,
                         ),
                       )),
                 ),
@@ -294,6 +138,21 @@ class _TtsSettingsPageState extends State<TtsSettingsPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _speak(String text) async {
+    if (_tts.isSpeaking.value) {
+      await _tts.stop();
+    } else {
+      await _tts.speak(text);
+    }
+  }
+
+  Future<void> _resetToDefault() async {
+    await _tts.setSpeechRate(1.0);
+    await _tts.setPitch(1.0);
+    await _tts.setVolume(1.0);
+    Get.snackbar('已重置', '语音参数已恢复默认', snackPosition: SnackPosition.BOTTOM);
   }
 
   Widget _buildSliderSection({
@@ -370,7 +229,7 @@ class _TtsSettingsPageState extends State<TtsSettingsPage> {
                 Text('语音引擎', style: TextStyle(fontSize: 14.sp)),
                 const Spacer(),
                 Obx(() => Text(
-                      _getEngineDisplayName(_currentEngine.value),
+                      _tts.getEngineDisplayName(_tts.currentEngine.value),
                       style: TextStyle(fontSize: 12.sp, color: Colors.blue),
                     )),
               ],
@@ -379,17 +238,16 @@ class _TtsSettingsPageState extends State<TtsSettingsPage> {
             Obx(() => Wrap(
                   spacing: 8.w,
                   runSpacing: 8.h,
-                  children: _engines.map((engine) {
-                    final isSelected = _currentEngine.value == engine;
+                  children: _tts.engines.map((engine) {
+                    final isSelected = _tts.currentEngine.value == engine;
                     return ChoiceChip(
-                      label: Text(_getEngineDisplayName(engine)),
+                      label: Text(_tts.getEngineDisplayName(engine)),
                       selected: isSelected,
                       onSelected: (selected) async {
                         if (selected) {
-                          _currentEngine.value = engine;
-                          await _flutterTts.setEngine(engine);
+                          await _tts.setEngine(engine);
                           // 切换引擎后试听
-                          _speak('已切换到 ${_getEngineDisplayName(engine)}');
+                          _speak('已切换到 ${_tts.getEngineDisplayName(engine)}');
                         }
                       },
                     );
@@ -441,9 +299,34 @@ class _TtsSettingsPageState extends State<TtsSettingsPage> {
     );
   }
 
+  /// 打开系统 TTS 设置
+  Future<void> _openSystemTtsSettings() async {
+    try {
+      const url = 'intent:#Intent;action=com.android.settings.TTS_SETTINGS;end';
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      } else {
+        Get.snackbar(
+          '提示',
+          '请手动打开：设置 → 辅助功能 → 文字转语音',
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 5),
+        );
+      }
+    } catch (e) {
+      Get.snackbar(
+        '提示',
+        '请手动打开：设置 → 辅助功能 → 文字转语音\n或在第三方 TTS 应用中设置声音',
+        snackPosition: SnackPosition.BOTTOM,
+        duration: const Duration(seconds: 5),
+      );
+    }
+  }
+
   @override
   void dispose() {
-    _flutterTts.stop();
+    _tts.stop();
     super.dispose();
   }
 }
