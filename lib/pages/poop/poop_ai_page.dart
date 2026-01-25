@@ -67,52 +67,58 @@ class _PoopAIPageState extends State<PoopAIPage> {
   }
 
   Future<void> _initData() async {
-    setState(() => _isLoading = true);
+    try {
+      setState(() => _isLoading = true);
 
-    // 获取或初始化 OpenAI 服务
-    if (!Get.isRegistered<OpenAIService>()) {
-      await Get.putAsync(() => OpenAIService().init());
+      // 获取或初始化 OpenAI 服务
+      if (!Get.isRegistered<OpenAIService>()) {
+        await Get.putAsync(() => OpenAIService().init());
+      }
+      _openAIService = Get.find<OpenAIService>();
+
+      // 打开数据库
+      if (!Hive.isAdapterRegistered(11)) {
+        Hive.registerAdapter(PoopRecordAdapter());
+      }
+      if (!Hive.isAdapterRegistered(12)) {
+        Hive.registerAdapter(AIChatAdapter());
+      }
+
+      _recordBox = await Hive.openBox<PoopRecord>('poop_records');
+      _chatBox = await Hive.openBox<AIChat>('ai_chats');
+      _settingsBox = await Hive.openBox('poop_ai_settings');
+
+      // 加载保存的 prompt
+      _customPrompt = _settingsBox.get('prompt', defaultValue: _customPrompt);
+
+      // 加载保存的配置ID和模型
+      final savedConfigId =
+          _settingsBox.get('selected_config_id', defaultValue: '');
+      _selectedModel = _settingsBox.get('selected_model', defaultValue: '');
+
+      // 查找保存的配置
+      if (savedConfigId.isNotEmpty) {
+        _selectedConfig = _openAIService.configs
+            .firstWhereOrNull((c) => c.id == savedConfigId);
+      }
+
+      // 如果没有选择配置，使用默认配置
+      _selectedConfig ??= _openAIService.currentConfig.value;
+
+      // 如果没有选择模型，使用配置的默认模型
+      if (_selectedModel.isEmpty && _selectedConfig != null) {
+        _selectedModel = _selectedConfig!.selectedModel;
+      }
+
+      _loadRecords();
+      _loadChatHistory();
+
+      setState(() => _isLoading = false);
+    } catch (e) {
+      debugPrint('Initialization error: $e');
+      setState(() => _isLoading = false);
+      Get.snackbar('错误', '初始化失败: $e', snackPosition: SnackPosition.BOTTOM);
     }
-    _openAIService = Get.find<OpenAIService>();
-
-    // 打开数据库
-    if (!Hive.isAdapterRegistered(11)) {
-      Hive.registerAdapter(PoopRecordAdapter());
-    }
-    if (!Hive.isAdapterRegistered(12)) {
-      Hive.registerAdapter(AIChatAdapter());
-    }
-
-    _recordBox = await Hive.openBox<PoopRecord>('poop_records');
-    _chatBox = await Hive.openBox<AIChat>('ai_chats');
-    _settingsBox = await Hive.openBox('poop_ai_settings');
-
-    // 加载保存的 prompt
-    _customPrompt = _settingsBox.get('prompt', defaultValue: _customPrompt);
-
-    // 加载保存的配置ID和模型
-    final savedConfigId =
-        _settingsBox.get('selected_config_id', defaultValue: '');
-    _selectedModel = _settingsBox.get('selected_model', defaultValue: '');
-
-    // 查找保存的配置
-    if (savedConfigId.isNotEmpty) {
-      _selectedConfig =
-          _openAIService.configs.firstWhereOrNull((c) => c.id == savedConfigId);
-    }
-
-    // 如果没有选择配置，使用默认配置
-    _selectedConfig ??= _openAIService.currentConfig.value;
-
-    // 如果没有选择模型，使用配置的默认模型
-    if (_selectedModel.isEmpty && _selectedConfig != null) {
-      _selectedModel = _selectedConfig!.selectedModel;
-    }
-
-    _loadRecords();
-    _loadChatHistory();
-
-    setState(() => _isLoading = false);
   }
 
   void _loadRecords() {

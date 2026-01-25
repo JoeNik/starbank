@@ -756,7 +756,7 @@ class _HomePageState extends State<HomePage> {
                       crossAxisCount: 3,
                       mainAxisSpacing: 8.h,
                       crossAxisSpacing: 8.w,
-                      childAspectRatio: 0.9,
+                      childAspectRatio: 1.0,
                     ),
                     itemCount: controller.actions.length,
                     itemBuilder: (context, index) {
