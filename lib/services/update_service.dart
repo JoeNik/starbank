@@ -1,10 +1,13 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:open_filex/open_filex.dart';
 import '../pages/settings_page.dart'; // 获取 appVersion 常量
 
 /// GitHub Release 信息模型
@@ -266,21 +269,14 @@ class UpdateService extends GetxService {
             ),
             SizedBox(height: 16.h),
 
-            // 直接下载 (GitHub)
+            // 应用内下载 (推荐)
             ListTile(
               leading: const Icon(Icons.download, color: Colors.blue),
-              title: const Text('直接下载'),
-              subtitle: const Text('从 GitHub 下载（可能需要科学上网）'),
-              onTap: () async {
+              title: const Text('应用内下载'),
+              subtitle: const Text('显示下载进度，完成后可直接安装'),
+              onTap: () {
                 Navigator.of(ctx).pop();
-                try {
-                  final uri = Uri.parse(release.downloadUrl);
-                  if (await canLaunchUrl(uri)) {
-                    await launchUrl(uri, mode: LaunchMode.externalApplication);
-                  }
-                } catch (e) {
-                  Get.snackbar('错误', '下载失败: $e');
-                }
+                _startInAppDownload(release);
               },
             ),
 
@@ -289,10 +285,20 @@ class UpdateService extends GetxService {
               leading: const Icon(Icons.speed, color: Colors.green),
               title: const Text('镜像加速下载'),
               subtitle: const Text('使用 ghproxy 加速（推荐国内用户）'),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                _startInAppDownload(release, useMirror: true);
+              },
+            ),
+
+            // 浏览器下载
+            ListTile(
+              leading: const Icon(Icons.open_in_browser, color: Colors.orange),
+              title: const Text('在浏览器中下载'),
+              subtitle: const Text('跳转到浏览器下载'),
               onTap: () async {
                 Navigator.of(ctx).pop();
                 try {
-                  // 使用 ghproxy 镜像加速
                   final mirrorUrl =
                       'https://ghproxy.com/${release.downloadUrl}';
                   final uri = Uri.parse(mirrorUrl);
@@ -300,26 +306,24 @@ class UpdateService extends GetxService {
                     await launchUrl(uri, mode: LaunchMode.externalApplication);
                   }
                 } catch (e) {
-                  Get.snackbar('错误', '下载失败: $e');
+                  Get.snackbar('错误', '无法打开浏览器: $e');
                 }
               },
             ),
 
             // 复制链接
             ListTile(
-              leading: const Icon(Icons.copy, color: Colors.orange),
+              leading: const Icon(Icons.copy, color: Colors.grey),
               title: const Text('复制下载链接'),
-              subtitle: const Text('手动在浏览器中下载'),
+              subtitle: const Text('手动下载'),
               onTap: () async {
                 Navigator.of(ctx).pop();
-                // 复制到剪贴板
                 await Clipboard.setData(
                     ClipboardData(text: release.downloadUrl));
                 Get.snackbar(
                   '已复制',
                   '下载链接已复制到剪贴板',
                   snackPosition: SnackPosition.BOTTOM,
-                  duration: const Duration(seconds: 3),
                 );
               },
             ),
@@ -329,5 +333,154 @@ class UpdateService extends GetxService {
         ),
       ),
     );
+  }
+
+  /// 应用内下载
+  Future<void> _startInAppDownload(ReleaseInfo release,
+      {bool useMirror = false}) async {
+    // 下载进度状态
+    final RxDouble progress = 0.0.obs;
+    final RxString status = '准备下载...'.obs;
+    final RxBool isDownloading = true.obs;
+    String? downloadedFilePath;
+
+    // 显示下载进度对话框
+    Get.dialog(
+      WillPopScope(
+        onWillPop: () async => !isDownloading.value,
+        child: AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.download, color: Colors.blue, size: 24.sp),
+              SizedBox(width: 8.w),
+              const Text('下载更新'),
+            ],
+          ),
+          content: Obx(() => Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(status.value),
+                  SizedBox(height: 16.h),
+                  LinearProgressIndicator(
+                    value: progress.value > 0 ? progress.value : null,
+                    backgroundColor: Colors.grey.shade200,
+                    valueColor:
+                        const AlwaysStoppedAnimation<Color>(Colors.blue),
+                  ),
+                  SizedBox(height: 8.h),
+                  if (progress.value > 0)
+                    Text(
+                      '${(progress.value * 100).toStringAsFixed(1)}%',
+                      style: TextStyle(fontSize: 12.sp, color: Colors.grey),
+                    ),
+                ],
+              )),
+          actions: [
+            Obx(() => isDownloading.value
+                ? TextButton(
+                    onPressed: () {
+                      isDownloading.value = false;
+                      Get.back();
+                    },
+                    child: const Text('取消'),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Get.back(),
+                        child: const Text('关闭'),
+                      ),
+                      if (downloadedFilePath != null)
+                        ElevatedButton(
+                          onPressed: () {
+                            Get.back();
+                            _installApk(downloadedFilePath!);
+                          },
+                          child: const Text('安装'),
+                        ),
+                    ],
+                  )),
+          ],
+        ),
+      ),
+      barrierDismissible: false,
+    );
+
+    try {
+      // 构建下载链接
+      String downloadUrl = release.downloadUrl;
+      if (useMirror) {
+        downloadUrl = 'https://ghproxy.com/$downloadUrl';
+      }
+
+      status.value = '正在连接服务器...';
+
+      // 获取下载目录
+      final dir = await getTemporaryDirectory();
+      final fileName = 'StarBank_${release.version}.apk';
+      final filePath = '${dir.path}/$fileName';
+      final file = File(filePath);
+
+      // 发起请求
+      final request = http.Request('GET', Uri.parse(downloadUrl));
+      final response = await http.Client().send(request);
+
+      if (response.statusCode != 200) {
+        throw Exception('服务器返回错误: ${response.statusCode}');
+      }
+
+      final contentLength = response.contentLength ?? 0;
+      int received = 0;
+
+      status.value = '正在下载...';
+
+      // 下载文件
+      final sink = file.openWrite();
+      await for (final chunk in response.stream) {
+        if (!isDownloading.value) {
+          sink.close();
+          file.deleteSync();
+          return;
+        }
+        sink.add(chunk);
+        received += chunk.length;
+        if (contentLength > 0) {
+          progress.value = received / contentLength;
+        }
+      }
+      await sink.close();
+
+      // 下载完成
+      isDownloading.value = false;
+      progress.value = 1.0;
+      status.value = '下载完成！点击安装按钮进行安装';
+      downloadedFilePath = filePath;
+    } catch (e) {
+      isDownloading.value = false;
+      status.value = '下载失败: $e';
+      debugPrint('下载更新失败: $e');
+    }
+  }
+
+  /// 安装 APK
+  Future<void> _installApk(String filePath) async {
+    try {
+      final result = await OpenFilex.open(filePath);
+      if (result.type != ResultType.done) {
+        Get.snackbar(
+          '安装失败',
+          result.message,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
+    } catch (e) {
+      Get.snackbar(
+        '安装失败',
+        '无法打开安装程序: $e',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }
   }
 }
