@@ -68,7 +68,10 @@ class _PoopAIPageState extends State<PoopAIPage> {
   Future<void> _initData() async {
     setState(() => _isLoading = true);
 
-    // 获取 OpenAI 服务
+    // 获取或初始化 OpenAI 服务
+    if (!Get.isRegistered<OpenAIService>()) {
+      await Get.putAsync(() => OpenAIService().init());
+    }
     _openAIService = Get.find<OpenAIService>();
 
     // 打开数据库
