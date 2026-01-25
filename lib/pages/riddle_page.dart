@@ -35,6 +35,9 @@ class _RiddlePageState extends State<RiddlePage> {
   // 页面控制器
   late PageController _pageController;
 
+  // 当前使用的引擎
+  final RxString _currentEngine = ''.obs;
+
   @override
   void initState() {
     super.initState();
@@ -43,41 +46,57 @@ class _RiddlePageState extends State<RiddlePage> {
     _pageController = PageController();
   }
 
-  @override
-  void dispose() {
-    _flutterTts.stop();
-    _pageController.dispose();
-    super.dispose();
-  }
-
   /// 初始化语音引擎
   Future<void> _initTts() async {
     _flutterTts = FlutterTts();
 
-    // 设置语音参数 - 儿童女声设置
+    // 1. 尝试设置最佳引擎 (Android)
+    try {
+      if (GetPlatform.isAndroid) {
+        final engines = await _flutterTts.getEngines;
+        if (engines != null && engines is List) {
+          debugPrint('可用 TTS 引擎: $engines');
+          // 优先寻找 Google TTS
+          for (var engine in engines) {
+            final engineName = engine.toString();
+            if (engineName.contains('google')) {
+              await _flutterTts.setEngine(engineName);
+              _currentEngine.value = 'Google 引擎';
+              debugPrint('已切换到 Google TTS 引擎');
+              break;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('设置引擎失败: $e');
+    }
+
+    // 2. 设置通用参数
     await _flutterTts.setLanguage('zh-CN');
-    await _flutterTts.setSpeechRate(_speechRate.value); // 语速较慢
-    await _flutterTts.setPitch(1.5); // 音调更高，更像儿童声音
+    await _flutterTts.setSpeechRate(_speechRate.value);
+    await _flutterTts.setPitch(1.5);
     await _flutterTts.setVolume(1.0);
 
-    // 尝试设置女性声音（如果平台支持）
+    // 3. 尝试寻找更自然的声音 (针对选定引擎)
     try {
-      // 获取可用的声音列表
       final voices = await _flutterTts.getVoices;
       if (voices != null && voices is List) {
-        // 尝试找到女性/儿童声音
         for (var voice in voices) {
           if (voice is Map) {
             final name = voice['name']?.toString().toLowerCase() ?? '';
             final locale = voice['locale']?.toString() ?? '';
-            // 优先选择中文女声
+            // 优先选择中文女声 (xiaoxiao, yaoyao 等是常见的高质量中文语音包名)
             if (locale.contains('zh') &&
                 (name.contains('female') ||
                     name.contains('woman') ||
-                    name.contains('xiaoxiao') ||
-                    name.contains('yaoyao'))) {
+                    name.contains('xiaoxiao') || // 微软/Google 常用名
+                    name.contains('yaoyao') ||
+                    name.contains('hi-cn-st'))) {
+              // Google 某些版本的标识
               await _flutterTts
                   .setVoice({"name": voice['name'], "locale": voice['locale']});
+              debugPrint('已设置声音: $name');
               break;
             }
           }
@@ -441,6 +460,13 @@ class _RiddlePageState extends State<RiddlePage> {
     );
   }
 
+  @override
+  void dispose() {
+    _flutterTts.stop();
+    _pageController.dispose();
+    super.dispose();
+  }
+
   /// 底部控制面板
   Widget _buildControlPanel() {
     return Container(
@@ -459,39 +485,57 @@ class _RiddlePageState extends State<RiddlePage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // 语速调节
-          Obx(() => Row(
-                children: [
-                  Icon(Icons.speed, size: 18.sp, color: Colors.grey),
-                  SizedBox(width: 8.w),
-                  Text(
-                    '语速',
-                    style: TextStyle(fontSize: 12.sp, color: Colors.grey),
-                  ),
-                  Expanded(
-                    child: Slider(
-                      value: _speechRate.value,
-                      min: 0.2,
-                      max: 0.7,
-                      divisions: 5,
-                      activeColor: Colors.amber,
-                      onChanged: (value) => _updateSpeechRate(value),
-                    ),
-                  ),
-                  Text(
-                    _speechRate.value < 0.35
-                        ? '慢'
-                        : _speechRate.value > 0.55
-                            ? '快'
-                            : '中',
-                    style: TextStyle(
-                      fontSize: 12.sp,
-                      color: Colors.amber.shade700,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              )),
+          // 语速和引擎设置
+          Row(
+            children: [
+              // 语速调节
+              Expanded(
+                child: Obx(() => Row(
+                      children: [
+                        Icon(Icons.speed, size: 18.sp, color: Colors.grey),
+                        SizedBox(width: 8.w),
+                        Text(
+                          '语速',
+                          style: TextStyle(fontSize: 12.sp, color: Colors.grey),
+                        ),
+                        Expanded(
+                          child: Slider(
+                            value: _speechRate.value,
+                            min: 0.2,
+                            max: 0.7,
+                            divisions: 5,
+                            activeColor: Colors.amber,
+                            onChanged: (value) => _updateSpeechRate(value),
+                          ),
+                        ),
+                      ],
+                    )),
+              ),
+              // 引擎指示器
+              Obx(() => _currentEngine.value.isNotEmpty
+                  ? GestureDetector(
+                      onTap: _showEngineSelectionDialog,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 8.w, vertical: 4.h),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12.r),
+                          border:
+                              Border.all(color: Colors.blue.withOpacity(0.3)),
+                        ),
+                        child: Text(
+                          '引擎优化',
+                          style: TextStyle(
+                            fontSize: 10.sp,
+                            color: Colors.blue,
+                          ),
+                        ),
+                      ),
+                    )
+                  : const SizedBox()),
+            ],
+          ),
           SizedBox(height: 8.h),
           // 控制按钮
           Row(
@@ -570,5 +614,89 @@ class _RiddlePageState extends State<RiddlePage> {
         ],
       ),
     );
+  }
+
+  /// 显示引擎选择对话框
+  Future<void> _showEngineSelectionDialog() async {
+    if (!GetPlatform.isAndroid) {
+      Get.snackbar('提示', '引擎切换仅支持 Android 设备');
+      return;
+    }
+
+    try {
+      final engines = await _flutterTts.getEngines;
+      if (engines == null || engines.isEmpty) {
+        Get.snackbar('提示', '未找到可用的 TTS 引擎');
+        return;
+      }
+
+      Get.bottomSheet(
+        Container(
+          padding: EdgeInsets.all(20.w),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '选择语音引擎',
+                style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 8.h),
+              Text(
+                '推荐使用 Google 语音服务 (com.google.android.tts) 以获得最佳效果。',
+                style: TextStyle(fontSize: 12.sp, color: Colors.grey),
+              ),
+              SizedBox(height: 16.h),
+              // 使用 ListView 展示引擎列表
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: engines.length,
+                  itemBuilder: (context, index) {
+                    final engine = engines[index].toString();
+                    final isGoogle = engine.contains('google');
+
+                    return ListTile(
+                      title: Text(engine),
+                      subtitle: isGoogle
+                          ? const Text('Google 官方引擎 (推荐)',
+                              style: TextStyle(color: Colors.green))
+                          : null,
+                      trailing: isGoogle
+                          ? const Icon(Icons.star, color: Colors.amber)
+                          : null,
+                      onTap: () async {
+                        await _flutterTts.setEngine(engine);
+                        _currentEngine.value = isGoogle ? 'Google 引擎' : '其他引擎';
+
+                        // 重新初始化语音设置
+                        await _flutterTts.setLanguage('zh-CN');
+                        await _flutterTts.setSpeechRate(_speechRate.value);
+                        await _flutterTts.setPitch(1.5);
+
+                        Get.back();
+                        Get.snackbar(
+                          '设置成功',
+                          '已切换到 $engine',
+                          snackPosition: SnackPosition.BOTTOM,
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        isScrollControlled: true,
+      );
+    } catch (e) {
+      debugPrint('获取引擎列表失败: $e');
+      Get.snackbar('错误', '无法获取引擎列表');
+    }
   }
 }
