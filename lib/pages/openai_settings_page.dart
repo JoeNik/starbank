@@ -154,7 +154,8 @@ class _OpenAISettingsPageState extends State<OpenAISettingsPage> {
             ),
             SizedBox(height: 8.h),
             _buildInfoRow('API 地址', config.baseUrl),
-            _buildInfoRow('API Key', '${config.apiKey.substring(0, 8)}...'),
+            _buildInfoRow('API Key',
+                '${config.apiKey.substring(0, config.apiKey.length > 8 ? 8 : config.apiKey.length)}...'),
             _buildInfoRow('当前模型',
                 config.selectedModel.isNotEmpty ? config.selectedModel : '未选择'),
             if (config.models.isNotEmpty) ...[
@@ -261,17 +262,14 @@ class _OpenAISettingsPageState extends State<OpenAISettingsPage> {
     if (result != null) {
       final config = OpenAIConfig(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
-        name: result['name'] as String,
-        baseUrl: result['baseUrl'] as String,
-        apiKey: result['apiKey'] as String,
+        name: result['name']!,
+        baseUrl: result['baseUrl']!,
+        apiKey: result['apiKey']!,
       );
 
       // 尝试获取模型列表
       try {
-        Get.dialog(
-          const Center(child: CircularProgressIndicator()),
-          barrierDismissible: false,
-        );
+        _showLoadingDialog('正在获取模型列表...');
 
         final models =
             await _openAIService!.fetchModels(config.baseUrl, config.apiKey);
@@ -280,10 +278,11 @@ class _OpenAISettingsPageState extends State<OpenAISettingsPage> {
           config.selectedModel = models.first;
         }
 
-        Get.back();
+        Navigator.of(context).pop(); // 关闭加载对话框
       } catch (e) {
-        Get.back();
-        Get.snackbar('提示', '无法获取模型列表: $e', snackPosition: SnackPosition.BOTTOM);
+        Navigator.of(context).pop(); // 关闭加载对话框
+        Get.snackbar('提示', '无法获取模型列表，可稍后刷新: $e',
+            snackPosition: SnackPosition.BOTTOM);
       }
 
       await _openAIService!.addConfig(config);
@@ -291,12 +290,28 @@ class _OpenAISettingsPageState extends State<OpenAISettingsPage> {
     }
   }
 
+  void _showLoadingDialog(String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        content: Row(
+          children: [
+            const CircularProgressIndicator(),
+            SizedBox(width: 16.w),
+            Text(message),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _editConfig(OpenAIConfig config) async {
     final result = await _showConfigDialog(existing: config);
     if (result != null) {
-      config.name = result['name'] as String;
-      config.baseUrl = result['baseUrl'] as String;
-      config.apiKey = result['apiKey'] as String;
+      config.name = result['name']!;
+      config.baseUrl = result['baseUrl']!;
+      config.apiKey = result['apiKey']!;
       await _openAIService!.updateConfig(config);
       Get.snackbar('成功', '配置已更新', snackPosition: SnackPosition.BOTTOM);
     }
@@ -304,37 +319,35 @@ class _OpenAISettingsPageState extends State<OpenAISettingsPage> {
 
   Future<void> _refreshModels(OpenAIConfig config) async {
     try {
-      Get.dialog(
-        const Center(child: CircularProgressIndicator()),
-        barrierDismissible: false,
-      );
+      _showLoadingDialog('正在获取模型列表...');
 
       final models =
           await _openAIService!.fetchModels(config.baseUrl, config.apiKey);
       config.models = models;
       await _openAIService!.updateConfig(config);
 
-      Get.back();
+      Navigator.of(context).pop();
       Get.snackbar('成功', '已刷新 ${models.length} 个模型',
           snackPosition: SnackPosition.BOTTOM);
     } catch (e) {
-      Get.back();
+      Navigator.of(context).pop();
       Get.snackbar('失败', '获取模型列表失败: $e', snackPosition: SnackPosition.BOTTOM);
     }
   }
 
   Future<void> _deleteConfig(OpenAIConfig config) async {
-    final confirm = await Get.dialog<bool>(
-      AlertDialog(
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
         title: const Text('确认删除'),
         content: Text('确定要删除配置 "${config.name}" 吗？'),
         actions: [
           TextButton(
-            onPressed: () => Get.back(result: false),
+            onPressed: () => Navigator.of(ctx).pop(false),
             child: const Text('取消'),
           ),
           TextButton(
-            onPressed: () => Get.back(result: true),
+            onPressed: () => Navigator.of(ctx).pop(true),
             child: const Text('删除', style: TextStyle(color: Colors.red)),
           ),
         ],
@@ -349,74 +362,80 @@ class _OpenAISettingsPageState extends State<OpenAISettingsPage> {
 
   Future<Map<String, String>?> _showConfigDialog(
       {OpenAIConfig? existing}) async {
-    final nameController = TextEditingController(text: existing?.name ?? '');
-    final urlController = TextEditingController(
-        text: existing?.baseUrl ?? 'https://api.openai.com');
-    final keyController = TextEditingController(text: existing?.apiKey ?? '');
+    String name = existing?.name ?? '';
+    String baseUrl = existing?.baseUrl ?? 'https://api.openai.com';
+    String apiKey = existing?.apiKey ?? '';
 
-    return Get.dialog<Map<String, String>>(
-      AlertDialog(
-        title: Text(existing == null ? '添加配置' : '编辑配置'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: '配置名称',
-                  hintText: '如: OpenAI、Claude',
-                  border: OutlineInputBorder(),
+    return showDialog<Map<String, String>>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(existing == null ? '添加配置' : '编辑配置'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      initialValue: name,
+                      decoration: const InputDecoration(
+                        labelText: '配置名称',
+                        hintText: '如: OpenAI、Claude',
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (v) => name = v,
+                    ),
+                    SizedBox(height: 16.h),
+                    TextFormField(
+                      initialValue: baseUrl,
+                      decoration: const InputDecoration(
+                        labelText: 'API 地址 (Base URL)',
+                        hintText: 'https://api.openai.com',
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (v) => baseUrl = v,
+                    ),
+                    SizedBox(height: 16.h),
+                    TextFormField(
+                      initialValue: apiKey,
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                        labelText: 'API Key',
+                        hintText: 'sk-...',
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (v) => apiKey = v,
+                    ),
+                  ],
                 ),
               ),
-              SizedBox(height: 16.h),
-              TextField(
-                controller: urlController,
-                decoration: const InputDecoration(
-                  labelText: 'API 地址 (Base URL)',
-                  hintText: 'https://api.openai.com',
-                  border: OutlineInputBorder(),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(null),
+                  child: const Text('取消'),
                 ),
-              ),
-              SizedBox(height: 16.h),
-              TextField(
-                controller: keyController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'API Key',
-                  hintText: 'sk-...',
-                  border: OutlineInputBorder(),
+                ElevatedButton(
+                  onPressed: () {
+                    if (name.isEmpty || baseUrl.isEmpty || apiKey.isEmpty) {
+                      Get.snackbar('错误', '请填写所有字段',
+                          snackPosition: SnackPosition.BOTTOM);
+                      return;
+                    }
+                    Navigator.of(ctx).pop({
+                      'name': name,
+                      'baseUrl':
+                          baseUrl.trimRight().replaceAll(RegExp(r'/+$'), ''),
+                      'apiKey': apiKey,
+                    });
+                  },
+                  child: const Text('保存'),
                 ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('取消'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (nameController.text.isEmpty ||
-                  urlController.text.isEmpty ||
-                  keyController.text.isEmpty) {
-                Get.snackbar('错误', '请填写所有字段',
-                    snackPosition: SnackPosition.BOTTOM);
-                return;
-              }
-              Get.back(result: {
-                'name': nameController.text,
-                'baseUrl': urlController.text
-                    .trimRight()
-                    .replaceAll(RegExp(r'/+$'), ''),
-                'apiKey': keyController.text,
-              });
-            },
-            child: const Text('保存'),
-          ),
-        ],
-      ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }
