@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:hive/hive.dart';
 import '../data/riddle_data.dart';
 import '../theme/app_theme.dart';
+import 'tts_settings_page.dart';
 
 /// 脑筋急转弯页面
 class RiddlePage extends StatefulWidget {
@@ -29,51 +31,56 @@ class _RiddlePageState extends State<RiddlePage> {
   // 是否正在播放语音
   final RxBool _isSpeaking = false.obs;
 
-  // 语速设置 (0.3 - 0.7)
-  final RxDouble _speechRate = 0.4.obs;
+  // 语速设置 (0.5 - 2.0，Android TTS 标准范围)
+  final RxDouble _speechRate = 1.0.obs;
 
   // 页面控制器
   late PageController _pageController;
 
   // 当前使用的引擎
-  final RxString _currentEngine = ''.obs;
+  final RxString _currentEngine = '系统默认'.obs;
+
+  // 设置存储
+  late Box _settingsBox;
 
   @override
   void initState() {
     super.initState();
-    _initTts();
     _loadRiddles();
     _pageController = PageController();
+    _initTts();
   }
 
   /// 初始化语音引擎
   Future<void> _initTts() async {
     _flutterTts = FlutterTts();
 
-    // 使用系统默认引擎和声音，只设置必要的参数
-    // 不强制切换引擎，尊重用户在系统中的 TTS 设置
+    // 加载保存的设置
+    _settingsBox = await Hive.openBox('tts_settings');
+    _speechRate.value = _settingsBox.get('speech_rate', defaultValue: 1.0);
+    final savedPitch = _settingsBox.get('pitch', defaultValue: 1.0);
+    final savedVolume = _settingsBox.get('volume', defaultValue: 1.0);
+    final savedEngine = _settingsBox.get('tts_engine', defaultValue: '');
+
     try {
-      // 设置语言为中文（如果支持）
-      await _flutterTts.setLanguage('zh-CN');
-
-      // 设置语速（可调节）
+      // 应用所有保存的设置
       await _flutterTts.setSpeechRate(_speechRate.value);
+      await _flutterTts.setPitch(savedPitch);
+      await _flutterTts.setVolume(savedVolume);
 
-      // 使用正常音调（1.0 是默认值，不要设置太高）
-      await _flutterTts.setPitch(1.0);
-
-      // 音量
-      await _flutterTts.setVolume(1.0);
-
-      // 获取当前引擎名称用于显示
-      if (GetPlatform.isAndroid) {
+      // 恢复引擎设置
+      if (savedEngine.isNotEmpty && GetPlatform.isAndroid) {
         final engines = await _flutterTts.getEngines;
-        if (engines != null && engines is List && engines.isNotEmpty) {
-          // 只记录，不强制切换
-          _currentEngine.value = '系统默认';
-          debugPrint('可用 TTS 引擎: $engines');
+        if (engines != null && engines.contains(savedEngine)) {
+          await _flutterTts.setEngine(savedEngine);
+          _currentEngine.value = _getEngineDisplayName(savedEngine);
         }
       }
+
+      // 注：声音设置需要在第三方 TTS 应用中配置，这里不做恢复
+
+      debugPrint(
+          'TTS 初始化完成，语速: ${_speechRate.value}, 音调: $savedPitch, 音量: $savedVolume');
     } catch (e) {
       debugPrint('TTS 初始化失败: $e');
     }
@@ -93,10 +100,21 @@ class _RiddlePageState extends State<RiddlePage> {
     });
   }
 
-  /// 更新语速
+  /// 获取引擎显示名称
+  String _getEngineDisplayName(String engine) {
+    if (engine.contains('google')) return 'Google TTS';
+    if (engine.contains('samsung')) return '三星 TTS';
+    if (engine.contains('huawei')) return '华为 TTS';
+    if (engine.contains('xiaomi')) return '小米 TTS';
+    if (engine.contains('multi')) return 'MultiTTS';
+    return engine.split('.').last;
+  }
+
+  /// 更新语速并保存
   Future<void> _updateSpeechRate(double rate) async {
     _speechRate.value = rate;
     await _flutterTts.setSpeechRate(rate);
+    await _settingsBox.put('speech_rate', rate);
   }
 
   /// 加载题目
@@ -465,17 +483,21 @@ class _RiddlePageState extends State<RiddlePage> {
                 child: Obx(() => Row(
                       children: [
                         Icon(Icons.speed, size: 18.sp, color: Colors.grey),
-                        SizedBox(width: 8.w),
+                        SizedBox(width: 4.w),
                         Text(
-                          '语速',
-                          style: TextStyle(fontSize: 12.sp, color: Colors.grey),
+                          '${_speechRate.value.toStringAsFixed(1)}x',
+                          style: TextStyle(
+                            fontSize: 11.sp,
+                            color: Colors.amber.shade700,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         Expanded(
                           child: Slider(
                             value: _speechRate.value,
-                            min: 0.2,
-                            max: 0.7,
-                            divisions: 5,
+                            min: 0.5,
+                            max: 2.0,
+                            divisions: 15,
                             activeColor: Colors.amber,
                             onChanged: (value) => _updateSpeechRate(value),
                           ),
@@ -483,9 +505,13 @@ class _RiddlePageState extends State<RiddlePage> {
                       ],
                     )),
               ),
-              // 引擎指示器
+              // 语音设置按钮
               GestureDetector(
-                onTap: _showEngineSelectionDialog,
+                onTap: () async {
+                  await Get.to(() => const TtsSettingsPage());
+                  // 返回后重新加载设置
+                  _initTts();
+                },
                 child: Container(
                   padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                   decoration: BoxDecoration(
@@ -585,182 +611,6 @@ class _RiddlePageState extends State<RiddlePage> {
               color: isDisabled ? Colors.grey : buttonColor,
               fontWeight: FontWeight.w600,
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// 显示引擎选择对话框
-  Future<void> _showEngineSelectionDialog() async {
-    if (!GetPlatform.isAndroid) {
-      Get.snackbar('提示', '引擎切换仅支持 Android 设备');
-      return;
-    }
-
-    try {
-      final engines = await _flutterTts.getEngines;
-      if (engines == null || engines.isEmpty) {
-        // 没有找到 TTS 引擎，显示引导对话框
-        _showNoTtsEngineDialog();
-        return;
-      }
-
-      Get.bottomSheet(
-        Container(
-          padding: EdgeInsets.all(20.w),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '选择语音引擎',
-                style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 8.h),
-              Text(
-                '推荐使用 Google 语音服务 (com.google.android.tts) 以获得最佳效果。',
-                style: TextStyle(fontSize: 12.sp, color: Colors.grey),
-              ),
-              SizedBox(height: 16.h),
-              // 使用 ListView 展示引擎列表
-              Flexible(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: engines.length,
-                  itemBuilder: (context, index) {
-                    final engine = engines[index].toString();
-                    final isGoogle = engine.contains('google');
-
-                    return ListTile(
-                      title: Text(engine),
-                      subtitle: isGoogle
-                          ? const Text('Google 官方引擎 (推荐)',
-                              style: TextStyle(color: Colors.green))
-                          : null,
-                      trailing: isGoogle
-                          ? const Icon(Icons.star, color: Colors.amber)
-                          : null,
-                      onTap: () async {
-                        await _flutterTts.setEngine(engine);
-                        _currentEngine.value = isGoogle ? 'Google 引擎' : '其他引擎';
-
-                        // 重新初始化语音设置
-                        await _flutterTts.setLanguage('zh-CN');
-                        await _flutterTts.setSpeechRate(_speechRate.value);
-                        await _flutterTts.setPitch(1.5);
-
-                        Get.back();
-                        Get.snackbar(
-                          '设置成功',
-                          '已切换到 $engine',
-                          snackPosition: SnackPosition.BOTTOM,
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-        isScrollControlled: true,
-      );
-    } catch (e) {
-      debugPrint('获取引擎列表失败: $e');
-      Get.snackbar('错误', '无法获取引擎列表: $e');
-    }
-  }
-
-  /// 显示无 TTS 引擎时的引导对话框
-  void _showNoTtsEngineDialog() {
-    final context = Get.overlayContext;
-    if (context == null) return;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('🔊 语音功能不可用'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('未检测到可用的 TTS 引擎。\n\n可能的原因：'),
-              const SizedBox(height: 8),
-              const Text('• 系统 TTS 服务未启用'),
-              const Text('• 需要在系统设置中开启语音播报权限'),
-              const Text('• 未安装中文语音包'),
-              const SizedBox(height: 16),
-              const Text('解决方法：',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              const Text('1. 打开手机【设置】→【辅助功能】→【文字转语音】'),
-              const Text('2. 选择并启用一个 TTS 引擎'),
-              const Text('3. 下载中文语音包'),
-              const Text('4. 重启应用'),
-              const SizedBox(height: 16),
-              TextButton.icon(
-                icon: const Icon(Icons.info_outline),
-                label: const Text('点击查看诊断信息'),
-                onPressed: () => _showTtsDiagnostics(),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('知道了'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// 显示 TTS 诊断信息
-  Future<void> _showTtsDiagnostics() async {
-    String diagnostics = '正在收集诊断信息...\n';
-
-    try {
-      // 检查引擎
-      final engines = await _flutterTts.getEngines;
-      diagnostics += '\n引擎列表: ${engines ?? "null"}';
-
-      // 检查语言
-      final languages = await _flutterTts.getLanguages;
-      diagnostics += '\n\n可用语言: ${languages ?? "null"}';
-
-      // 检查声音
-      final voices = await _flutterTts.getVoices;
-      diagnostics += '\n\n可用声音数量: ${voices?.length ?? 0}';
-
-      // 尝试直接播放测试
-      diagnostics += '\n\n正在尝试播放测试音...';
-      final result = await _flutterTts.speak('测试');
-      diagnostics += '\n播放结果: $result';
-    } catch (e) {
-      diagnostics += '\n\n错误: $e';
-    }
-
-    final context = Get.overlayContext;
-    if (context == null) return;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('TTS 诊断信息'),
-        content: SingleChildScrollView(
-          child: SelectableText(diagnostics),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('关闭'),
           ),
         ],
       ),
