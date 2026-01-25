@@ -94,6 +94,10 @@ class _RiddlePageState extends State<RiddlePage> {
       _isSpeaking.value = false;
     });
 
+    _flutterTts.setCancelHandler(() {
+      _isSpeaking.value = false;
+    });
+
     _flutterTts.setErrorHandler((msg) {
       _isSpeaking.value = false;
       debugPrint('TTS Error: $msg');

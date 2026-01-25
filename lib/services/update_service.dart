@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
@@ -309,14 +310,16 @@ class UpdateService extends GetxService {
               leading: const Icon(Icons.copy, color: Colors.orange),
               title: const Text('复制下载链接'),
               subtitle: const Text('手动在浏览器中下载'),
-              onTap: () {
+              onTap: () async {
                 Navigator.of(ctx).pop();
                 // 复制到剪贴板
+                await Clipboard.setData(
+                    ClipboardData(text: release.downloadUrl));
                 Get.snackbar(
                   '已复制',
-                  release.downloadUrl,
+                  '下载链接已复制到剪贴板',
                   snackPosition: SnackPosition.BOTTOM,
-                  duration: const Duration(seconds: 5),
+                  duration: const Duration(seconds: 3),
                 );
               },
             ),

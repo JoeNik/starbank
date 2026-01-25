@@ -73,6 +73,7 @@ class _TtsSettingsPageState extends State<TtsSettingsPage> {
     // 监听状态
     _flutterTts.setStartHandler(() => _isSpeaking.value = true);
     _flutterTts.setCompletionHandler(() => _isSpeaking.value = false);
+    _flutterTts.setCancelHandler(() => _isSpeaking.value = false);
     _flutterTts.setErrorHandler((msg) {
       _isSpeaking.value = false;
       Get.snackbar('语音错误', msg.toString(), snackPosition: SnackPosition.BOTTOM);
@@ -84,6 +85,7 @@ class _TtsSettingsPageState extends State<TtsSettingsPage> {
   Future<void> _speak(String text) async {
     if (_isSpeaking.value) {
       await _flutterTts.stop();
+      _isSpeaking.value = false; // 手动更新状态
     } else {
       await _flutterTts.speak(text);
     }
