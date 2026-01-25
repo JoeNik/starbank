@@ -28,13 +28,23 @@ class ReleaseInfo {
     // 从 tag_name 提取版本号 (v1.2.0-xxx -> 1.2.0)
     final tagName = json['tag_name'] as String? ?? '';
     String version = tagName;
+
+    // 移除 v 前缀
     if (version.startsWith('v')) {
       version = version.substring(1);
     }
+
     // 移除时间戳后缀 (1.2.0-20260124 -> 1.2.0)
     if (version.contains('-')) {
       version = version.split('-').first;
     }
+
+    // 移除 build number (+5 等)
+    if (version.contains('+')) {
+      version = version.split('+').first;
+    }
+
+    debugPrint('UpdateService: tagName=$tagName, version=$version');
 
     // 查找 APK 下载链接
     String downloadUrl = '';

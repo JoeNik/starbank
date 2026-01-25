@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../controllers/user_controller.dart';
+import '../controllers/app_mode_controller.dart';
 import '../services/update_service.dart';
 import 'webdav_settings_page.dart';
 
 /// 应用版本号 - 每次更新时同步修改 pubspec.yaml 中的 version
-const String appVersion = '1.4.0';
+const String appVersion = '1.5.0';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -14,12 +15,107 @@ class SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final UserController userController = Get.find<UserController>();
+    final AppModeController modeController = Get.find<AppModeController>();
 
     return Scaffold(
-      appBar: AppBar(title: const Text("系统设置")),
+      appBar: AppBar(
+        title: const Text("系统设置"),
+        actions: [
+          // 当前模式指示器
+          Obx(() => Container(
+                margin: EdgeInsets.only(right: 16.w),
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                decoration: BoxDecoration(
+                  color: modeController.isParentMode
+                      ? Colors.blue.shade50
+                      : Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(20.r),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      modeController.isParentMode
+                          ? Icons.admin_panel_settings
+                          : Icons.child_care,
+                      size: 16.sp,
+                      color: modeController.isParentMode
+                          ? Colors.blue
+                          : Colors.green,
+                    ),
+                    SizedBox(width: 4.w),
+                    Text(
+                      modeController.isParentMode ? '家长' : '儿童',
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        color: modeController.isParentMode
+                            ? Colors.blue
+                            : Colors.green,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+        ],
+      ),
       body: ListView(
         padding: EdgeInsets.all(16.w),
         children: [
+          // 模式切换区域
+          _buildSection("👨‍👩‍👧 模式控制"),
+          Card(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16.r),
+            ),
+            child: Column(
+              children: [
+                Obx(() => ListTile(
+                      leading: Icon(
+                        modeController.isParentMode
+                            ? Icons.admin_panel_settings
+                            : Icons.child_care,
+                        color: modeController.isParentMode
+                            ? Colors.blue
+                            : Colors.green,
+                      ),
+                      title:
+                          Text(modeController.isParentMode ? "家长模式" : "儿童模式"),
+                      subtitle: Text(modeController.isParentMode
+                          ? "可编辑所有数据"
+                          : "仅可查看，无法编辑"),
+                      trailing: TextButton(
+                        onPressed: () => modeController.showModeSwitchDialog(),
+                        child: Text(modeController.isParentMode
+                            ? "切换到儿童模式"
+                            : "切换到家长模式"),
+                      ),
+                    )),
+                // 密码设置（仅家长模式显示）
+                Obx(() => modeController.isParentMode
+                    ? Column(
+                        children: [
+                          const Divider(height: 1),
+                          ListTile(
+                            leading: const Icon(Icons.lock_outline,
+                                color: Colors.purple),
+                            title: Text(
+                                modeController.hasPassword ? "修改密码" : "设置密码"),
+                            subtitle: Text(modeController.hasPassword
+                                ? "已设置密码保护"
+                                : "建议设置密码保护儿童模式"),
+                            trailing:
+                                const Icon(Icons.arrow_forward_ios, size: 16),
+                            onTap: () => modeController.showSetPasswordDialog(),
+                          ),
+                        ],
+                      )
+                    : const SizedBox()),
+              ],
+            ),
+          ),
+          SizedBox(height: 20.h),
+
           _buildSection("个人信息"),
           Card(
             shape: RoundedRectangleBorder(
@@ -27,13 +123,20 @@ class SettingsPage extends StatelessWidget {
             ),
             child: Column(
               children: [
-                ListTile(
-                  leading: const Icon(Icons.person_outline, color: Colors.blue),
-                  title: const Text("家长称呼"),
-                  subtitle: Obx(() => Text(userController.parentName.value)),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () => _updateNameDialog(userController),
-                ),
+                // 家长模式才能编辑
+                Obx(() => ListTile(
+                      leading:
+                          const Icon(Icons.person_outline, color: Colors.blue),
+                      title: const Text("家长称呼"),
+                      subtitle: Text(userController.parentName.value),
+                      trailing: modeController.isParentMode
+                          ? const Icon(Icons.arrow_forward_ios, size: 16)
+                          : const Icon(Icons.lock,
+                              size: 16, color: Colors.grey),
+                      onTap: modeController.isParentMode
+                          ? () => _updateNameDialog(userController)
+                          : null,
+                    )),
               ],
             ),
           ),
@@ -45,17 +148,20 @@ class SettingsPage extends StatelessWidget {
             ),
             child: Column(
               children: [
-                ListTile(
-                  leading: const Icon(Icons.percent, color: Colors.orange),
-                  title: const Text("年化收益率"),
-                  subtitle: Obx(
-                    () => Text(
-                      "${(userController.currentInterestRate.value * 100).toStringAsFixed(1)}%",
-                    ),
-                  ),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () => _updateInterestDialog(userController),
-                ),
+                Obx(() => ListTile(
+                      leading: const Icon(Icons.percent, color: Colors.orange),
+                      title: const Text("年化收益率"),
+                      subtitle: Text(
+                        "${(userController.currentInterestRate.value * 100).toStringAsFixed(1)}%",
+                      ),
+                      trailing: modeController.isParentMode
+                          ? const Icon(Icons.arrow_forward_ios, size: 16)
+                          : const Icon(Icons.lock,
+                              size: 16, color: Colors.grey),
+                      onTap: modeController.isParentMode
+                          ? () => _updateInterestDialog(userController)
+                          : null,
+                    )),
               ],
             ),
           ),
@@ -67,13 +173,19 @@ class SettingsPage extends StatelessWidget {
             ),
             child: Column(
               children: [
-                ListTile(
-                  leading: const Icon(Icons.cloud_sync, color: Colors.purple),
-                  title: const Text("云端备份 (WebDAV)"),
-                  subtitle: const Text("配置 WebDAV 服务以备份和恢复数据"),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () => Get.to(() => const WebDavSettingsPage()),
-                ),
+                Obx(() => ListTile(
+                      leading:
+                          const Icon(Icons.cloud_sync, color: Colors.purple),
+                      title: const Text("云端备份 (WebDAV)"),
+                      subtitle: const Text("配置 WebDAV 服务以备份和恢复数据"),
+                      trailing: modeController.isParentMode
+                          ? const Icon(Icons.arrow_forward_ios, size: 16)
+                          : const Icon(Icons.lock,
+                              size: 16, color: Colors.grey),
+                      onTap: modeController.isParentMode
+                          ? () => Get.to(() => const WebDavSettingsPage())
+                          : null,
+                    )),
               ],
             ),
           ),

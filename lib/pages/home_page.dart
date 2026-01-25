@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../controllers/user_controller.dart';
-import '../models/baby.dart';
+// TODO: 后续实现儿童模式控制
+// import '../controllers/app_mode_controller.dart';
 import '../models/log.dart';
 import '../theme/app_theme.dart';
 import '../widgets/image_utils.dart';
@@ -14,6 +15,8 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final UserController controller = Get.find<UserController>();
+    // TODO: 在儿童模式下禁用编辑功能
+    // final AppModeController modeController = Get.find<AppModeController>();
 
     return Scaffold(
       body: Container(

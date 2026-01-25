@@ -411,46 +411,64 @@ class ActionSettingsPage extends StatelessWidget {
   void _showEmojiPicker(RxString selectedEmoji) {
     Get.bottomSheet(
       Container(
+        height: 400.h, // 固定高度
         padding: EdgeInsets.all(16.w),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
         ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               '选择图标',
               style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 16.h),
-            Wrap(
-              spacing: 12.w,
-              runSpacing: 12.h,
-              children: emojiList.map((emoji) {
-                return GestureDetector(
-                  onTap: () {
-                    selectedEmoji.value = emoji;
-                    Get.back();
-                  },
-                  child: Container(
-                    width: 48.w,
-                    height: 48.w,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(12.r),
+            // 使用 Expanded + GridView 使其可滑动
+            Expanded(
+              child: GridView.builder(
+                physics: const BouncingScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 6, // 每行6个
+                  childAspectRatio: 1,
+                  crossAxisSpacing: 8.w,
+                  mainAxisSpacing: 8.h,
+                ),
+                itemCount: emojiList.length,
+                itemBuilder: (context, index) {
+                  final emoji = emojiList[index];
+                  return GestureDetector(
+                    onTap: () {
+                      selectedEmoji.value = emoji;
+                      Get.back();
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(12.r),
+                      ),
+                      child: Center(
+                        child: Text(emoji, style: TextStyle(fontSize: 24.sp)),
+                      ),
                     ),
-                    child: Center(
-                      child: Text(emoji, style: TextStyle(fontSize: 28.sp)),
-                    ),
-                  ),
-                );
-              }).toList(),
+                  );
+                },
+              ),
             ),
-            SizedBox(height: 20.h),
+            SizedBox(height: 12.h),
+            // 随机按钮
+            TextButton.icon(
+              onPressed: () {
+                selectedEmoji.value = getRandomEmoji();
+                Get.back();
+              },
+              icon: const Text('🎲'),
+              label: const Text('随机选择'),
+            ),
           ],
         ),
       ),
+      isScrollControlled: true, // 允许更高的 bottom sheet
     );
   }
 
