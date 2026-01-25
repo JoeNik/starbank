@@ -50,60 +50,32 @@ class _RiddlePageState extends State<RiddlePage> {
   Future<void> _initTts() async {
     _flutterTts = FlutterTts();
 
-    // 1. 尝试设置最佳引擎 (Android)
+    // 使用系统默认引擎和声音，只设置必要的参数
+    // 不强制切换引擎，尊重用户在系统中的 TTS 设置
     try {
+      // 设置语言为中文（如果支持）
+      await _flutterTts.setLanguage('zh-CN');
+
+      // 设置语速（可调节）
+      await _flutterTts.setSpeechRate(_speechRate.value);
+
+      // 使用正常音调（1.0 是默认值，不要设置太高）
+      await _flutterTts.setPitch(1.0);
+
+      // 音量
+      await _flutterTts.setVolume(1.0);
+
+      // 获取当前引擎名称用于显示
       if (GetPlatform.isAndroid) {
         final engines = await _flutterTts.getEngines;
-        if (engines != null && engines is List) {
+        if (engines != null && engines is List && engines.isNotEmpty) {
+          // 只记录，不强制切换
+          _currentEngine.value = '系统默认';
           debugPrint('可用 TTS 引擎: $engines');
-          // 优先寻找 Google TTS
-          for (var engine in engines) {
-            final engineName = engine.toString();
-            if (engineName.contains('google')) {
-              await _flutterTts.setEngine(engineName);
-              _currentEngine.value = 'Google 引擎';
-              debugPrint('已切换到 Google TTS 引擎');
-              break;
-            }
-          }
         }
       }
     } catch (e) {
-      debugPrint('设置引擎失败: $e');
-    }
-
-    // 2. 设置通用参数
-    await _flutterTts.setLanguage('zh-CN');
-    await _flutterTts.setSpeechRate(_speechRate.value);
-    await _flutterTts.setPitch(1.5);
-    await _flutterTts.setVolume(1.0);
-
-    // 3. 尝试寻找更自然的声音 (针对选定引擎)
-    try {
-      final voices = await _flutterTts.getVoices;
-      if (voices != null && voices is List) {
-        for (var voice in voices) {
-          if (voice is Map) {
-            final name = voice['name']?.toString().toLowerCase() ?? '';
-            final locale = voice['locale']?.toString() ?? '';
-            // 优先选择中文女声 (xiaoxiao, yaoyao 等是常见的高质量中文语音包名)
-            if (locale.contains('zh') &&
-                (name.contains('female') ||
-                    name.contains('woman') ||
-                    name.contains('xiaoxiao') || // 微软/Google 常用名
-                    name.contains('yaoyao') ||
-                    name.contains('hi-cn-st'))) {
-              // Google 某些版本的标识
-              await _flutterTts
-                  .setVoice({"name": voice['name'], "locale": voice['locale']});
-              debugPrint('已设置声音: $name');
-              break;
-            }
-          }
-        }
-      }
-    } catch (e) {
-      debugPrint('设置声音失败: $e');
+      debugPrint('TTS 初始化失败: $e');
     }
 
     // 监听播放状态
