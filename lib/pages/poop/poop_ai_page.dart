@@ -68,8 +68,19 @@ class _PoopAIPageState extends State<PoopAIPage> {
   Future<void> _initData() async {
     setState(() => _isLoading = true);
 
-    // 获取 OpenAI 服务（全局已初始化）
-    _openAIService = Get.find<OpenAIService>();
+    // 获取 OpenAI 服务（可能延迟初始化）
+    try {
+      _openAIService = Get.find<OpenAIService>();
+    } catch (e) {
+      // 服务尚未初始化，等待一下再试
+      await Future.delayed(const Duration(milliseconds: 800));
+      try {
+        _openAIService = Get.find<OpenAIService>();
+      } catch (e) {
+        // 手动初始化
+        _openAIService = await Get.putAsync(() => OpenAIService().init());
+      }
+    }
 
     // 打开数据库
     if (!Hive.isAdapterRegistered(11)) {
