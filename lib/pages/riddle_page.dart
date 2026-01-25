@@ -629,7 +629,8 @@ class _RiddlePageState extends State<RiddlePage> {
     try {
       final engines = await _flutterTts.getEngines;
       if (engines == null || engines.isEmpty) {
-        Get.snackbar('提示', '未找到可用的 TTS 引擎');
+        // 没有找到 TTS 引擎，显示引导对话框
+        _showNoTtsEngineDialog();
         return;
       }
 
@@ -699,7 +700,98 @@ class _RiddlePageState extends State<RiddlePage> {
       );
     } catch (e) {
       debugPrint('获取引擎列表失败: $e');
-      Get.snackbar('错误', '无法获取引擎列表');
+      Get.snackbar('错误', '无法获取引擎列表: $e');
     }
+  }
+
+  /// 显示无 TTS 引擎时的引导对话框
+  void _showNoTtsEngineDialog() {
+    final context = Get.overlayContext;
+    if (context == null) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('🔊 语音功能不可用'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('未检测到可用的 TTS 引擎。\n\n可能的原因：'),
+              const SizedBox(height: 8),
+              const Text('• 系统 TTS 服务未启用'),
+              const Text('• 需要在系统设置中开启语音播报权限'),
+              const Text('• 未安装中文语音包'),
+              const SizedBox(height: 16),
+              const Text('解决方法：',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              const Text('1. 打开手机【设置】→【辅助功能】→【文字转语音】'),
+              const Text('2. 选择并启用一个 TTS 引擎'),
+              const Text('3. 下载中文语音包'),
+              const Text('4. 重启应用'),
+              const SizedBox(height: 16),
+              TextButton.icon(
+                icon: const Icon(Icons.info_outline),
+                label: const Text('点击查看诊断信息'),
+                onPressed: () => _showTtsDiagnostics(),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('知道了'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 显示 TTS 诊断信息
+  Future<void> _showTtsDiagnostics() async {
+    String diagnostics = '正在收集诊断信息...\n';
+
+    try {
+      // 检查引擎
+      final engines = await _flutterTts.getEngines;
+      diagnostics += '\n引擎列表: ${engines ?? "null"}';
+
+      // 检查语言
+      final languages = await _flutterTts.getLanguages;
+      diagnostics += '\n\n可用语言: ${languages ?? "null"}';
+
+      // 检查声音
+      final voices = await _flutterTts.getVoices;
+      diagnostics += '\n\n可用声音数量: ${voices?.length ?? 0}';
+
+      // 尝试直接播放测试
+      diagnostics += '\n\n正在尝试播放测试音...';
+      final result = await _flutterTts.speak('测试');
+      diagnostics += '\n播放结果: $result';
+    } catch (e) {
+      diagnostics += '\n\n错误: $e';
+    }
+
+    final context = Get.overlayContext;
+    if (context == null) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('TTS 诊断信息'),
+        content: SingleChildScrollView(
+          child: SelectableText(diagnostics),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('关闭'),
+          ),
+        ],
+      ),
+    );
   }
 }
