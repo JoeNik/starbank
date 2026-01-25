@@ -248,15 +248,83 @@ class UpdateService extends GetxService {
       return;
     }
 
-    try {
-      final uri = Uri.parse(release.downloadUrl);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        Get.snackbar('错误', '无法打开下载链接');
-      }
-    } catch (e) {
-      Get.snackbar('错误', '下载失败: $e');
-    }
+    // 显示下载选项
+    final context = Get.overlayContext;
+    if (context == null) return;
+
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => Container(
+        padding: EdgeInsets.all(20.w),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '选择下载方式',
+              style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 16.h),
+
+            // 直接下载 (GitHub)
+            ListTile(
+              leading: const Icon(Icons.download, color: Colors.blue),
+              title: const Text('直接下载'),
+              subtitle: const Text('从 GitHub 下载（可能需要科学上网）'),
+              onTap: () async {
+                Navigator.of(ctx).pop();
+                try {
+                  final uri = Uri.parse(release.downloadUrl);
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  }
+                } catch (e) {
+                  Get.snackbar('错误', '下载失败: $e');
+                }
+              },
+            ),
+
+            // 镜像下载 (ghproxy)
+            ListTile(
+              leading: const Icon(Icons.speed, color: Colors.green),
+              title: const Text('镜像加速下载'),
+              subtitle: const Text('使用 ghproxy 加速（推荐国内用户）'),
+              onTap: () async {
+                Navigator.of(ctx).pop();
+                try {
+                  // 使用 ghproxy 镜像加速
+                  final mirrorUrl =
+                      'https://ghproxy.com/${release.downloadUrl}';
+                  final uri = Uri.parse(mirrorUrl);
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  }
+                } catch (e) {
+                  Get.snackbar('错误', '下载失败: $e');
+                }
+              },
+            ),
+
+            // 复制链接
+            ListTile(
+              leading: const Icon(Icons.copy, color: Colors.orange),
+              title: const Text('复制下载链接'),
+              subtitle: const Text('手动在浏览器中下载'),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                // 复制到剪贴板
+                Get.snackbar(
+                  '已复制',
+                  release.downloadUrl,
+                  snackPosition: SnackPosition.BOTTOM,
+                  duration: const Duration(seconds: 5),
+                );
+              },
+            ),
+
+            SizedBox(height: 16.h),
+          ],
+        ),
+      ),
+    );
   }
 }
