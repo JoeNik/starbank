@@ -5,7 +5,6 @@ import 'services/storage_service.dart';
 import 'services/webdav_service.dart';
 import 'services/update_service.dart';
 import 'services/tts_service.dart';
-import 'services/openai_service.dart';
 import 'controllers/user_controller.dart';
 import 'controllers/shop_controller.dart';
 import 'controllers/app_mode_controller.dart';
@@ -32,8 +31,8 @@ void main() async {
   // Initialize TTS Service (全局语音服务)
   await Get.putAsync(() => TtsService().init());
 
-  // Initialize OpenAI Service (AI 服务)
-  await Get.putAsync(() => OpenAIService().init());
+  // OpenAI Service 改为懒加载（在需要时才初始化）
+  // 不在启动时初始化，由使用的页面自行初始化
 
   // Initialize Other Services and Controllers
   Get.put(WebDavService());
