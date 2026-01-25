@@ -156,14 +156,27 @@ class _HomePageState extends State<HomePage> {
                   icon: const Icon(Icons.edit_rounded, color: AppTheme.textSub),
                   onPressed: () => _showEditBabyDialog(controller),
                 )),
-          // 设置按钮（儿童模式隐藏）
-          Obx(() => modeController.isChildMode
-              ? const SizedBox()
-              : IconButton(
-                  icon: const Icon(Icons.settings_rounded,
-                      color: AppTheme.textSub),
-                  onPressed: () => Get.to(() => const SettingsPage()),
-                )),
+          // 设置按钮 - 始终显示，使用更醒目的样式
+          Container(
+            margin: EdgeInsets.only(left: 4.w),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8.r),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: IconButton(
+              icon: Icon(Icons.settings_rounded,
+                  color: AppTheme.primary, size: 22.sp),
+              onPressed: () => Get.to(() => const SettingsPage()),
+              tooltip: '设置',
+            ),
+          ),
         ],
       ),
     );
