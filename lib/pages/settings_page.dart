@@ -5,9 +5,10 @@ import '../controllers/user_controller.dart';
 import '../controllers/app_mode_controller.dart';
 import '../services/update_service.dart';
 import 'webdav_settings_page.dart';
+import 'openai_settings_page.dart';
 
 /// 应用版本号 - 每次更新时同步修改 pubspec.yaml 中的 version
-const String appVersion = '1.5.6';
+const String appVersion = '2.0.0';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -184,6 +185,19 @@ class SettingsPage extends StatelessWidget {
                               size: 16, color: Colors.grey),
                       onTap: modeController.isParentMode
                           ? () => Get.to(() => const WebDavSettingsPage())
+                          : null,
+                    )),
+                const Divider(height: 1),
+                Obx(() => ListTile(
+                      leading: const Icon(Icons.psychology, color: Colors.blue),
+                      title: const Text("AI 设置"),
+                      subtitle: const Text("配置 OpenAI 兼容的 API"),
+                      trailing: modeController.isParentMode
+                          ? const Icon(Icons.arrow_forward_ios, size: 16)
+                          : const Icon(Icons.lock,
+                              size: 16, color: Colors.grey),
+                      onTap: modeController.isParentMode
+                          ? () => Get.to(() => const OpenAISettingsPage())
                           : null,
                     )),
               ],

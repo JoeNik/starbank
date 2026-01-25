@@ -5,6 +5,7 @@ import 'services/storage_service.dart';
 import 'services/webdav_service.dart';
 import 'services/update_service.dart';
 import 'services/tts_service.dart';
+import 'services/openai_service.dart';
 import 'controllers/user_controller.dart';
 import 'controllers/shop_controller.dart';
 import 'controllers/app_mode_controller.dart';
@@ -12,16 +13,16 @@ import 'pages/home_page.dart';
 import 'theme/app_theme.dart';
 import 'pages/bank_page.dart';
 import 'pages/shop_page.dart';
-import 'pages/settings_page.dart';
 import 'pages/entertainment_page.dart';
+import 'pages/record_page.dart';
 
 // 版本号位置
 // 两个地方需要同步更新：
 
 // pubspec.yaml
-//  第 19 行：version: 1.5.0
+//  第 19 行：version: 2.0.0
 // lib/pages/settings_page.dart
-//  第 9 行：const String appVersion = '1.5.0';
+//  第 9 行：const String appVersion = '2.0.0';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -30,6 +31,9 @@ void main() async {
 
   // Initialize TTS Service (全局语音服务)
   await Get.putAsync(() => TtsService().init());
+
+  // Initialize OpenAI Service (AI 服务)
+  await Get.putAsync(() => OpenAIService().init());
 
   // Initialize Other Services and Controllers
   Get.put(WebDavService());
@@ -53,12 +57,11 @@ class MyApp extends StatelessWidget {
       builder: (context, child) {
         return GetMaterialApp(
           debugShowCheckedModeBanner: false,
-          title: 'Star Bank',
+          title: 'StarBank',
           theme: AppTheme.theme,
           initialRoute: '/',
           getPages: [
             GetPage(name: '/', page: () => const MainNavigationShell()),
-            // Other pages will be added as shells or subpages
           ],
         );
       },
@@ -76,12 +79,13 @@ class MainNavigationShell extends StatefulWidget {
 class _MainNavigationShellState extends State<MainNavigationShell> {
   int _currentIndex = 0;
 
+  // 导航栏页面：主页、银行、商店、娱乐、记录（设置移到主页右上角）
   final List<Widget> _pages = [
     const HomePage(),
     const BankPage(),
     const ShopPage(),
     const EntertainmentPage(),
-    const SettingsPage(),
+    const RecordPage(),
   ];
 
   @override
@@ -113,7 +117,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
           BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: '商店'),
           BottomNavigationBarItem(
               icon: Icon(Icons.sports_esports), label: '娱乐'),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: '设置'),
+          BottomNavigationBarItem(icon: Icon(Icons.edit_note), label: '记录'),
         ],
       ),
     );

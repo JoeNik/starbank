@@ -8,6 +8,7 @@ import '../models/action_item.dart';
 import '../theme/app_theme.dart';
 import '../widgets/image_utils.dart';
 import 'action_settings_page.dart';
+import 'settings_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -146,6 +147,14 @@ class HomePage extends StatelessWidget {
               : IconButton(
                   icon: const Icon(Icons.edit_rounded, color: AppTheme.textSub),
                   onPressed: () => _showEditBabyDialog(controller),
+                )),
+          // 设置按钮（儿童模式隐藏）
+          Obx(() => modeController.isChildMode
+              ? const SizedBox()
+              : IconButton(
+                  icon: const Icon(Icons.settings_rounded,
+                      color: AppTheme.textSub),
+                  onPressed: () => Get.to(() => const SettingsPage()),
                 )),
         ],
       ),

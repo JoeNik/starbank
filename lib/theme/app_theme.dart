@@ -4,8 +4,10 @@ class AppTheme {
   // Cute Pastel Palette
   static const Color primary = Color(0xFFFF9A9E); // Soft Pink
   static const Color primaryDark = Color(0xFFF06292);
-  static const Color secondary = Color(0xFFA1887F); // Warm Brown (for text/details)
-  
+  static const Color primaryLight = Color(0xFFFFCDD2); // Light Pink
+  static const Color secondary =
+      Color(0xFFA1887F); // Warm Brown (for text/details)
+
   static const Color bgPink = Color(0xFFFFF1F2);
   static const Color bgBlue = Color(0xFFE0F2F1);
   static const Color bgYellow = Color(0xFFFFF9DB);
