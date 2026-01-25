@@ -24,7 +24,7 @@ class OpenAIConfigAdapter extends TypeAdapter<OpenAIConfig> {
       models: (fields[4] as List).cast<String>(),
       selectedModel: fields[5] as String,
       isDefault: fields[6] as bool,
-      enableWebSearch: fields[7] as bool,
+      enableWebSearch: fields[7] == null ? false : fields[7] as bool,
     );
   }
 

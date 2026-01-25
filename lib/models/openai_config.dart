@@ -34,7 +34,7 @@ class OpenAIConfig extends HiveObject {
   bool isDefault;
 
   /// 是否启用联网搜索
-  @HiveField(7)
+  @HiveField(7, defaultValue: false)
   bool enableWebSearch;
 
   OpenAIConfig({
