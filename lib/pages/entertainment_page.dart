@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../theme/app_theme.dart';
 import 'riddle_page.dart';
+import 'story/story_game_page.dart';
 
 /// 娱乐模块入口页面
 class EntertainmentPage extends StatelessWidget {
@@ -98,18 +99,13 @@ class EntertainmentPage extends StatelessWidget {
                     color: const Color(0xFFFFB74D),
                     onTap: () => Get.to(() => const RiddlePage()),
                   ),
-                  // 更多功能占位
+                  // 看图讲故事
                   _buildFeatureCard(
-                    emoji: '🎯',
-                    title: '更多游戏',
-                    subtitle: '敬请期待',
-                    color: Colors.grey.shade300,
-                    isComingSoon: true,
-                    onTap: () => Get.snackbar(
-                      '🚧 敬请期待',
-                      '更多精彩内容即将上线',
-                      snackPosition: SnackPosition.BOTTOM,
-                    ),
+                    emoji: '📚',
+                    title: '看图讲故事',
+                    subtitle: 'AI引导讲故事',
+                    color: const Color(0xFF81C784),
+                    onTap: () => Get.to(() => const StoryGamePage()),
                   ),
                 ],
               ),

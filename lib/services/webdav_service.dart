@@ -142,6 +142,26 @@ class WebDavService extends GetxService {
         print('备份便便 AI 设置失败: $e');
       }
 
+      // 备份故事游戏配置
+      try {
+        final storyConfigBox = await Hive.openBox('story_game_config');
+        backupData['storyGameConfig'] =
+            Map<String, dynamic>.from(storyConfigBox.toMap());
+      } catch (e) {
+        print('备份故事游戏配置失败: $e');
+      }
+
+      // 备份故事游戏会话记录
+      try {
+        final storySessionBox = await Hive.openBox<dynamic>('story_sessions');
+        backupData['storySessions'] = storySessionBox.values.map((e) {
+          if (e is Map) return e;
+          return (e as dynamic).toJson();
+        }).toList();
+      } catch (e) {
+        print('备份故事游戏会话失败: $e');
+      }
+
       // 备份密码哈希
       try {
         final modeController = Get.find<AppModeController>();
@@ -349,6 +369,34 @@ class WebDavService extends GetxService {
           }
         } catch (e) {
           print('恢复便便 AI 设置失败: $e');
+        }
+      }
+
+      // 恢复故事游戏配置
+      if (backupData['storyGameConfig'] != null) {
+        try {
+          final storyConfigBox = await Hive.openBox('story_game_config');
+          await storyConfigBox.clear();
+          final config = backupData['storyGameConfig'] as Map;
+          for (var entry in config.entries) {
+            await storyConfigBox.put(entry.key, entry.value);
+          }
+        } catch (e) {
+          print('恢复故事游戏配置失败: $e');
+        }
+      }
+
+      // 恢复故事游戏会话记录
+      if (backupData['storySessions'] != null) {
+        try {
+          final storySessionBox = await Hive.openBox<dynamic>('story_sessions');
+          await storySessionBox.clear();
+          for (var item in (backupData['storySessions'] as List)) {
+            final id = item['id'] as String;
+            await storySessionBox.put(id, item);
+          }
+        } catch (e) {
+          print('恢复故事游戏会话失败: $e');
         }
       }
 
