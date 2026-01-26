@@ -378,42 +378,79 @@ class _StoryGamePageState extends State<StoryGamePage> {
     }
   }
 
+  /// 通用 API 请求方法，带重试逻辑
+  Future<http.Response> _sendApiRequestWithRetry(
+    Uri uri, {
+    required Map<String, String> headers,
+    required String body,
+    int maxRetries = 2,
+    Duration timeout = const Duration(seconds: 50),
+  }) async {
+    int retryCount = 0;
+    while (retryCount <= maxRetries) {
+      try {
+        if (retryCount > 0) {
+          debugPrint('正在进行第 $retryCount 次重试...');
+          // 显示简短提示告知用户正在重试
+          Get.snackbar(
+            '提示',
+            '网络请求较慢，正在重试 ($retryCount/$maxRetries)...',
+            snackPosition: SnackPosition.BOTTOM,
+            duration: const Duration(seconds: 2),
+            backgroundColor: Colors.orange.withOpacity(0.1),
+          );
+        }
+
+        final response =
+            await http.post(uri, headers: headers, body: body).timeout(timeout);
+
+        return response;
+      } catch (e) {
+        retryCount++;
+        if (retryCount > maxRetries) {
+          rethrow;
+        }
+        // 指数退避等待
+        await Future.delayed(Duration(seconds: retryCount * 2));
+      }
+    }
+    throw Exception('请求失败，已达到最大重试次数');
+  }
+
   /// 调用 Vision API
   Future<String> _callVisionAPI(
       OpenAIConfig config, String model, String prompt, String imageUrl) async {
-    // 使用 OpenAI 格式调用 Vision API
     final uri = Uri.parse('${config.baseUrl}/v1/chat/completions');
-    final response = await http
-        .post(
-          uri,
-          headers: {
-            'Authorization': 'Bearer ${config.apiKey}',
-            'Content-Type': 'application/json',
-          },
-          body: jsonEncode({
-            'model': model,
-            'messages': [
+    final response = await _sendApiRequestWithRetry(
+      uri,
+      headers: {
+        'Authorization': 'Bearer ${config.apiKey}',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'model': model,
+        'messages': [
+          {
+            'role': 'user',
+            'content': [
+              {'type': 'text', 'text': prompt},
               {
-                'role': 'user',
-                'content': [
-                  {'type': 'text', 'text': prompt},
-                  {
-                    'type': 'image_url',
-                    'image_url': {'url': imageUrl}
-                  },
-                ],
-              }
+                'type': 'image_url',
+                'image_url': {'url': imageUrl}
+              },
             ],
-            'max_tokens': 500,
-          }),
-        )
-        .timeout(const Duration(seconds: 30));
+          }
+        ],
+        'max_tokens': 500,
+      }),
+    );
 
     if (response.statusCode == 200) {
       final data = jsonDecode(utf8.decode(response.bodyBytes));
       return data['choices'][0]['message']['content'] as String;
     } else {
-      throw Exception('Vision API 请求失败: ${response.statusCode}');
+      throw Exception(
+          'Vision API 请求失败 (${response.statusCode}): ${response.body}');
     }
   }
 
@@ -615,20 +652,18 @@ class _StoryGamePageState extends State<StoryGamePage> {
 
       // 调用 API
       final uri = Uri.parse('${chatConfig.baseUrl}/v1/chat/completions');
-      final response = await http
-          .post(
-            uri,
-            headers: {
-              'Authorization': 'Bearer ${chatConfig.apiKey}',
-              'Content-Type': 'application/json',
-            },
-            body: jsonEncode({
-              'model': chatModel,
-              'messages': messagesForAPI,
-              'max_tokens': 200,
-            }),
-          )
-          .timeout(const Duration(seconds: 30));
+      final response = await _sendApiRequestWithRetry(
+        uri,
+        headers: {
+          'Authorization': 'Bearer ${chatConfig.apiKey}',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'model': chatModel,
+          'messages': messagesForAPI,
+          'max_tokens': 200,
+        }),
+      );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
@@ -702,20 +737,18 @@ class _StoryGamePageState extends State<StoryGamePage> {
       ];
 
       final uri = Uri.parse('${chatConfig.baseUrl}/v1/chat/completions');
-      final response = await http
-          .post(
-            uri,
-            headers: {
-              'Authorization': 'Bearer ${chatConfig.apiKey}',
-              'Content-Type': 'application/json',
-            },
-            body: jsonEncode({
-              'model': chatModel,
-              'messages': messagesForAPI,
-              'max_tokens': 300,
-            }),
-          )
-          .timeout(const Duration(seconds: 30));
+      final response = await _sendApiRequestWithRetry(
+        uri,
+        headers: {
+          'Authorization': 'Bearer ${chatConfig.apiKey}',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'model': chatModel,
+          'messages': messagesForAPI,
+          'max_tokens': 300,
+        }),
+      );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
@@ -841,7 +874,101 @@ class _StoryGamePageState extends State<StoryGamePage> {
           ),
         ],
       ),
-      body: _gameStarted ? _buildGameUI() : _buildStartUI(),
+      body: Stack(
+        children: [
+          _gameStarted ? _buildGameUI() : _buildStartUI(),
+          if (_isListening) _buildListeningOverlay(),
+        ],
+      ),
+    );
+  }
+
+  /// 录音时的全屏遮罩
+  Widget _buildListeningOverlay() {
+    return Positioned.fill(
+      child: GestureDetector(
+        onLongPressEnd: (_) => _stopListening(),
+        child: Container(
+          color: Colors.black.withOpacity(0.7),
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // 波动动画效果（简化版，使用图标缩放模拟）
+                  TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 1.0, end: 1.2),
+                    duration: const Duration(milliseconds: 500),
+                    curve: Curves.easeInOutSine,
+                    builder: (context, value, child) {
+                      return Transform.scale(
+                        scale: value,
+                        child: Container(
+                          padding: EdgeInsets.all(30.w),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Container(
+                            padding: EdgeInsets.all(20.w),
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.mic,
+                              color: Colors.white,
+                              size: 60.sp,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                    onEnd: () {
+                      // 简单的无限循环动画逻辑
+                      setState(() {});
+                    },
+                  ),
+                  SizedBox(height: 40.h),
+                  Text(
+                    '正在倾听...',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24.sp,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 16.h),
+                  Container(
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 20.w, vertical: 8.h),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(20.r),
+                    ),
+                    child: Text(
+                      '倒计时 $_recordingSecondsLeft 秒',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16.sp,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 60.h),
+                  Text(
+                    '松开发送',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 16.sp,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -1459,66 +1586,100 @@ class _StoryGamePageState extends State<StoryGamePage> {
                   icon: Icon(_useKeyboard ? Icons.mic : Icons.keyboard,
                       color: _useKeyboard ? Colors.blue : Colors.grey.shade600),
                   onPressed: () {
-                    if (_useKeyboard && !_speechAvailable) {
-                      _retrySpeechInit();
-                      return;
-                    }
                     setState(() => _useKeyboard = !_useKeyboard);
+                    // 如果切换到语音且未初始化，尝试静默初始化
+                    if (!_useKeyboard && !_speechAvailable) {
+                      _retrySpeechInit();
+                    }
                   },
                 ),
                 Expanded(
-                  child: _useKeyboard
-                      ? TextField(
-                          controller: _textController,
-                          decoration: InputDecoration(
-                            hintText: '写下你想说的...',
-                            contentPadding: EdgeInsets.symmetric(
-                                horizontal: 16.w, vertical: 10.h),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(24.r),
-                              borderSide:
-                                  BorderSide(color: Colors.grey.shade300),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: _useKeyboard
+                        ? TextField(
+                            key: const ValueKey('keyboard_input'),
+                            controller: _textController,
+                            decoration: InputDecoration(
+                              hintText: '写下你想说的...',
+                              contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 16.w, vertical: 10.h),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(24.r),
+                                borderSide:
+                                    BorderSide(color: Colors.grey.shade300),
+                              ),
                             ),
-                          ),
-                          onSubmitted: (_) => _submitText(),
-                        )
-                      : GestureDetector(
-                          onLongPressStart: (_) {
-                            if (!_isAIResponding) {
-                              // 震动反馈
-                              _startListening();
-                            }
-                          },
-                          onLongPressEnd: (_) {
-                            if (!_isAIResponding) _stopListening();
-                          },
-                          child: Container(
-                            height: 48.h,
-                            decoration: BoxDecoration(
-                              color: _isAIResponding
-                                  ? Colors.grey.shade200
-                                  : (_isListening
-                                      ? Colors.red.shade400
-                                      : AppTheme.primary),
-                              borderRadius: BorderRadius.circular(24.r),
-                            ),
-                            child: Center(
-                              child: Text(
-                                _isAIResponding
-                                    ? 'AI回复中...'
+                            onSubmitted: (_) => _submitText(),
+                          )
+                        : GestureDetector(
+                            key: const ValueKey('voice_input'),
+                            onTap: () {
+                              if (!_speechAvailable) {
+                                _retrySpeechInit();
+                              } else {
+                                Get.snackbar('提示', '请长按按钮进行说话',
+                                    snackPosition: SnackPosition.BOTTOM,
+                                    duration: const Duration(seconds: 1));
+                              }
+                            },
+                            onLongPressStart: (_) {
+                              if (!_isAIResponding) {
+                                if (!_speechAvailable) {
+                                  _retrySpeechInit();
+                                } else {
+                                  _startListening();
+                                }
+                              }
+                            },
+                            onLongPressEnd: (_) {
+                              if (!_isAIResponding && _isListening) {
+                                _stopListening();
+                              }
+                            },
+                            child: Container(
+                              height: 48.h,
+                              decoration: BoxDecoration(
+                                color: _isAIResponding
+                                    ? Colors.grey.shade200
                                     : (_isListening
-                                        ? '松开发送 ($_recordingSecondsLeft秒)'
-                                        : '按住说话'),
-                                style: TextStyle(
-                                  color: _isAIResponding
-                                      ? Colors.grey
-                                      : Colors.white,
-                                  fontWeight: FontWeight.bold,
+                                        ? Colors.red.shade400
+                                        : (_speechAvailable
+                                            ? AppTheme.primary
+                                            : Colors.grey.shade400)),
+                                borderRadius: BorderRadius.circular(24.r),
+                              ),
+                              child: Center(
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    if (!_speechAvailable && !_isAIResponding)
+                                      Padding(
+                                        padding: EdgeInsets.only(right: 8.w),
+                                        child: Icon(Icons.warning_amber,
+                                            color: Colors.white, size: 16.sp),
+                                      ),
+                                    Text(
+                                      _isAIResponding
+                                          ? 'AI回复中...'
+                                          : (!_speechAvailable
+                                              ? '语音不可用(点击重试)'
+                                              : (_isListening
+                                                  ? '正在倾听...'
+                                                  : '按住说话')),
+                                      style: TextStyle(
+                                        color: _isAIResponding
+                                            ? Colors.grey
+                                            : Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
                           ),
-                        ),
+                  ),
                 ),
                 if (_useKeyboard) ...[
                   SizedBox(width: 8.w),
