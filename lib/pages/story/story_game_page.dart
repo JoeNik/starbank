@@ -885,6 +885,7 @@ class _StoryGamePageState extends State<StoryGamePage> {
             width: double.infinity,
             margin: EdgeInsets.all(16.w),
             decoration: BoxDecoration(
+              color: Colors.white,
               borderRadius: BorderRadius.circular(16.r),
               boxShadow: [
                 BoxShadow(
@@ -904,7 +905,7 @@ class _StoryGamePageState extends State<StoryGamePage> {
                         tag: 'story_image',
                         child: buildStoryImage(
                           _currentImageUrl,
-                          fit: BoxFit.cover,
+                          fit: BoxFit.contain,
                           errorWidget: Container(
                             color: Colors.grey.shade200,
                             child: const Icon(Icons.image, size: 48),
