@@ -67,6 +67,10 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- 语音识别引擎查询声明 (Android 11+ 必需) -->
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
         <!-- TTS 引擎查询声明 (Android 11+ 必需) -->
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE"/>

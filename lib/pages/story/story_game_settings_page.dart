@@ -794,15 +794,10 @@ class _StoryGameSettingsPageState extends State<StoryGameSettingsPage> {
 
                   if (newUrls.isEmpty) throw Exception('未找到图片 URL');
 
-                  // Append or Replace? Let's Append with newline
-                  final currentText = controller.text.trim();
-                  if (currentText.isNotEmpty) {
-                    controller.text = '$currentText\n${newUrls.join('\n')}';
-                  } else {
-                    controller.text = newUrls.join('\n');
-                  }
+                  // Replace existing content
+                  controller.text = newUrls.join('\n');
 
-                  Get.snackbar('导入成功', '已追加 ${newUrls.length} 张图片URL',
+                  Get.snackbar('导入成功', '已导入 ${newUrls.length} 张图片URL',
                       snackPosition: SnackPosition.BOTTOM,
                       backgroundColor: Colors.green.shade100);
                 } else {

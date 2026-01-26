@@ -134,20 +134,27 @@ class _StoryGamePageState extends State<StoryGamePage> {
         }
 
         if (status.isGranted) {
-          _speechAvailable = await _speech.initialize(
-            onError: (error) {
-              debugPrint('Speech error: $error');
-              // 如果错误是永久性的，禁用语音
-              if (error.permanent) {
-                setState(() {
+          debugPrint('开始初始化语音识别服务...');
+          // 增加重试机制，有的设备第一次初始化会失败
+          int retryCount = 0;
+          while (retryCount < 3 && !_speechAvailable) {
+            if (retryCount > 0) {
+              debugPrint('语音初始化重试第 $retryCount 次...');
+              await Future.delayed(const Duration(milliseconds: 500));
+            }
+            _speechAvailable = await _speech.initialize(
+              onError: (error) {
+                debugPrint('Speech error (retry $retryCount): $error');
+                if (error.permanent) {
                   _speechAvailable = false;
-                  _useKeyboard = true;
-                });
-              }
-            },
-            onStatus: (status) => debugPrint('Speech status: $status'),
-            debugLogging: true, // 开启调试日志
-          );
+                }
+              },
+              onStatus: (status) => debugPrint('Speech status: $status'),
+              debugLogging: true,
+            );
+            if (_speechAvailable) break;
+            retryCount++;
+          }
         } else {
           debugPrint('麦克风权限被拒绝');
           _speechAvailable = false;

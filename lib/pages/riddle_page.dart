@@ -541,8 +541,12 @@ class _RiddlePageState extends State<RiddlePage> {
       if (validRiddles.isEmpty) throw Exception('没有有效的题目数据 (需包含 q 和 a 字段)');
 
       // Save to Hive
+      // 显式先清空
       await _customRiddlesBox.clear();
+      // 再添加
       await _customRiddlesBox.addAll(validRiddles);
+      // 强制立即同步到磁
+      await _customRiddlesBox.flush();
 
       Get.back(); // close dialog
       _loadRiddles();
