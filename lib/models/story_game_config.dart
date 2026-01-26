@@ -86,6 +86,20 @@ class StoryGameConfig extends HiveObject {
   @HiveField(16, defaultValue: '')
   String remoteImageApiUrl;
 
+  // ========== TTS 语音播报配置 ==========
+
+  /// TTS 语速（0.0-1.0，默认0.5）
+  @HiveField(17, defaultValue: 0.5)
+  double ttsRate;
+
+  /// TTS 音量（0.0-1.0，默认1.0）
+  @HiveField(18, defaultValue: 1.0)
+  double ttsVolume;
+
+  /// TTS 音调（0.5-2.0，默认1.0）
+  @HiveField(19, defaultValue: 1.0)
+  double ttsPitch;
+
   StoryGameConfig({
     required this.id,
     this.imageGenerationConfigId = '',
@@ -148,6 +162,9 @@ class StoryGameConfig extends HiveObject {
     this.enableStarReward = true,
     this.fallbackImageUrls = const [],
     this.remoteImageApiUrl = '',
+    this.ttsRate = 0.5,
+    this.ttsVolume = 1.0,
+    this.ttsPitch = 1.0,
   });
 
   /// 转换为 JSON
@@ -169,6 +186,9 @@ class StoryGameConfig extends HiveObject {
         'enableStarReward': enableStarReward,
         'fallbackImageUrls': fallbackImageUrls,
         'remoteImageApiUrl': remoteImageApiUrl,
+        'ttsRate': ttsRate,
+        'ttsVolume': ttsVolume,
+        'ttsPitch': ttsPitch,
       };
 
   /// 从 JSON 创建
@@ -196,5 +216,8 @@ class StoryGameConfig extends HiveObject {
                 .toList() ??
             [],
         remoteImageApiUrl: json['remoteImageApiUrl'] as String? ?? '',
+        ttsRate: (json['ttsRate'] as num?)?.toDouble() ?? 0.5,
+        ttsVolume: (json['ttsVolume'] as num?)?.toDouble() ?? 1.0,
+        ttsPitch: (json['ttsPitch'] as num?)?.toDouble() ?? 1.0,
       );
 }

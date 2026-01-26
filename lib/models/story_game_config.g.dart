@@ -36,13 +36,16 @@ class StoryGameConfigAdapter extends TypeAdapter<StoryGameConfig> {
       fallbackImageUrls:
           fields[15] == null ? [] : (fields[15] as List).cast<String>(),
       remoteImageApiUrl: fields[16] == null ? '' : fields[16] as String,
+      ttsRate: fields[17] == null ? 0.5 : fields[17] as double,
+      ttsVolume: fields[18] == null ? 1.0 : fields[18] as double,
+      ttsPitch: fields[19] == null ? 1.0 : fields[19] as double,
     );
   }
 
   @override
   void write(BinaryWriter writer, StoryGameConfig obj) {
     writer
-      ..writeByte(17)
+      ..writeByte(20)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -76,7 +79,13 @@ class StoryGameConfigAdapter extends TypeAdapter<StoryGameConfig> {
       ..writeByte(15)
       ..write(obj.fallbackImageUrls)
       ..writeByte(16)
-      ..write(obj.remoteImageApiUrl);
+      ..write(obj.remoteImageApiUrl)
+      ..writeByte(17)
+      ..write(obj.ttsRate)
+      ..writeByte(18)
+      ..write(obj.ttsVolume)
+      ..writeByte(19)
+      ..write(obj.ttsPitch);
   }
 
   @override

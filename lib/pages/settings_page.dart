@@ -8,7 +8,7 @@ import 'webdav_settings_page.dart';
 import 'openai_settings_page.dart';
 
 /// 应用版本号 - 每次更新时同步修改 pubspec.yaml 中的 version
-const String appVersion = '2.1.0';
+const String appVersion = '2.1.1';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});

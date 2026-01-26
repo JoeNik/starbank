@@ -335,6 +335,101 @@ class _StoryGameSettingsPageState extends State<StoryGameSettingsPage> {
               ],
             ),
 
+            SizedBox(height: 24.h),
+
+            // TTS 语音播报设置
+            _buildSectionTitle('🔊 语音播报设置'),
+            _buildConfigCard(
+              children: [
+                Text(
+                  'AI回复的语音播报参数（仅对当前故事游戏有效）',
+                  style: TextStyle(fontSize: 12.sp, color: Colors.grey),
+                ),
+                SizedBox(height: 16.h),
+                // 语速
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text('语速', style: TextStyle(fontSize: 14.sp)),
+                    ),
+                    SizedBox(
+                      width: 200.w,
+                      child: Slider(
+                        value: _config!.ttsRate,
+                        min: 0.0,
+                        max: 1.0,
+                        divisions: 10,
+                        label: _config!.ttsRate.toStringAsFixed(1),
+                        onChanged: (v) => setState(() => _config!.ttsRate = v),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 40.w,
+                      child: Text(
+                        _config!.ttsRate.toStringAsFixed(1),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 8.h),
+                // 音量
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text('音量', style: TextStyle(fontSize: 14.sp)),
+                    ),
+                    SizedBox(
+                      width: 200.w,
+                      child: Slider(
+                        value: _config!.ttsVolume,
+                        min: 0.0,
+                        max: 1.0,
+                        divisions: 10,
+                        label: _config!.ttsVolume.toStringAsFixed(1),
+                        onChanged: (v) =>
+                            setState(() => _config!.ttsVolume = v),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 40.w,
+                      child: Text(
+                        _config!.ttsVolume.toStringAsFixed(1),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 8.h),
+                // 音调
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text('音调', style: TextStyle(fontSize: 14.sp)),
+                    ),
+                    SizedBox(
+                      width: 200.w,
+                      child: Slider(
+                        value: _config!.ttsPitch,
+                        min: 0.5,
+                        max: 2.0,
+                        divisions: 15,
+                        label: _config!.ttsPitch.toStringAsFixed(1),
+                        onChanged: (v) => setState(() => _config!.ttsPitch = v),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 40.w,
+                      child: Text(
+                        _config!.ttsPitch.toStringAsFixed(1),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+
             SizedBox(height: 32.h),
 
             // 快速添加配置入口

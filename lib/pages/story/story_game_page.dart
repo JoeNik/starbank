@@ -105,11 +105,20 @@ class _StoryGamePageState extends State<StoryGamePage> {
       // 计算今日游戏次数
       _calculateTodayPlayCount();
 
-      // 初始化语音识别
-      _speechAvailable = await _speech.initialize(
-        onError: (error) => debugPrint('Speech error: $error'),
-        onStatus: (status) => debugPrint('Speech status: $status'),
-      );
+      // 初始化语音识别（需要麦克风权限）
+      try {
+        _speechAvailable = await _speech.initialize(
+          onError: (error) => debugPrint('Speech error: $error'),
+          onStatus: (status) => debugPrint('Speech status: $status'),
+        );
+
+        if (!_speechAvailable) {
+          debugPrint('语音识别初始化失败，可能缺少权限');
+        }
+      } catch (e) {
+        debugPrint('语音识别初始化异常: $e');
+        _speechAvailable = false;
+      }
 
       setState(() => _isLoading = false);
     } catch (e) {
@@ -343,7 +352,12 @@ class _StoryGamePageState extends State<StoryGamePage> {
   /// 开始录音
   void _startListening() async {
     if (!_speechAvailable) {
-      Get.snackbar('提示', '语音识别不可用', snackPosition: SnackPosition.BOTTOM);
+      Get.snackbar(
+        '语音识别不可用',
+        '请在系统设置中允许应用使用麦克风权限',
+        snackPosition: SnackPosition.BOTTOM,
+        duration: const Duration(seconds: 4),
+      );
       return;
     }
 
