@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -499,7 +500,14 @@ class _StoryGamePageState extends State<StoryGamePage> {
     });
 
     if (_recognizedText.isNotEmpty) {
-      await _sendChildMessage(_recognizedText);
+      // 停止录音后，将文字填入输入框并切换到键盘模式，方便用户修改发送
+      setState(() {
+        _textController.text = _recognizedText;
+        _useKeyboard = true;
+      });
+      Get.snackbar('识别成功', '已转为文字，可编辑后发送',
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 2));
     }
   }
 
@@ -538,8 +546,43 @@ class _StoryGamePageState extends State<StoryGamePage> {
     }
   }
 
+  /// 重新生成最后一条 AI 回复
+  Future<void> _retryLastAIResponse() async {
+    if (_messages.isEmpty || _isAIResponding) return;
+
+    // 如果最后一条是 AI 消息，删除它
+    if (_messages.last['role'] == 'ai') {
+      _messages.removeLast();
+    }
+
+    setState(() {
+      _isAIResponding = true;
+      _aiError = null;
+    });
+
+    await _getAIResponse();
+  }
+
+  /// 统一处理 AI 动作（引导、对话或总结）
+  Future<void> _handleAIAction() async {
+    if (_isAIResponding) return;
+
+    if (_messages.isEmpty) {
+      await _analyzeImageAndStart();
+    } else if (_currentRound >= (_gameConfig?.maxRounds ?? 5)) {
+      await _endGameWithEvaluation();
+    } else {
+      await _getAIResponse();
+    }
+  }
+
   /// 获取 AI 对话回复
   Future<void> _getAIResponse() async {
+    if (_isAIResponding) return;
+    setState(() {
+      _isAIResponding = true;
+      _aiError = null;
+    });
     try {
       // 获取对话配置
       OpenAIConfig? chatConfig;
@@ -880,95 +923,114 @@ class _StoryGamePageState extends State<StoryGamePage> {
   Widget _buildGameUI() {
     return Column(
       children: [
-        // 图片区域
+        // 图片区域 (支持折叠)
         if (_currentImageUrl.isNotEmpty)
-          // 图片区域 (支持折叠)
-          if (_currentImageUrl.isNotEmpty)
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeInOut,
-              height: _isImageCollapsed ? 60.h : 220.h,
-              width: double.infinity,
-              margin: EdgeInsets.all(16.w),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16.r),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Stack(
-                children: [
-                  // 图片
-                  InkWell(
-                    onTap: () => _showFullImage(_currentImageUrl),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16.r),
-                      child: _isGeneratingImage
-                          ? const Center(child: CircularProgressIndicator())
-                          : Hero(
-                              tag: 'story_image',
-                              child: SizedBox(
-                                width: double.infinity,
-                                height: double.infinity,
-                                child: buildStoryImage(
-                                  _currentImageUrl,
-                                  fit: BoxFit.contain, // 确保完整显示
-                                  errorWidget: Container(
-                                    color: Colors.grey.shade200,
-                                    child: const Icon(Icons.image, size: 48),
-                                  ),
-                                ),
-                              ),
-                            ),
-                    ),
-                  ),
-                  // 折叠/展开 按钮
-                  Positioned(
-                    bottom: 4,
-                    right: 4,
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _isImageCollapsed = !_isImageCollapsed;
-                        });
-                      },
-                      child: Container(
-                        padding: EdgeInsets.all(4.w),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.3),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          _isImageCollapsed
-                              ? Icons.keyboard_arrow_down
-                              : Icons.keyboard_arrow_up,
-                          color: Colors.white,
-                          size: 20.sp,
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            height: _isImageCollapsed ? 60.h : 220.h,
+            width: double.infinity,
+            margin: EdgeInsets.all(16.w),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16.r),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Stack(
+              children: [
+                // 背景高斯模糊
+                Positioned.fill(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16.r),
+                    child: ImageFiltered(
+                      imageFilter: ui.ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                      child: Opacity(
+                        opacity: 0.6,
+                        child: buildStoryImage(
+                          _currentImageUrl,
+                          fit: BoxFit.cover,
                         ),
                       ),
                     ),
                   ),
-                ],
-              ),
+                ),
+                // 图片主体
+                InkWell(
+                  onTap: () => _showFullImage(_currentImageUrl),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16.r),
+                    child: _isGeneratingImage
+                        ? const Center(child: CircularProgressIndicator())
+                        : Hero(
+                            tag: 'story_image',
+                            child: SizedBox(
+                              width: double.infinity,
+                              height: double.infinity,
+                              child: buildStoryImage(
+                                _currentImageUrl,
+                                fit: BoxFit.contain, // 确保完整显示
+                                errorWidget: Container(
+                                  color: Colors.grey.shade200,
+                                  child: const Icon(Icons.image, size: 48),
+                                ),
+                              ),
+                            ),
+                          ),
+                  ),
+                ),
+                // 折叠/展开 按钮
+                Positioned(
+                  bottom: 4,
+                  right: 4,
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _isImageCollapsed = !_isImageCollapsed;
+                      });
+                    },
+                    child: Container(
+                      padding: EdgeInsets.all(4.w),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.3),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        _isImageCollapsed
+                            ? Icons.keyboard_arrow_down
+                            : Icons.keyboard_arrow_up,
+                        color: Colors.white,
+                        size: 20.sp,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
+          ),
 
         // 对话区域
         Expanded(
           child: ListView.builder(
-            padding: EdgeInsets.symmetric(horizontal: 16.w),
+            reverse: true, // 聊天模式由下往上加载，解决键盘遮挡布局不跟随问题
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
             itemCount: _messages.length,
             itemBuilder: (context, index) {
-              final message = _messages[index];
+              // 反转索引：ListView反转后，视觉上的第0个其实是_messages最后一条
+              final messageIndex = _messages.length - 1 - index;
+              final message = _messages[messageIndex];
               final isAI = message['role'] == 'ai';
+              final isLast = messageIndex == _messages.length - 1;
 
               return _buildMessageBubble(
                 message['content'] as String,
                 isAI: isAI,
+                isLast: isLast,
               );
             },
           ),
@@ -1008,13 +1070,8 @@ class _StoryGamePageState extends State<StoryGamePage> {
                   onPressed: () {
                     setState(() {
                       _aiError = null;
-                      _isAIResponding = true;
                     });
-                    if (_messages.isEmpty) {
-                      _analyzeImageAndStart();
-                    } else {
-                      _getAIResponse();
-                    }
+                    _handleAIAction();
                   },
                   icon: const Icon(Icons.refresh, size: 16),
                   label: const Text('重试'),
@@ -1049,11 +1106,12 @@ class _StoryGamePageState extends State<StoryGamePage> {
   }
 
   /// 消息气泡
-  Widget _buildMessageBubble(String content, {required bool isAI}) {
+  Widget _buildMessageBubble(String content,
+      {required bool isAI, bool isLast = false}) {
     return Align(
       alignment: isAI ? Alignment.centerLeft : Alignment.centerRight,
       child: Container(
-        constraints: BoxConstraints(maxWidth: 280.w),
+        constraints: BoxConstraints(maxWidth: 290.w),
         margin: EdgeInsets.only(bottom: 12.h),
         padding: EdgeInsets.all(12.w),
         decoration: BoxDecoration(
@@ -1069,101 +1127,97 @@ class _StoryGamePageState extends State<StoryGamePage> {
                 ]
               : null,
         ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16.r),
-          onTap: () {
-            // 点击也可以播放语音（如果是AI）
-            if (isAI) _ttsService.speak(content);
-          },
-          onLongPress: () {
-            _showMessageMenu(content, isAI);
-          },
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        isAI ? Icons.smart_toy : Icons.child_care,
-                        size: 16.sp,
-                        color: isAI ? Colors.blue : AppTheme.primary,
-                      ),
-                      SizedBox(width: 4.w),
-                      Text(
-                        isAI ? 'AI 老师' : '宝宝',
-                        style: TextStyle(
-                          fontSize: 12.sp,
-                          fontWeight: FontWeight.bold,
-                          color: isAI ? Colors.blue : AppTheme.primary,
-                        ),
-                      ),
-                    ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // 头部：角色标识
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isAI ? Icons.smart_toy : Icons.child_care,
+                  size: 14.sp,
+                  color: isAI ? Colors.blue : AppTheme.primary,
+                ),
+                SizedBox(width: 4.w),
+                Text(
+                  isAI ? 'AI 老师' : '宝宝',
+                  style: TextStyle(
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.bold,
+                    color: isAI ? Colors.blue : AppTheme.primary,
                   ),
-                  if (isAI)
-                    GestureDetector(
-                      onTap: () => _ttsService.speak(
-                        content,
-                        rate: _gameConfig?.ttsRate,
-                        volume: _gameConfig?.ttsVolume,
-                        pitch: _gameConfig?.ttsPitch,
-                      ),
-                      child: Icon(
-                        Icons.volume_up,
-                        size: 18.sp,
-                        color: Colors.blue.withOpacity(0.6),
-                      ),
-                    ),
+                ),
+              ],
+            ),
+            SizedBox(height: 6.h),
+            // 内容
+            Text(
+              content,
+              style: TextStyle(fontSize: 14.sp, color: AppTheme.textMain),
+            ),
+            SizedBox(height: 8.h),
+            // 底部操作按钮
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (isAI) ...[
+                  // 播放按钮
+                  _buildBubbleAction(Icons.volume_up, () {
+                    _ttsService.speak(
+                      content,
+                      rate: _gameConfig?.ttsRate,
+                      volume: _gameConfig?.ttsVolume,
+                      pitch: _gameConfig?.ttsPitch,
+                    );
+                  }),
+                  _buildBubbleAction(Icons.copy, () {
+                    Clipboard.setData(ClipboardData(text: content));
+                    Get.snackbar('提示', '已复制到剪贴板',
+                        snackPosition: SnackPosition.BOTTOM);
+                  }),
+                  if (isLast && !_isAIResponding)
+                    _buildBubbleAction(
+                        Icons.refresh, () => _retryLastAIResponse()),
+                ] else ...[
+                  // 播放按钮
+                  _buildBubbleAction(Icons.volume_up, () {
+                    _ttsService.speak(
+                      content,
+                      rate: _gameConfig?.ttsRate,
+                      volume: _gameConfig?.ttsVolume,
+                      pitch: _gameConfig?.ttsPitch,
+                    );
+                  }),
+                  _buildBubbleAction(Icons.copy, () {
+                    Clipboard.setData(ClipboardData(text: content));
+                    Get.snackbar('提示', '已复制到剪贴板',
+                        snackPosition: SnackPosition.BOTTOM);
+                  }),
+                  _buildBubbleAction(
+                      Icons.edit, () => _showEditDialog(content)),
                 ],
-              ),
-              SizedBox(height: 8.h),
-              Text(
-                content,
-                style: TextStyle(fontSize: 14.sp),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
         ),
       ),
     );
   }
 
-  /// 显示消息操作菜单
-  void _showMessageMenu(String content, bool isAI) {
-    if (_gameEnded) return;
-
-    Get.bottomSheet(
-      Container(
-        color: Colors.white,
-        child: SafeArea(
-          child: Wrap(
-            children: [
-              ListTile(
-                leading: const Icon(Icons.copy),
-                title: const Text('复制内容'),
-                onTap: () {
-                  Clipboard.setData(ClipboardData(text: content));
-                  Get.back();
-                  Get.snackbar('提示', '已复制到剪贴板',
-                      snackPosition: SnackPosition.BOTTOM,
-                      duration: const Duration(seconds: 1));
-                },
-              ),
-              if (!isAI)
-                ListTile(
-                  leading: const Icon(Icons.edit),
-                  title: const Text('编辑重发'),
-                  onTap: () {
-                    Get.back();
-                    _showEditDialog(content);
-                  },
-                ),
-              // AI消息可以添加重试通过删除最后一条AI消息触发，但逻辑较复杂，这里简化支持编辑用户消息
-            ],
-          ),
+  /// 气泡内的小动作按钮
+  Widget _buildBubbleAction(IconData icon, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12.r),
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+        child: Icon(
+          icon,
+          size: 16.sp,
+          color: Colors.grey.shade400,
         ),
       ),
     );
@@ -1360,169 +1414,123 @@ class _StoryGamePageState extends State<StoryGamePage> {
         ],
       ),
       child: SafeArea(
-        child: _useKeyboard
-            ? Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!_useKeyboard)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.mic, color: Colors.blue),
-                    tooltip: '切换语音输入',
-                    onPressed: () {
-                      if (_speechAvailable) {
-                        setState(() => _useKeyboard = false);
-                      } else {
-                        // 尝试重试
-                        _retrySpeechInit();
-                      }
-                    },
-                  ),
-                  Expanded(
-                    child: TextField(
-                      controller: _textController,
-                      decoration: InputDecoration(
-                        hintText: '输入你想说的...',
-                        contentPadding: EdgeInsets.symmetric(
-                            horizontal: 16.w, vertical: 10.h),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(24.r),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(24.r),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(24.r),
-                          borderSide: BorderSide(color: AppTheme.primary),
-                        ),
-                      ),
-                      onSubmitted: (_) => _submitText(),
+                  // 轮次
+                  Container(
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(16.r),
+                    ),
+                    child: Text(
+                      '第 $_currentRound / ${_gameConfig?.maxRounds ?? 5} 轮',
+                      style: TextStyle(fontSize: 12.sp),
                     ),
                   ),
+                  // 结束按钮
+                  TextButton(
+                    onPressed: (_currentRound > 0 && !_isAIResponding)
+                        ? _endGameWithEvaluation
+                        : null,
+                    child: Text(
+                      '提前结束',
+                      style: TextStyle(
+                        color: (_currentRound > 0 && !_isAIResponding)
+                            ? Colors.red.shade300
+                            : Colors.grey.shade300,
+                        fontSize: 12.sp,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            if (!_useKeyboard) SizedBox(height: 12.h),
+            Row(
+              children: [
+                // 切换按钮 (语音模式显示键盘图标，键盘模式显示麦克风图标)
+                IconButton(
+                  icon: Icon(_useKeyboard ? Icons.mic : Icons.keyboard,
+                      color: _useKeyboard ? Colors.blue : Colors.grey.shade600),
+                  onPressed: () {
+                    if (_useKeyboard && !_speechAvailable) {
+                      _retrySpeechInit();
+                      return;
+                    }
+                    setState(() => _useKeyboard = !_useKeyboard);
+                  },
+                ),
+                Expanded(
+                  child: _useKeyboard
+                      ? TextField(
+                          controller: _textController,
+                          decoration: InputDecoration(
+                            hintText: '写下你想说的...',
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 16.w, vertical: 10.h),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(24.r),
+                              borderSide:
+                                  BorderSide(color: Colors.grey.shade300),
+                            ),
+                          ),
+                          onSubmitted: (_) => _submitText(),
+                        )
+                      : GestureDetector(
+                          onLongPressStart: (_) {
+                            if (!_isAIResponding) {
+                              // 震动反馈
+                              _startListening();
+                            }
+                          },
+                          onLongPressEnd: (_) {
+                            if (!_isAIResponding) _stopListening();
+                          },
+                          child: Container(
+                            height: 48.h,
+                            decoration: BoxDecoration(
+                              color: _isAIResponding
+                                  ? Colors.grey.shade200
+                                  : (_isListening
+                                      ? Colors.red.shade400
+                                      : AppTheme.primary),
+                              borderRadius: BorderRadius.circular(24.r),
+                            ),
+                            child: Center(
+                              child: Text(
+                                _isAIResponding
+                                    ? 'AI回复中...'
+                                    : (_isListening
+                                        ? '松开发送 ($_recordingSecondsLeft秒)'
+                                        : '按住说话'),
+                                style: TextStyle(
+                                  color: _isAIResponding
+                                      ? Colors.grey
+                                      : Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                ),
+                if (_useKeyboard) ...[
                   SizedBox(width: 8.w),
                   IconButton(
                     icon: const Icon(Icons.send, color: AppTheme.primary),
                     onPressed: _submitText,
                   ),
                 ],
-              )
-            : Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // 轮次
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 12.w, vertical: 6.h),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(16.r),
-                        ),
-                        child: Text(
-                          '第 $_currentRound / ${_gameConfig?.maxRounds ?? 5} 轮',
-                          style: TextStyle(fontSize: 12.sp),
-                        ),
-                      ),
-
-                      // 键盘切换按钮
-                      TextButton.icon(
-                        onPressed: () => setState(() => _useKeyboard = true),
-                        icon: const Icon(Icons.keyboard, size: 18),
-                        label: const Text('键盘输入'),
-                        style: TextButton.styleFrom(
-                          foregroundColor: Colors.grey.shade700,
-                        ),
-                      ),
-
-                      TextButton(
-                        onPressed: (_currentRound > 0 && !_isAIResponding)
-                            ? _endGameWithEvaluation
-                            : null,
-                        child: Text(
-                          '结束故事',
-                          style: TextStyle(
-                            color: (_currentRound > 0 && !_isAIResponding)
-                                ? Colors.grey.shade700
-                                : Colors.grey.shade300,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 16.h),
-                  // 录音按钮
-                  GestureDetector(
-                    onTapDown: (_) {
-                      if (!_isAIResponding) _startListening();
-                    },
-                    onTapUp: (_) {
-                      if (!_isAIResponding) _stopListening();
-                    },
-                    onTapCancel: () {
-                      if (!_isAIResponding) _stopListening();
-                    },
-                    child: Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.symmetric(vertical: 16.h),
-                      decoration: BoxDecoration(
-                        color: _isAIResponding
-                            ? Colors.grey.shade300
-                            : (_isListening
-                                ? Colors.red.shade400
-                                : AppTheme.primary),
-                        borderRadius: BorderRadius.circular(30.r),
-                        boxShadow: [
-                          if (!_isAIResponding)
-                            BoxShadow(
-                              color:
-                                  (_isListening ? Colors.red : AppTheme.primary)
-                                      .withOpacity(0.3),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                        ],
-                      ),
-                      child: Center(
-                        child: _isAIResponding
-                            ? Text(
-                                'AI 正在回复中...',
-                                style: TextStyle(
-                                    color: Colors.white, fontSize: 16.sp),
-                              )
-                            : Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                      _isListening ? Icons.mic : Icons.mic_none,
-                                      color: Colors.white),
-                                  SizedBox(width: 8.w),
-                                  Text(
-                                    _isListening
-                                        ? '松开 结束 ($_recordingSecondsLeft)'
-                                        : '按住 说话',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16.sp,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 8.h),
-                  // 提示文字
-                  Text(
-                    _isListening ? '松开手指发送' : '长按开始讲故事',
-                    style: TextStyle(
-                      fontSize: 12.sp,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ],
-              ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1706,13 +1714,14 @@ class _StoryGamePageState extends State<StoryGamePage> {
       _gameStarted = true;
       _gameEnded = false;
       _isAIResponding = false;
+      _aiError = null;
     });
 
     debugPrint('继续会话: ${session.id}, 轮次: $_currentRound');
 
-    // 如果最后一条消息是孩子发的，或者会话刚开始，可能需要触发 AI 回复
+    // 如果最后一条消息是孩子发的，或者轮次达到上限，触发相应动作
     if (_messages.isNotEmpty && _messages.last['role'] == 'child') {
-      _getAIResponse();
+      _handleAIAction();
     }
   }
 

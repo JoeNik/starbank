@@ -1124,6 +1124,9 @@ class _HomePageState extends State<HomePage> {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
+                    // Close keyboard if open
+                    FocusManager.instance.primaryFocus?.unfocus();
+
                     final val = int.tryParse(countController.text) ?? 1;
                     final reason = isCustomReason.value
                         ? (customReasonController.text.isEmpty
@@ -1131,8 +1134,21 @@ class _HomePageState extends State<HomePage> {
                             : customReasonController.text)
                         : selectedReason.value;
 
-                    controller.updateStars(isAdd ? val : -val, reason);
+                    // Close dialog FIRST
                     Get.back();
+
+                    // Then update and show feedback
+                    controller.updateStars(isAdd ? val : -val, reason);
+                    Get.snackbar(
+                      isAdd ? '🎉 棒棒哒！' : '💪 继续加油',
+                      '已${isAdd ? "获得" : "扣除"} $val 颗星星 ($reason)',
+                      snackPosition: SnackPosition.BOTTOM,
+                      backgroundColor: isAdd
+                          ? Colors.orange.withOpacity(0.1)
+                          : Colors.grey.withOpacity(0.1),
+                      colorText: Colors.black87,
+                      duration: const Duration(seconds: 2),
+                    );
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: themeColor,
