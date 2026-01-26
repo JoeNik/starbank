@@ -87,13 +87,18 @@ class OpenAIService extends GetxService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final models = (data['data'] as List)
-            .map((m) => m['id'] as String)
-            .where((id) =>
-                id.contains('gpt') ||
-                id.contains('claude') ||
-                id.contains('qwen'))
-            .toList();
+        final models =
+            (data['data'] as List).map((m) => m['id'] as String).where((id) {
+          // 排除明显不是对话模型的（嵌入模型、音频模型、图像生成模型等）
+          final lowerCaseId = id.toLowerCase();
+          return !lowerCaseId.contains('embedding') &&
+              !lowerCaseId.contains('whisper') &&
+              !lowerCaseId.contains('tts') &&
+              !lowerCaseId.contains('dall-e') &&
+              !lowerCaseId.contains('imagine') &&
+              !lowerCaseId.contains('stable-diffusion') &&
+              !lowerCaseId.startsWith('text-embedding');
+        }).toList();
         models.sort();
         return models;
       } else {
