@@ -91,11 +91,30 @@ class TtsService extends GetxService {
   }
 
   /// 播放文本
-  Future<void> speak(String text) async {
+  Future<void> speak(String text,
+      {double? rate, double? volume, double? pitch}) async {
     if (isSpeaking.value) {
       await stop();
     }
+
+    if (rate != null || volume != null || pitch != null) {
+      // 如果指定了参数，则临时设置
+      if (rate != null) await _flutterTts.setSpeechRate(rate);
+      if (volume != null) await _flutterTts.setVolume(volume);
+      if (pitch != null) await _flutterTts.setPitch(pitch);
+    } else {
+      // 否则应用全局设置，防止被之前的临时设置覆盖
+      await _applyGlobalSettings();
+    }
+
     await _flutterTts.speak(text);
+  }
+
+  /// 在开始播放前应用全局设置
+  Future<void> _applyGlobalSettings() async {
+    await _flutterTts.setSpeechRate(speechRate.value);
+    await _flutterTts.setPitch(pitch.value);
+    await _flutterTts.setVolume(volume.value);
   }
 
   /// 停止播放

@@ -69,6 +69,14 @@ class _StoryGamePageState extends State<StoryGamePage> {
   void dispose() {
     _speech.stop();
     _ttsService.stop();
+
+    // 保存未完成的会话
+    if (_currentSession != null && !_gameEnded && _messages.isNotEmpty) {
+      _currentSession!.messages = _messages;
+      _sessionBox.put(_currentSession!.id, _currentSession!);
+      debugPrint('退出时保存未完成会话: ${_currentSession!.id}');
+    }
+
     super.dispose();
   }
 
@@ -198,6 +206,10 @@ class _StoryGamePageState extends State<StoryGamePage> {
         imageUrl: _currentImageUrl,
       );
 
+      // 立即保存会话（未完成状态）
+      await _sessionBox.put(_currentSession!.id, _currentSession!);
+      debugPrint('会话已创建并保存: ${_currentSession!.id}');
+
       // 让 AI 分析图片并引导开始
       await _analyzeImageAndStart();
     } catch (e) {
@@ -294,7 +306,10 @@ class _StoryGamePageState extends State<StoryGamePage> {
       setState(() => _isAIResponding = false);
 
       // 语音播放
-      await _ttsService.speak(response);
+      await _ttsService.speak(response,
+          rate: _gameConfig?.ttsRate,
+          volume: _gameConfig?.ttsVolume,
+          pitch: _gameConfig?.ttsPitch);
     } catch (e) {
       debugPrint('图片分析失败: $e');
       setState(() => _isAIResponding = false);
@@ -306,7 +321,10 @@ class _StoryGamePageState extends State<StoryGamePage> {
         'content': defaultResponse,
         'timestamp': DateTime.now().toIso8601String(),
       });
-      await _ttsService.speak(defaultResponse);
+      await _ttsService.speak(defaultResponse,
+          rate: _gameConfig?.ttsRate,
+          volume: _gameConfig?.ttsVolume,
+          pitch: _gameConfig?.ttsPitch);
     }
   }
 
@@ -432,8 +450,12 @@ class _StoryGamePageState extends State<StoryGamePage> {
       _recognizedText = '';
     });
 
-    // 更新会话
+    // 更新并保存会话
     _currentSession?.messages = _messages;
+    if (_currentSession != null) {
+      await _sessionBox.put(_currentSession!.id, _currentSession!);
+      debugPrint('会话已更新: 第$_currentRound轮');
+    }
 
     // 检查是否达到最大轮数
     if (_currentRound >= _gameConfig!.maxRounds) {
@@ -502,8 +524,17 @@ class _StoryGamePageState extends State<StoryGamePage> {
           'timestamp': DateTime.now().toIso8601String(),
         });
 
+        // 保存会话
+        _currentSession?.messages = _messages;
+        if (_currentSession != null) {
+          await _sessionBox.put(_currentSession!.id, _currentSession!);
+        }
+
         setState(() => _isAIResponding = false);
-        await _ttsService.speak(aiResponse);
+        await _ttsService.speak(aiResponse,
+            rate: _gameConfig?.ttsRate,
+            volume: _gameConfig?.ttsVolume,
+            pitch: _gameConfig?.ttsPitch);
       } else {
         throw Exception('对话请求失败');
       }
@@ -517,12 +548,25 @@ class _StoryGamePageState extends State<StoryGamePage> {
         'content': fallbackResponse,
         'timestamp': DateTime.now().toIso8601String(),
       });
-      await _ttsService.speak(fallbackResponse);
+
+      // 保存会话
+      _currentSession?.messages = _messages;
+      if (_currentSession != null) {
+        await _sessionBox.put(_currentSession!.id, _currentSession!);
+      }
+
+      await _ttsService.speak(fallbackResponse,
+          rate: _gameConfig?.ttsRate,
+          volume: _gameConfig?.ttsVolume,
+          pitch: _gameConfig?.ttsPitch);
     }
   }
 
   /// 结束游戏并进行评价
   Future<void> _endGameWithEvaluation() async {
+    if (_isAIResponding) return;
+    setState(() => _isAIResponding = true);
+
     try {
       // 获取评价配置（使用对话配置）
       OpenAIConfig? chatConfig;
@@ -604,7 +648,10 @@ class _StoryGamePageState extends State<StoryGamePage> {
         });
 
         // 语音播放评价
-        await _ttsService.speak(evaluation);
+        await _ttsService.speak(evaluation,
+            rate: _gameConfig?.ttsRate,
+            volume: _gameConfig?.ttsVolume,
+            pitch: _gameConfig?.ttsPitch);
 
         // 奖励星星
         _awardStars();
@@ -626,7 +673,10 @@ class _StoryGamePageState extends State<StoryGamePage> {
         'timestamp': DateTime.now().toIso8601String(),
       });
 
-      await _ttsService.speak(fallbackEval);
+      await _ttsService.speak(fallbackEval,
+          rate: _gameConfig?.ttsRate,
+          volume: _gameConfig?.ttsVolume,
+          pitch: _gameConfig?.ttsPitch);
       _awardStars();
     }
   }
@@ -785,18 +835,24 @@ class _StoryGamePageState extends State<StoryGamePage> {
                 ),
               ],
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16.r),
-              child: _isGeneratingImage
-                  ? const Center(child: CircularProgressIndicator())
-                  : Image.network(
-                      _currentImageUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: Colors.grey.shade200,
-                        child: const Icon(Icons.image, size: 48),
+            child: InkWell(
+              onTap: () => _showFullImage(_currentImageUrl),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16.r),
+                child: _isGeneratingImage
+                    ? const Center(child: CircularProgressIndicator())
+                    : Hero(
+                        tag: 'story_image',
+                        child: Image.network(
+                          _currentImageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            color: Colors.grey.shade200,
+                            child: const Icon(Icons.image, size: 48),
+                          ),
+                        ),
                       ),
-                    ),
+              ),
             ),
           ),
 
@@ -880,22 +936,41 @@ class _StoryGamePageState extends State<StoryGamePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(
-                  isAI ? Icons.smart_toy : Icons.child_care,
-                  size: 16.sp,
-                  color: isAI ? Colors.blue : AppTheme.primary,
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isAI ? Icons.smart_toy : Icons.child_care,
+                      size: 16.sp,
+                      color: isAI ? Colors.blue : AppTheme.primary,
+                    ),
+                    SizedBox(width: 4.w),
+                    Text(
+                      isAI ? 'AI 老师' : '宝宝',
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.bold,
+                        color: isAI ? Colors.blue : AppTheme.primary,
+                      ),
+                    ),
+                  ],
                 ),
-                SizedBox(width: 4.w),
-                Text(
-                  isAI ? 'AI 老师' : '宝宝',
-                  style: TextStyle(
-                    fontSize: 12.sp,
-                    fontWeight: FontWeight.bold,
-                    color: isAI ? Colors.blue : AppTheme.primary,
+                if (isAI)
+                  GestureDetector(
+                    onTap: () => _ttsService.speak(
+                      content,
+                      rate: _gameConfig?.ttsRate,
+                      volume: _gameConfig?.ttsVolume,
+                      pitch: _gameConfig?.ttsPitch,
+                    ),
+                    child: Icon(
+                      Icons.volume_up,
+                      size: 18.sp,
+                      color: Colors.blue.withOpacity(0.6),
+                    ),
                   ),
-                ),
               ],
             ),
             SizedBox(height: 8.h),
@@ -906,6 +981,44 @@ class _StoryGamePageState extends State<StoryGamePage> {
           ],
         ),
       ),
+    );
+  }
+
+  /// 显示全屏图片缩放
+  void _showFullImage(String imageUrl) {
+    Get.dialog(
+      GestureDetector(
+        onTap: () => Get.back(),
+        child: Container(
+          color: Colors.black,
+          child: Stack(
+            children: [
+              Center(
+                child: Hero(
+                  tag: 'story_image',
+                  child: InteractiveViewer(
+                    minScale: 0.5,
+                    maxScale: 4.0,
+                    child: Image.network(
+                      imageUrl,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 40.h,
+                right: 20.w,
+                child: IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                  onPressed: () => Get.back(),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      useSafeArea: false,
     );
   }
 
@@ -1004,11 +1117,13 @@ class _StoryGamePageState extends State<StoryGamePage> {
                 ),
               ),
               TextButton(
-                onPressed: _currentRound > 0 ? _endGameWithEvaluation : null,
+                onPressed: (_currentRound > 0 && !_isAIResponding)
+                    ? _endGameWithEvaluation
+                    : null,
                 child: Text(
                   '结束故事',
                   style: TextStyle(
-                    color: _currentRound > 0
+                    color: (_currentRound > 0 && !_isAIResponding)
                         ? Colors.grey.shade700
                         : Colors.grey.shade300,
                   ),
@@ -1084,10 +1199,16 @@ class _StoryGamePageState extends State<StoryGamePage> {
     final babyId = _userController.currentBaby.value?.id;
     if (babyId == null) return;
 
-    final sessions = _sessionBox.values
-        .where((s) => s.babyId == babyId && s.isCompleted)
+    // 获取所有会话并按时间倒序
+    final allSessions = _sessionBox.values
+        .where((s) => s.babyId == babyId)
         .toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+    // 分为已完成和未完成
+    final incompleteSessions =
+        allSessions.where((s) => !s.isCompleted).toList();
+    final completedSessions = allSessions.where((s) => s.isCompleted).toList();
 
     showModalBottomSheet(
       context: context,
@@ -1113,38 +1234,25 @@ class _StoryGamePageState extends State<StoryGamePage> {
               ),
             ),
             Expanded(
-              child: sessions.isEmpty
+              child: allSessions.isEmpty
                   ? const Center(child: Text('暂无记录'))
-                  : ListView.builder(
+                  : ListView(
                       controller: scrollController,
-                      itemCount: sessions.length,
-                      itemBuilder: (context, index) {
-                        final session = sessions[index];
-                        return ListTile(
-                          leading: ClipRRect(
-                            borderRadius: BorderRadius.circular(8.r),
-                            child: Image.network(
-                              session.imageUrl,
-                              width: 50.w,
-                              height: 50.w,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
-                                width: 50.w,
-                                height: 50.w,
-                                color: Colors.grey.shade200,
-                                child: const Icon(Icons.image),
-                              ),
-                            ),
-                          ),
-                          title: Text(
-                            DateFormat('MM月dd日 HH:mm')
-                                .format(session.createdAt),
-                          ),
-                          subtitle: Text('得分：${session.score} 分'),
-                          trailing: const Icon(Icons.chevron_right),
-                          onTap: () => _showSessionDetail(session),
-                        );
-                      },
+                      children: [
+                        // 未完成的会话
+                        if (incompleteSessions.isNotEmpty) ...[
+                          _buildHistorySectionTitle('未完成的故事', Colors.orange),
+                          ...incompleteSessions
+                              .map((s) => _buildHistoryItem(s, isResume: true)),
+                        ],
+
+                        // 已完成的会话
+                        if (completedSessions.isNotEmpty) ...[
+                          _buildHistorySectionTitle('已完成的故事', Colors.green),
+                          ...completedSessions.map(
+                              (s) => _buildHistoryItem(s, isResume: false)),
+                        ],
+                      ],
                     ),
             ),
           ],
@@ -1153,9 +1261,93 @@ class _StoryGamePageState extends State<StoryGamePage> {
     );
   }
 
+  Widget _buildHistorySectionTitle(String title, Color color) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 14.sp,
+          fontWeight: FontWeight.bold,
+          color: color,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHistoryItem(StorySession session, {required bool isResume}) {
+    return ListTile(
+      leading: ClipRRect(
+        borderRadius: BorderRadius.circular(8.r),
+        child: Stack(
+          children: [
+            Image.network(
+              session.imageUrl,
+              width: 50.w,
+              height: 50.w,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(
+                width: 50.w,
+                height: 50.w,
+                color: Colors.grey.shade200,
+                child: const Icon(Icons.image),
+              ),
+            ),
+            if (isResume)
+              Positioned.fill(
+                child: Container(
+                  color: Colors.black26,
+                  child:
+                      Icon(Icons.play_arrow, color: Colors.white, size: 24.sp),
+                ),
+              ),
+          ],
+        ),
+      ),
+      title: Text(
+        DateFormat('MM月dd日 HH:mm').format(session.createdAt),
+        style: TextStyle(fontSize: 14.sp),
+      ),
+      subtitle: Text(
+        isResume
+            ? '进行到第 ${session.messages.where((m) => m['role'] == 'child').length} 轮'
+            : '得分：${session.score} 分',
+        style: TextStyle(fontSize: 12.sp),
+      ),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () {
+        Navigator.pop(context);
+        if (isResume) {
+          _continueSession(session);
+        } else {
+          _showSessionDetail(session);
+        }
+      },
+    );
+  }
+
+  /// 继续会话
+  void _continueSession(StorySession session) {
+    setState(() {
+      _currentSession = session;
+      _messages = List<Map<String, dynamic>>.from(session.messages);
+      _currentRound = _messages.where((m) => m['role'] == 'child').length;
+      _currentImageUrl = session.imageUrl;
+      _gameStarted = true;
+      _gameEnded = false;
+      _isAIResponding = false;
+    });
+
+    debugPrint('继续会话: ${session.id}, 轮次: $_currentRound');
+
+    // 如果最后一条消息是孩子发的，或者会话刚开始，可能需要触发 AI 回复
+    if (_messages.isNotEmpty && _messages.last['role'] == 'child') {
+      _getAIResponse();
+    }
+  }
+
   /// 显示会话详情
   void _showSessionDetail(StorySession session) {
-    Navigator.pop(context);
     // TODO: 显示详细对话记录
     Get.snackbar('提示', '故事详情功能开发中', snackPosition: SnackPosition.BOTTOM);
   }
