@@ -40,7 +40,7 @@ class _RiddlePageState extends State<RiddlePage> {
   late PageController _pageController;
 
   // 随机历史记录，用于支持上一题
-  final List<int> _history = [];
+  final RxList<int> _history = <int>[].obs;
   final Random _random = Random();
 
   @override
@@ -195,22 +195,22 @@ class _RiddlePageState extends State<RiddlePage> {
             ],
           ),
           // 题目计数
-          Obx(() => Container(
-                margin: EdgeInsets.only(right: 16.w),
-                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-                decoration: BoxDecoration(
-                  color: Colors.amber.shade100,
-                  borderRadius: BorderRadius.circular(20.r),
-                ),
-                child: Text(
-                  '随机题库中',
-                  style: TextStyle(
-                    color: Colors.amber.shade800,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12.sp,
-                  ),
-                ),
-              )),
+          Container(
+            margin: EdgeInsets.only(right: 16.w),
+            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+            decoration: BoxDecoration(
+              color: Colors.amber.shade100,
+              borderRadius: BorderRadius.circular(20.r),
+            ),
+            child: Text(
+              '随机题库中',
+              style: TextStyle(
+                color: Colors.amber.shade800,
+                fontWeight: FontWeight.bold,
+                fontSize: 12.sp,
+              ),
+            ),
+          ),
         ],
       ),
       body: SafeArea(

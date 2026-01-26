@@ -134,29 +134,29 @@ class _StoryGamePageState extends State<StoryGamePage> {
         }
 
         if (status.isGranted) {
-          debugPrint('开始初始化语音识别服务...');
-          // 增加重试机制，有的设备第一次初始化会失败
+          debugPrint('开始初识化语音识别服务...');
+          // 增加重试机制，特别是针对国产手机可能存在的服务唤醒延迟
           int retryCount = 0;
           while (retryCount < 3 && !_speechAvailable) {
             if (retryCount > 0) {
               debugPrint('语音初始化重试第 $retryCount 次...');
-              await Future.delayed(const Duration(milliseconds: 500));
+              await Future.delayed(const Duration(milliseconds: 1000));
             }
             _speechAvailable = await _speech.initialize(
-              onError: (error) {
-                debugPrint('Speech error (retry $retryCount): $error');
-                if (error.permanent) {
-                  _speechAvailable = false;
+              onError: (error) => debugPrint('Initial speech error: $error'),
+              onStatus: (status) {
+                debugPrint('Initial speech status: $status');
+                if (status == 'available' && !_speechAvailable) {
+                  setState(() => _speechAvailable = true);
                 }
               },
-              onStatus: (status) => debugPrint('Speech status: $status'),
               debugLogging: true,
             );
             if (_speechAvailable) break;
             retryCount++;
           }
         } else {
-          debugPrint('麦克风权限被拒绝');
+          debugPrint('麦克风权限未授予: $status');
           _speechAvailable = false;
         }
 
@@ -464,20 +464,44 @@ class _StoryGamePageState extends State<StoryGamePage> {
   /// 重试语音初始化
   Future<void> _retrySpeechInit() async {
     try {
+      // 再次显式请求权限
+      var status = await Permission.microphone.status;
+      if (!status.isGranted) {
+        status = await Permission.microphone.request();
+      }
+
+      if (!status.isGranted) {
+        Get.snackbar('权限不足', '请在设置中开启麦克风权限以使用语音功能',
+            snackPosition: SnackPosition.BOTTOM);
+        return;
+      }
+
+      Get.dialog(const Center(child: CircularProgressIndicator()),
+          barrierDismissible: false);
+
       bool available = await _speech.initialize(
         onError: (e) => debugPrint('Retry error: $e'),
+        onStatus: (s) => debugPrint('Retry status: $s'),
+        debugLogging: true,
       );
+
+      if (Get.isDialogOpen ?? false) Get.back(); // 关闭加载框
+
       if (available) {
         setState(() {
           _speechAvailable = true;
           _useKeyboard = false;
         });
-        Get.snackbar('成功', '语音服务已恢复', snackPosition: SnackPosition.BOTTOM);
+        Get.snackbar('成功', '语音服务已就绪',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.green.withOpacity(0.1));
       } else {
-        Get.snackbar('提示', '语音识别仍然不可用，请检查设置',
-            snackPosition: SnackPosition.BOTTOM);
+        Get.snackbar('提示', '语音转文字服务初始化失败。请确认手机已安装语音引擎，并允许系统麦克风访问权限。',
+            snackPosition: SnackPosition.BOTTOM,
+            duration: const Duration(seconds: 5));
       }
     } catch (e) {
+      if (Get.isDialogOpen ?? false) Get.back();
       debugPrint('重试语音初始化失败: $e');
     }
   }
