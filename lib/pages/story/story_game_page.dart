@@ -54,6 +54,7 @@ class _StoryGamePageState extends State<StoryGamePage> {
   int _finalScore = 0;
   String? _aiError; // AI 错误信息
   int get _maxRounds => _gameConfig?.maxRounds ?? 5;
+  bool _isImageCollapsed = false; // 图片折叠状态
 
   // 输入控制
   final TextEditingController _textController = TextEditingController();
@@ -881,41 +882,80 @@ class _StoryGamePageState extends State<StoryGamePage> {
       children: [
         // 图片区域
         if (_currentImageUrl.isNotEmpty)
-          Container(
-            height: 200.h,
-            width: double.infinity,
-            margin: EdgeInsets.all(16.w),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16.r),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: InkWell(
-              onTap: () => _showFullImage(_currentImageUrl),
-              child: ClipRRect(
+          // 图片区域 (支持折叠)
+          if (_currentImageUrl.isNotEmpty)
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              height: _isImageCollapsed ? 60.h : 220.h,
+              width: double.infinity,
+              margin: EdgeInsets.all(16.w),
+              decoration: BoxDecoration(
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(16.r),
-                child: _isGeneratingImage
-                    ? const Center(child: CircularProgressIndicator())
-                    : Hero(
-                        tag: 'story_image',
-                        child: buildStoryImage(
-                          _currentImageUrl,
-                          fit: BoxFit.contain,
-                          errorWidget: Container(
-                            color: Colors.grey.shade200,
-                            child: const Icon(Icons.image, size: 48),
-                          ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Stack(
+                children: [
+                  // 图片
+                  InkWell(
+                    onTap: () => _showFullImage(_currentImageUrl),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16.r),
+                      child: _isGeneratingImage
+                          ? const Center(child: CircularProgressIndicator())
+                          : Hero(
+                              tag: 'story_image',
+                              child: SizedBox(
+                                width: double.infinity,
+                                height: double.infinity,
+                                child: buildStoryImage(
+                                  _currentImageUrl,
+                                  fit: BoxFit.contain, // 确保完整显示
+                                  errorWidget: Container(
+                                    color: Colors.grey.shade200,
+                                    child: const Icon(Icons.image, size: 48),
+                                  ),
+                                ),
+                              ),
+                            ),
+                    ),
+                  ),
+                  // 折叠/展开 按钮
+                  Positioned(
+                    bottom: 4,
+                    right: 4,
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _isImageCollapsed = !_isImageCollapsed;
+                        });
+                      },
+                      child: Container(
+                        padding: EdgeInsets.all(4.w),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.3),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          _isImageCollapsed
+                              ? Icons.keyboard_arrow_down
+                              : Icons.keyboard_arrow_up,
+                          color: Colors.white,
+                          size: 20.sp,
                         ),
                       ),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
 
         // 对话区域
         Expanded(
