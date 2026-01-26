@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
 import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:permission_handler/permission_handler.dart';
 import 'package:intl/intl.dart';
 import '../../models/story_session.dart';
 import '../../models/story_game_config.dart';
@@ -14,6 +15,7 @@ import '../../services/openai_service.dart';
 import '../../services/tts_service.dart';
 import '../../theme/app_theme.dart';
 import 'story_game_settings_page.dart';
+import 'story_images.dart';
 
 /// 图片描述故事游戏页面
 class StoryGamePage extends StatefulWidget {
@@ -50,6 +52,10 @@ class _StoryGamePageState extends State<StoryGamePage> {
   bool _gameEnded = false;
   int _finalScore = 0;
 
+  // 输入控制
+  final TextEditingController _textController = TextEditingController();
+  bool _useKeyboard = false;
+
   // 配置
   late Box<StorySession> _sessionBox;
   late Box _configBox;
@@ -69,12 +75,14 @@ class _StoryGamePageState extends State<StoryGamePage> {
   void dispose() {
     _speech.stop();
     _ttsService.stop();
+    _textController.dispose();
 
     // 保存未完成的会话
     if (_currentSession != null && !_gameEnded && _messages.isNotEmpty) {
-      _currentSession!.messages = _messages;
-      _sessionBox.put(_currentSession!.id, _currentSession!);
-      debugPrint('退出时保存未完成会话: ${_currentSession!.id}');
+      _currentSession!.messages = List<Map<String, dynamic>>.from(_messages);
+      _currentSession!.save(); // 使用 save() 方法
+      debugPrint(
+          '退出时保存未完成会话: ${_currentSession!.id}, 消息数: ${_messages.length}');
     }
 
     super.dispose();
@@ -115,17 +123,50 @@ class _StoryGamePageState extends State<StoryGamePage> {
 
       // 初始化语音识别（需要麦克风权限）
       try {
-        _speechAvailable = await _speech.initialize(
-          onError: (error) => debugPrint('Speech error: $error'),
-          onStatus: (status) => debugPrint('Speech status: $status'),
-        );
+        var status = await Permission.microphone.status;
+        if (!status.isGranted) {
+          status = await Permission.microphone.request();
+        }
+
+        if (status.isGranted) {
+          _speechAvailable = await _speech.initialize(
+            onError: (error) {
+              debugPrint('Speech error: $error');
+              // 如果错误是永久性的，禁用语音
+              if (error.permanent) {
+                setState(() {
+                  _speechAvailable = false;
+                  _useKeyboard = true;
+                });
+              }
+            },
+            onStatus: (status) => debugPrint('Speech status: $status'),
+            debugLogging: true, // 开启调试日志
+          );
+        } else {
+          debugPrint('麦克风权限被拒绝');
+          _speechAvailable = false;
+        }
 
         if (!_speechAvailable) {
-          debugPrint('语音识别初始化失败，可能缺少权限');
+          debugPrint('语音识别初始化失败，可能缺少 Google 服务或麦克风权限');
+          _useKeyboard = true; // 自动启用键盘
+
+          Get.snackbar(
+            '语音不可用',
+            '请检查是否安装了 Google App 或开启了麦克风权限',
+            snackPosition: SnackPosition.BOTTOM,
+            duration: const Duration(seconds: 5),
+            mainButton: TextButton(
+              onPressed: () => openAppSettings(),
+              child: const Text('去设置', style: TextStyle(color: Colors.blue)),
+            ),
+          );
         }
       } catch (e) {
         debugPrint('语音识别初始化异常: $e');
         _speechAvailable = false;
+        _useKeyboard = true;
       }
 
       setState(() => _isLoading = false);
@@ -208,7 +249,7 @@ class _StoryGamePageState extends State<StoryGamePage> {
 
       // 立即保存会话（未完成状态）
       await _sessionBox.put(_currentSession!.id, _currentSession!);
-      debugPrint('会话已创建并保存: ${_currentSession!.id}');
+      debugPrint('会话已创建: ${_currentSession!.id}');
 
       // 让 AI 分析图片并引导开始
       await _analyzeImageAndStart();
@@ -255,16 +296,11 @@ class _StoryGamePageState extends State<StoryGamePage> {
       imagePool = List.from(_gameConfig!.fallbackImageUrls);
     }
 
-    // 3. 如果仍然没有图片，使用内置默认图片
+    // 3. 如果仍然没有图片，使用内置图片 (网络 + 本地)
     if (imagePool.isEmpty) {
       imagePool = [
-        'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600', // 森林
-        'https://images.unsplash.com/photo-1579366948929-444eb79881eb?w=600', // 城堡
-        'https://images.unsplash.com/photo-1544552866-d3ed42536cfd?w=600', // 海底
-        'https://images.unsplash.com/photo-1504208434309-cb69f4fe52b0?w=600', // 农场
-        'https://images.unsplash.com/photo-1462331940025-496dfbfc7564?w=600', // 太空
-        'https://images.unsplash.com/photo-1516627145497-ae6968895b74?w=600', // 动物
-        'https://images.unsplash.com/photo-1494548162494-384bba4ab999?w=600', // 日落
+        ...defaultStoryImages,
+        ...localStoryImages,
       ];
     }
 
@@ -302,6 +338,12 @@ class _StoryGamePageState extends State<StoryGamePage> {
         'content': response,
         'timestamp': DateTime.now().toIso8601String(),
       });
+
+      // 保存会话（初始引导）
+      if (_currentSession != null) {
+        _currentSession!.messages = List<Map<String, dynamic>>.from(_messages);
+        await _currentSession!.save();
+      }
 
       setState(() => _isAIResponding = false);
 
@@ -364,6 +406,27 @@ class _StoryGamePageState extends State<StoryGamePage> {
       return data['choices'][0]['message']['content'] as String;
     } else {
       throw Exception('Vision API 请求失败: ${response.statusCode}');
+    }
+  }
+
+  /// 重试语音初始化
+  Future<void> _retrySpeechInit() async {
+    try {
+      bool available = await _speech.initialize(
+        onError: (e) => debugPrint('Retry error: $e'),
+      );
+      if (available) {
+        setState(() {
+          _speechAvailable = true;
+          _useKeyboard = false;
+        });
+        Get.snackbar('成功', '语音服务已恢复', snackPosition: SnackPosition.BOTTOM);
+      } else {
+        Get.snackbar('提示', '语音识别仍然不可用，请检查设置',
+            snackPosition: SnackPosition.BOTTOM);
+      }
+    } catch (e) {
+      debugPrint('重试语音初始化失败: $e');
     }
   }
 
@@ -451,10 +514,10 @@ class _StoryGamePageState extends State<StoryGamePage> {
     });
 
     // 更新并保存会话
-    _currentSession?.messages = _messages;
     if (_currentSession != null) {
-      await _sessionBox.put(_currentSession!.id, _currentSession!);
-      debugPrint('会话已更新: 第$_currentRound轮');
+      _currentSession!.messages = List<Map<String, dynamic>>.from(_messages);
+      await _currentSession!.save();
+      debugPrint('会话已更新(Child): 第$_currentRound轮');
     }
 
     // 检查是否达到最大轮数
@@ -525,9 +588,10 @@ class _StoryGamePageState extends State<StoryGamePage> {
         });
 
         // 保存会话
-        _currentSession?.messages = _messages;
         if (_currentSession != null) {
-          await _sessionBox.put(_currentSession!.id, _currentSession!);
+          _currentSession!.messages =
+              List<Map<String, dynamic>>.from(_messages);
+          await _currentSession!.save();
         }
 
         setState(() => _isAIResponding = false);
@@ -550,9 +614,9 @@ class _StoryGamePageState extends State<StoryGamePage> {
       });
 
       // 保存会话
-      _currentSession?.messages = _messages;
       if (_currentSession != null) {
-        await _sessionBox.put(_currentSession!.id, _currentSession!);
+        _currentSession!.messages = List<Map<String, dynamic>>.from(_messages);
+        await _currentSession!.save();
       }
 
       await _ttsService.speak(fallbackResponse,
@@ -633,13 +697,13 @@ class _StoryGamePageState extends State<StoryGamePage> {
         });
 
         // 保存会话
-        _currentSession?.messages = _messages;
+        _currentSession?.messages = List<Map<String, dynamic>>.from(_messages);
         _currentSession?.score = _finalScore;
         _currentSession?.isCompleted = true;
         _currentSession?.storySummary = evaluation;
 
         if (_currentSession != null) {
-          await _sessionBox.put(_currentSession!.id, _currentSession!);
+          await _currentSession!.save();
         }
 
         setState(() {
@@ -843,10 +907,10 @@ class _StoryGamePageState extends State<StoryGamePage> {
                     ? const Center(child: CircularProgressIndicator())
                     : Hero(
                         tag: 'story_image',
-                        child: Image.network(
+                        child: buildStoryImage(
                           _currentImageUrl,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
+                          errorWidget: Container(
                             color: Colors.grey.shade200,
                             child: const Icon(Icons.image, size: 48),
                           ),
@@ -999,7 +1063,7 @@ class _StoryGamePageState extends State<StoryGamePage> {
                   child: InteractiveViewer(
                     minScale: 0.5,
                     maxScale: 4.0,
-                    child: Image.network(
+                    child: buildStoryImage(
                       imageUrl,
                       fit: BoxFit.contain,
                     ),
@@ -1020,6 +1084,17 @@ class _StoryGamePageState extends State<StoryGamePage> {
       ),
       useSafeArea: false,
     );
+  }
+
+  /// 底部操作栏
+  /// 发送文本输入
+  void _submitText() {
+    final text = _textController.text.trim();
+    if (text.isEmpty) return;
+
+    _textController.clear();
+    FocusScope.of(context).unfocus(); // 收起键盘
+    _sendChildMessage(text);
   }
 
   /// 底部操作栏
@@ -1061,10 +1136,14 @@ class _StoryGamePageState extends State<StoryGamePage> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () {
-                      setState(() {
-                        _gameStarted = false;
-                        _gameEnded = false;
-                      });
+                      if (_currentRound > 0) {
+                        Navigator.pop(context);
+                      } else {
+                        setState(() {
+                          _gameStarted = false;
+                          _gameEnded = false;
+                        });
+                      }
                     },
                     child: const Text('返回'),
                   ),
@@ -1087,7 +1166,7 @@ class _StoryGamePageState extends State<StoryGamePage> {
     }
 
     return Container(
-      padding: EdgeInsets.all(16.w),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
@@ -1098,98 +1177,165 @@ class _StoryGamePageState extends State<StoryGamePage> {
           ),
         ],
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // 轮次和结束按钮
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(16.r),
-                ),
-                child: Text(
-                  '第 $_currentRound / ${_gameConfig?.maxRounds ?? 5} 轮',
-                  style: TextStyle(fontSize: 12.sp),
-                ),
-              ),
-              TextButton(
-                onPressed: (_currentRound > 0 && !_isAIResponding)
-                    ? _endGameWithEvaluation
-                    : null,
-                child: Text(
-                  '结束故事',
-                  style: TextStyle(
-                    color: (_currentRound > 0 && !_isAIResponding)
-                        ? Colors.grey.shade700
-                        : Colors.grey.shade300,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 12.h),
-
-          // 大录音按钮（儿童友好）
-          GestureDetector(
-            onLongPressStart: (_) => _startListening(),
-            onLongPressEnd: (_) => _stopListening(),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: _isListening ? 140.w : 120.w,
-              height: _isListening ? 140.w : 120.w,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: _isListening ? Colors.red : AppTheme.primary,
-                boxShadow: [
-                  BoxShadow(
-                    color: (_isListening ? Colors.red : AppTheme.primary)
-                        .withOpacity(0.4),
-                    blurRadius: _isListening ? 20 : 10,
-                    spreadRadius: _isListening ? 5 : 2,
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+      child: SafeArea(
+        child: _useKeyboard
+            ? Row(
                 children: [
-                  // 录音图标（带动画）
-                  AnimatedScale(
-                    scale: _isListening ? 1.2 : 1.0,
-                    duration: const Duration(milliseconds: 200),
-                    child: Icon(
-                      _isListening ? Icons.mic : Icons.mic_none,
-                      color: Colors.white,
-                      size: 40.sp,
+                  IconButton(
+                    icon: const Icon(Icons.mic, color: Colors.blue),
+                    tooltip: '切换语音输入',
+                    onPressed: () {
+                      if (_speechAvailable) {
+                        setState(() => _useKeyboard = false);
+                      } else {
+                        // 尝试重试
+                        _retrySpeechInit();
+                      }
+                    },
+                  ),
+                  Expanded(
+                    child: TextField(
+                      controller: _textController,
+                      decoration: InputDecoration(
+                        hintText: '输入你想说的...',
+                        contentPadding: EdgeInsets.symmetric(
+                            horizontal: 16.w, vertical: 10.h),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24.r),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24.r),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24.r),
+                          borderSide: BorderSide(color: AppTheme.primary),
+                        ),
+                      ),
+                      onSubmitted: (_) => _submitText(),
                     ),
                   ),
-                  SizedBox(height: 4.h),
-                  // 倒计时或提示文字
+                  SizedBox(width: 8.w),
+                  IconButton(
+                    icon: const Icon(Icons.send, color: AppTheme.primary),
+                    onPressed: _submitText,
+                  ),
+                ],
+              )
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // 轮次
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 12.w, vertical: 6.h),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(16.r),
+                        ),
+                        child: Text(
+                          '第 $_currentRound / ${_gameConfig?.maxRounds ?? 5} 轮',
+                          style: TextStyle(fontSize: 12.sp),
+                        ),
+                      ),
+
+                      // 键盘切换按钮
+                      TextButton.icon(
+                        onPressed: () => setState(() => _useKeyboard = true),
+                        icon: const Icon(Icons.keyboard, size: 18),
+                        label: const Text('键盘输入'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.grey.shade700,
+                        ),
+                      ),
+
+                      TextButton(
+                        onPressed: (_currentRound > 0 && !_isAIResponding)
+                            ? _endGameWithEvaluation
+                            : null,
+                        child: Text(
+                          '结束故事',
+                          style: TextStyle(
+                            color: (_currentRound > 0 && !_isAIResponding)
+                                ? Colors.grey.shade700
+                                : Colors.grey.shade300,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 16.h),
+                  // 录音按钮
+                  GestureDetector(
+                    onLongPressStart:
+                        _isAIResponding ? null : (_) => _startListening(),
+                    onLongPressEnd:
+                        _isAIResponding ? null : (_) => _stopListening(),
+                    child: Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.symmetric(vertical: 16.h),
+                      decoration: BoxDecoration(
+                        color: _isAIResponding
+                            ? Colors.grey.shade300
+                            : (_isListening
+                                ? Colors.red.shade400
+                                : AppTheme.primary),
+                        borderRadius: BorderRadius.circular(30.r),
+                        boxShadow: [
+                          if (!_isAIResponding)
+                            BoxShadow(
+                              color:
+                                  (_isListening ? Colors.red : AppTheme.primary)
+                                      .withOpacity(0.3),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                        ],
+                      ),
+                      child: Center(
+                        child: _isAIResponding
+                            ? Text(
+                                'AI 正在回复中...',
+                                style: TextStyle(
+                                    color: Colors.white, fontSize: 16.sp),
+                              )
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                      _isListening ? Icons.mic : Icons.mic_none,
+                                      color: Colors.white),
+                                  SizedBox(width: 8.w),
+                                  Text(
+                                    _isListening
+                                        ? '松开 结束 ($_recordingSecondsLeft)'
+                                        : '按住 说话',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16.sp,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 8.h),
+                  // 提示文字
                   Text(
-                    _isListening ? '${_recordingSecondsLeft}s' : '按住说话',
+                    _isListening ? '松开手指发送' : '长按开始讲故事',
                     style: TextStyle(
-                      color: Colors.white,
-                      fontSize: _isListening ? 16.sp : 12.sp,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 12.sp,
+                      color: Colors.grey,
                     ),
                   ),
                 ],
               ),
-            ),
-          ),
-          SizedBox(height: 8.h),
-          // 提示文字
-          Text(
-            _isListening ? '松开手指发送' : '长按开始讲故事',
-            style: TextStyle(
-              fontSize: 12.sp,
-              color: Colors.grey,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -1281,16 +1427,16 @@ class _StoryGamePageState extends State<StoryGamePage> {
         borderRadius: BorderRadius.circular(8.r),
         child: Stack(
           children: [
-            Image.network(
+            buildStoryImage(
               session.imageUrl,
               width: 50.w,
               height: 50.w,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
+              errorWidget: Container(
                 width: 50.w,
                 height: 50.w,
                 color: Colors.grey.shade200,
-                child: const Icon(Icons.image),
+                child: const Icon(Icons.image, color: Colors.grey),
               ),
             ),
             if (isResume)
@@ -1314,15 +1460,52 @@ class _StoryGamePageState extends State<StoryGamePage> {
             : '得分：${session.score} 分',
         style: TextStyle(fontSize: 12.sp),
       ),
-      trailing: const Icon(Icons.chevron_right),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.delete_outline, color: Colors.grey),
+            onPressed: () => _deleteSession(session),
+          ),
+          const Icon(Icons.chevron_right),
+        ],
+      ),
       onTap: () {
-        Navigator.pop(context);
         if (isResume) {
+          Navigator.pop(context);
           _continueSession(session);
         } else {
+          // 不关闭弹窗，直接跳转详情，返回时还在列表
           _showSessionDetail(session);
         }
       },
+    );
+  }
+
+  /// 删除会话
+  void _deleteSession(StorySession session) {
+    Get.dialog(
+      AlertDialog(
+        title: const Text('删除记录'),
+        content: const Text('确定要删除这条故事记录吗？此操作无法撤销。'),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () async {
+              await session.delete(); // HiveObject 的 delete 方法
+              Get.back(); // 关闭对话框
+              // 刷新列表（_showHistory 会重新构建）
+              Navigator.pop(context); // 关闭历史列表
+              _showHistory(); // 重新打开历史列表以刷新
+              Get.snackbar('提示', '记录已删除', snackPosition: SnackPosition.BOTTOM);
+            },
+            child: const Text('删除', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1348,7 +1531,248 @@ class _StoryGamePageState extends State<StoryGamePage> {
 
   /// 显示会话详情
   void _showSessionDetail(StorySession session) {
-    // TODO: 显示详细对话记录
-    Get.snackbar('提示', '故事详情功能开发中', snackPosition: SnackPosition.BOTTOM);
+    Get.to(() => _SessionDetailPage(session: session));
+  }
+}
+
+/// 故事详情页面
+class _SessionDetailPage extends StatelessWidget {
+  final StorySession session;
+  final TtsService _ttsService = Get.find<TtsService>();
+
+  _SessionDetailPage({required this.session});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('故事详情'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.volume_up),
+            tooltip: '朗读完整故事',
+            onPressed: () => _speakFullStory(),
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          // 顶部图片
+          SizedBox(
+            height: 200.h,
+            width: double.infinity,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                buildStoryImage(
+                  session.imageUrl,
+                  fit: BoxFit.cover,
+                  errorWidget: Container(
+                    color: Colors.grey.shade200,
+                    child: const Icon(Icons.image, size: 50),
+                  ),
+                ),
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: Container(
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                        colors: [
+                          Colors.black.withOpacity(0.7),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          DateFormat('yyyy-MM-dd HH:mm')
+                              .format(session.createdAt),
+                          style:
+                              TextStyle(color: Colors.white, fontSize: 12.sp),
+                        ),
+                        if (session.isCompleted)
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 8.w, vertical: 2.h),
+                            decoration: BoxDecoration(
+                              color: Colors.amber,
+                              borderRadius: BorderRadius.circular(4.r),
+                            ),
+                            child: Text(
+                              '${session.score}分',
+                              style: TextStyle(
+                                  fontSize: 12.sp, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // 故事内容列表
+          Expanded(
+            child: ListView.builder(
+              padding: EdgeInsets.all(16.w),
+              itemCount:
+                  session.messages.length + (session.isCompleted ? 1 : 0),
+              itemBuilder: (context, index) {
+                // 最后显示总结
+                if (index == session.messages.length) {
+                  return _buildSummaryCard();
+                }
+
+                final message = session.messages[index];
+                final isAI = message['role'] == 'ai';
+                return Padding(
+                  padding: EdgeInsets.only(bottom: 16.h),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment:
+                        isAI ? MainAxisAlignment.start : MainAxisAlignment.end,
+                    children: [
+                      if (isAI) ...[
+                        CircleAvatar(
+                          backgroundColor: Colors.blue.shade100,
+                          radius: 16.r,
+                          child: Icon(Icons.smart_toy,
+                              size: 20.sp, color: Colors.blue),
+                        ),
+                        SizedBox(width: 8.w),
+                      ],
+                      Flexible(
+                        child: Container(
+                          padding: EdgeInsets.all(12.w),
+                          decoration: BoxDecoration(
+                            color: isAI ? Colors.white : AppTheme.primary,
+                            borderRadius: BorderRadius.circular(16.r).copyWith(
+                              topLeft: isAI ? Radius.zero : null,
+                              topRight: !isAI ? Radius.zero : null,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.grey.withOpacity(0.1),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            message['content'] as String,
+                            style: TextStyle(
+                              color: isAI ? Colors.black87 : Colors.white,
+                              fontSize: 14.sp,
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (!isAI) ...[
+                        SizedBox(width: 8.w),
+                        CircleAvatar(
+                          backgroundColor: AppTheme.primary.withOpacity(0.2),
+                          radius: 16.r,
+                          child: Icon(Icons.face,
+                              size: 20.sp, color: AppTheme.primary),
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryCard() {
+    if (session.storySummary.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      margin: EdgeInsets.only(top: 16.h),
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
+        color: Colors.amber.shade50,
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(color: Colors.amber.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.stars, color: Colors.amber, size: 24.sp),
+              SizedBox(width: 8.w),
+              Text(
+                '故事点评',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16.sp,
+                  color: Colors.amber.shade900,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 8.h),
+          Text(
+            session.storySummary,
+            style: TextStyle(
+              fontSize: 14.sp,
+              color: Colors.brown.shade800,
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _speakFullStory() {
+    final storyContent = session.messages
+        .map((m) => '${m['role'] == 'ai' ? '' : ''}${m['content']}')
+        .join('\n');
+
+    // 如果有总结，也读出来
+    final fullText = session.storySummary.isNotEmpty
+        ? '$storyContent\n\nAI老师点评：${session.storySummary}'
+        : storyContent;
+
+    _ttsService.speak(fullText);
+  }
+}
+
+/// 构建图片组件（支持网络和本地）
+Widget buildStoryImage(String url,
+    {double? width, double? height, BoxFit? fit, Widget? errorWidget}) {
+  if (url.startsWith('http')) {
+    return Image.network(
+      url,
+      width: width,
+      height: height,
+      fit: fit,
+      errorBuilder: (_, __, ___) =>
+          errorWidget ?? const Icon(Icons.broken_image),
+    );
+  } else {
+    // 简单的本地图片检查，如果文件已存在
+    return Image.asset(
+      url,
+      width: width,
+      height: height,
+      fit: fit,
+      errorBuilder: (_, __, ___) =>
+          errorWidget ?? const Icon(Icons.broken_image),
+    );
   }
 }

@@ -8,7 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
-import '../pages/settings_page.dart'; // 获取 appVersion 常量
+import 'package:package_info_plus/package_info_plus.dart';
 
 /// GitHub Release 信息模型
 class ReleaseInfo {
@@ -87,6 +87,9 @@ class UpdateService extends GetxService {
     isChecking.value = true;
 
     try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      final currentVersion = packageInfo.version;
+
       final response = await http.get(
         Uri.parse('https://api.github.com/repos/$owner/$repo/releases/latest'),
         headers: {'Accept': 'application/vnd.github.v3+json'},
@@ -98,13 +101,13 @@ class UpdateService extends GetxService {
         latestRelease.value = release;
 
         // 比较版本号
-        if (_isNewerVersion(release.version, appVersion)) {
-          _showUpdateDialog(release);
+        if (_isNewerVersion(release.version, currentVersion)) {
+          _showUpdateDialog(release, currentVersion);
           return true;
         } else if (showNoUpdateMessage) {
           Get.snackbar(
             '已是最新版本',
-            '当前版本 v$appVersion 已是最新',
+            '当前版本 v$currentVersion 已是最新',
             snackPosition: SnackPosition.BOTTOM,
             backgroundColor: Colors.green.withOpacity(0.9),
             colorText: Colors.white,
@@ -154,7 +157,7 @@ class UpdateService extends GetxService {
   }
 
   /// 显示更新对话框
-  void _showUpdateDialog(ReleaseInfo release) {
+  void _showUpdateDialog(ReleaseInfo release, String currentVersion) {
     Get.dialog(
       AlertDialog(
         shape:
@@ -180,7 +183,7 @@ class UpdateService extends GetxService {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'v$appVersion',
+                    'v$currentVersion',
                     style: TextStyle(
                       color: Colors.grey,
                       fontSize: 14.sp,

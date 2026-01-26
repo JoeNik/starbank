@@ -297,7 +297,9 @@ class _StoryGameSettingsPageState extends State<StoryGameSettingsPage> {
                   decoration: InputDecoration(
                     labelText: '远程图片API地址（可选）',
                     hintText: 'https://api.example.com/images',
-                    helperText: '返回JSON格式的图片URL列表',
+                    helperText:
+                        '支持格式：["url1", "url2"] 或 {"images": ["url1"]}\n返回 JSON 列表或包含 images/data 字段的对象',
+                    helperMaxLines: 3,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8.r),
                     ),
