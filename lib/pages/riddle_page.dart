@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:hive/hive.dart';
@@ -37,6 +38,10 @@ class _RiddlePageState extends State<RiddlePage> {
 
   // 页面控制器
   late PageController _pageController;
+
+  // 随机历史记录，用于支持上一题
+  final List<int> _history = [];
+  final Random _random = Random();
 
   @override
   void initState() {
@@ -82,7 +87,8 @@ class _RiddlePageState extends State<RiddlePage> {
     } else {
       _riddles = RiddleData.getAllRiddles();
     }
-    _riddles.shuffle(); // 随机打乱顺序
+    // 使用当前时间作为随机种子，确保每次进入顺序完全不同
+    _riddles.shuffle(Random(DateTime.now().millisecondsSinceEpoch));
   }
 
   /// 播放题目语音
@@ -105,38 +111,51 @@ class _RiddlePageState extends State<RiddlePage> {
     await _tts.speak('答案是：$answer');
   }
 
-  /// 下一题
+  /// 下一题 (改为完全随机获取)
   void _nextRiddle() {
     _tts.stop();
     _showAnswer.value = false;
-    if (_currentIndex.value < _riddles.length - 1) {
-      _currentIndex.value++;
-      _pageController.nextPage(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
+
+    if (_riddles.isEmpty) return;
+
+    // 记录当前索引到历史
+    _history.add(_currentIndex.value);
+    if (_history.length > 50) _history.removeAt(0); // 限制历史长度
+
+    // 随机选择一个新索引（不与当前相同）
+    int nextIndex;
+    if (_riddles.length > 1) {
+      do {
+        nextIndex = _random.nextInt(_riddles.length);
+      } while (nextIndex == _currentIndex.value);
     } else {
-      // 重新开始
-      _riddles.shuffle();
-      _currentIndex.value = 0;
-      _pageController.animateToPage(
-        0,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
+      nextIndex = 0;
     }
+
+    _currentIndex.value = nextIndex;
+    // 使用 jumpToPage 配合随机，避免翻页动画穿过过多不相关的题目
+    _pageController.jumpToPage(nextIndex);
   }
 
-  /// 上一题
+  /// 换一批 (重新洗牌)
+  void _refreshRiddles() {
+    _tts.stop();
+    _loadRiddles();
+    _currentIndex.value = 0;
+    _showAnswer.value = false;
+    _history.clear();
+    _pageController.jumpToPage(0);
+  }
+
+  /// 上一题 (从历史记录返回)
   void _prevRiddle() {
     _tts.stop();
     _showAnswer.value = false;
-    if (_currentIndex.value > 0) {
-      _currentIndex.value--;
-      _pageController.previousPage(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
+
+    if (_history.isNotEmpty) {
+      final lastIndex = _history.removeLast();
+      _currentIndex.value = lastIndex;
+      _pageController.jumpToPage(lastIndex);
     }
   }
 
@@ -184,10 +203,11 @@ class _RiddlePageState extends State<RiddlePage> {
                   borderRadius: BorderRadius.circular(20.r),
                 ),
                 child: Text(
-                  '${_currentIndex.value + 1}/${_riddles.length}',
+                  '随机题库中',
                   style: TextStyle(
                     color: Colors.amber.shade800,
                     fontWeight: FontWeight.bold,
+                    fontSize: 12.sp,
                   ),
                 ),
               )),
@@ -661,20 +681,14 @@ class _RiddlePageState extends State<RiddlePage> {
               Obx(() => _buildControlButton(
                     icon: Icons.arrow_back_ios,
                     label: '上一题',
-                    onTap: _currentIndex.value > 0 ? _prevRiddle : null,
+                    onTap: _history.isNotEmpty ? _prevRiddle : null,
                   )),
               // 换一批
               _buildControlButton(
                 icon: Icons.refresh,
                 label: '换一批',
                 color: Colors.amber,
-                onTap: () {
-                  _tts.stop();
-                  _loadRiddles();
-                  _currentIndex.value = 0;
-                  _showAnswer.value = false;
-                  _pageController.jumpToPage(0);
-                },
+                onTap: _refreshRiddles,
               ),
               // 下一题
               _buildControlButton(
