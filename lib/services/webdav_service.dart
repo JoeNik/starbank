@@ -162,6 +162,16 @@ class WebDavService extends GetxService {
         print('备份故事游戏会话失败: $e');
       }
 
+      // 备份自定义脑筋急转弯
+      try {
+        final riddleBox = await Hive.openBox('custom_riddles');
+        if (riddleBox.isNotEmpty) {
+          backupData['customRiddles'] = riddleBox.values.toList();
+        }
+      } catch (e) {
+        print('备份自定义脑筋急转弯失败: $e');
+      }
+
       // 备份密码哈希
       try {
         final modeController = Get.find<AppModeController>();
@@ -397,6 +407,19 @@ class WebDavService extends GetxService {
           }
         } catch (e) {
           print('恢复故事游戏会话失败: $e');
+        }
+      }
+
+      // 恢复自定义脑筋急转弯
+      if (backupData['customRiddles'] != null) {
+        try {
+          final riddleBox = await Hive.openBox('custom_riddles');
+          await riddleBox.clear();
+          for (var item in (backupData['customRiddles'] as List)) {
+            await riddleBox.add(item);
+          }
+        } catch (e) {
+          print('恢复自定义脑筋急转弯失败: $e');
         }
       }
 

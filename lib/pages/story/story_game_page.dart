@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -51,6 +52,8 @@ class _StoryGamePageState extends State<StoryGamePage> {
   bool _gameStarted = false;
   bool _gameEnded = false;
   int _finalScore = 0;
+  String? _aiError; // AI 错误信息
+  int get _maxRounds => _gameConfig?.maxRounds ?? 5;
 
   // 输入控制
   final TextEditingController _textController = TextEditingController();
@@ -313,7 +316,10 @@ class _StoryGamePageState extends State<StoryGamePage> {
 
   /// 分析图片并开始引导
   Future<void> _analyzeImageAndStart() async {
-    setState(() => _isAIResponding = true);
+    setState(() {
+      _isAIResponding = true;
+      _aiError = null;
+    });
 
     try {
       // 获取配置的模型
@@ -510,6 +516,7 @@ class _StoryGamePageState extends State<StoryGamePage> {
 
     setState(() {
       _isAIResponding = true;
+      _aiError = null;
       _recognizedText = '';
     });
 
@@ -521,7 +528,9 @@ class _StoryGamePageState extends State<StoryGamePage> {
     }
 
     // 检查是否达到最大轮数
-    if (_currentRound >= _gameConfig!.maxRounds) {
+    if (_currentRound >= (_gameConfig?.maxRounds ?? 5)) {
+      debugPrint('达到最大轮数，强制结束游戏');
+      // 不再调用 _getAIResponse，直接调用评价
       await _endGameWithEvaluation();
     } else {
       await _getAIResponse();
@@ -604,25 +613,11 @@ class _StoryGamePageState extends State<StoryGamePage> {
       }
     } catch (e) {
       debugPrint('获取 AI 回复失败: $e');
-      setState(() => _isAIResponding = false);
-
-      final fallbackResponse = '嗯嗯，真有趣！然后呢？';
-      _messages.add({
-        'role': 'ai',
-        'content': fallbackResponse,
-        'timestamp': DateTime.now().toIso8601String(),
+      setState(() {
+        _isAIResponding = false;
+        _aiError = 'AI 暂时没反应过来 (${e.toString().contains('Timeout') ? '超时' : '错误'})';
       });
-
-      // 保存会话
-      if (_currentSession != null) {
-        _currentSession!.messages = List<Map<String, dynamic>>.from(_messages);
-        await _currentSession!.save();
-      }
-
-      await _ttsService.speak(fallbackResponse,
-          rate: _gameConfig?.ttsRate,
-          volume: _gameConfig?.ttsVolume,
-          pitch: _gameConfig?.ttsPitch);
+      Get.snackbar('提示', 'AI 请求失败，请重试', snackPosition: SnackPosition.BOTTOM);
     }
   }
 
@@ -938,6 +933,7 @@ class _StoryGamePageState extends State<StoryGamePage> {
         ),
 
         // AI 正在回复
+        // AI 正在回复或显示错误/重试
         if (_isAIResponding)
           Padding(
             padding: EdgeInsets.all(16.w),
@@ -950,6 +946,41 @@ class _StoryGamePageState extends State<StoryGamePage> {
                 ),
                 SizedBox(width: 12.w),
                 Text('AI 正在思考...', style: TextStyle(fontSize: 14.sp)),
+              ],
+            ),
+          )
+        else if (_aiError != null)
+          Padding(
+            padding: EdgeInsets.all(16.w),
+            child: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.red, size: 20.sp),
+                SizedBox(width: 8.w),
+                Expanded(
+                  child: Text(
+                    _aiError!,
+                    style: TextStyle(color: Colors.red, fontSize: 14.sp),
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _aiError = null;
+                      _isAIResponding = true;
+                    });
+                    if (_messages.isEmpty) {
+                      _analyzeImageAndStart();
+                    } else {
+                      _getAIResponse();
+                    }
+                  },
+                  icon: const Icon(Icons.refresh, size: 16),
+                  label: const Text('重试'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.red,
+                    backgroundColor: Colors.red.shade50,
+                  ),
+                ),
               ],
             ),
           ),
@@ -996,6 +1027,15 @@ class _StoryGamePageState extends State<StoryGamePage> {
                 ]
               : null,
         ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16.r),
+          onTap: () {
+            // 点击也可以播放语音（如果是AI）
+            if (isAI) _ttsService.speak(content);
+          },
+        onLongPress: () {
+          _showMessageMenu(content, isAI);
+        },
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1046,6 +1086,105 @@ class _StoryGamePageState extends State<StoryGamePage> {
         ),
       ),
     );
+  }
+
+  /// 显示消息操作菜单
+  void _showMessageMenu(String content, bool isAI) {
+    if (_gameEnded) return;
+
+    Get.bottomSheet(
+      Container(
+        color: Colors.white,
+        child: SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.copy),
+                title: const Text('复制内容'),
+                onTap: () {
+                  Clipboard.setData(ClipboardData(text: content));
+                  Get.back();
+                  Get.snackbar('提示', '已复制到剪贴板',
+                      snackPosition: SnackPosition.BOTTOM,
+                      duration: const Duration(seconds: 1));
+                },
+              ),
+              if (!isAI)
+                ListTile(
+                  leading: const Icon(Icons.edit),
+                  title: const Text('编辑重发'),
+                  onTap: () {
+                    Get.back();
+                    _showEditDialog(content);
+                  },
+                ),
+              // AI消息可以添加重试通过删除最后一条AI消息触发，但逻辑较复杂，这里简化支持编辑用户消息
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 显示编辑对话框
+  void _showEditDialog(String oldContent) {
+    final editController = TextEditingController(text: oldContent);
+    Get.dialog(
+      AlertDialog(
+        title: const Text('编辑消息'),
+        content: TextField(
+          controller: editController,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: '输入新的内容...',
+            border: OutlineInputBorder(),
+          ),
+          maxLines: 3,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text('取消'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final newText = editController.text.trim();
+              if (newText.isNotEmpty && newText != oldContent) {
+                Get.back();
+                _handleEditMessage(oldContent, newText);
+              }
+            },
+            child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 处理消息编辑
+  void _handleEditMessage(String oldContent, String newContent) async {
+    // 找到该消息的索引
+    final index = _messages.indexWhere(
+        (m) => m['role'] == 'child' && m['content'] == oldContent);
+    if (index == -1) return;
+
+    setState(() {
+      // 更新该消息内容
+      _messages[index]['content'] = newContent;
+      
+      // 删除该消息之后的所有消息（通常是 AI 的回复及后续）
+      if (index < _messages.length - 1) {
+        _messages.removeRange(index + 1, _messages.length);
+        // 如果删除了消息，需要相应调整轮数
+        // 简单做法：重新计算轮数
+        _currentRound = _messages.where((m) => m['role'] == 'child').length;
+      }
+      
+      _isAIResponding = true;
+    });
+
+    // 重新触发 AI 回复
+    await _getAIResponse();
   }
 
   /// 显示全屏图片缩放
@@ -1271,10 +1410,15 @@ class _StoryGamePageState extends State<StoryGamePage> {
                   SizedBox(height: 16.h),
                   // 录音按钮
                   GestureDetector(
-                    onLongPressStart:
-                        _isAIResponding ? null : (_) => _startListening(),
-                    onLongPressEnd:
-                        _isAIResponding ? null : (_) => _stopListening(),
+                    onTapDown: (_) {
+                      if (!_isAIResponding) _startListening();
+                    },
+                    onTapUp: (_) {
+                      if (!_isAIResponding) _stopListening();
+                    },
+                    onTapCancel: () {
+                      if (!_isAIResponding) _stopListening();
+                    },
                     child: Container(
                       width: double.infinity,
                       padding: EdgeInsets.symmetric(vertical: 16.h),

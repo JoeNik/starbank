@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:hive/hive.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -16,7 +19,12 @@ class RiddlePage extends StatefulWidget {
 
 class _RiddlePageState extends State<RiddlePage> {
   // 使用全局 TTS 服务
+  // 使用全局 TTS 服务
   final TtsService _tts = Get.find<TtsService>();
+
+  // Hive Box for custom riddles
+  late Box _customRiddlesBox;
+  bool _isLoading = true;
 
   // 题目列表
   late List<Map<String, String>> _riddles;
@@ -33,13 +41,47 @@ class _RiddlePageState extends State<RiddlePage> {
   @override
   void initState() {
     super.initState();
-    _loadRiddles();
     _pageController = PageController();
+    _initData();
+  }
+
+  Future<void> _initData() async {
+    _customRiddlesBox = await Hive.openBox('custom_riddles');
+    _loadRiddles();
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
   }
 
   /// 加载题目
   void _loadRiddles() {
-    _riddles = RiddleData.getAllRiddles();
+    if (_customRiddlesBox.isNotEmpty) {
+      try {
+        final customList = _customRiddlesBox.values.toList();
+        _riddles = customList
+            .map((e) {
+              // Ensure it's a map and convert to Map<String, String>
+              if (e is Map) {
+                return {
+                  'q': e['q']?.toString() ?? '',
+                  'a': e['a']?.toString() ?? '',
+                };
+              }
+              return {'q': 'Invalid', 'a': 'Invalid'};
+            })
+            .where((e) => e['q']!.isNotEmpty)
+            .toList();
+
+        if (_riddles.isEmpty) {
+          _riddles = RiddleData.getAllRiddles();
+        }
+      } catch (e) {
+        debugPrint('Failed to load custom riddles: $e');
+        _riddles = RiddleData.getAllRiddles();
+      }
+    } else {
+      _riddles = RiddleData.getAllRiddles();
+    }
     _riddles.shuffle(); // 随机打乱顺序
   }
 
@@ -100,6 +142,12 @@ class _RiddlePageState extends State<RiddlePage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFFFF8E1),
       appBar: AppBar(
@@ -107,6 +155,26 @@ class _RiddlePageState extends State<RiddlePage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
+          // 菜单
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              if (value == 'import') {
+                _showImportDialog();
+              } else if (value == 'reset') {
+                _resetRiddles();
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'import',
+                child: Text('导入题库'),
+              ),
+              const PopupMenuItem(
+                value: 'reset',
+                child: Text('恢复默认'),
+              ),
+            ],
+          ),
           // 题目计数
           Obx(() => Container(
                 margin: EdgeInsets.only(right: 16.w),
@@ -373,6 +441,132 @@ class _RiddlePageState extends State<RiddlePage> {
     _tts.stop();
     _pageController.dispose();
     super.dispose();
+  }
+
+  void _showImportDialog() {
+    final controller = TextEditingController();
+    Get.dialog(
+      AlertDialog(
+        title: const Text('导入脑筋急转弯'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('支持直接粘贴 JSON 列表，或输入 URL 获取。',
+                  style: TextStyle(fontSize: 12.sp, color: Colors.black87)),
+              SizedBox(height: 4.h),
+              Container(
+                padding: EdgeInsets.all(8.w),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(4.r),
+                ),
+                child: Text(
+                  '数据格式要求：\n[{"q":"问题", "a":"答案"}, ...]',
+                  style: TextStyle(
+                      fontSize: 11.sp,
+                      fontFamily: 'monospace',
+                      color: Colors.grey[800]),
+                ),
+              ),
+              SizedBox(height: 10.h),
+              TextField(
+                controller: controller,
+                maxLines: 5,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  hintText: '粘贴 JSON 内容或 http://... 链接',
+                  isDense: true,
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Get.back(), child: const Text('取消')),
+          ElevatedButton(
+            onPressed: () => _handleImport(controller.text),
+            child: const Text('导入'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handleImport(String input) async {
+    if (input.trim().isEmpty) {
+      Get.snackbar('提示', '请输入内容', snackPosition: SnackPosition.BOTTOM);
+      return;
+    }
+
+    String jsonStr = input;
+
+    // Check if it is a URL
+    if (input.trim().startsWith('http')) {
+      try {
+        Get.dialog(const Center(child: CircularProgressIndicator()),
+            barrierDismissible: false);
+        final response = await http.get(Uri.parse(input.trim()));
+        Get.back(); // close loading
+
+        if (response.statusCode == 200) {
+          jsonStr = utf8.decode(response.bodyBytes);
+        } else {
+          throw Exception('HTTP ${response.statusCode}');
+        }
+      } catch (e) {
+        if (Get.isDialogOpen ?? false) Get.back();
+        Get.snackbar('下载失败', '无法从链接获取数据: $e',
+            snackPosition: SnackPosition.BOTTOM);
+        return;
+      }
+    }
+
+    try {
+      final List<dynamic> list = jsonDecode(jsonStr);
+      if (list.isEmpty) throw Exception('数据为空');
+
+      final validRiddles = <Map<String, String>>[];
+      for (var item in list) {
+        if (item is Map && item['q'] != null && item['a'] != null) {
+          validRiddles.add({
+            'q': item['q'].toString(),
+            'a': item['a'].toString(),
+          });
+        }
+      }
+
+      if (validRiddles.isEmpty) throw Exception('没有有效的题目数据 (需包含 q 和 a 字段)');
+
+      // Save to Hive
+      await _customRiddlesBox.clear();
+      await _customRiddlesBox.addAll(validRiddles);
+
+      Get.back(); // close dialog
+      _loadRiddles();
+      // Reset index
+      _currentIndex.value = 0;
+      if (_pageController.hasClients) _pageController.jumpToPage(0);
+
+      Get.snackbar('导入成功', '已成功导入 ${validRiddles.length} 道题目',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.green.shade100);
+    } catch (e) {
+      Get.snackbar('导入失败', '数据格式错误: $e\n请确保格式为 [{"q":"..","a":".."}]',
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 4),
+          backgroundColor: Colors.red.shade100);
+    }
+  }
+
+  void _resetRiddles() async {
+    await _customRiddlesBox.clear();
+    _loadRiddles();
+    _currentIndex.value = 0;
+    if (_pageController.hasClients) _pageController.jumpToPage(0);
+    Get.snackbar('已恢复', '已使用默认题库', snackPosition: SnackPosition.BOTTOM);
   }
 
   /// 底部控制面板

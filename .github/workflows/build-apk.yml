@@ -1,11 +1,7 @@
 name: Build Android APK
 
 on:
-  push:
-    branches:
-      - main
-      - master
-  workflow_dispatch:  # 允许手动触发
+  workflow_dispatch:  # 仅允许手动触发
 
 permissions:
   contents: write  # 允许创建 Release

@@ -3,6 +3,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import '../../models/story_game_config.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../../services/openai_service.dart';
 import '../../theme/app_theme.dart';
 import '../openai_settings_page.dart';
@@ -661,13 +663,26 @@ class _StoryGameSettingsPageState extends State<StoryGameSettingsPage> {
         title: const Text('编辑备用图片URL'),
         content: SizedBox(
           width: double.maxFinite,
-          height: 300.h,
+          height: 350.h,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '每行一个图片URL',
+                '每行一个图片URL。支持格式：\n1. 直接输入URL，每行一个\n2. 导入 JSON 数组 ["url", "url"]',
                 style: TextStyle(fontSize: 12.sp, color: Colors.grey),
+              ),
+              SizedBox(height: 8.h),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _importImagesFromUrl(tempController),
+                      icon: const Icon(Icons.download, size: 16),
+                      label:
+                          const Text('从链接导入', style: TextStyle(fontSize: 12)),
+                    ),
+                  ),
+                ],
               ),
               SizedBox(height: 8.h),
               Expanded(
@@ -697,12 +712,111 @@ class _StoryGameSettingsPageState extends State<StoryGameSettingsPage> {
               final urls = tempController.text
                   .split('\n')
                   .map((e) => e.trim())
-                  .where((e) => e.isNotEmpty)
+                  .where((e) => e.isNotEmpty && e.startsWith('http'))
                   .toList();
               setState(() => _config!.fallbackImageUrls = urls);
               Navigator.pop(ctx);
+              Get.snackbar('成功', '已保存 ${urls.length} 张图片',
+                  snackPosition: SnackPosition.BOTTOM);
             },
             child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _importImagesFromUrl(TextEditingController controller) {
+    final urlController = TextEditingController();
+    Get.dialog(
+      AlertDialog(
+        title: const Text('从链接导入'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('请输入包含图片URL列表的JSON地址', style: TextStyle(fontSize: 12.sp)),
+            SizedBox(height: 8.h),
+            Container(
+              padding: EdgeInsets.all(8.w),
+              decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(4.r)),
+              child: Text(
+                '格式要求: ["url1", "url2", ...]',
+                style: TextStyle(
+                    fontSize: 11.sp,
+                    fontFamily: 'monospace',
+                    color: Colors.grey[800]),
+              ),
+            ),
+            SizedBox(height: 8.h),
+            TextField(
+              controller: urlController,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: 'http://...',
+                isDense: true,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Get.back(), child: const Text('取消')),
+          ElevatedButton(
+            onPressed: () async {
+              final url = urlController.text.trim();
+              if (url.isEmpty || !url.startsWith('http')) {
+                Get.snackbar('错误', '请输入有效的URL',
+                    snackPosition: SnackPosition.BOTTOM);
+                return;
+              }
+
+              Get.dialog(const Center(child: CircularProgressIndicator()),
+                  barrierDismissible: false);
+              try {
+                final response = await http.get(Uri.parse(url));
+                Get.back(); // close loading
+                Get.back(); // close input dialog
+
+                if (response.statusCode == 200) {
+                  final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+                  List<String> newUrls = [];
+                  if (decoded is List) {
+                    newUrls = decoded.map((e) => e.toString()).toList();
+                  } else if (decoded is Map && decoded['images'] is List) {
+                    newUrls = (decoded['images'] as List)
+                        .map((e) => e.toString())
+                        .toList();
+                  } else {
+                    throw Exception('格式不正确，需要 JSON 数组');
+                  }
+
+                  if (newUrls.isEmpty) throw Exception('未找到图片 URL');
+
+                  // Append or Replace? Let's Append with newline
+                  final currentText = controller.text.trim();
+                  if (currentText.isNotEmpty) {
+                    controller.text = '$currentText\n${newUrls.join('\n')}';
+                  } else {
+                    controller.text = newUrls.join('\n');
+                  }
+
+                  Get.snackbar('导入成功', '已追加 ${newUrls.length} 张图片URL',
+                      snackPosition: SnackPosition.BOTTOM,
+                      backgroundColor: Colors.green.shade100);
+                } else {
+                  throw Exception('HTTP ${response.statusCode}');
+                }
+              } catch (e) {
+                if (Get.isDialogOpen ?? false)
+                  Get.back(); // ensure loading closed if logic failed inside
+                Get.snackbar('导入失败', '$e',
+                    snackPosition: SnackPosition.BOTTOM,
+                    backgroundColor: Colors.red.shade100);
+              }
+            },
+            child: const Text('获取'),
           ),
         ],
       ),
