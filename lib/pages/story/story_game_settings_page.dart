@@ -107,9 +107,10 @@ class _StoryGameSettingsPageState extends State<StoryGameSettingsPage> {
       appBar: AppBar(
         title: const Text('故事游戏设置'),
         actions: [
-          TextButton(
+          IconButton(
             onPressed: _saveConfig,
-            child: const Text('保存', style: TextStyle(color: Colors.white)),
+            icon: const Icon(Icons.check),
+            tooltip: '保存',
           ),
         ],
       ),
