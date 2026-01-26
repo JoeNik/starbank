@@ -615,7 +615,8 @@ class _StoryGamePageState extends State<StoryGamePage> {
       debugPrint('获取 AI 回复失败: $e');
       setState(() {
         _isAIResponding = false;
-        _aiError = 'AI 暂时没反应过来 (${e.toString().contains('Timeout') ? '超时' : '错误'})';
+        _aiError =
+            'AI 暂时没反应过来 (${e.toString().contains('Timeout') ? '超时' : '错误'})';
       });
       Get.snackbar('提示', 'AI 请求失败，请重试', snackPosition: SnackPosition.BOTTOM);
     }
@@ -1034,56 +1035,57 @@ class _StoryGamePageState extends State<StoryGamePage> {
             // 点击也可以播放语音（如果是AI）
             if (isAI) _ttsService.speak(content);
           },
-        onLongPress: () {
-          _showMessageMenu(content, isAI);
-        },
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      isAI ? Icons.smart_toy : Icons.child_care,
-                      size: 16.sp,
-                      color: isAI ? Colors.blue : AppTheme.primary,
-                    ),
-                    SizedBox(width: 4.w),
-                    Text(
-                      isAI ? 'AI 老师' : '宝宝',
-                      style: TextStyle(
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.bold,
+          onLongPress: () {
+            _showMessageMenu(content, isAI);
+          },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isAI ? Icons.smart_toy : Icons.child_care,
+                        size: 16.sp,
                         color: isAI ? Colors.blue : AppTheme.primary,
                       ),
-                    ),
-                  ],
-                ),
-                if (isAI)
-                  GestureDetector(
-                    onTap: () => _ttsService.speak(
-                      content,
-                      rate: _gameConfig?.ttsRate,
-                      volume: _gameConfig?.ttsVolume,
-                      pitch: _gameConfig?.ttsPitch,
-                    ),
-                    child: Icon(
-                      Icons.volume_up,
-                      size: 18.sp,
-                      color: Colors.blue.withOpacity(0.6),
-                    ),
+                      SizedBox(width: 4.w),
+                      Text(
+                        isAI ? 'AI 老师' : '宝宝',
+                        style: TextStyle(
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.bold,
+                          color: isAI ? Colors.blue : AppTheme.primary,
+                        ),
+                      ),
+                    ],
                   ),
-              ],
-            ),
-            SizedBox(height: 8.h),
-            Text(
-              content,
-              style: TextStyle(fontSize: 14.sp),
-            ),
-          ],
+                  if (isAI)
+                    GestureDetector(
+                      onTap: () => _ttsService.speak(
+                        content,
+                        rate: _gameConfig?.ttsRate,
+                        volume: _gameConfig?.ttsVolume,
+                        pitch: _gameConfig?.ttsPitch,
+                      ),
+                      child: Icon(
+                        Icons.volume_up,
+                        size: 18.sp,
+                        color: Colors.blue.withOpacity(0.6),
+                      ),
+                    ),
+                ],
+              ),
+              SizedBox(height: 8.h),
+              Text(
+                content,
+                style: TextStyle(fontSize: 14.sp),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1165,14 +1167,14 @@ class _StoryGamePageState extends State<StoryGamePage> {
   /// 处理消息编辑
   void _handleEditMessage(String oldContent, String newContent) async {
     // 找到该消息的索引
-    final index = _messages.indexWhere(
-        (m) => m['role'] == 'child' && m['content'] == oldContent);
+    final index = _messages
+        .indexWhere((m) => m['role'] == 'child' && m['content'] == oldContent);
     if (index == -1) return;
 
     setState(() {
       // 更新该消息内容
       _messages[index]['content'] = newContent;
-      
+
       // 删除该消息之后的所有消息（通常是 AI 的回复及后续）
       if (index < _messages.length - 1) {
         _messages.removeRange(index + 1, _messages.length);
@@ -1180,7 +1182,7 @@ class _StoryGamePageState extends State<StoryGamePage> {
         // 简单做法：重新计算轮数
         _currentRound = _messages.where((m) => m['role'] == 'child').length;
       }
-      
+
       _isAIResponding = true;
     });
 
