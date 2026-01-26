@@ -1928,12 +1928,15 @@ class _SessionDetailPage extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                buildStoryImage(
-                  session.imageUrl,
-                  fit: BoxFit.cover,
-                  errorWidget: Container(
-                    color: Colors.grey.shade200,
-                    child: const Icon(Icons.image, size: 50),
+                InkWell(
+                  onTap: () => _showFullImage(session.imageUrl),
+                  child: buildStoryImage(
+                    session.imageUrl,
+                    fit: BoxFit.cover,
+                    errorWidget: Container(
+                      color: Colors.grey.shade200,
+                      child: const Icon(Icons.image, size: 50),
+                    ),
                   ),
                 ),
                 Positioned(
@@ -2113,6 +2116,41 @@ class _SessionDetailPage extends StatelessWidget {
         : storyContent;
 
     _ttsService.speak(fullText);
+  }
+
+  /// 显示全屏图片缩放
+  void _showFullImage(String imageUrl) {
+    Get.dialog(
+      GestureDetector(
+        onTap: () => Get.back(),
+        child: Container(
+          color: Colors.black,
+          child: Stack(
+            children: [
+              Center(
+                child: InteractiveViewer(
+                  minScale: 0.5,
+                  maxScale: 4.0,
+                  child: buildStoryImage(
+                    imageUrl,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 40.h,
+                right: 20.w,
+                child: IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                  onPressed: () => Get.back(),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      useSafeArea: false,
+    );
   }
 }
 
