@@ -56,6 +56,9 @@ class _PoopAIPageState extends State<PoopAIPage> {
   OpenAIConfig? _selectedConfig;
   String _selectedModel = '';
 
+  // 本次会话是否启用联网（临时设置，不保存）
+  bool _enableWebSearchForThisSession = false;
+
   late Box<PoopRecord> _recordBox;
   late Box<AIChat> _chatBox;
   late Box _settingsBox;
@@ -168,8 +171,12 @@ class _PoopAIPageState extends State<PoopAIPage> {
     try {
       // 临时设置当前配置和模型
       final originalConfig = _openAIService.currentConfig.value;
+      final originalEnableWebSearch = _selectedConfig!.enableWebSearch;
+
       _openAIService.currentConfig.value = _selectedConfig;
       _selectedConfig!.selectedModel = _selectedModel;
+      // 使用当前会话的联网设置
+      _selectedConfig!.enableWebSearch = _enableWebSearchForThisSession;
 
       // 构建用户消息
       final baby = _userController.currentBaby.value!;
@@ -192,6 +199,7 @@ $recordsText''';
 
       // 恢复原配置
       _openAIService.currentConfig.value = originalConfig;
+      _selectedConfig!.enableWebSearch = originalEnableWebSearch;
 
       setState(() => _currentResponse = response);
 
@@ -460,6 +468,37 @@ $recordsText''';
                     setState(() => _selectedModel = model);
                     await _settingsBox.put('selected_model', model);
                   }
+                },
+              ),
+            ],
+
+            // 联网搜索开关（仅当选择了模型时显示）
+            if (_selectedModel.isNotEmpty) ...[
+              SizedBox(height: 16.h),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Row(
+                  children: [
+                    Icon(Icons.public, size: 20.sp, color: Colors.purple),
+                    SizedBox(width: 8.w),
+                    Text(
+                      '启用联网搜索',
+                      style: TextStyle(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                subtitle: Text(
+                  _enableWebSearchForThisSession
+                      ? '模型将尝试使用联网功能获取实时信息'
+                      : '仅使用模型的知识库回答',
+                  style: TextStyle(fontSize: 12.sp),
+                ),
+                value: _enableWebSearchForThisSession,
+                onChanged: (value) {
+                  setState(() => _enableWebSearchForThisSession = value);
                 },
               ),
             ],
