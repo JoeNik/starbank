@@ -15,6 +15,7 @@ import '../models/openai_config.dart';
 import '../models/story_session.dart';
 import '../models/music/playlist.dart';
 import '../models/music/music_track.dart';
+import '../models/story_game_config.dart';
 
 /// WebDAV备份服务
 class WebDavService extends GetxService {
@@ -76,6 +77,7 @@ class WebDavService extends GetxService {
     }
 
     try {
+      _checkAdapters();
       final Map<String, dynamic> backupData = {};
 
       // Convert objects to JSON maps
@@ -305,6 +307,7 @@ class WebDavService extends GetxService {
     }
 
     try {
+      _checkAdapters();
       final data = await _client!.read(remotePath);
       final jsonString = utf8.decode(data);
       final Map<String, dynamic> backupData = jsonDecode(jsonString);
@@ -360,8 +363,9 @@ class WebDavService extends GetxService {
           final poopBox = await Hive.openBox<PoopRecord>('poop_records');
           await poopBox.clear();
           for (var item in (backupData['poopRecords'] as List)) {
-            if (item is Map<String, dynamic>) {
-              final record = PoopRecord.fromJson(item);
+            if (item is Map) {
+              final record =
+                  PoopRecord.fromJson(Map<String, dynamic>.from(item));
               await poopBox.put(record.id, record);
             }
           }
@@ -376,8 +380,8 @@ class WebDavService extends GetxService {
           final chatBox = await Hive.openBox<AIChat>('ai_chats');
           await chatBox.clear();
           for (var item in (backupData['aiChats'] as List)) {
-            if (item is Map<String, dynamic>) {
-              final chat = AIChat.fromJson(item);
+            if (item is Map) {
+              final chat = AIChat.fromJson(Map<String, dynamic>.from(item));
               await chatBox.put(chat.id, chat);
             }
           }
@@ -392,8 +396,9 @@ class WebDavService extends GetxService {
           final openaiBox = await Hive.openBox<OpenAIConfig>('openai_configs');
           await openaiBox.clear();
           for (var item in (backupData['openaiConfigs'] as List)) {
-            if (item is Map<String, dynamic>) {
-              final config = OpenAIConfig.fromJson(item);
+            if (item is Map) {
+              final config =
+                  OpenAIConfig.fromJson(Map<String, dynamic>.from(item));
               await openaiBox.put(config.id, config);
             }
           }
@@ -463,8 +468,9 @@ class WebDavService extends GetxService {
               await Hive.openBox<StorySession>('story_sessions');
           await storySessionBox.clear();
           for (var item in (backupData['storySessions'] as List)) {
-            if (item is Map<String, dynamic>) {
-              final session = StorySession.fromJson(item);
+            if (item is Map) {
+              final session =
+                  StorySession.fromJson(Map<String, dynamic>.from(item));
               await storySessionBox.put(session.id, session);
             }
           }
@@ -600,6 +606,30 @@ class WebDavService extends GetxService {
           .toList();
     } catch (_) {
       return [];
+    }
+  }
+
+  /// 检查并注册适配器
+  void _checkAdapters() {
+    // OpenAIConfig (10)
+    if (!Hive.isAdapterRegistered(10)) {
+      Hive.registerAdapter(OpenAIConfigAdapter());
+    }
+    // PoopRecord (11)
+    if (!Hive.isAdapterRegistered(11)) {
+      Hive.registerAdapter(PoopRecordAdapter());
+    }
+    // AIChat (12)
+    if (!Hive.isAdapterRegistered(12)) {
+      Hive.registerAdapter(AIChatAdapter());
+    }
+    // StorySession (13)
+    if (!Hive.isAdapterRegistered(13)) {
+      Hive.registerAdapter(StorySessionAdapter());
+    }
+    // StoryGameConfig (14)
+    if (!Hive.isAdapterRegistered(14)) {
+      Hive.registerAdapter(StoryGameConfigAdapter());
     }
   }
 }

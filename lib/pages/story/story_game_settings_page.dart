@@ -842,8 +842,9 @@ class _StoryGameSettingsPageState extends State<StoryGameSettingsPage> {
                   throw Exception('HTTP ${response.statusCode}');
                 }
               } catch (e) {
-                if (Get.isDialogOpen ?? false)
+                if (Get.isDialogOpen ?? false) {
                   Get.back(); // ensure loading closed if logic failed inside
+                }
                 Get.snackbar('导入失败', '$e',
                     snackPosition: SnackPosition.BOTTOM,
                     backgroundColor: Colors.red.shade100);

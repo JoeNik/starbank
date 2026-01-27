@@ -9,6 +9,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 /// GitHub Release 信息模型
 class ReleaseInfo {
@@ -421,7 +422,29 @@ class UpdateService extends GetxService {
       status.value = '正在连接服务器...';
 
       // 获取下载目录
-      final dir = await getTemporaryDirectory();
+      Directory? dir;
+      if (Platform.isAndroid) {
+        // 请求存储权限
+        if (await Permission.storage.request().isGranted) {
+          dir = Directory('/storage/emulated/0/Download');
+          if (!dir.existsSync()) {
+            dir = await getExternalStorageDirectory();
+          }
+        } else {
+          dir = await getExternalStorageDirectory();
+        }
+      } else {
+        try {
+          dir = await getDownloadsDirectory();
+        } catch (e) {
+          dir = null;
+        }
+      }
+
+      if (dir == null) {
+        dir = await getTemporaryDirectory();
+      }
+
       final fileName = 'StarBank_${release.version}.apk';
       final filePath = '${dir.path}/$fileName';
       final file = File(filePath);
