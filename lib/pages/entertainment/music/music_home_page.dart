@@ -60,7 +60,8 @@ class _MusicHomePageState extends State<MusicHomePage> {
           ),
           TextField(
             controller: keyCtrl,
-            decoration: const InputDecoration(labelText: 'API Key (Optional)'),
+            decoration:
+                const InputDecoration(labelText: 'API Keys (用;分隔多个Key)'),
           ),
         ],
       ),
@@ -207,13 +208,24 @@ class _MusicHomePageState extends State<MusicHomePage> {
                                 ),
                                 title: Text(track.title),
                                 subtitle: Text(track.artist),
-                                trailing: IconButton(
-                                  icon: const Icon(Icons.play_circle_fill,
-                                      color: AppTheme.primary),
-                                  onPressed: () {
-                                    _controller.playTrack(track);
-                                    Get.to(() => const MusicPlayerPage());
-                                  },
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.favorite,
+                                          color: Colors.redAccent),
+                                      onPressed: () =>
+                                          _controller.toggleFavorite(track),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.play_circle_fill,
+                                          color: AppTheme.primary),
+                                      onPressed: () {
+                                        _controller.playTrack(track);
+                                        Get.to(() => const MusicPlayerPage());
+                                      },
+                                    ),
+                                  ],
                                 ),
                               ))
                           .toList(),
@@ -245,11 +257,6 @@ class _MusicHomePageState extends State<MusicHomePage> {
                       height: 50.w,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(8.r),
-                        image: track.coverUrl != null
-                            ? DecorationImage(
-                                image: NetworkImage(track.coverUrl!),
-                                fit: BoxFit.cover)
-                            : null,
                         color: Colors.grey[200],
                       ),
                       child: ClipRRect(
@@ -266,12 +273,32 @@ class _MusicHomePageState extends State<MusicHomePage> {
                     ),
                     title: Text(track.title),
                     subtitle: Text('${track.artist} - ${track.album ?? ""}'),
-                    trailing: const Icon(Icons.play_circle_fill,
-                        color: AppTheme.primary),
-                    onTap: () {
-                      _controller.playTrack(track);
-                      Get.to(() => const MusicPlayerPage());
-                    },
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Obx(() => IconButton(
+                              icon: Icon(
+                                _controller.isFavorite(track)
+                                    ? Icons.favorite
+                                    : Icons.favorite_border,
+                                color: _controller.isFavorite(track)
+                                    ? Colors.redAccent
+                                    : Colors.grey,
+                                size: 20.sp,
+                              ),
+                              onPressed: () =>
+                                  _controller.toggleFavorite(track),
+                            )),
+                        IconButton(
+                          icon: const Icon(Icons.play_circle_fill,
+                              color: AppTheme.primary),
+                          onPressed: () {
+                            _controller.playTrack(track);
+                            Get.to(() => const MusicPlayerPage());
+                          },
+                        ),
+                      ],
+                    ),
                   );
                 },
               );

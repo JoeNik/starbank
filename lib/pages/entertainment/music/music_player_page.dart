@@ -73,69 +73,93 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
                     ? _controller.playlist[_controller.currentIndex.value]
                     : null;
 
-                return GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _showLyrics = !_showLyrics;
-                    });
-                  },
-                  child: _showLyrics
-                      ? Container(
-                          height: 280.w,
-                          width: double.infinity,
-                          padding: EdgeInsets.all(20.w),
-                          decoration: BoxDecoration(
-                            color: Colors.white10,
-                            borderRadius: BorderRadius.circular(20.r),
-                          ),
-                          child: SingleChildScrollView(
-                            child: Text(
-                              currentTrack?.lyricContent ?? '暂无歌词',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16.sp,
-                                  height: 1.8),
+                return AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 600),
+                  child: GestureDetector(
+                    key: ValueKey('${currentTrack?.id}_${_showLyrics}'),
+                    onTap: () {
+                      setState(() {
+                        _showLyrics = !_showLyrics;
+                      });
+                    },
+                    child: _showLyrics
+                        ? Container(
+                            height: 280.w,
+                            width: double.infinity,
+                            padding: EdgeInsets.all(20.w),
+                            decoration: BoxDecoration(
+                              color: Colors.white10,
+                              borderRadius: BorderRadius.circular(20.r),
+                              border: Border.all(color: Colors.white12),
                             ),
-                          ),
-                        )
-                      : AnimatedBuilder(
-                          animation: _rotateController,
-                          builder: (context, child) {
-                            return Transform.rotate(
-                              angle: _rotateController.value * 2 * math.pi,
-                              child: Container(
-                                width: 280.w,
-                                height: 280.w,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  image: currentTrack?.coverUrl != null
-                                      ? DecorationImage(
-                                          image: NetworkImage(
-                                              currentTrack!.coverUrl!),
-                                          fit: BoxFit.cover,
-                                        )
+                            child: (currentTrack?.lyricContent?.isNotEmpty ??
+                                    false)
+                                ? SingleChildScrollView(
+                                    physics: const BouncingScrollPhysics(),
+                                    child: Text(
+                                      currentTrack!.lyricContent!,
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                          color: Colors.white.withOpacity(0.9),
+                                          fontSize: 16.sp,
+                                          height: 2.0,
+                                          letterSpacing: 1.2),
+                                    ),
+                                  )
+                                : Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.notes_rounded,
+                                          color: Colors.white24, size: 60.sp),
+                                      SizedBox(height: 16.h),
+                                      Text(
+                                        '纯音乐，请欣赏',
+                                        style: TextStyle(
+                                            color: Colors.white38,
+                                            fontSize: 14.sp,
+                                            letterSpacing: 2.0),
+                                      ),
+                                    ],
+                                  ),
+                          )
+                        : AnimatedBuilder(
+                            animation: _rotateController,
+                            builder: (context, child) {
+                              return Transform.rotate(
+                                angle: _rotateController.value * 2 * math.pi,
+                                child: Container(
+                                  width: 280.w,
+                                  height: 280.w,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    image: currentTrack?.coverUrl != null
+                                        ? DecorationImage(
+                                            image: NetworkImage(
+                                                currentTrack!.coverUrl!),
+                                            fit: BoxFit.cover,
+                                          )
+                                        : null,
+                                    color: Colors.grey[800],
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.5),
+                                        blurRadius: 20,
+                                        spreadRadius: 5,
+                                      )
+                                    ],
+                                    border: Border.all(
+                                        color: Colors.black, width: 8),
+                                  ),
+                                  child: currentTrack?.coverUrl == null
+                                      ? const Center(
+                                          child: Icon(Icons.music_note,
+                                              color: Colors.white, size: 80))
                                       : null,
-                                  color: Colors.grey[800],
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.5),
-                                      blurRadius: 20,
-                                      spreadRadius: 5,
-                                    )
-                                  ],
-                                  border:
-                                      Border.all(color: Colors.black, width: 8),
                                 ),
-                                child: currentTrack?.coverUrl == null
-                                    ? const Center(
-                                        child: Icon(Icons.music_note,
-                                            color: Colors.white, size: 80))
-                                    : null,
-                              ),
-                            );
-                          },
-                        ),
+                              );
+                            },
+                          ),
+                  ),
                 );
               }),
 
@@ -147,44 +171,48 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
                   return const SizedBox.shrink();
                 final track =
                     _controller.playlist[_controller.currentIndex.value];
-                return Column(
-                  children: [
-                    Text(
-                      track.title,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 24.sp,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: 8.h),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          track.artist,
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 16.sp,
-                          ),
+                return AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 400),
+                  child: Column(
+                    key: ValueKey(track.id),
+                    children: [
+                      Text(
+                        track.title,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 24.sp,
+                          fontWeight: FontWeight.bold,
                         ),
-                        SizedBox(width: 10.w),
-                        Obx(() => IconButton(
-                              icon: Icon(
-                                _controller.isFavorite(track)
-                                    ? Icons.favorite
-                                    : Icons.favorite_border,
-                                color: _controller.isFavorite(track)
-                                    ? Colors.redAccent
-                                    : Colors.white70,
-                              ),
-                              onPressed: () =>
-                                  _controller.toggleFavorite(track),
-                            )),
-                      ],
-                    ),
-                  ],
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: 8.h),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            track.artist,
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 16.sp,
+                            ),
+                          ),
+                          SizedBox(width: 10.w),
+                          Obx(() => IconButton(
+                                icon: Icon(
+                                  _controller.isFavorite(track)
+                                      ? Icons.favorite
+                                      : Icons.favorite_border,
+                                  color: _controller.isFavorite(track)
+                                      ? Colors.redAccent
+                                      : Colors.white70,
+                                ),
+                                onPressed: () =>
+                                    _controller.toggleFavorite(track),
+                              )),
+                        ],
+                      ),
+                    ],
+                  ),
                 );
               }),
 

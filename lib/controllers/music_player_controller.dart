@@ -98,55 +98,111 @@ class MusicPlayerController extends GetxController {
   }
 
   Future<void> playTrack(MusicTrack track) async {
+    // 强制重置当前尝试播放的 URL，确保逻辑新鲜
     String? currentUrl = track.url;
 
-    // Always try to refresh URL because it usually expires
+    debugPrint(
+        'Attempting to play: ${track.title} (${track.platform}) - ${track.id}');
+
+    // 始终尝试刷新 URL，因为它通常具有时效性
     try {
-      final info = await _tuneHubService.parseTrack(track.platform, track.id);
-      if (info.containsKey('url')) {
-        currentUrl = info['url'];
+      final res = await _tuneHubService.parseTrack(track.platform, track.id);
+      if (res.containsKey('url') && res['url'] != null) {
+        currentUrl = res['url'];
         track.url = currentUrl;
-        if (info.containsKey('lyric')) {
-          track.lyricContent = info['lyric'];
+
+        // 校准字段：使用 cover 而不是 pic
+        if (res.containsKey('cover') && res['cover'] != null) {
+          track.coverUrl = res['cover'];
         }
-        // Save back if it's a favorite to cache metadata
-        // (Optional, maybe better to keep clean)
+
+        // 校准字段：使用 lyrics 而不是 lyric
+        if (res.containsKey('lyrics') && res['lyrics'] != null) {
+          track.lyricContent = res['lyrics'];
+        }
+
+        // 同步来自 info 的更准确信息
+        if (res.containsKey('info') && res['info'] is Map) {
+          final infoData = res['info'] as Map;
+          track.title = infoData['name'] ?? track.title;
+          track.artist = infoData['artist'] ?? track.artist;
+          track.album = infoData['album'] ?? track.album;
+        }
+
+        debugPrint(
+            'Parse Success: URL=$currentUrl, Cover=${track.coverUrl != null}, Lyric=${track.lyricContent != null}');
+      } else {
+        debugPrint('Parse Warning: No URL in response. Raw res: $res');
       }
     } catch (e) {
       debugPrint('Fetch URL error: $e');
     }
 
     if (currentUrl == null || currentUrl.isEmpty) {
-      Get.snackbar('错误', '无法获取播放地址');
+      Get.snackbar('播放提示', '抱歉，暂时无法获取该平台的播放地址',
+          backgroundColor: Colors.orangeAccent, colorText: Colors.white);
       return;
     }
 
+    // 针对性协议处理：网易云倾向 HTTPS，酷我倾向 HTTP
+    String playUrl = currentUrl;
+    if (track.platform == 'netease' && playUrl.startsWith('http://')) {
+      playUrl = playUrl.replaceFirst('http://', 'https://');
+    }
+
+    // 针对性防缓存处理：如果链接包含 sign, token 或来自酷我，不要添加任何额外参数，防止签名失效
+    final bool isSigned = playUrl.contains('sign') ||
+        playUrl.contains('token') ||
+        playUrl.contains('\$');
+    if (!isSigned) {
+      final cacheBuster = 't=${DateTime.now().millisecondsSinceEpoch}';
+      playUrl = playUrl.contains('?')
+          ? '$playUrl&$cacheBuster'
+          : '$playUrl?$cacheBuster';
+    }
+
     try {
-      // Define Metadata for Lock Screen / Notification
+      await audioPlayer.stop();
+
       final mediaItem = MediaItem(
         id: track.id,
         album: track.album ?? 'Unknown Album',
         title: track.title,
         artist: track.artist,
-        artUri: track.coverUrl != null ? Uri.parse(track.coverUrl!) : null,
+        artUri: track.coverUrl != null && track.coverUrl!.startsWith('http')
+            ? Uri.parse(track.coverUrl!)
+            : null,
       );
 
-      await audioPlayer.setAudioSource(AudioSource.uri(
-        Uri.parse(currentUrl),
-        tag: mediaItem,
-      ));
+      try {
+        await audioPlayer.setAudioSource(AudioSource.uri(
+          Uri.parse(playUrl),
+          tag: mediaItem,
+        ));
+      } catch (e) {
+        // 容错回退：如果是 HTTPS 失败且平台是网易云，尝试退回原始 HTTP
+        debugPrint('Protocol error, retrying with raw URL: $e');
+        await audioPlayer.setAudioSource(AudioSource.uri(
+          Uri.parse(currentUrl),
+          tag: mediaItem,
+        ));
+      }
 
-      // Update Playlist State (if not already there, add it or play from list)
-      if (!playlist.any((t) => t.id == track.id)) {
+      final index = playlist
+          .indexWhere((t) => t.id == track.id && t.platform == track.platform);
+      if (index == -1) {
         playlist.add(track);
         currentIndex.value = playlist.length - 1;
       } else {
-        currentIndex.value = playlist.indexWhere((t) => t.id == track.id);
+        currentIndex.value = index;
+        // 更新列表中的元数据（防止旧的封面/链接）
+        playlist[index] = track;
       }
 
       await audioPlayer.play();
     } catch (e) {
-      Get.snackbar('播放失败', e.toString());
+      debugPrint('Audio play failed: $e');
+      Get.snackbar('播放失败', '音频加载超时或解析错误');
     }
   }
 
