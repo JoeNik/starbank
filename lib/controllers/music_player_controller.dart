@@ -11,7 +11,7 @@ import '../services/storage_service.dart';
 class MusicPlayerController extends GetxController {
   final TuneHubService _tuneHubService = Get.find<TuneHubService>();
   final StorageService _storage = Get.find<StorageService>();
-  late AudioPlayer audioPlayer;
+  AudioPlayer? audioPlayer;
 
   final RxList<MusicTrack> playlist = <MusicTrack>[].obs;
   final RxList<MusicTrack> favorites = <MusicTrack>[].obs;
@@ -32,6 +32,7 @@ class MusicPlayerController extends GetxController {
   void onInit() {
     super.onInit();
     _loadFavorites();
+    // Do not auto-init here if possible, or init safely
     _initAudioPlayer();
   }
 
@@ -75,35 +76,48 @@ class MusicPlayerController extends GetxController {
     playTrack(favorites.first);
   }
 
-  void _initAudioPlayer() {
+  // Modified Safe Init
+  Future<bool> _initAudioPlayer() async {
+    if (isInitialized.value && audioPlayer != null) return true;
+
     try {
+      debugPrint('MusicPlayerController: Initializing AudioPlayer...');
+      // Ensure we don't have a lingering instance
+      if (audioPlayer != null) {
+        await audioPlayer!.dispose();
+      }
+
       audioPlayer = AudioPlayer();
       isInitialized.value = true;
 
-      audioPlayer.playerStateStream.listen((state) {
+      audioPlayer!.playerStateStream.listen((state) {
         isPlaying.value = state.playing;
         if (state.processingState == ProcessingState.completed) {
           playNext();
         }
       });
 
-      audioPlayer.positionStream.listen((p) {
+      audioPlayer!.positionStream.listen((p) {
         position.value = p;
-        // Update lyric index
         if (lyrics.isNotEmpty) {
-          // Find the last lyric that started before or at current position
           final index = lyrics.lastIndexWhere((l) => l.startTime <= p);
           if (index != -1 && index != currentLyricIndex.value) {
             currentLyricIndex.value = index;
           }
         }
       });
-      audioPlayer.durationStream
+
+      audioPlayer!.durationStream
           .listen((d) => duration.value = d ?? Duration.zero);
-      audioPlayer.bufferedPositionStream.listen((b) => buffered.value = b);
+      audioPlayer!.bufferedPositionStream.listen((b) => buffered.value = b);
+
+      debugPrint('MusicPlayerController: AudioPlayer initialized successfully');
+      return true;
     } catch (e) {
-      debugPrint('AudioPlayer initialization failed: $e');
+      debugPrint('MusicPlayerController: AudioPlayer init failed: $e');
       isInitialized.value = false;
+      audioPlayer = null; // Clear it
+      return false;
     }
   }
 
@@ -248,15 +262,15 @@ class MusicPlayerController extends GetxController {
   }
 
   void togglePlay() {
-    if (isPlaying.value) {
-      audioPlayer.pause();
-    } else {
-      audioPlayer.play();
+    if (audioPlayer != null && isPlaying.value) {
+      audioPlayer!.pause();
+    } else if (audioPlayer != null) {
+      audioPlayer!.play();
     }
   }
 
   void seek(Duration pos) {
-    audioPlayer.seek(pos);
+    audioPlayer?.seek(pos);
   }
 
   // Timer logic
@@ -265,7 +279,7 @@ class MusicPlayerController extends GetxController {
     sleepTimerMinutes.value = minutes;
     if (minutes > 0) {
       _sleepTimer = Timer(Duration(minutes: minutes), () {
-        audioPlayer.pause();
+        audioPlayer?.pause();
         sleepTimerMinutes.value = 0;
         Get.snackbar('定时关闭', '音乐已停止');
       });
@@ -306,8 +320,9 @@ class MusicPlayerController extends GetxController {
 
   @override
   void onClose() {
-    if (isInitialized.value) {
-      audioPlayer.dispose();
+    // Safely dispose
+    if (isInitialized.value && audioPlayer != null) {
+      audioPlayer?.dispose();
     }
     _sleepTimer?.cancel();
     super.onClose();

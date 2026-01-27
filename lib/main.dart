@@ -59,7 +59,9 @@ void main() async {
     Get.put(ShopController());
     Get.put(AppModeController());
     Get.put(TuneHubService());
-    Get.put(MusicPlayerController());
+    // Lazy load MusicPlayerController to prevent early initialization issues
+    // and ensuring JustAudioBackground is fully ready before Player creation.
+    Get.lazyPut(() => MusicPlayerController());
 
     debugPrint('All services initialized successfully');
   } catch (e, stack) {
