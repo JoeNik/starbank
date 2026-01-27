@@ -163,16 +163,8 @@ class MusicPlayerController extends GetxController {
       playUrl = playUrl.replaceFirst('http://', 'https://');
     }
 
-    // 针对性防缓存处理：如果链接包含 sign, token 或来自酷我，不要添加任何额外参数，防止签名失效
-    final bool isSigned = playUrl.contains('sign') ||
-        playUrl.contains('token') ||
-        playUrl.contains('\$');
-    if (!isSigned) {
-      final cacheBuster = 't=${DateTime.now().millisecondsSinceEpoch}';
-      playUrl = playUrl.contains('?')
-          ? '$playUrl&$cacheBuster'
-          : '$playUrl?$cacheBuster';
-    }
+    // REMOVED: Cache buster (t=...) logic to prevent signature invalidation.
+    // Many music URLs are signed and modifying params breaks them.
 
     try {
       await audioPlayer.stop();
@@ -218,9 +210,20 @@ class MusicPlayerController extends GetxController {
       }
 
       await audioPlayer.play();
-    } catch (e) {
+    } on PlayerException catch (e) {
+      debugPrint("Error code: ${e.code}");
+      debugPrint("Error message: ${e.message}");
+      Get.snackbar('播放失败', '音频错误: ${e.message}',
+          backgroundColor: Colors.redAccent, colorText: Colors.white);
+    } on PlayerInterruptedException catch (e) {
+      debugPrint("Connection aborted: ${e.message}");
+    } catch (e, stackTrace) {
       debugPrint('Audio play failed: $e');
-      Get.snackbar('播放失败', '音频加载超时或解析错误');
+      debugPrintStack(stackTrace: stackTrace);
+      Get.snackbar('播放失败', '加载错误: ${e.toString()}',
+          backgroundColor: Colors.redAccent,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 5));
     }
   }
 
