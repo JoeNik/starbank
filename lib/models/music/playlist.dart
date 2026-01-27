@@ -27,4 +27,22 @@ class Playlist extends HiveObject {
     required this.tracks,
     required this.createdAt,
   });
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'coverUrl': coverUrl,
+        'tracks': tracks.map((e) => e.toJson()).toList(),
+        'createdAt': createdAt.toIso8601String(),
+      };
+
+  factory Playlist.fromJson(Map<String, dynamic> json) => Playlist(
+        id: json['id'] as String,
+        name: json['name'] as String,
+        coverUrl: json['coverUrl'] as String?,
+        tracks: (json['tracks'] as List<dynamic>?)
+                ?.map((e) => MusicTrack.fromJson(e as Map<String, dynamic>))
+                .toList() ??
+            [],
+        createdAt: DateTime.parse(json['createdAt'] as String),
+      );
 }

@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:webdav_client/webdav_client.dart' as webdav;
 import 'package:hive/hive.dart';
@@ -12,6 +13,7 @@ import '../controllers/app_mode_controller.dart';
 import '../models/poop_record.dart';
 import '../models/ai_chat.dart';
 import '../models/openai_config.dart';
+import '../services/openai_service.dart';
 import '../models/story_session.dart';
 import '../models/music/playlist.dart';
 import '../models/music/music_track.dart';
@@ -364,13 +366,22 @@ class WebDavService extends GetxService {
           await poopBox.clear();
           for (var item in (backupData['poopRecords'] as List)) {
             if (item is Map) {
-              final record =
-                  PoopRecord.fromJson(Map<String, dynamic>.from(item));
+              final map = Map<String, dynamic>.from(item);
+              // Ensure ID is string
+              if (map['id'] != null) map['id'] = map['id'].toString();
+              if (map['babyId'] != null)
+                map['babyId'] = map['babyId'].toString();
+
+              final record = PoopRecord.fromJson(map);
               await poopBox.put(record.id, record);
             }
           }
         } catch (e) {
           print('恢复便便记录失败: $e');
+          Get.snackbar('警告', '便便记录恢复失败: $e',
+              duration: const Duration(seconds: 5),
+              snackPosition: SnackPosition.BOTTOM,
+              backgroundColor: Colors.orange.shade100);
         }
       }
 
@@ -381,12 +392,21 @@ class WebDavService extends GetxService {
           await chatBox.clear();
           for (var item in (backupData['aiChats'] as List)) {
             if (item is Map) {
-              final chat = AIChat.fromJson(Map<String, dynamic>.from(item));
+              final map = Map<String, dynamic>.from(item);
+              if (map['id'] != null) map['id'] = map['id'].toString();
+              if (map['babyId'] != null)
+                map['babyId'] = map['babyId'].toString();
+
+              final chat = AIChat.fromJson(map);
               await chatBox.put(chat.id, chat);
             }
           }
         } catch (e) {
           print('恢复 AI 聊天记录失败: $e');
+          Get.snackbar('警告', 'AI 聊天记录恢复失败: $e',
+              duration: const Duration(seconds: 5),
+              snackPosition: SnackPosition.BOTTOM,
+              backgroundColor: Colors.orange.shade100);
         }
       }
 
@@ -397,14 +417,27 @@ class WebDavService extends GetxService {
           await openaiBox.clear();
           for (var item in (backupData['openaiConfigs'] as List)) {
             if (item is Map) {
-              final config =
-                  OpenAIConfig.fromJson(Map<String, dynamic>.from(item));
+              final map = Map<String, dynamic>.from(item);
+              if (map['id'] != null) map['id'] = map['id'].toString();
+
+              final config = OpenAIConfig.fromJson(map);
               await openaiBox.put(config.id, config);
             }
           }
         } catch (e) {
           print('恢复 OpenAI 配置失败: $e');
+          Get.snackbar('警告', 'OpenAI 配置恢复失败: $e',
+              duration: const Duration(seconds: 5),
+              snackPosition: SnackPosition.BOTTOM,
+              backgroundColor: Colors.orange.shade100);
         }
+
+        // 尝试刷新 OpenAIService
+        try {
+          if (Get.isRegistered<OpenAIService>()) {
+            Get.find<OpenAIService>().loadConfigs();
+          }
+        } catch (_) {}
       }
 
       // 恢复应用设置
@@ -500,7 +533,7 @@ class WebDavService extends GetxService {
           for (var item in (backupData['musicPlaylists'] as List)) {
             if (item is Map) {
               final List<MusicTrack> tracks = (item['tracks'] as List? ?? [])
-                  .map((t) => MusicTrack.fromJson(t))
+                  .map((t) => MusicTrack.fromJson(Map<String, dynamic>.from(t)))
                   .toList();
 
               final pl = Playlist(

@@ -87,7 +87,17 @@ class MusicPlayerController extends GetxController {
         }
       });
 
-      audioPlayer.positionStream.listen((p) => position.value = p);
+      audioPlayer.positionStream.listen((p) {
+        position.value = p;
+        // Update lyric index
+        if (lyrics.isNotEmpty) {
+          // Find the last lyric that started before or at current position
+          final index = lyrics.lastIndexWhere((l) => l.startTime <= p);
+          if (index != -1 && index != currentLyricIndex.value) {
+            currentLyricIndex.value = index;
+          }
+        }
+      });
       audioPlayer.durationStream
           .listen((d) => duration.value = d ?? Duration.zero);
       audioPlayer.bufferedPositionStream.listen((b) => buffered.value = b);
@@ -120,6 +130,9 @@ class MusicPlayerController extends GetxController {
         if (res.containsKey('lyrics') && res['lyrics'] != null) {
           track.lyricContent = res['lyrics'];
         }
+
+        // Parse lyrics immediately
+        _parseLyrics(track.lyricContent);
 
         // 同步来自 info 的更准确信息
         if (res.containsKey('info') && res['info'] is Map) {
@@ -238,7 +251,7 @@ class MusicPlayerController extends GetxController {
     audioPlayer.seek(pos);
   }
 
-  // Timer Logic
+  // Timer logic
   void setSleepTimer(int minutes) {
     _sleepTimer?.cancel();
     sleepTimerMinutes.value = minutes;
@@ -251,6 +264,38 @@ class MusicPlayerController extends GetxController {
     }
   }
 
+  // --- Lyrics Logic ---
+
+  final RxList<LyricLine> lyrics = <LyricLine>[].obs;
+  final RxInt currentLyricIndex = 0.obs;
+
+  void _parseLyrics(String? content) {
+    lyrics.clear();
+    currentLyricIndex.value = 0;
+    if (content == null || content.isEmpty) return;
+
+    // Regex to match [mm:ss.SS] or [mm:ss.SSS]
+    final regExp = RegExp(r'^\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)');
+    final lines = content.split('\n');
+
+    for (final line in lines) {
+      final match = regExp.firstMatch(line);
+      if (match != null) {
+        final min = int.parse(match.group(1)!);
+        final sec = int.parse(match.group(2)!);
+        final msStr = match.group(3)!;
+        // Normalize milliseconds: .1 -> 100, .12 -> 120, .123 -> 123
+        final ms = int.parse(msStr.padRight(3, '0'));
+
+        final time = Duration(minutes: min, seconds: sec, milliseconds: ms);
+        final text = match.group(4)!.trim();
+        // Skip empty lines if desired, or keep them for spacing
+        // Keeping them is better for fidelity
+        lyrics.add(LyricLine(time, text));
+      }
+    }
+  }
+
   @override
   void onClose() {
     if (isInitialized.value) {
@@ -259,4 +304,11 @@ class MusicPlayerController extends GetxController {
     _sleepTimer?.cancel();
     super.onClose();
   }
+}
+
+class LyricLine {
+  final Duration startTime;
+  final String content;
+
+  LyricLine(this.startTime, this.content);
 }

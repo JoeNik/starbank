@@ -464,7 +464,10 @@ class _RiddlePageState extends State<RiddlePage> {
   }
 
   void _showImportDialog() {
-    final controller = TextEditingController();
+    // 获取上次使用的 URL
+    final lastUrl =
+        Hive.box('settings').get('riddle_import_url', defaultValue: '');
+    final controller = TextEditingController(text: lastUrl);
     Get.dialog(
       AlertDialog(
         title: const Text('导入脑筋急转弯'),
@@ -577,6 +580,11 @@ class _RiddlePageState extends State<RiddlePage> {
       Get.snackbar('导入成功', '已成功导入 ${validRiddles.length} 道题目',
           snackPosition: SnackPosition.BOTTOM,
           backgroundColor: Colors.green.shade100);
+
+      // 保存成功的 URL
+      if (input.trim().startsWith('http')) {
+        await Hive.box('settings').put('riddle_import_url', input.trim());
+      }
     } catch (e) {
       Get.snackbar('导入失败', '数据格式错误: $e\n请确保格式为 [{"q":"..","a":".."}]',
           snackPosition: SnackPosition.BOTTOM,

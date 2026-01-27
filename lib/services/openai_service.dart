@@ -24,12 +24,12 @@ class OpenAIService extends GetxService {
     _configBox = await Hive.openBox<OpenAIConfig>('openai_configs');
 
     // 加载配置
-    _loadConfigs();
+    loadConfigs();
 
     return this;
   }
 
-  void _loadConfigs() {
+  void loadConfigs() {
     configs.assignAll(_configBox.values.toList());
 
     // 找到默认配置
@@ -49,19 +49,19 @@ class OpenAIService extends GetxService {
     }
 
     await _configBox.put(config.id, config);
-    _loadConfigs();
+    loadConfigs();
   }
 
   /// 更新配置
   Future<void> updateConfig(OpenAIConfig config) async {
     await config.save();
-    _loadConfigs();
+    loadConfigs();
   }
 
   /// 删除配置
   Future<void> deleteConfig(OpenAIConfig config) async {
     await config.delete();
-    _loadConfigs();
+    loadConfigs();
   }
 
   /// 设置默认配置
@@ -70,7 +70,7 @@ class OpenAIService extends GetxService {
       c.isDefault = c.id == config.id;
       await c.save();
     }
-    _loadConfigs();
+    loadConfigs();
   }
 
   /// 测试连接并获取模型列表
@@ -237,6 +237,6 @@ class OpenAIService extends GetxService {
       final config = OpenAIConfig.fromJson(item as Map<String, dynamic>);
       await _configBox.put(config.id, config);
     }
-    _loadConfigs();
+    loadConfigs();
   }
 }
