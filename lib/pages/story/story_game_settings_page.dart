@@ -9,6 +9,8 @@ import '../../services/openai_service.dart';
 import '../../theme/app_theme.dart';
 import '../openai_settings_page.dart';
 
+import '../../controllers/app_mode_controller.dart';
+
 /// 故事游戏设置页面
 class StoryGameSettingsPage extends StatefulWidget {
   const StoryGameSettingsPage({super.key});
@@ -19,6 +21,7 @@ class StoryGameSettingsPage extends StatefulWidget {
 
 class _StoryGameSettingsPageState extends State<StoryGameSettingsPage> {
   late OpenAIService _openAIService;
+  final AppModeController _appMode = Get.find<AppModeController>();
   late Box _configBox;
   StoryGameConfig? _config;
   bool _isLoading = true;
@@ -105,355 +108,390 @@ class _StoryGameSettingsPageState extends State<StoryGameSettingsPage> {
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('故事游戏设置'),
-        actions: [
-          IconButton(
-            onPressed: _saveConfig,
-            icon: const Icon(Icons.check),
-            tooltip: '保存',
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(16.w),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 提示信息
-            Container(
-              padding: EdgeInsets.all(12.w),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(12.r),
+    return Obx(() {
+      final isChildMode = _appMode.isChildMode;
+
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('故事游戏设置'),
+          actions: [
+            if (!isChildMode)
+              IconButton(
+                onPressed: _saveConfig,
+                icon: const Icon(Icons.check),
+                tooltip: '保存',
               ),
-              child: Row(
-                children: [
-                  Icon(Icons.info_outline, color: Colors.blue, size: 20.sp),
-                  SizedBox(width: 8.w),
-                  Expanded(
-                    child: Text(
-                      '配置不同的 AI 模型来完成图像生成、分析和对话功能',
-                      style: TextStyle(
-                          fontSize: 13.sp, color: Colors.blue.shade700),
+          ],
+        ),
+        body: SingleChildScrollView(
+          padding: EdgeInsets.all(16.w),
+          child: AbsorbPointer(
+            absorbing: isChildMode,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 儿童模式提示
+                if (isChildMode)
+                  Container(
+                    width: double.infinity,
+                    margin: EdgeInsets.only(bottom: 16.h),
+                    padding: EdgeInsets.all(12.w),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(12.r),
+                      border: Border.all(color: Colors.orange.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.lock, color: Colors.orange, size: 20.sp),
+                        SizedBox(width: 8.w),
+                        Text(
+                          '当前为儿童模式，设置不可修改',
+                          style: TextStyle(
+                              fontSize: 14.sp, color: Colors.orange.shade800),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
-            ),
 
-            SizedBox(height: 24.h),
-
-            // 图像分析配置（必需）
-            _buildSectionTitle('📸 图像分析配置', required: true),
-            _buildConfigCard(
-              children: [
-                _buildConfigSelector(
-                  label: '选择接口',
-                  value: _config!.visionConfigId,
-                  onChanged: (id) {
-                    setState(() {
-                      _config!.visionConfigId = id ?? '';
-                      // 自动选择第一个模型
-                      final cfg = _openAIService.configs
-                          .firstWhereOrNull((c) => c.id == id);
-                      if (cfg != null && cfg.models.isNotEmpty) {
-                        _config!.visionModel = cfg.models.first;
-                      }
-                    });
-                  },
-                ),
-                SizedBox(height: 12.h),
-                _buildModelSelector(
-                  label: '选择模型',
-                  hint: '推荐：gpt-4o, claude-3-sonnet',
-                  configId: _config!.visionConfigId,
-                  value: _config!.visionModel,
-                  onChanged: (model) {
-                    setState(() => _config!.visionModel = model ?? '');
-                  },
-                ),
-                SizedBox(height: 12.h),
-                _buildPromptEditor(
-                  label: '图像分析提示词',
-                  controller: _visionPromptController,
-                  hint: '引导 AI 分析图片并开始故事...',
-                ),
-              ],
-            ),
-
-            SizedBox(height: 24.h),
-
-            // 对话配置
-            _buildSectionTitle('💬 对话引导配置'),
-            _buildConfigCard(
-              children: [
-                _buildConfigSelector(
-                  label: '选择接口',
-                  value: _config!.chatConfigId,
-                  onChanged: (id) {
-                    setState(() {
-                      _config!.chatConfigId = id ?? '';
-                      final cfg = _openAIService.configs
-                          .firstWhereOrNull((c) => c.id == id);
-                      if (cfg != null && cfg.models.isNotEmpty) {
-                        _config!.chatModel = cfg.models.first;
-                      }
-                    });
-                  },
-                ),
-                SizedBox(height: 12.h),
-                _buildModelSelector(
-                  label: '选择模型',
-                  hint: '可选任意 LLM',
-                  configId: _config!.chatConfigId,
-                  value: _config!.chatModel,
-                  onChanged: (model) {
-                    setState(() => _config!.chatModel = model ?? '');
-                  },
-                ),
-                SizedBox(height: 12.h),
-                _buildPromptEditor(
-                  label: '对话系统提示词',
-                  controller: _chatPromptController,
-                  hint: '引导孩子扩展故事...',
-                ),
-              ],
-            ),
-
-            SizedBox(height: 24.h),
-
-            // 评价配置
-            _buildSectionTitle('⭐ 故事评价配置'),
-            _buildConfigCard(
-              children: [
-                _buildPromptEditor(
-                  label: '评价提示词',
-                  controller: _evalPromptController,
-                  hint: '评价故事并给出分数...',
-                ),
-              ],
-            ),
-
-            SizedBox(height: 24.h),
-
-            // 游戏设置
-            _buildSectionTitle('🎮 游戏设置'),
-            _buildConfigCard(
-              children: [
-                _buildNumberSetting(
-                  label: '最大对话轮数',
-                  value: _config!.maxRounds,
-                  min: 3,
-                  max: 10,
-                  onChanged: (v) => setState(() => _config!.maxRounds = v),
-                ),
-                SizedBox(height: 12.h),
-                _buildNumberSetting(
-                  label: '每日游戏次数限制',
-                  value: _config!.dailyLimit,
-                  min: 1,
-                  max: 10,
-                  onChanged: (v) => setState(() => _config!.dailyLimit = v),
-                ),
-                SizedBox(height: 16.h),
-                const Divider(),
-                SizedBox(height: 8.h),
-                // 星星奖励开关
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text('启用星星奖励', style: TextStyle(fontSize: 14.sp)),
-                  subtitle: Text(
-                    _config!.enableStarReward ? '完成故事将获得星星奖励' : '仅游戏，不发放星星',
-                    style: TextStyle(fontSize: 12.sp),
-                  ),
-                  value: _config!.enableStarReward,
-                  onChanged: (v) =>
-                      setState(() => _config!.enableStarReward = v),
-                ),
-                if (_config!.enableStarReward)
-                  _buildNumberSetting(
-                    label: '完成奖励星星数',
-                    value: _config!.baseStars,
-                    min: 1,
-                    max: 10,
-                    onChanged: (v) => setState(() => _config!.baseStars = v),
-                  ),
-              ],
-            ),
-
-            SizedBox(height: 24.h),
-
-            // 图片源配置
-            _buildSectionTitle('🖼️ 图片源配置'),
-            _buildConfigCard(
-              children: [
-                Text(
-                  '配置故事图片来源（优先级：远程API > 备用图片列表 > 内置图片）',
-                  style: TextStyle(fontSize: 12.sp, color: Colors.grey),
-                ),
-                SizedBox(height: 12.h),
-                TextFormField(
-                  initialValue: _config!.remoteImageApiUrl,
-                  decoration: InputDecoration(
-                    labelText: '远程图片API地址（可选）',
-                    hintText: 'https://api.example.com/images',
-                    helperText:
-                        '支持格式：["url1", "url2"] 或 {"images": ["url1"]}\n返回 JSON 列表或包含 images/data 字段的对象',
-                    helperMaxLines: 3,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8.r),
-                    ),
-                  ),
-                  onChanged: (v) => _config!.remoteImageApiUrl = v,
-                ),
-                SizedBox(height: 16.h),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '备用图片URL列表',
-                      style: TextStyle(fontSize: 13.sp, color: Colors.grey),
-                    ),
-                    TextButton(
-                      onPressed: _editFallbackImages,
-                      child: const Text('编辑'),
-                    ),
-                  ],
-                ),
+                // 提示信息
                 Container(
                   padding: EdgeInsets.all(12.w),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
-                    borderRadius: BorderRadius.circular(8.r),
-                    border: Border.all(color: Colors.grey.shade200),
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
-                  child: Text(
-                    _config!.fallbackImageUrls.isEmpty
-                        ? '未配置，将使用内置图片'
-                        : '已配置 ${_config!.fallbackImageUrls.length} 张图片',
-                    style: TextStyle(fontSize: 12.sp),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline, color: Colors.blue, size: 20.sp),
+                      SizedBox(width: 8.w),
+                      Expanded(
+                        child: Text(
+                          '配置不同的 AI 模型来完成图像生成、分析和对话功能',
+                          style: TextStyle(
+                              fontSize: 13.sp, color: Colors.blue.shade700),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
 
-            SizedBox(height: 24.h),
+                SizedBox(height: 24.h),
 
-            // TTS 语音播报设置
-            _buildSectionTitle('🔊 语音播报设置'),
-            _buildConfigCard(
-              children: [
-                Text(
-                  'AI回复的语音播报参数（仅对当前故事游戏有效）',
-                  style: TextStyle(fontSize: 12.sp, color: Colors.grey),
-                ),
-                SizedBox(height: 16.h),
-                // 语速
-                Row(
+                // 图像分析配置（必需）
+                _buildSectionTitle('📸 图像分析配置', required: true),
+                _buildConfigCard(
                   children: [
-                    Expanded(
-                      child: Text('语速', style: TextStyle(fontSize: 14.sp)),
+                    _buildConfigSelector(
+                      label: '选择接口',
+                      value: _config!.visionConfigId,
+                      onChanged: (id) {
+                        setState(() {
+                          _config!.visionConfigId = id ?? '';
+                          // 自动选择第一个模型
+                          final cfg = _openAIService.configs
+                              .firstWhereOrNull((c) => c.id == id);
+                          if (cfg != null && cfg.models.isNotEmpty) {
+                            _config!.visionModel = cfg.models.first;
+                          }
+                        });
+                      },
                     ),
-                    SizedBox(
-                      width: 200.w,
-                      child: Slider(
-                        value: _config!.ttsRate,
-                        min: 0.0,
-                        max: 1.0,
-                        divisions: 10,
-                        label: _config!.ttsRate.toStringAsFixed(1),
-                        onChanged: (v) => setState(() => _config!.ttsRate = v),
-                      ),
+                    SizedBox(height: 12.h),
+                    _buildModelSelector(
+                      label: '选择模型',
+                      hint: '推荐：gpt-4o, claude-3-sonnet',
+                      configId: _config!.visionConfigId,
+                      value: _config!.visionModel,
+                      onChanged: (model) {
+                        setState(() => _config!.visionModel = model ?? '');
+                      },
                     ),
-                    SizedBox(
-                      width: 40.w,
-                      child: Text(
-                        _config!.ttsRate.toStringAsFixed(1),
-                        textAlign: TextAlign.center,
-                      ),
+                    SizedBox(height: 12.h),
+                    _buildPromptEditor(
+                      label: '图像分析提示词',
+                      controller: _visionPromptController,
+                      hint: '引导 AI 分析图片并开始故事...',
                     ),
                   ],
                 ),
-                SizedBox(height: 8.h),
-                // 音量
-                Row(
+
+                SizedBox(height: 24.h),
+
+                // 对话配置
+                _buildSectionTitle('💬 对话引导配置'),
+                _buildConfigCard(
                   children: [
-                    Expanded(
-                      child: Text('音量', style: TextStyle(fontSize: 14.sp)),
+                    _buildConfigSelector(
+                      label: '选择接口',
+                      value: _config!.chatConfigId,
+                      onChanged: (id) {
+                        setState(() {
+                          _config!.chatConfigId = id ?? '';
+                          final cfg = _openAIService.configs
+                              .firstWhereOrNull((c) => c.id == id);
+                          if (cfg != null && cfg.models.isNotEmpty) {
+                            _config!.chatModel = cfg.models.first;
+                          }
+                        });
+                      },
                     ),
-                    SizedBox(
-                      width: 200.w,
-                      child: Slider(
-                        value: _config!.ttsVolume,
-                        min: 0.0,
-                        max: 1.0,
-                        divisions: 10,
-                        label: _config!.ttsVolume.toStringAsFixed(1),
+                    SizedBox(height: 12.h),
+                    _buildModelSelector(
+                      label: '选择模型',
+                      hint: '可选任意 LLM',
+                      configId: _config!.chatConfigId,
+                      value: _config!.chatModel,
+                      onChanged: (model) {
+                        setState(() => _config!.chatModel = model ?? '');
+                      },
+                    ),
+                    SizedBox(height: 12.h),
+                    _buildPromptEditor(
+                      label: '对话系统提示词',
+                      controller: _chatPromptController,
+                      hint: '引导孩子扩展故事...',
+                    ),
+                  ],
+                ),
+
+                SizedBox(height: 24.h),
+
+                // 评价配置
+                _buildSectionTitle('⭐ 故事评价配置'),
+                _buildConfigCard(
+                  children: [
+                    _buildPromptEditor(
+                      label: '评价提示词',
+                      controller: _evalPromptController,
+                      hint: '评价故事并给出分数...',
+                    ),
+                  ],
+                ),
+
+                SizedBox(height: 24.h),
+
+                // 游戏设置
+                _buildSectionTitle('🎮 游戏设置'),
+                _buildConfigCard(
+                  children: [
+                    _buildNumberSetting(
+                      label: '最大对话轮数',
+                      value: _config!.maxRounds,
+                      min: 3,
+                      max: 10,
+                      onChanged: (v) => setState(() => _config!.maxRounds = v),
+                    ),
+                    SizedBox(height: 12.h),
+                    _buildNumberSetting(
+                      label: '每日游戏次数限制',
+                      value: _config!.dailyLimit,
+                      min: 1,
+                      max: 10,
+                      onChanged: (v) => setState(() => _config!.dailyLimit = v),
+                    ),
+                    SizedBox(height: 16.h),
+                    const Divider(),
+                    SizedBox(height: 8.h),
+                    // 星星奖励开关
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text('启用星星奖励', style: TextStyle(fontSize: 14.sp)),
+                      subtitle: Text(
+                        _config!.enableStarReward ? '完成故事将获得星星奖励' : '仅游戏，不发放星星',
+                        style: TextStyle(fontSize: 12.sp),
+                      ),
+                      value: _config!.enableStarReward,
+                      onChanged: (v) =>
+                          setState(() => _config!.enableStarReward = v),
+                    ),
+                    if (_config!.enableStarReward)
+                      _buildNumberSetting(
+                        label: '完成奖励星星数',
+                        value: _config!.baseStars,
+                        min: 1,
+                        max: 10,
                         onChanged: (v) =>
-                            setState(() => _config!.ttsVolume = v),
+                            setState(() => _config!.baseStars = v),
                       ),
-                    ),
-                    SizedBox(
-                      width: 40.w,
-                      child: Text(
-                        _config!.ttsVolume.toStringAsFixed(1),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
                   ],
                 ),
-                SizedBox(height: 8.h),
-                // 音调
-                Row(
+
+                SizedBox(height: 24.h),
+
+                // 图片源配置
+                _buildSectionTitle('🖼️ 图片源配置'),
+                _buildConfigCard(
                   children: [
-                    Expanded(
-                      child: Text('音调', style: TextStyle(fontSize: 14.sp)),
+                    Text(
+                      '配置故事图片来源（优先级：远程API > 备用图片列表 > 内置图片）',
+                      style: TextStyle(fontSize: 12.sp, color: Colors.grey),
                     ),
-                    SizedBox(
-                      width: 200.w,
-                      child: Slider(
-                        value: _config!.ttsPitch,
-                        min: 0.5,
-                        max: 2.0,
-                        divisions: 15,
-                        label: _config!.ttsPitch.toStringAsFixed(1),
-                        onChanged: (v) => setState(() => _config!.ttsPitch = v),
+                    SizedBox(height: 12.h),
+                    TextFormField(
+                      initialValue: _config!.remoteImageApiUrl,
+                      decoration: InputDecoration(
+                        labelText: '远程图片API地址（可选）',
+                        hintText: 'https://api.example.com/images',
+                        helperText:
+                            '支持格式：["url1", "url2"] 或 {"images": ["url1"]}\n返回 JSON 列表或包含 images/data 字段的对象',
+                        helperMaxLines: 3,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8.r),
+                        ),
                       ),
+                      onChanged: (v) => _config!.remoteImageApiUrl = v,
                     ),
-                    SizedBox(
-                      width: 40.w,
+                    SizedBox(height: 16.h),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '备用图片URL列表',
+                          style: TextStyle(fontSize: 13.sp, color: Colors.grey),
+                        ),
+                        TextButton(
+                          onPressed: _editFallbackImages,
+                          child: const Text('编辑'),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: EdgeInsets.all(12.w),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(8.r),
+                        border: Border.all(color: Colors.grey.shade200),
+                      ),
                       child: Text(
-                        _config!.ttsPitch.toStringAsFixed(1),
-                        textAlign: TextAlign.center,
+                        _config!.fallbackImageUrls.isEmpty
+                            ? '未配置，将使用内置图片'
+                            : '已配置 ${_config!.fallbackImageUrls.length} 张图片',
+                        style: TextStyle(fontSize: 12.sp),
                       ),
                     ),
                   ],
                 ),
+
+                SizedBox(height: 24.h),
+
+                // TTS 语音播报设置
+                _buildSectionTitle('🔊 语音播报设置'),
+                _buildConfigCard(
+                  children: [
+                    Text(
+                      'AI回复的语音播报参数（仅对当前故事游戏有效）',
+                      style: TextStyle(fontSize: 12.sp, color: Colors.grey),
+                    ),
+                    SizedBox(height: 16.h),
+                    // 语速
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text('语速', style: TextStyle(fontSize: 14.sp)),
+                        ),
+                        SizedBox(
+                          width: 200.w,
+                          child: Slider(
+                            value: _config!.ttsRate,
+                            min: 0.0,
+                            max: 1.0,
+                            divisions: 10,
+                            label: _config!.ttsRate.toStringAsFixed(1),
+                            onChanged: (v) =>
+                                setState(() => _config!.ttsRate = v),
+                          ),
+                        ),
+                        SizedBox(
+                          width: 40.w,
+                          child: Text(
+                            _config!.ttsRate.toStringAsFixed(1),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 8.h),
+                    // 音量
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text('音量', style: TextStyle(fontSize: 14.sp)),
+                        ),
+                        SizedBox(
+                          width: 200.w,
+                          child: Slider(
+                            value: _config!.ttsVolume,
+                            min: 0.0,
+                            max: 1.0,
+                            divisions: 10,
+                            label: _config!.ttsVolume.toStringAsFixed(1),
+                            onChanged: (v) =>
+                                setState(() => _config!.ttsVolume = v),
+                          ),
+                        ),
+                        SizedBox(
+                          width: 40.w,
+                          child: Text(
+                            _config!.ttsVolume.toStringAsFixed(1),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 8.h),
+                    // 音调
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text('音调', style: TextStyle(fontSize: 14.sp)),
+                        ),
+                        SizedBox(
+                          width: 200.w,
+                          child: Slider(
+                            value: _config!.ttsPitch,
+                            min: 0.5,
+                            max: 2.0,
+                            divisions: 15,
+                            label: _config!.ttsPitch.toStringAsFixed(1),
+                            onChanged: (v) =>
+                                setState(() => _config!.ttsPitch = v),
+                          ),
+                        ),
+                        SizedBox(
+                          width: 40.w,
+                          child: Text(
+                            _config!.ttsPitch.toStringAsFixed(1),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+
+                SizedBox(height: 32.h),
+
+                // 快速添加配置入口
+                Center(
+                  child: TextButton.icon(
+                    onPressed: () {
+                      Get.to(() => const OpenAISettingsPage())?.then((_) {
+                        setState(() {});
+                      });
+                    },
+                    icon: const Icon(Icons.add),
+                    label: const Text('管理 AI 接口配置'),
+                  ),
+                ),
+
+                SizedBox(height: 32.h),
               ],
             ),
-
-            SizedBox(height: 32.h),
-
-            // 快速添加配置入口
-            Center(
-              child: TextButton.icon(
-                onPressed: () {
-                  Get.to(() => const OpenAISettingsPage())?.then((_) {
-                    setState(() {});
-                  });
-                },
-                icon: const Icon(Icons.add),
-                label: const Text('管理 AI 接口配置'),
-              ),
-            ),
-
-            SizedBox(height: 32.h),
-          ],
+          ),
         ),
-      ),
-    );
+      );
+    });
   }
 
   Widget _buildSectionTitle(String title,

@@ -180,15 +180,9 @@ class WebDavService extends GetxService {
 
       // 备份音乐数据 (歌单 & 收藏)
       try {
-        // Because StorageService is initialized with playlistBox, we can access it.
-        // But StorageService instance is private '_storage' here.
-        // Let's assume _storage.playlistBox collects all playlists including favorites.
-        // Wait, playlistBox is a Box<Playlist>.
-        final playlistBox = await Hive.openBox<Playlist>('playlistBox');
+        // 先检查 Box 是否打开，如果没有则打开
+        final playlistBox = await Hive.openBox<Playlist>('playlists');
         backupData['musicPlaylists'] = playlistBox.values.map((p) {
-          // We need a toJson because HiveObject doesn't have it by default unless we wrote it?
-          // Playlist model doesn't have toJson yet. I will need to add it or manually map it.
-          // Manual mapping for now to avoid modifying model excessively if disjoint.
           return {
             'id': p.id,
             'name': p.name,
@@ -204,10 +198,31 @@ class WebDavService extends GetxService {
       // 备份通用设置 (包括 TuneHub Config)
       try {
         final settingsBox = await Hive.openBox('settings');
+        // 过滤掉不应该备份的本地配置（如 WebDAV 自身的账号密码，避免恢复时覆盖当前连接信息导致连接断开）
+        // 但用户可能希望备份这些以便迁移。折中方案：全部备份，恢复时让用户小心。
+        // 或者保留 WebDAV 配置不覆盖。这里先全部备份。
         backupData['genericSettings'] =
             Map<String, dynamic>.from(settingsBox.toMap());
       } catch (e) {
         print('备份通用设置失败: $e');
+      }
+
+      // 备份 TuneHub 设置
+      try {
+        final tuneHubBox = await Hive.openBox('tunehub_config');
+        backupData['tuneHubConfig'] =
+            Map<String, dynamic>.from(tuneHubBox.toMap());
+      } catch (e) {
+        print('备份 TuneHub 设置失败: $e');
+      }
+
+      // 备份播放器设置
+      try {
+        final playerSettingsBox = await Hive.openBox('player_settings');
+        backupData['playerSettings'] =
+            Map<String, dynamic>.from(playerSettingsBox.toMap());
+      } catch (e) {
+        print('备份播放器设置失败: $e');
       }
 
       // 备份密码哈希
@@ -474,7 +489,7 @@ class WebDavService extends GetxService {
       // 恢复音乐数据
       if (backupData['musicPlaylists'] != null) {
         try {
-          final playlistBox = await Hive.openBox<Playlist>('playlistBox');
+          final playlistBox = await Hive.openBox<Playlist>('playlists');
           await playlistBox.clear();
           for (var item in (backupData['musicPlaylists'] as List)) {
             if (item is Map) {
@@ -501,25 +516,57 @@ class WebDavService extends GetxService {
       if (backupData['genericSettings'] != null) {
         try {
           final settingsBox = await Hive.openBox('settings');
-          // Don't clear all settings blindly, merge or sensitive overwrite?
-          // Usually restore overwrites.
-          // Use careful logic: overwrite only non-system keys if possible?
-          // Or just overwrite all as requested by "Restore".
-          // Let's safe-guard webdav config itself if self-restoring?
-          // Actually if we overwrite webdav config with old one, we might lose current connection info if it changed.
-          // But 'settings' box contains 'webdav_url', 'webdav_user', etc.
-          // If we overwrite them, we are fine as long as the user knows.
-          // Typically restore implies "make it exactly like backup".
-
           final settings = backupData['genericSettings'] as Map;
+
+          // 获取当前的 WebDAV 配置，避免被覆盖后断开连接
+          final currentWebDavUrl = settingsBox.get('webdav_url');
+          final currentWebDavUser = settingsBox.get('webdav_user');
+          final currentWebDavPwd = settingsBox.get('webdav_pwd');
+
           for (var entry in settings.entries) {
             await settingsBox.put(entry.key, entry.value);
+          }
+
+          // 恢复 WebDAV 连接信息 (如果之前存在)
+          // 这样用户恢复其他设置时不会把自己踢下线，除非是全新安装后的恢复
+          if (currentWebDavUrl != null) {
+            await settingsBox.put('webdav_url', currentWebDavUrl);
+            await settingsBox.put('webdav_user', currentWebDavUser);
+            await settingsBox.put('webdav_pwd', currentWebDavPwd);
           }
 
           // Reload config related if needed
           _loadConfig();
         } catch (e) {
           print('恢复通用设置失败: $e');
+        }
+      }
+
+      // 恢复 TuneHub 设置
+      if (backupData['tuneHubConfig'] != null) {
+        try {
+          final tuneHubBox = await Hive.openBox('tunehub_config');
+          await tuneHubBox.clear();
+          final config = backupData['tuneHubConfig'] as Map;
+          for (var entry in config.entries) {
+            await tuneHubBox.put(entry.key, entry.value);
+          }
+        } catch (e) {
+          print('恢复 TuneHub 设置失败: $e');
+        }
+      }
+
+      // 恢复播放器设置
+      if (backupData['playerSettings'] != null) {
+        try {
+          final playerSettingsBox = await Hive.openBox('player_settings');
+          await playerSettingsBox.clear();
+          final settings = backupData['playerSettings'] as Map;
+          for (var entry in settings.entries) {
+            await playerSettingsBox.put(entry.key, entry.value);
+          }
+        } catch (e) {
+          print('恢复播放器设置失败: $e');
         }
       }
 
