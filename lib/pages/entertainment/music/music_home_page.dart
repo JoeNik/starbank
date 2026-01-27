@@ -3,7 +3,6 @@ import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../controllers/music_player_controller.dart';
 import '../../../services/tunehub_service.dart';
-import '../../../services/webdav_service.dart';
 import '../../../theme/app_theme.dart';
 import '../../../models/music/music_track.dart';
 import 'music_player_page.dart';
@@ -22,6 +21,13 @@ class _MusicHomePageState extends State<MusicHomePage> {
 
   final RxList<MusicTrack> _searchResults = <MusicTrack>[].obs;
   final RxBool _isSearching = false.obs;
+  final RxString _selectedPlatform = 'kuwo'.obs;
+
+  final Map<String, String> _platforms = {
+    'kuwo': '酷我音乐',
+    'netease': '网易云',
+    'qq': 'QQ音乐',
+  };
 
   void _doSearch() async {
     if (_searchController.text.isEmpty) return;
@@ -30,7 +36,8 @@ class _MusicHomePageState extends State<MusicHomePage> {
     _searchResults.clear();
 
     try {
-      final results = await _tuneHubService.searchMusic(_searchController.text);
+      final results = await _tuneHubService.searchMusic(_searchController.text,
+          platform: _selectedPlatform.value);
       _searchResults.assignAll(results);
     } catch (e) {
       Get.snackbar('搜索失败', e.toString());
@@ -54,57 +61,6 @@ class _MusicHomePageState extends State<MusicHomePage> {
           TextField(
             controller: keyCtrl,
             decoration: const InputDecoration(labelText: 'API Key (Optional)'),
-          ),
-          SizedBox(height: 16.h),
-          const Divider(),
-          Text('数据备份 (WebDAV)',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp)),
-          SizedBox(height: 8.h),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              TextButton.icon(
-                icon: const Icon(Icons.cloud_upload),
-                label: const Text('备份'),
-                onPressed: () async {
-                  Get.back();
-                  final success = await Get.find<WebDavService>().backupData();
-                  if (success) _showSettings(); // Re-open or just stay closed
-                },
-              ),
-              TextButton.icon(
-                icon: const Icon(Icons.cloud_download),
-                label: const Text('恢复'),
-                onPressed: () async {
-                  Get.back(); // Close first
-                  final backups = await Get.find<WebDavService>().listBackups();
-                  if (backups.isEmpty) {
-                    Get.snackbar('提示', '未找到备份文件');
-                    return;
-                  }
-                  // Show backup selection
-                  Get.defaultDialog(
-                    title: '选择备份',
-                    content: SizedBox(
-                      height: 300.h,
-                      width: 300.w,
-                      child: ListView(
-                        children: backups.reversed
-                            .map((path) => ListTile(
-                                  title: Text(path.split('/').last),
-                                  onTap: () async {
-                                    Get.back();
-                                    await Get.find<WebDavService>()
-                                        .restoreData(path);
-                                  },
-                                ))
-                            .toList(),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ],
           ),
         ],
       ),
@@ -162,6 +118,36 @@ class _MusicHomePageState extends State<MusicHomePage> {
             ),
           ),
 
+          // Platform Selector
+          Obx(() => Container(
+                height: 40.h,
+                padding: EdgeInsets.symmetric(horizontal: 16.w),
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: _platforms.entries.map((entry) {
+                    final isSelected = _selectedPlatform.value == entry.key;
+                    return Padding(
+                      padding: EdgeInsets.only(right: 8.w),
+                      child: ChoiceChip(
+                        label: Text(entry.value),
+                        selected: isSelected,
+                        onSelected: (selected) {
+                          if (selected) {
+                            _selectedPlatform.value = entry.key;
+                            if (_searchController.text.isNotEmpty) _doSearch();
+                          }
+                        },
+                        selectedColor: AppTheme.primary,
+                        labelStyle: TextStyle(
+                          color: isSelected ? Colors.white : Colors.black87,
+                          fontSize: 12.sp,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              )),
+
           // Results
           Expanded(
             child: Obx(() {
@@ -206,9 +192,18 @@ class _MusicHomePageState extends State<MusicHomePage> {
                                         : null,
                                     color: Colors.grey[200],
                                   ),
-                                  child: track.coverUrl == null
-                                      ? const Icon(Icons.music_note)
-                                      : null,
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(8.r),
+                                    child: track.coverUrl != null
+                                        ? Image.network(
+                                            track.coverUrl!,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (context, error,
+                                                    stackTrace) =>
+                                                const Icon(Icons.music_note),
+                                          )
+                                        : const Icon(Icons.music_note),
+                                  ),
                                 ),
                                 title: Text(track.title),
                                 subtitle: Text(track.artist),
@@ -257,9 +252,17 @@ class _MusicHomePageState extends State<MusicHomePage> {
                             : null,
                         color: Colors.grey[200],
                       ),
-                      child: track.coverUrl == null
-                          ? const Icon(Icons.music_note)
-                          : null,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8.r),
+                        child: track.coverUrl != null
+                            ? Image.network(
+                                track.coverUrl!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    const Icon(Icons.music_note),
+                              )
+                            : const Icon(Icons.music_note),
+                      ),
                     ),
                     title: Text(track.title),
                     subtitle: Text('${track.artist} - ${track.album ?? ""}'),

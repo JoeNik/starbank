@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
@@ -10,12 +11,13 @@ import '../services/storage_service.dart';
 class MusicPlayerController extends GetxController {
   final TuneHubService _tuneHubService = Get.find<TuneHubService>();
   final StorageService _storage = Get.find<StorageService>();
-  final AudioPlayer audioPlayer = AudioPlayer();
+  late AudioPlayer audioPlayer;
 
   final RxList<MusicTrack> playlist = <MusicTrack>[].obs;
   final RxList<MusicTrack> favorites = <MusicTrack>[].obs;
   final RxInt currentIndex = 0.obs;
   final RxBool isPlaying = false.obs;
+  final RxBool isInitialized = false.obs;
 
   // Progress
   final Rx<Duration> position = Duration.zero.obs;
@@ -74,36 +76,47 @@ class MusicPlayerController extends GetxController {
   }
 
   void _initAudioPlayer() {
-    audioPlayer.playerStateStream.listen((state) {
-      isPlaying.value = state.playing;
-      if (state.processingState == ProcessingState.completed) {
-        playNext();
-      }
-    });
+    try {
+      audioPlayer = AudioPlayer();
+      isInitialized.value = true;
 
-    audioPlayer.positionStream.listen((p) => position.value = p);
-    audioPlayer.durationStream
-        .listen((d) => duration.value = d ?? Duration.zero);
-    audioPlayer.bufferedPositionStream.listen((b) => buffered.value = b);
+      audioPlayer.playerStateStream.listen((state) {
+        isPlaying.value = state.playing;
+        if (state.processingState == ProcessingState.completed) {
+          playNext();
+        }
+      });
+
+      audioPlayer.positionStream.listen((p) => position.value = p);
+      audioPlayer.durationStream
+          .listen((d) => duration.value = d ?? Duration.zero);
+      audioPlayer.bufferedPositionStream.listen((b) => buffered.value = b);
+    } catch (e) {
+      debugPrint('AudioPlayer initialization failed: $e');
+      isInitialized.value = false;
+    }
   }
 
   Future<void> playTrack(MusicTrack track) async {
-    // 1. Get Play URL if needed
-    String? url = track.url;
-    if (url == null || url.isEmpty) {
-      // Fetch from Service
-      // url = await _tuneHubService.getPlayUrl(track.id, platform: track.platform);
-      // For demo, assume we might have it or fetching logic needs to be added to service
-      // Temporary: hardcode or fail
-      // url = 'https://music.163.com/song/media/outer/url?id=${track.id}.mp3'; // Netease fallback
+    String? currentUrl = track.url;
+
+    // Always try to refresh URL because it usually expires
+    try {
+      final info = await _tuneHubService.parseTrack(track.platform, track.id);
+      if (info.containsKey('url')) {
+        currentUrl = info['url'];
+        track.url = currentUrl;
+        if (info.containsKey('lyric')) {
+          track.lyricContent = info['lyric'];
+        }
+        // Save back if it's a favorite to cache metadata
+        // (Optional, maybe better to keep clean)
+      }
+    } catch (e) {
+      debugPrint('Fetch URL error: $e');
     }
 
-    // Netease fallback construct (common trick)
-    if ((url == null || url.isEmpty) && track.platform == 'netease') {
-      url = 'https://music.163.com/song/media/outer/url?id=${track.id}.mp3';
-    }
-
-    if (url == null) {
+    if (currentUrl == null || currentUrl.isEmpty) {
       Get.snackbar('错误', '无法获取播放地址');
       return;
     }
@@ -119,16 +132,16 @@ class MusicPlayerController extends GetxController {
       );
 
       await audioPlayer.setAudioSource(AudioSource.uri(
-        Uri.parse(url),
+        Uri.parse(currentUrl),
         tag: mediaItem,
       ));
 
       // Update Playlist State (if not already there, add it or play from list)
-      if (!playlist.contains(track)) {
+      if (!playlist.any((t) => t.id == track.id)) {
         playlist.add(track);
         currentIndex.value = playlist.length - 1;
       } else {
-        currentIndex.value = playlist.indexOf(track);
+        currentIndex.value = playlist.indexWhere((t) => t.id == track.id);
       }
 
       await audioPlayer.play();
@@ -184,7 +197,9 @@ class MusicPlayerController extends GetxController {
 
   @override
   void onClose() {
-    audioPlayer.dispose();
+    if (isInitialized.value) {
+      audioPlayer.dispose();
+    }
     _sleepTimer?.cancel();
     super.onClose();
   }

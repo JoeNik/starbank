@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 2.2.0+37
+version: 2.2.1+38
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -40,20 +40,22 @@ dependencies:
   webdav_client: ^1.0.0
   flutter_screenutil: ^5.9.0
   flutter_svg: ^2.0.7
-  intl: ^0.18.0
+  intl: ^0.20.2
   path_provider: ^2.0.15
   image_picker: ^1.0.4
   http: ^1.1.0                  # HTTP 请求
   url_launcher: ^6.2.1          # 打开下载链接
-  package_info_plus: ^5.0.1     # 获取应用版本信息
+  package_info_plus: ^9.0.0     # 获取应用版本信息
   crypto: ^3.0.3                # 密码加密
   flutter_tts: ^4.0.2           # 语音播报
-  flutter_markdown: ^0.6.18     # Markdown 渲染
+  flutter_markdown: ^0.7.7+1     # Markdown 渲染
   open_filex: ^4.4.0            # 打开文件（安装 APK）
-  permission_handler: ^11.3.1   # 权限管理
-  speech_to_text: ^6.6.0        # 语音识别
-  just_audio: ^0.9.44
+  permission_handler: ^12.0.1   # 权限管理
+  speech_to_text: ^7.3.0        # 语音识别
+  just_audio: ^0.10.5
   just_audio_background: ^0.0.1-beta.15
+  just_audio_windows: ^0.2.2
+  just_audio_web: ^0.4.13
   audio_video_progress_bar: ^2.0.3
   palette_generator: ^0.3.3+7
   flutter_lyric: ^3.0.2
@@ -62,10 +64,10 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  flutter_lints: ^2.0.0
+  flutter_lints: ^6.0.0
   build_runner: ^2.3.3
   hive_generator: ^2.0.0
-  flutter_launcher_icons: ^0.13.1
+  flutter_launcher_icons: ^0.14.4
 
 # 应用图标配置
 flutter_launcher_icons:

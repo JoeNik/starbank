@@ -28,29 +28,46 @@ import 'pages/record_page.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await JustAudioBackground.init(
-    androidNotificationChannelId: 'com.ryanheise.bg_demo.channel.audio',
-    androidNotificationChannelName: 'Audio playback',
-    androidNotificationOngoing: true,
-  );
+  try {
+    // Only initialize JustAudioBackground on Android and iOS
+    if (GetPlatform.isAndroid || GetPlatform.isIOS) {
+      await JustAudioBackground.init(
+        androidNotificationChannelId: 'com.ryanheise.bg_demo.channel.audio',
+        androidNotificationChannelName: 'Audio playback',
+        androidNotificationOngoing: true,
+      );
+    }
+  } catch (e) {
+    debugPrint('JustAudioBackground init failed: $e');
+  }
 
-  // Initialize Storage Service
-  await Get.putAsync(() => StorageService().init());
+  try {
+    // 1. Initialize Storage Service (Essential)
+    final storageService = StorageService();
+    await storageService.init();
+    Get.put(storageService);
 
-  // Initialize TTS Service (全局语音服务)
-  await Get.putAsync(() => TtsService().init());
+    // 2. Initialize TTS Service (Crucial for some features)
+    final ttsService = TtsService();
+    await ttsService.init();
+    Get.put(ttsService);
 
-  // OpenAI Service 改为懒加载（在需要时才初始化）
-  // 不在启动时初始化，由使用的页面自行初始化
+    // 3. Initialize Other Services and Controllers
+    Get.put(WebDavService());
+    Get.put(UpdateService());
+    Get.put(UserController());
+    Get.put(ShopController());
+    Get.put(AppModeController());
+    Get.put(TuneHubService());
+    Get.put(MusicPlayerController());
 
-  // Initialize Other Services and Controllers
-  Get.put(WebDavService());
-  Get.put(UpdateService());
-  Get.put(UserController());
-  Get.put(ShopController());
-  Get.put(AppModeController());
-  Get.put(TuneHubService());
-  Get.put(MusicPlayerController());
+    debugPrint('All services initialized successfully');
+  } catch (e, stack) {
+    debugPrint('Critical initialization error: $e');
+    debugPrint('Stack trace: $stack');
+    // We still try to run the app, but some features might be broken.
+    // However, if Storage fails, most likely anything touching UI will crash.
+  }
 
   runApp(const MyApp());
 }

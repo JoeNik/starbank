@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import '../models/music/music_track.dart';
@@ -18,7 +19,7 @@ class TuneHubService extends GetxService {
     super.onInit();
     // Load from storage if available
     baseUrl.value = _storage.getValue('tunehub_base_url') ??
-        'https://api.tunehub.example.com'; // User needs to change this
+        'https://tunehub.sayqz.com/api';
     apiKey.value = _storage.getValue('tunehub_api_key') ?? '';
   }
 
@@ -34,10 +35,7 @@ class TuneHubService extends GetxService {
 
     final uri = Uri.parse('${baseUrl.value}/v1/methods/$platform/$function');
     final response = await http.get(uri, headers: {
-      if (apiKey.value.isNotEmpty)
-        'Authorization':
-            'Bearer ${apiKey.value}', // Assuming Bearer auth or similar
-      'x-api-key': apiKey.value,
+      'X-API-Key': apiKey.value,
     });
 
     if (response.statusCode == 200) {
@@ -60,14 +58,35 @@ class TuneHubService extends GetxService {
 
     // Replace variables in params
     finalParams.forEach((key, value) {
-      // Simple string replacement for {{val}}
+      var processedValue = value;
       vars.forEach((k, v) {
-        if (value is String && value.contains('{{$k}}')) {
-          finalParams[key] = (value as String).replaceAll('{{$k}}', v);
+        // 1. Exact match: {{keyword}}
+        if (processedValue.contains('{{$k}}')) {
+          processedValue = processedValue.replaceAll('{{$k}}', v);
+        }
+        // 2. Logic match: {{(page || 1) - 1}} or {{page - 1}}
+        // Handle common 0-indexing conversion for music APIs
+        if (k == 'page' &&
+            (processedValue.contains('page') &&
+                processedValue.contains('- 1'))) {
+          try {
+            final pageInt = int.parse(v);
+            final newVal = (pageInt - 1).toString();
+            // Replace the whole template block
+            processedValue = processedValue.replaceAll(
+                RegExp(r'\{\{.*?page.*?\}\}'), newVal);
+          } catch (_) {}
+        }
+        // 3. Fallback/Default match: {{limit || 20}}
+        if (processedValue.contains('{{$k') && processedValue.contains('||')) {
+          processedValue =
+              processedValue.replaceAll(RegExp(r'\{\{.*?' + k + r'.*?\}\}'), v);
         }
       });
+      finalParams[key] = processedValue;
     });
-    // Replace variables in URL if any (though usually in params)
+
+    // Replace variables in URL
     vars.forEach((k, v) {
       if (finalUrl.contains('{{$k}}')) {
         finalUrl = finalUrl.replaceAll('{{$k}}', v);
@@ -111,58 +130,86 @@ class TuneHubService extends GetxService {
 
   Future<List<MusicTrack>> searchMusic(String keyword,
       {String platform = 'kuwo', int page = 1}) async {
+    if (GetPlatform.isWeb) {
+      Get.snackbar('平台限制', '由于浏览器 CORS 限制，Web 端搜索可能会失败，请使用 Windows 或安卓端',
+          backgroundColor: Colors.orange, colorText: Colors.white);
+    }
     try {
       final method = await _getMethod(platform, 'search');
-      final rawResult = await _executeMethod(method,
-          {'keyword': keyword, 'page': page.toString(), 'pageSize': '20'});
+      final rawResult = await _executeMethod(method, {
+        'keyword': keyword,
+        'page': page.toString(),
+        'pageSize': '20',
+        'limit': '20', // Common alias
+      });
 
-      // PARSING LOGIC: This assumes specific structure based on platform unfortunately.
-      // For the "First Version", if the user does NOT provide a working JS engine,
-      // I have to hack this for Kuwo/Netease if I want it to actually SHOW music.
-      // Or I can return dummy data if the API isn't real yet.
-
-      // Let's assume standard Kuwo JSON for demo if possible, or just look for a list.
       List<MusicTrack> tracks = [];
 
-      if (platform == 'kuwo') {
-        // Basic Kuwo parsing logic (example)
-        // If rawResult is a Map, look for 'abslist' or similar
-        if (rawResult is Map) {
-          final list = rawResult['abslist'] ?? rawResult['data']?['list'];
-          if (list is List) {
-            for (var item in list) {
-              tracks.add(MusicTrack(
-                  id: item['MUSICRID'] ?? item['id'].toString(),
-                  title: item['SONGNAME'] ?? item['name'],
-                  artist: item['ARTIST'] ?? item['artist'],
-                  coverUrl: item['web_albumpic_short'] ?? item['pic'],
-                  platform: platform));
-            }
-          }
-        }
-      } else if (platform == 'netease') {
-        // Basic Netease parsing
-        if (rawResult is Map &&
-            rawResult['result'] != null &&
-            rawResult['result']['songs'] != null) {
-          for (var item in rawResult['result']['songs']) {
+      // V3 Result is usually in data.list or similar based on method transform
+      // Since we can't run JS 'transform' easily, we handle common ones.
+      if (rawResult is Map) {
+        final list = rawResult['list'] ??
+            rawResult['data']?['list'] ??
+            rawResult['abslist'];
+        if (list is List) {
+          for (var item in list) {
             tracks.add(MusicTrack(
-                id: item['id'].toString(),
-                title: item['name'],
-                artist:
-                    (item['artists'] as List).map((e) => e['name']).join(','),
-                album: item['album']?['name'],
-                // Netease often needs separate call for cover, or it's in album
-                coverUrl: item['album']?['picUrl'] ?? item['picUrl'],
-                platform: platform));
+              id: (item['id'] ?? item['MUSICRID'] ?? item['songId']).toString(),
+              title: item['name'] ?? item['SONGNAME'] ?? item['title'] ?? '',
+              artist: item['artist'] ?? item['ARTIST'] ?? item['singer'] ?? '',
+              coverUrl: item['pic'] ??
+                  item['web_albumpic_short'] ??
+                  item['img'] ??
+                  item['album']?['picUrl'],
+              album: item['album']?['name'] ?? item['ALBUM'] ?? '',
+              platform: platform,
+            ));
           }
         }
       }
-
       return tracks;
     } catch (e) {
-      print('Search Error: $e');
+      print('TuneHub Search Error: $e');
       return [];
     }
+  }
+
+  /// 获取播放地址和歌词
+  Future<Map<String, dynamic>> parseTrack(String platform, String id) async {
+    if (baseUrl.value.isEmpty) throw Exception('未配置服务器');
+
+    final uri = Uri.parse('${baseUrl.value}/v1/parse');
+    final response = await http.post(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': apiKey.value,
+      },
+      body: jsonEncode({
+        'platform': platform,
+        'ids': id,
+        'quality': '128k', // Default quality
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final json = jsonDecode(response.body);
+      if (json['code'] == 0 && json['data'] != null) {
+        final results = json['data'] as Map;
+        // Search for ID either as string or int
+        var trackData = results[id] ?? results[int.tryParse(id)];
+
+        if (trackData == null) {
+          final key = results.keys.firstWhere(
+            (k) => k.toString().contains(id) || id.contains(k.toString()),
+            orElse: () => null,
+          );
+          if (key != null) trackData = results[key];
+        }
+
+        return trackData != null ? Map<String, dynamic>.from(trackData) : {};
+      }
+    }
+    return {};
   }
 }
