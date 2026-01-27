@@ -9,7 +9,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 /// GitHub Release 信息模型
 class ReleaseInfo {
@@ -424,13 +423,20 @@ class UpdateService extends GetxService {
       // 获取下载目录
       Directory? dir;
       if (Platform.isAndroid) {
-        // 请求存储权限
-        if (await Permission.storage.request().isGranted) {
-          dir = Directory('/storage/emulated/0/Download');
-          if (!dir.existsSync()) {
-            dir = await getExternalStorageDirectory();
-          }
-        } else {
+        // Android Specific: Try modern approach first
+        try {
+          dir = await getDownloadsDirectory();
+        } catch (e) {
+          dir = null;
+        }
+
+        // Fallback or specific handling
+        if (dir == null) {
+          // Verify SDK version isn't easily possible without device_info,
+          // but we can try permissions if we really want strict public access.
+          // However, for updates, app-specific storage is safer and guaranteed writable.
+
+          // Try app-specific external storage first (Backwards compatible & Scoped Storage friendly)
           dir = await getExternalStorageDirectory();
         }
       } else {

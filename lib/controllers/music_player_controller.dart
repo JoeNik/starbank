@@ -190,6 +190,11 @@ class MusicPlayerController extends GetxController {
       try {
         await audioPlayer.setAudioSource(AudioSource.uri(
           Uri.parse(playUrl),
+          headers: {
+            'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Referer': 'https://www.google.com/',
+          },
           tag: mediaItem,
         ));
       } catch (e) {
@@ -197,6 +202,11 @@ class MusicPlayerController extends GetxController {
         debugPrint('Protocol error, retrying with raw URL: $e');
         await audioPlayer.setAudioSource(AudioSource.uri(
           Uri.parse(currentUrl),
+          headers: {
+            'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Referer': 'https://www.google.com/',
+          },
           tag: mediaItem,
         ));
       }
