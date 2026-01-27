@@ -5,6 +5,8 @@ import '../models/action_item.dart';
 import '../models/log.dart';
 import '../models/product.dart';
 import '../models/baby.dart';
+import '../models/music/music_track.dart';
+import '../models/music/playlist.dart';
 
 class StorageService extends GetxService {
   late Box<UserProfile> userBox;
@@ -12,7 +14,12 @@ class StorageService extends GetxService {
   late Box<Log> logBox;
   late Box<Product> productBox;
   late Box<Baby> babyBox;
+  late Box<Playlist> playlistBox;
   Box get settingsBox => Hive.box('settings');
+
+  dynamic getValue(String key) => settingsBox.get(key);
+  Future<void> saveValue(String key, dynamic value) =>
+      settingsBox.put(key, value);
 
   Future<StorageService> init() async {
     await Hive.initFlutter();
@@ -22,12 +29,15 @@ class StorageService extends GetxService {
     Hive.registerAdapter(LogAdapter());
     Hive.registerAdapter(ProductAdapter());
     Hive.registerAdapter(BabyAdapter());
+    Hive.registerAdapter(MusicTrackAdapter());
+    Hive.registerAdapter(PlaylistAdapter());
 
     userBox = await Hive.openBox<UserProfile>('userBox');
     actionBox = await Hive.openBox<ActionItem>('actionBox');
     logBox = await Hive.openBox<Log>('logBox');
     productBox = await Hive.openBox<Product>('productBox');
     babyBox = await Hive.openBox<Baby>('babyBox');
+    playlistBox = await Hive.openBox<Playlist>('playlistBox');
 
     // Generic settings box
     await Hive.openBox('settings');

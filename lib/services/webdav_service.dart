@@ -9,6 +9,12 @@ import '../models/action_item.dart';
 import '../models/log.dart';
 import '../models/product.dart';
 import '../controllers/app_mode_controller.dart';
+import '../models/poop_record.dart';
+import '../models/ai_chat.dart';
+import '../models/openai_config.dart';
+import '../models/story_session.dart';
+import '../models/music/playlist.dart';
+import '../models/music/music_track.dart';
 
 /// WebDAV备份服务
 class WebDavService extends GetxService {
@@ -172,6 +178,38 @@ class WebDavService extends GetxService {
         print('备份自定义脑筋急转弯失败: $e');
       }
 
+      // 备份音乐数据 (歌单 & 收藏)
+      try {
+        // Because StorageService is initialized with playlistBox, we can access it.
+        // But StorageService instance is private '_storage' here.
+        // Let's assume _storage.playlistBox collects all playlists including favorites.
+        // Wait, playlistBox is a Box<Playlist>.
+        final playlistBox = await Hive.openBox<Playlist>('playlistBox');
+        backupData['musicPlaylists'] = playlistBox.values.map((p) {
+          // We need a toJson because HiveObject doesn't have it by default unless we wrote it?
+          // Playlist model doesn't have toJson yet. I will need to add it or manually map it.
+          // Manual mapping for now to avoid modifying model excessively if disjoint.
+          return {
+            'id': p.id,
+            'name': p.name,
+            'coverUrl': p.coverUrl,
+            'createdAt': p.createdAt.toIso8601String(),
+            'tracks': p.tracks.map((t) => t.toJson()).toList(),
+          };
+        }).toList();
+      } catch (e) {
+        print('备份音乐数据失败: $e');
+      }
+
+      // 备份通用设置 (包括 TuneHub Config)
+      try {
+        final settingsBox = await Hive.openBox('settings');
+        backupData['genericSettings'] =
+            Map<String, dynamic>.from(settingsBox.toMap());
+      } catch (e) {
+        print('备份通用设置失败: $e');
+      }
+
       // 备份密码哈希
       try {
         final modeController = Get.find<AppModeController>();
@@ -301,12 +339,16 @@ class WebDavService extends GetxService {
       // 恢复便便记录
       if (backupData['poopRecords'] != null) {
         try {
-          final poopBox = await Hive.openBox<dynamic>('poop_records');
+          // 确保使用正确的泛型打开 Box，以便 Hive 知道它存储的是 PoopRecord
+          // 注意：如果之前已经用 dynamic 打开过，这里复用实例可能还是 dynamic 泛型，
+          // 但 put 进去的对象必须是 PoopRecord 类型
+          final poopBox = await Hive.openBox<PoopRecord>('poop_records');
           await poopBox.clear();
           for (var item in (backupData['poopRecords'] as List)) {
-            // 使用 put 而不是 add，保留原 ID
-            final id = item['id'] as String;
-            await poopBox.put(id, item);
+            if (item is Map<String, dynamic>) {
+              final record = PoopRecord.fromJson(item);
+              await poopBox.put(record.id, record);
+            }
           }
         } catch (e) {
           print('恢复便便记录失败: $e');
@@ -316,12 +358,13 @@ class WebDavService extends GetxService {
       // 恢复 AI 聊天记录
       if (backupData['aiChats'] != null) {
         try {
-          final chatBox = await Hive.openBox<dynamic>('ai_chats');
+          final chatBox = await Hive.openBox<AIChat>('ai_chats');
           await chatBox.clear();
           for (var item in (backupData['aiChats'] as List)) {
-            // 使用 put 而不是 add，保留原 ID
-            final id = item['id'] as String;
-            await chatBox.put(id, item);
+            if (item is Map<String, dynamic>) {
+              final chat = AIChat.fromJson(item);
+              await chatBox.put(chat.id, chat);
+            }
           }
         } catch (e) {
           print('恢复 AI 聊天记录失败: $e');
@@ -331,11 +374,13 @@ class WebDavService extends GetxService {
       // 恢复 OpenAI 配置
       if (backupData['openaiConfigs'] != null) {
         try {
-          final openaiBox = await Hive.openBox<dynamic>('openai_configs');
+          final openaiBox = await Hive.openBox<OpenAIConfig>('openai_configs');
           await openaiBox.clear();
           for (var item in (backupData['openaiConfigs'] as List)) {
-            final id = item['id'] as String;
-            await openaiBox.put(id, item);
+            if (item is Map<String, dynamic>) {
+              final config = OpenAIConfig.fromJson(item);
+              await openaiBox.put(config.id, config);
+            }
           }
         } catch (e) {
           print('恢复 OpenAI 配置失败: $e');
@@ -399,11 +444,14 @@ class WebDavService extends GetxService {
       // 恢复故事游戏会话记录
       if (backupData['storySessions'] != null) {
         try {
-          final storySessionBox = await Hive.openBox<dynamic>('story_sessions');
+          final storySessionBox =
+              await Hive.openBox<StorySession>('story_sessions');
           await storySessionBox.clear();
           for (var item in (backupData['storySessions'] as List)) {
-            final id = item['id'] as String;
-            await storySessionBox.put(id, item);
+            if (item is Map<String, dynamic>) {
+              final session = StorySession.fromJson(item);
+              await storySessionBox.put(session.id, session);
+            }
           }
         } catch (e) {
           print('恢复故事游戏会话失败: $e');
@@ -420,6 +468,58 @@ class WebDavService extends GetxService {
           }
         } catch (e) {
           print('恢复自定义脑筋急转弯失败: $e');
+        }
+      }
+
+      // 恢复音乐数据
+      if (backupData['musicPlaylists'] != null) {
+        try {
+          final playlistBox = await Hive.openBox<Playlist>('playlistBox');
+          await playlistBox.clear();
+          for (var item in (backupData['musicPlaylists'] as List)) {
+            if (item is Map) {
+              final List<MusicTrack> tracks = (item['tracks'] as List? ?? [])
+                  .map((t) => MusicTrack.fromJson(t))
+                  .toList();
+
+              final pl = Playlist(
+                id: item['id'],
+                name: item['name'],
+                coverUrl: item['coverUrl'],
+                createdAt: DateTime.parse(item['createdAt']),
+                tracks: tracks,
+              );
+              await playlistBox.put(pl.id, pl);
+            }
+          }
+        } catch (e) {
+          print('恢复音乐数据失败: $e');
+        }
+      }
+
+      // 恢复通用设置 (settings box)
+      if (backupData['genericSettings'] != null) {
+        try {
+          final settingsBox = await Hive.openBox('settings');
+          // Don't clear all settings blindly, merge or sensitive overwrite?
+          // Usually restore overwrites.
+          // Use careful logic: overwrite only non-system keys if possible?
+          // Or just overwrite all as requested by "Restore".
+          // Let's safe-guard webdav config itself if self-restoring?
+          // Actually if we overwrite webdav config with old one, we might lose current connection info if it changed.
+          // But 'settings' box contains 'webdav_url', 'webdav_user', etc.
+          // If we overwrite them, we are fine as long as the user knows.
+          // Typically restore implies "make it exactly like backup".
+
+          final settings = backupData['genericSettings'] as Map;
+          for (var entry in settings.entries) {
+            await settingsBox.put(entry.key, entry.value);
+          }
+
+          // Reload config related if needed
+          _loadConfig();
+        } catch (e) {
+          print('恢复通用设置失败: $e');
         }
       }
 

@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../theme/app_theme.dart';
 import 'riddle_page.dart';
 import 'story/story_game_page.dart';
+import 'entertainment/music/music_home_page.dart';
 
 /// 娱乐模块入口页面
 class EntertainmentPage extends StatelessWidget {
@@ -106,6 +107,14 @@ class EntertainmentPage extends StatelessWidget {
                     subtitle: 'AI引导讲故事',
                     color: const Color(0xFF81C784),
                     onTap: () => Get.to(() => const StoryGamePage()),
+                  ),
+                  // 音乐播放器
+                  _buildFeatureCard(
+                    emoji: '🎵',
+                    title: '儿歌播放器',
+                    subtitle: '海量儿歌随心听',
+                    color: const Color(0xFF64B5F6),
+                    onTap: () => Get.to(() => const MusicHomePage()),
                   ),
                 ],
               ),

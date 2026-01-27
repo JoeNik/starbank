@@ -8,6 +8,9 @@ import 'services/tts_service.dart';
 import 'controllers/user_controller.dart';
 import 'controllers/shop_controller.dart';
 import 'controllers/app_mode_controller.dart';
+import 'services/tunehub_service.dart';
+import 'controllers/music_player_controller.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 import 'pages/home_page.dart';
 import 'theme/app_theme.dart';
 import 'pages/bank_page.dart';
@@ -25,6 +28,12 @@ import 'pages/record_page.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  await JustAudioBackground.init(
+    androidNotificationChannelId: 'com.ryanheise.bg_demo.channel.audio',
+    androidNotificationChannelName: 'Audio playback',
+    androidNotificationOngoing: true,
+  );
+
   // Initialize Storage Service
   await Get.putAsync(() => StorageService().init());
 
@@ -40,6 +49,8 @@ void main() async {
   Get.put(UserController());
   Get.put(ShopController());
   Get.put(AppModeController());
+  Get.put(TuneHubService());
+  Get.put(MusicPlayerController());
 
   runApp(const MyApp());
 }

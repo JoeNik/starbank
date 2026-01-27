@@ -1,0 +1,2483 @@
+<!DOCTYPE html>
+<!-- saved from url=(0030)https://tunehub.sayqz.com/docs -->
+<html lang="zh-CN"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TuneHub V3 - Music Parse API Platform</title>
+  <link rel="icon" type="image/png" href="./TuneHub V3 - Music Parse API Platform_files/favicon.png">
+  <script type="module" crossorigin="" src="./TuneHub V3 - Music Parse API Platform_files/index-5CNf7Swh.js.下载"></script>
+  <link rel="stylesheet" crossorigin="" href="./TuneHub V3 - Music Parse API Platform_files/index-CTqpBmjj.css">
+<link rel="modulepreload" as="script" crossorigin="" href="https://tunehub.sayqz.com/assets/AuthCallback-mbO6YPWF.js"><link rel="stylesheet" crossorigin="" href="./TuneHub V3 - Music Parse API Platform_files/AuthCallback-CsvcwxFO.css"><link rel="stylesheet" href="./TuneHub V3 - Music Parse API Platform_files/layer.css" id="layuicss-layer"><link id="layuicss-laydate" rel="stylesheet" href="./TuneHub V3 - Music Parse API Platform_files/laydate.css" media="all"><link id="layuicss-skincodecss" rel="stylesheet" href="./TuneHub V3 - Music Parse API Platform_files/code.css" media="all"><style data-id="immersive-translate-input-injected-css">.immersive-translate-input {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 2147483647;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.immersive-translate-attach-loading::after {
+  content: " ";
+
+  --loading-color: #f78fb6;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: block;
+  margin: 12px auto;
+  position: relative;
+  color: white;
+  left: -100px;
+  box-sizing: border-box;
+  animation: immersiveTranslateShadowRolling 1.5s linear infinite;
+
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-2000%, -50%);
+  z-index: 100;
+}
+
+.immersive-translate-loading-spinner {
+  vertical-align: middle !important;
+  width: 10px !important;
+  height: 10px !important;
+  display: inline-block !important;
+  margin: 0 4px !important;
+  border: 2px rgba(221, 244, 255, 0.6) solid !important;
+  border-top: 2px rgba(0, 0, 0, 0.375) solid !important;
+  border-left: 2px rgba(0, 0, 0, 0.375) solid !important;
+  border-radius: 50% !important;
+  padding: 0 !important;
+  -webkit-animation: immersive-translate-loading-animation 0.6s infinite linear !important;
+  animation: immersive-translate-loading-animation 0.6s infinite linear !important;
+}
+
+@-webkit-keyframes immersive-translate-loading-animation {
+  from {
+    -webkit-transform: rotate(0deg);
+  }
+
+  to {
+    -webkit-transform: rotate(359deg);
+  }
+}
+
+@keyframes immersive-translate-loading-animation {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(359deg);
+  }
+}
+
+.immersive-translate-input-loading {
+  --loading-color: #f78fb6;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: block;
+  margin: 12px auto;
+  position: relative;
+  color: white;
+  left: -100px;
+  box-sizing: border-box;
+  animation: immersiveTranslateShadowRolling 1.5s linear infinite;
+}
+
+@keyframes immersiveTranslateShadowRolling {
+  0% {
+    box-shadow: 0px 0 rgba(255, 255, 255, 0), 0px 0 rgba(255, 255, 255, 0),
+      0px 0 rgba(255, 255, 255, 0), 0px 0 rgba(255, 255, 255, 0);
+  }
+
+  12% {
+    box-shadow: 100px 0 var(--loading-color), 0px 0 rgba(255, 255, 255, 0),
+      0px 0 rgba(255, 255, 255, 0), 0px 0 rgba(255, 255, 255, 0);
+  }
+
+  25% {
+    box-shadow: 110px 0 var(--loading-color), 100px 0 var(--loading-color),
+      0px 0 rgba(255, 255, 255, 0), 0px 0 rgba(255, 255, 255, 0);
+  }
+
+  36% {
+    box-shadow: 120px 0 var(--loading-color), 110px 0 var(--loading-color),
+      100px 0 var(--loading-color), 0px 0 rgba(255, 255, 255, 0);
+  }
+
+  50% {
+    box-shadow: 130px 0 var(--loading-color), 120px 0 var(--loading-color),
+      110px 0 var(--loading-color), 100px 0 var(--loading-color);
+  }
+
+  62% {
+    box-shadow: 200px 0 rgba(255, 255, 255, 0), 130px 0 var(--loading-color),
+      120px 0 var(--loading-color), 110px 0 var(--loading-color);
+  }
+
+  75% {
+    box-shadow: 200px 0 rgba(255, 255, 255, 0), 200px 0 rgba(255, 255, 255, 0),
+      130px 0 var(--loading-color), 120px 0 var(--loading-color);
+  }
+
+  87% {
+    box-shadow: 200px 0 rgba(255, 255, 255, 0), 200px 0 rgba(255, 255, 255, 0),
+      200px 0 rgba(255, 255, 255, 0), 130px 0 var(--loading-color);
+  }
+
+  100% {
+    box-shadow: 200px 0 rgba(255, 255, 255, 0), 200px 0 rgba(255, 255, 255, 0),
+      200px 0 rgba(255, 255, 255, 0), 200px 0 rgba(255, 255, 255, 0);
+  }
+}
+
+.immersive-translate-modal {
+  position: fixed;
+  z-index: 2147483647;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgb(0, 0, 0);
+  background-color: rgba(0, 0, 0, 0.4);
+  font-size: 15px;
+}
+
+.immersive-translate-modal-content {
+  background-color: #fefefe;
+  margin: 10% auto;
+  padding: 40px 24px 24px;
+  border-radius: 12px;
+  width: 350px;
+  font-family: system-ui, -apple-system, "Segoe UI", "Roboto", "Ubuntu",
+    "Cantarell", "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+    "Segoe UI Symbol", "Noto Color Emoji";
+  position: relative;
+}
+
+@media screen and (max-width: 768px) {
+  .immersive-translate-modal-content {
+    margin: 25% auto !important;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .immersive-translate-modal-content {
+    width: 80vw !important;
+    margin: 20vh auto !important;
+    padding: 20px 12px 12px !important;
+  }
+
+  .immersive-translate-modal-title {
+    font-size: 14px !important;
+  }
+
+  .immersive-translate-modal-body {
+    font-size: 13px !important;
+    max-height: 60vh !important;
+  }
+
+  .immersive-translate-btn {
+    font-size: 13px !important;
+    padding: 8px 16px !important;
+    margin: 0 4px !important;
+  }
+
+  .immersive-translate-modal-footer {
+    gap: 6px !important;
+    margin-top: 16px !important;
+  }
+}
+
+.immersive-translate-modal .immersive-translate-modal-content-in-input {
+  max-width: 500px;
+}
+.immersive-translate-modal-content-in-input .immersive-translate-modal-body {
+  text-align: left;
+  max-height: unset;
+}
+
+.immersive-translate-modal-title {
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: #333333;
+}
+
+.immersive-translate-modal-body {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 400;
+  color: #333333;
+  margin-top: 24px;
+}
+
+@media screen and (max-width: 768px) {
+  .immersive-translate-modal-body {
+    max-height: 250px;
+    overflow-y: auto;
+  }
+}
+
+.immersive-translate-close {
+  color: #666666;
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.immersive-translate-close:hover,
+.immersive-translate-close:focus {
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.immersive-translate-modal-footer {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 24px;
+}
+
+.immersive-translate-btn {
+  width: fit-content;
+  color: #fff;
+  background-color: #ea4c89;
+  border: none;
+  font-size: 14px;
+  margin: 0 8px;
+  padding: 9px 30px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.immersive-translate-btn-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.immersive-translate-btn:hover {
+  background-color: #f082ac;
+}
+.immersive-translate-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.immersive-translate-btn:disabled:hover {
+  background-color: #ea4c89;
+}
+
+.immersive-translate-link-btn {
+  background-color: transparent;
+  color: #ea4c89;
+  border: none;
+  cursor: pointer;
+  height: 30px;
+  line-height: 30px;
+}
+
+.immersive-translate-cancel-btn {
+  /* gray color */
+  background-color: rgb(89, 107, 120);
+}
+
+.immersive-translate-cancel-btn:hover {
+  background-color: hsl(205, 20%, 32%);
+}
+
+.immersive-translate-action-btn {
+  background-color: transparent;
+  color: #ea4c89;
+  border: 1px solid #ea4c89;
+}
+
+.immersive-translate-btn svg {
+  margin-right: 5px;
+}
+
+.immersive-translate-link {
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-drag: none;
+  text-decoration: none;
+  color: #ea4c89;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+}
+
+.immersive-translate-primary-link {
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-drag: none;
+  text-decoration: none;
+  color: #ea4c89;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+}
+
+.immersive-translate-modal input[type="radio"] {
+  margin: 0 6px;
+  cursor: pointer;
+}
+
+.immersive-translate-modal label {
+  cursor: pointer;
+}
+
+.immersive-translate-close-action {
+  position: absolute;
+  top: 2px;
+  right: 0px;
+  cursor: pointer;
+}
+
+.imt-image-status {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 16px !important;
+}
+.imt-image-status img,
+.imt-image-status svg,
+.imt-img-loading {
+  width: 28px !important;
+  height: 28px !important;
+  margin: 0 0 8px 0 !important;
+  min-height: 28px !important;
+  min-width: 28px !important;
+  position: relative !important;
+}
+.imt-img-loading {
+  background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAA4CAMAAACfWMssAAAAtFBMVEUAAAD////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////oK74hAAAAPHRSTlMABBMIDyQXHwyBfFdDMSw+OjXCb+5RG51IvV/k0rOqlGRM6KKMhdvNyZBz9MaupmxpWyj437iYd/yJVNZeuUC7AAACt0lEQVRIx53T2XKiUBCA4QYOiyCbiAsuuGBcYtxiYtT3f6/pbqoYHVFO5r+iivpo6DpAWYpqeoFfr9f90DsYAuRSWkFnPO50OgR9PwiCUFcl2GEcx+N/YBh6pvKaefHlUgZd1zVe0NbYcQjGBfzrPE8Xz8aF+71D8gG6DHFPpc4a7xFiCDuhaWgKgGIJQ3d5IMGDrpS4S5KgpIm+en9f6PlAhKby4JwEIxlYJV9h5k5nee9GoxHJ2IDSNB0dwdad1NAxDJ/uXDHYmebdk4PdbkS58CIVHdYSUHTYYRWOJblWSyu2lmy3KNFVJNBhxcuGW4YBVCbYGRZwIooipHsNqjM4FbgOQqQqSKQQU9V8xmi1QlgHqQQ6DDBvRUVCDirs+EzGDGOQTCATgtYTnbCVLgsVgRE0T1QE0qHCFAht2z6dLvJQs3Lo2FQoDxWNUiBhaP4eRgwNkI+dAjVOA/kUrIDwf3CG8NfNOE0eiFotSuo+rBiq8tD9oY4Qzc6YJw99hl1wzpQvD7ef2M8QgnOGJfJw+EltQc+oX2yn907QB22WZcvlUpd143dqQu+8pCJZuGE4xCuPXJqqcs5sNpsI93Rmzym1k4Npk+oD1SH3/a3LOK/JpUBpWfqNySxWzCfNCUITuDG5dtuphrUJ1myeIE9bIsPiKrfqTai5WZxbhtNphYx6GEIHihyGFTI69lje/rxajdh0s0msZ0zYxyPLhYCb1CyHm9Qsd2H37Y3lugVwL9kNh8Ot8cha6fUNQ8nuXi5z9/ExsAO4zQrb/ev1yrCB7lGyQzgYDGuxq1toDN/JGvN+HyWNHKB7zEoK+PX11e12G431erGYzwmytAWU56fkMHY5JJnDRR2eZji3AwtIcrEV8Cojat/BdQ7XOwGV1e1hDjGGjXbdArm8uJZtCH5MbcctVX8A1WpqumJHwckAAAAASUVORK5CYII=");
+  background-size: 28px 28px;
+  animation: image-loading-rotate 1s linear infinite !important;
+}
+
+.imt-image-status span {
+  color: var(--bg-2, #fff) !important;
+  font-size: 14px !important;
+  line-height: 14px !important;
+  font-weight: 500 !important;
+  font-family: "PingFang SC", Arial, sans-serif !important;
+}
+
+.imt-primary-button {
+  display: flex;
+  padding: 12px 80px;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  border-radius: 8px;
+  background: #ea4c89;
+  color: #fff;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 24px;
+  border: none;
+  cursor: pointer;
+}
+
+.imt-retry-text {
+  color: #999;
+  text-align: center;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 21px;
+  cursor: pointer;
+}
+
+.imt-action-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.imt-modal-content-text {
+  text-align: left;
+  color: #333;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 24px;
+}
+
+@keyframes image-loading-rotate {
+  from {
+    transform: rotate(360deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+.imt-linear-gradient-text {
+  background: linear-gradient(90deg, #00a6ff 0%, #c369ff 52.4%, #ff4590 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.imt-flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.imt-linear-black-btn {
+  border-radius: 50px;
+  background: linear-gradient(66deg, #222 19%, #696969 94.25%);
+  height: 48px;
+  width: 100%;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  justify-content: center;
+}
+</style><link rel="modulepreload" as="script" crossorigin="" href="https://tunehub.sayqz.com/assets/Dashboard-BNM8LRef.js"><link rel="stylesheet" crossorigin="" href="./TuneHub V3 - Music Parse API Platform_files/Dashboard-CTe3llsX.css"><link rel="modulepreload" as="script" crossorigin="" href="https://tunehub.sayqz.com/assets/ApiKeys-DIgKKb-K.js"><link rel="stylesheet" crossorigin="" href="./TuneHub V3 - Music Parse API Platform_files/ApiKeys-D5SWZDBf.css"><link rel="modulepreload" as="script" crossorigin="" href="https://tunehub.sayqz.com/assets/Docs-BSmgskaW.js"><link rel="stylesheet" crossorigin="" href="./TuneHub V3 - Music Parse API Platform_files/Docs-BNqlYh0z.css"></head>
+<body>
+  <div id="app" data-v-app=""><section data-v-b52ec4c1="" class="el-container is-vertical layout-container"><header data-v-66bf675e="" class="el-header app-header fixed-header" style="--el-header-height: 60px;"><div data-v-66bf675e="" class="header-content"><div data-v-66bf675e="" class="logo"><img data-v-66bf675e="" src="./TuneHub V3 - Music Parse API Platform_files/favicon.png" alt="Logo" class="logo-img mr-2" style="width: 32px; height: 32px;"><span data-v-66bf675e="" class="logo-text">TuneHub</span><!----></div><ul data-v-66bf675e="" role="menubar" class="el-menu el-menu--horizontal header-menu desktop-menu" style="--el-menu-level: 0;"><li data-v-66bf675e="" class="el-menu-item" role="menuitem" tabindex="0">控制台</li><li data-v-66bf675e="" class="el-menu-item" role="menuitem" tabindex="0">密钥管理</li><li data-v-66bf675e="" class="el-menu-item" role="menuitem" tabindex="0">积分充值</li><li data-v-66bf675e="" class="el-menu-item" role="menuitem" tabindex="0">API 实验室</li><li data-v-66bf675e="" class="el-menu-item is-active" role="menuitem" tabindex="0">开发文档</li><!----></ul><div data-v-66bf675e="" class="user-actions"><div data-v-66bf675e="" class="el-dropdown desktop-user"><span data-v-66bf675e="" class="el-dropdown-link el-tooltip__trigger el-tooltip__trigger" id="el-id-8619-0" role="button" tabindex="0" aria-controls="el-id-8619-1" aria-expanded="false" aria-haspopup="menu"><span data-v-66bf675e="" class="el-avatar el-avatar--circle mr-2" style="--el-avatar-size: 32px;"><img src="./TuneHub V3 - Music Parse API Platform_files/915875_2.png" style="object-fit: cover;"></span><span data-v-66bf675e="" class="username-text">andyjiao15</span><i data-v-66bf675e="" class="el-icon el-icon--right"><svg data-v-66bf675e="" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" d="M831.872 340.864 512 652.672 192.128 340.864a30.59 30.59 0 0 0-42.752 0 29.12 29.12 0 0 0 0 41.6L489.664 714.24a32 32 0 0 0 44.672 0l340.288-331.712a29.12 29.12 0 0 0 0-41.728 30.59 30.59 0 0 0-42.752 0z"></path></svg></i></span><!--v-if--></div><span data-v-66bf675e="" class="el-avatar el-avatar--circle mobile-avatar" style="--el-avatar-size: 32px;"><img src="./TuneHub V3 - Music Parse API Platform_files/915875_2.png" style="object-fit: cover;"></span><button data-v-66bf675e="" aria-disabled="false" type="button" class="el-button is-text mobile-menu-btn"><i class="el-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" d="M389.44 768a96.064 96.064 0 0 1 181.12 0H896v64H570.56a96.064 96.064 0 0 1-181.12 0H128v-64zm192-288a96.064 96.064 0 0 1 181.12 0H896v64H762.56a96.064 96.064 0 0 1-181.12 0H128v-64zm-320-288a96.064 96.064 0 0 1 181.12 0H896v64H442.56a96.064 96.064 0 0 1-181.12 0H128v-64z"></path></svg></i><!--v-if--></button></div></div></header><div class="el-overlay is-drawer el-modal-drawer" style="z-index: 2002; display: none;"><div aria-modal="true" aria-labelledby="el-id-8619-3" aria-describedby="el-id-8619-4" class="mobile-drawer el-drawer rtl" role="dialog" style="width: 280px;"><span class="el-drawer__sr-focus" tabindex="-1"></span><header class="el-drawer__header"><div data-v-66bf675e="" class="drawer-header"><div data-v-66bf675e="" class="drawer-user"><span data-v-66bf675e="" class="el-avatar el-avatar--circle" style="--el-avatar-size: 48px;"><img src="./TuneHub V3 - Music Parse API Platform_files/915875_2.png" style="object-fit: cover;"></span><div data-v-66bf675e="" class="drawer-user-info"><div data-v-66bf675e="" class="drawer-username">andyjiao15</div><div data-v-66bf675e="" class="drawer-balance">积分: 30</div></div></div></div><!--v-if--></header><!--v-if--><div class="el-drawer__footer"><div data-v-66bf675e="" class="drawer-footer"><button data-v-66bf675e="" aria-disabled="false" type="button" class="el-button el-button--danger is-plain logout-btn"><!--v-if--><span class=""> 退出登录 </span></button></div></div><!--v-if--></div></div><main data-v-b52ec4c1="" class="el-main main-content"><div data-v-3f0d6ecb="" data-v-b52ec4c1="" class="docs-page"><div data-v-3f0d6ecb="" class="el-row" style="margin-left: -12px; margin-right: -12px;"><div data-v-3f0d6ecb="" class="el-col el-col-24 el-col-lg-6 el-col-xl-5 is-guttered toc-sidebar hide-mobile" style="padding-right: 12px; padding-left: 12px;"><div data-v-3f0d6ecb="" class="el-affix"><div class=""><div data-v-3f0d6ecb="" class="el-card is-never-shadow toc-card"><div class="el-card__header"><span data-v-3f0d6ecb="">目录</span></div><div class="el-card__body" style=""><ul data-v-3f0d6ecb="" role="menubar" class="el-menu el-menu--vertical toc-menu" style="--el-menu-level: 0;"><li data-v-3f0d6ecb="" class="el-menu-item" role="menuitem" tabindex="-1">平台概述</li><li data-v-3f0d6ecb="" class="el-menu-item" role="menuitem" tabindex="-1">鉴权认证</li><li data-v-3f0d6ecb="" class="el-menu-item is-active" role="menuitem" tabindex="-1">解析接口</li><li data-v-3f0d6ecb="" class="el-menu-item" role="menuitem" tabindex="-1">方法下发</li><li data-v-3f0d6ecb="" class="el-menu-item" role="menuitem" tabindex="-1">错误代码</li></ul></div><!--v-if--></div></div></div></div><div data-v-3f0d6ecb="" class="el-col el-col-24 el-col-xs-24 el-col-sm-24 el-col-md-24 el-col-lg-18 el-col-xl-19 is-guttered" style="padding-right: 12px; padding-left: 12px;"><div data-v-3f0d6ecb="" class="mobile-toc show-mobile mb-4"><div data-v-3f0d6ecb="" class="el-select"><div class="el-select__wrapper el-tooltip__trigger el-tooltip__trigger" tabindex="-1"><!--v-if--><div class="el-select__selection"><!--v-if--><div class="el-select__selected-item el-select__input-wrapper is-hidden"><input type="text" class="el-select__input" autocomplete="off" tabindex="0" role="combobox" readonly="" spellcheck="false" aria-activedescendant="" aria-controls="el-id-8619-9" aria-expanded="false" aria-autocomplete="none" aria-haspopup="listbox" id="el-id-8619-16" style="min-width: 11px;"><!--v-if--></div><div class="el-select__selected-item el-select__placeholder"><span>解析接口</span></div></div><div class="el-select__suffix"><i class="el-icon el-select__caret el-select__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" d="M831.872 340.864 512 652.672 192.128 340.864a30.59 30.59 0 0 0-42.752 0 29.12 29.12 0 0 0 0 41.6L489.664 714.24a32 32 0 0 0 44.672 0l340.288-331.712a29.12 29.12 0 0 0 0-41.728 30.59 30.59 0 0 0-42.752 0z"></path></svg></i><!--v-if--><!--v-if--></div></div></div></div><div data-v-3f0d6ecb="" class="mb-4"><h1 data-v-3f0d6ecb="" class="docs-title">开发者文档</h1><p data-v-3f0d6ecb="" class="docs-subtitle">TuneHub V3 API Reference</p></div><div data-v-3f0d6ecb="" id="overview" class="mb-4 scroll-target"><div data-v-3f0d6ecb="" class="el-card is-hover-shadow"><div class="el-card__header">平台概述</div><div class="el-card__body" style=""><p data-v-3f0d6ecb="">TuneHub V3 是一个高性能音乐解析中间件，旨在为开发者提供统一、标准化的多平台音乐数据访问能力。</p><div data-v-3f0d6ecb="" class="el-space el-space--horizontal mt-4 mb-4" style="flex-wrap: wrap; align-items: center; gap: 8px;"><div class="el-space__item"><span data-v-3f0d6ecb="" class="el-tag el-tag--primary el-tag--light"><span class="el-tag__content">网易云音乐</span><!--v-if--></span></div><div class="el-space__item"><span data-v-3f0d6ecb="" class="el-tag el-tag--success el-tag--light"><span class="el-tag__content">QQ音乐</span><!--v-if--></span></div><div class="el-space__item"><span data-v-3f0d6ecb="" class="el-tag el-tag--warning el-tag--light"><span class="el-tag__content">酷我音乐</span><!--v-if--></span></div></div><div data-v-3f0d6ecb="" class="el-alert el-alert--info is-light" role="alert"><!--v-if--><div class="el-alert__content"><span class="el-alert__title with-description">Base URL</span><p class="el-alert__description"><code data-v-3f0d6ecb="" class="base-url">https://tunehub.sayqz.com/api</code></p><!--v-if--></div></div></div><!--v-if--></div></div><div data-v-3f0d6ecb="" id="authentication" class="mb-4 scroll-target"><div data-v-3f0d6ecb="" class="el-card is-hover-shadow"><div class="el-card__header">鉴权认证</div><div class="el-card__body" style=""><p data-v-3f0d6ecb="">所有 API 请求（除公开接口外）均需通过 API Key 进行身份验证。</p><div data-v-3f0d6ecb="" class="code-block mb-4"><div data-v-3f0d6ecb="" class="code-header">Request Header</div><pre data-v-3f0d6ecb="">X-API-Key: th_your_api_key_here</pre></div><div data-v-3f0d6ecb="" class="el-alert el-alert--warning is-light" role="alert"><i class="el-icon el-alert__icon is-big"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" d="M512 64a448 448 0 1 1 0 896 448 448 0 0 1 0-896m0 192a58.43 58.43 0 0 0-58.24 63.744l23.36 256.384a35.072 35.072 0 0 0 69.76 0l23.296-256.384A58.43 58.43 0 0 0 512 256m0 512a51.2 51.2 0 1 0 0-102.4 51.2 51.2 0 0 0 0 102.4"></path></svg></i><div class="el-alert__content"><span class="el-alert__title with-description">安全提示</span><p class="el-alert__description"> 请勿在客户端代码（如浏览器 JS）中直接暴露 API Key。建议通过您的后端服务器转发请求。 </p><!--v-if--></div></div></div><!--v-if--></div></div><div data-v-3f0d6ecb="" id="parse-api" class="mb-4 scroll-target"><div data-v-3f0d6ecb="" class="el-card is-hover-shadow"><div class="el-card__header">解析接口</div><div class="el-card__body" style=""><p data-v-3f0d6ecb="">核心接口，用于获取歌曲的元数据、播放链接及歌词。</p><div data-v-3f0d6ecb="" class="api-endpoint mb-4"><span data-v-3f0d6ecb="" class="el-tag el-tag--success el-tag--dark mr-2"><span class="el-tag__content">POST</span><!--v-if--></span><code data-v-3f0d6ecb="">/v1/parse</code></div><h3 data-v-3f0d6ecb="">请求参数</h3><pre data-v-3f0d6ecb="" class="code-block mb-4">{
+  "platform": "netease",      // netease | qq | kuwo
+  "ids": "1974443814,123456", // 歌曲 ID，支持批量
+  "quality": "320k"           // 128k | 320k | flac | flac24bit
+}</pre><h3 data-v-3f0d6ecb="">音质支持表</h3><div data-v-3f0d6ecb="" class="table-wrapper"><div data-v-3f0d6ecb="" class="el-table--fit el-table--border el-table--enable-row-hover el-table--enable-row-transition el-table--small el-table el-table--layout-fixed is-scrolling-none" data-prefix="el"><div class="el-table__inner-wrapper"><div class="hidden-columns"><div data-v-3f0d6ecb=""></div><div data-v-3f0d6ecb=""></div><div data-v-3f0d6ecb=""></div><div data-v-3f0d6ecb=""></div><div data-v-3f0d6ecb=""></div></div><div class="el-table__header-wrapper"><table class="el-table__header" border="0" cellpadding="0" cellspacing="0" style="width: 823px;"><colgroup><col name="el-table_2_column_7" width="80"><col name="el-table_2_column_8" width="553"><col name="el-table_2_column_9" width="70"><col name="el-table_2_column_10" width="60"><col name="el-table_2_column_11" width="60"></colgroup><thead class=""><tr class=""><th class="el-table_2_column_7 is-leaf el-table__cell" colspan="1" rowspan="1" scope="col"><div class="cell">代码<!----><!----></div></th><th class="el-table_2_column_8 is-leaf el-table__cell" colspan="1" rowspan="1" scope="col"><div class="cell">说明<!----><!----></div></th><th class="el-table_2_column_9 is-center is-leaf el-table__cell" colspan="1" rowspan="1" scope="col"><div class="cell">网易云<!----><!----></div></th><th class="el-table_2_column_10 is-center is-leaf el-table__cell" colspan="1" rowspan="1" scope="col"><div class="cell">QQ<!----><!----></div></th><th class="el-table_2_column_11 is-center is-leaf el-table__cell" colspan="1" rowspan="1" scope="col"><div class="cell">酷我<!----><!----></div></th></tr></thead></table></div><div class="el-table__body-wrapper"><div class="el-scrollbar"><div class="el-scrollbar__wrap el-scrollbar__wrap--hidden-default"><div class="el-scrollbar__view" style="display: inline-block; vertical-align: middle;"><table class="el-table__body" cellspacing="0" cellpadding="0" border="0" style="table-layout: fixed; width: 823px;"><colgroup><col name="el-table_2_column_7" width="80"><col name="el-table_2_column_8" width="553"><col name="el-table_2_column_9" width="70"><col name="el-table_2_column_10" width="60"><col name="el-table_2_column_11" width="60"></colgroup><!--v-if--><tbody tabindex="-1"><tr class="el-table__row"><td colspan="1" rowspan="1" class="el-table_2_column_7 el-table__cell"><div class="cell"><!----><code data-v-3f0d6ecb="">128k</code></div></td><td colspan="1" rowspan="1" class="el-table_2_column_8 el-table__cell"><div class="cell"><!---->标准 MP3 (128kbps)</div></td><td colspan="1" rowspan="1" class="el-table_2_column_9 is-center el-table__cell"><div class="cell"><!----><i data-v-3f0d6ecb="" class="el-icon" style="--color: #67c23a;"><svg data-v-3f0d6ecb="" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" d="M406.656 706.944 195.84 496.256a32 32 0 1 0-45.248 45.248l256 256 512-512a32 32 0 0 0-45.248-45.248L406.592 706.944z"></path></svg></i></div></td><td colspan="1" rowspan="1" class="el-table_2_column_10 is-center el-table__cell"><div class="cell"><!----><i data-v-3f0d6ecb="" class="el-icon" style="--color: #67c23a;"><svg data-v-3f0d6ecb="" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" d="M406.656 706.944 195.84 496.256a32 32 0 1 0-45.248 45.248l256 256 512-512a32 32 0 0 0-45.248-45.248L406.592 706.944z"></path></svg></i></div></td><td colspan="1" rowspan="1" class="el-table_2_column_11 is-center el-table__cell"><div class="cell"><!----><i data-v-3f0d6ecb="" class="el-icon" style="--color: #67c23a;"><svg data-v-3f0d6ecb="" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" d="M406.656 706.944 195.84 496.256a32 32 0 1 0-45.248 45.248l256 256 512-512a32 32 0 0 0-45.248-45.248L406.592 706.944z"></path></svg></i></div></td></tr><tr class="el-table__row"><td colspan="1" rowspan="1" class="el-table_2_column_7 el-table__cell"><div class="cell"><!----><code data-v-3f0d6ecb="">320k</code></div></td><td colspan="1" rowspan="1" class="el-table_2_column_8 el-table__cell"><div class="cell"><!---->高品质 MP3 (320kbps)</div></td><td colspan="1" rowspan="1" class="el-table_2_column_9 is-center el-table__cell"><div class="cell"><!----><i data-v-3f0d6ecb="" class="el-icon" style="--color: #67c23a;"><svg data-v-3f0d6ecb="" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" d="M406.656 706.944 195.84 496.256a32 32 0 1 0-45.248 45.248l256 256 512-512a32 32 0 0 0-45.248-45.248L406.592 706.944z"></path></svg></i></div></td><td colspan="1" rowspan="1" class="el-table_2_column_10 is-center el-table__cell"><div class="cell"><!----><i data-v-3f0d6ecb="" class="el-icon" style="--color: #67c23a;"><svg data-v-3f0d6ecb="" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" d="M406.656 706.944 195.84 496.256a32 32 0 1 0-45.248 45.248l256 256 512-512a32 32 0 0 0-45.248-45.248L406.592 706.944z"></path></svg></i></div></td><td colspan="1" rowspan="1" class="el-table_2_column_11 is-center el-table__cell"><div class="cell"><!----><i data-v-3f0d6ecb="" class="el-icon" style="--color: #67c23a;"><svg data-v-3f0d6ecb="" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" d="M406.656 706.944 195.84 496.256a32 32 0 1 0-45.248 45.248l256 256 512-512a32 32 0 0 0-45.248-45.248L406.592 706.944z"></path></svg></i></div></td></tr><tr class="el-table__row"><td colspan="1" rowspan="1" class="el-table_2_column_7 el-table__cell"><div class="cell"><!----><code data-v-3f0d6ecb="">flac</code></div></td><td colspan="1" rowspan="1" class="el-table_2_column_8 el-table__cell"><div class="cell"><!---->无损 FLAC</div></td><td colspan="1" rowspan="1" class="el-table_2_column_9 is-center el-table__cell"><div class="cell"><!----><i data-v-3f0d6ecb="" class="el-icon" style="--color: #67c23a;"><svg data-v-3f0d6ecb="" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" d="M406.656 706.944 195.84 496.256a32 32 0 1 0-45.248 45.248l256 256 512-512a32 32 0 0 0-45.248-45.248L406.592 706.944z"></path></svg></i></div></td><td colspan="1" rowspan="1" class="el-table_2_column_10 is-center el-table__cell"><div class="cell"><!----><i data-v-3f0d6ecb="" class="el-icon" style="--color: #67c23a;"><svg data-v-3f0d6ecb="" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" d="M406.656 706.944 195.84 496.256a32 32 0 1 0-45.248 45.248l256 256 512-512a32 32 0 0 0-45.248-45.248L406.592 706.944z"></path></svg></i></div></td><td colspan="1" rowspan="1" class="el-table_2_column_11 is-center el-table__cell"><div class="cell"><!----><i data-v-3f0d6ecb="" class="el-icon" style="--color: #67c23a;"><svg data-v-3f0d6ecb="" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" d="M406.656 706.944 195.84 496.256a32 32 0 1 0-45.248 45.248l256 256 512-512a32 32 0 0 0-45.248-45.248L406.592 706.944z"></path></svg></i></div></td></tr><tr class="el-table__row"><td colspan="1" rowspan="1" class="el-table_2_column_7 el-table__cell"><div class="cell"><!----><code data-v-3f0d6ecb="">flac24bit</code></div></td><td colspan="1" rowspan="1" class="el-table_2_column_8 el-table__cell"><div class="cell"><!---->Hi-Res FLAC</div></td><td colspan="1" rowspan="1" class="el-table_2_column_9 is-center el-table__cell"><div class="cell"><!----><i data-v-3f0d6ecb="" class="el-icon" style="--color: #67c23a;"><svg data-v-3f0d6ecb="" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" d="M406.656 706.944 195.84 496.256a32 32 0 1 0-45.248 45.248l256 256 512-512a32 32 0 0 0-45.248-45.248L406.592 706.944z"></path></svg></i></div></td><td colspan="1" rowspan="1" class="el-table_2_column_10 is-center el-table__cell"><div class="cell"><!----><i data-v-3f0d6ecb="" class="el-icon" style="--color: #67c23a;"><svg data-v-3f0d6ecb="" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" d="M406.656 706.944 195.84 496.256a32 32 0 1 0-45.248 45.248l256 256 512-512a32 32 0 0 0-45.248-45.248L406.592 706.944z"></path></svg></i></div></td><td colspan="1" rowspan="1" class="el-table_2_column_11 is-center el-table__cell"><div class="cell"><!---->不支持</div></td></tr></tbody><!--v-if--></table><!--v-if--><!--v-if--></div></div><div class="el-scrollbar__bar is-horizontal" style="display: none;"><div class="el-scrollbar__thumb" style="transform: translateX(0%);"></div></div><div class="el-scrollbar__bar is-vertical" style="display: none;"><div class="el-scrollbar__thumb" style="transform: translateY(0%);"></div></div></div></div><!--v-if--><div class="el-table__border-left-patch"></div></div><div class="el-table__column-resize-proxy" style="display: none;"></div></div></div></div><!--v-if--></div></div><div data-v-3f0d6ecb="" id="methods-api" class="mb-4 scroll-target"><div data-v-3f0d6ecb="" class="el-card is-hover-shadow"><div class="el-card__header">方法下发</div><div class="el-card__body" style=""><p data-v-3f0d6ecb="">方法下发是一种"配置下发"模式：服务端返回请求配置，客户端自行请求上游平台。此类接口<strong data-v-3f0d6ecb="">不消耗积分</strong>，适用于搜索、榜单、歌单等非核心功能。</p><div data-v-3f0d6ecb="" class="el-alert el-alert--info is-light mb-4" role="alert"><!--v-if--><div class="el-alert__content"><span class="el-alert__title with-description">设计理念</span><p class="el-alert__description"> 服务端只负责解析歌曲链接（消耗积分），其他辅助功能由客户端自行处理，减轻服务器压力。 </p><!--v-if--></div></div><h3 data-v-3f0d6ecb="">接口列表</h3><div data-v-3f0d6ecb="" class="table-wrapper mb-4"><div data-v-3f0d6ecb="" class="el-table--fit el-table--border el-table--enable-row-hover el-table--enable-row-transition el-table--small el-table el-table--layout-fixed is-scrolling-none" data-prefix="el"><div class="el-table__inner-wrapper"><div class="hidden-columns"><div data-v-3f0d6ecb=""></div><div data-v-3f0d6ecb=""></div><div data-v-3f0d6ecb=""></div></div><div class="el-table__header-wrapper"><table class="el-table__header" border="0" cellpadding="0" cellspacing="0" style="width: 823px;"><colgroup><col name="el-table_3_column_12" width="70"><col name="el-table_3_column_13" width="411"><col name="el-table_3_column_14" width="342"></colgroup><thead class=""><tr class=""><th class="el-table_3_column_12 is-leaf el-table__cell" colspan="1" rowspan="1" scope="col"><div class="cell">Method<!----><!----></div></th><th class="el-table_3_column_13 is-leaf el-table__cell" colspan="1" rowspan="1" scope="col"><div class="cell">Endpoint<!----><!----></div></th><th class="el-table_3_column_14 is-leaf el-table__cell" colspan="1" rowspan="1" scope="col"><div class="cell">说明<!----><!----></div></th></tr></thead></table></div><div class="el-table__body-wrapper"><div class="el-scrollbar"><div class="el-scrollbar__wrap el-scrollbar__wrap--hidden-default"><div class="el-scrollbar__view" style="display: inline-block; vertical-align: middle;"><table class="el-table__body" cellspacing="0" cellpadding="0" border="0" style="table-layout: fixed; width: 823px;"><colgroup><col name="el-table_3_column_12" width="70"><col name="el-table_3_column_13" width="411"><col name="el-table_3_column_14" width="342"></colgroup><!--v-if--><tbody tabindex="-1"><tr class="el-table__row"><td colspan="1" rowspan="1" class="el-table_3_column_12 el-table__cell"><div class="cell"><!----><span data-v-3f0d6ecb="" class="el-tag el-tag--primary el-tag--small el-tag--light"><span class="el-tag__content">GET</span><!--v-if--></span></div></td><td colspan="1" rowspan="1" class="el-table_3_column_13 el-table__cell"><div class="cell"><!----><code data-v-3f0d6ecb="">/v1/methods</code></div></td><td colspan="1" rowspan="1" class="el-table_3_column_14 el-table__cell"><div class="cell"><!---->获取所有平台及其可用方法概览</div></td></tr><tr class="el-table__row"><td colspan="1" rowspan="1" class="el-table_3_column_12 el-table__cell"><div class="cell"><!----><span data-v-3f0d6ecb="" class="el-tag el-tag--primary el-tag--small el-tag--light"><span class="el-tag__content">GET</span><!--v-if--></span></div></td><td colspan="1" rowspan="1" class="el-table_3_column_13 el-table__cell"><div class="cell"><!----><code data-v-3f0d6ecb="">/v1/methods/:platform</code></div></td><td colspan="1" rowspan="1" class="el-table_3_column_14 el-table__cell"><div class="cell"><!---->获取指定平台的所有可用方法</div></td></tr><tr class="el-table__row"><td colspan="1" rowspan="1" class="el-table_3_column_12 el-table__cell"><div class="cell"><!----><span data-v-3f0d6ecb="" class="el-tag el-tag--primary el-tag--small el-tag--light"><span class="el-tag__content">GET</span><!--v-if--></span></div></td><td colspan="1" rowspan="1" class="el-table_3_column_13 el-table__cell"><div class="cell"><!----><code data-v-3f0d6ecb="">/v1/methods/:platform/:function</code></div></td><td colspan="1" rowspan="1" class="el-table_3_column_14 el-table__cell"><div class="cell"><!---->获取指定平台指定功能的请求配置</div></td></tr></tbody><!--v-if--></table><!--v-if--><!--v-if--></div></div><div class="el-scrollbar__bar is-horizontal" style="display: none;"><div class="el-scrollbar__thumb" style="transform: translateX(0%);"></div></div><div class="el-scrollbar__bar is-vertical" style="display: none;"><div class="el-scrollbar__thumb" style="transform: translateY(0%);"></div></div></div></div><!--v-if--><div class="el-table__border-left-patch"></div></div><div class="el-table__column-resize-proxy" style="display: none;"></div></div></div><h3 data-v-3f0d6ecb="">可用方法 (function)</h3><div data-v-3f0d6ecb="" class="table-wrapper mb-4"><div data-v-3f0d6ecb="" class="el-table--fit el-table--border el-table--enable-row-hover el-table--enable-row-transition el-table--small el-table el-table--layout-fixed is-scrolling-none" data-prefix="el"><div class="el-table__inner-wrapper"><div class="hidden-columns"><div data-v-3f0d6ecb=""></div><div data-v-3f0d6ecb=""></div><div data-v-3f0d6ecb=""></div></div><div class="el-table__header-wrapper"><table class="el-table__header" border="0" cellpadding="0" cellspacing="0" style="width: 823px;"><colgroup><col name="el-table_4_column_15" width="90"><col name="el-table_4_column_16" width="294"><col name="el-table_4_column_17" width="439"></colgroup><thead class=""><tr class=""><th class="el-table_4_column_15 is-leaf el-table__cell" colspan="1" rowspan="1" scope="col"><div class="cell">Function<!----><!----></div></th><th class="el-table_4_column_16 is-leaf el-table__cell" colspan="1" rowspan="1" scope="col"><div class="cell">说明<!----><!----></div></th><th class="el-table_4_column_17 is-leaf el-table__cell" colspan="1" rowspan="1" scope="col"><div class="cell">模板变量<!----><!----></div></th></tr></thead></table></div><div class="el-table__body-wrapper"><div class="el-scrollbar"><div class="el-scrollbar__wrap el-scrollbar__wrap--hidden-default"><div class="el-scrollbar__view" style="display: inline-block; vertical-align: middle;"><table class="el-table__body" cellspacing="0" cellpadding="0" border="0" style="table-layout: fixed; width: 823px;"><colgroup><col name="el-table_4_column_15" width="90"><col name="el-table_4_column_16" width="294"><col name="el-table_4_column_17" width="439"></colgroup><!--v-if--><tbody tabindex="-1"><tr class="el-table__row"><td colspan="1" rowspan="1" class="el-table_4_column_15 el-table__cell"><div class="cell"><!----><code data-v-3f0d6ecb="">search</code></div></td><td colspan="1" rowspan="1" class="el-table_4_column_16 el-table__cell"><div class="cell"><!---->搜索歌曲</div></td><td colspan="1" rowspan="1" class="el-table_4_column_17 el-table__cell"><div class="cell"><!----><code data-v-3f0d6ecb="" class="vars-code">{{keyword}}, {{page}}, {{pageSize}}</code></div></td></tr><tr class="el-table__row"><td colspan="1" rowspan="1" class="el-table_4_column_15 el-table__cell"><div class="cell"><!----><code data-v-3f0d6ecb="">toplists</code></div></td><td colspan="1" rowspan="1" class="el-table_4_column_16 el-table__cell"><div class="cell"><!---->获取排行榜列表</div></td><td colspan="1" rowspan="1" class="el-table_4_column_17 el-table__cell"><div class="cell"><!----><code data-v-3f0d6ecb="" class="vars-code">无</code></div></td></tr><tr class="el-table__row"><td colspan="1" rowspan="1" class="el-table_4_column_15 el-table__cell"><div class="cell"><!----><code data-v-3f0d6ecb="">toplist</code></div></td><td colspan="1" rowspan="1" class="el-table_4_column_16 el-table__cell"><div class="cell"><!---->获取排行榜详情</div></td><td colspan="1" rowspan="1" class="el-table_4_column_17 el-table__cell"><div class="cell"><!----><code data-v-3f0d6ecb="" class="vars-code">{{id}}</code></div></td></tr><tr class="el-table__row"><td colspan="1" rowspan="1" class="el-table_4_column_15 el-table__cell"><div class="cell"><!----><code data-v-3f0d6ecb="">playlist</code></div></td><td colspan="1" rowspan="1" class="el-table_4_column_16 el-table__cell"><div class="cell"><!---->获取歌单详情</div></td><td colspan="1" rowspan="1" class="el-table_4_column_17 el-table__cell"><div class="cell"><!----><code data-v-3f0d6ecb="" class="vars-code">{{id}}</code></div></td></tr></tbody><!--v-if--></table><!--v-if--><!--v-if--></div></div><div class="el-scrollbar__bar is-horizontal" style="display: none;"><div class="el-scrollbar__thumb" style="transform: translateX(0%);"></div></div><div class="el-scrollbar__bar is-vertical" style="display: none;"><div class="el-scrollbar__thumb" style="transform: translateY(0%);"></div></div></div></div><!--v-if--><div class="el-table__border-left-patch"></div></div><div class="el-table__column-resize-proxy" style="display: none;"></div></div></div><h3 data-v-3f0d6ecb="">响应结构</h3><p data-v-3f0d6ecb="" class="mb-2">返回的配置对象包含以下字段：</p><div data-v-3f0d6ecb="" class="table-wrapper mb-4"><div data-v-3f0d6ecb="" class="el-table--fit el-table--border el-table--enable-row-hover el-table--enable-row-transition el-table--small el-table el-table--layout-fixed is-scrolling-none" data-prefix="el"><div class="el-table__inner-wrapper"><div class="hidden-columns"><div data-v-3f0d6ecb=""></div><div data-v-3f0d6ecb=""></div><div data-v-3f0d6ecb=""></div></div><div class="el-table__header-wrapper"><table class="el-table__header" border="0" cellpadding="0" cellspacing="0" style="width: 823px;"><colgroup><col name="el-table_5_column_18" width="90"><col name="el-table_5_column_19" width="80"><col name="el-table_5_column_20" width="653"></colgroup><thead class=""><tr class=""><th class="el-table_5_column_18 is-leaf el-table__cell" colspan="1" rowspan="1" scope="col"><div class="cell">字段<!----><!----></div></th><th class="el-table_5_column_19 is-leaf el-table__cell" colspan="1" rowspan="1" scope="col"><div class="cell">类型<!----><!----></div></th><th class="el-table_5_column_20 is-leaf el-table__cell" colspan="1" rowspan="1" scope="col"><div class="cell">说明<!----><!----></div></th></tr></thead></table></div><div class="el-table__body-wrapper"><div class="el-scrollbar"><div class="el-scrollbar__wrap el-scrollbar__wrap--hidden-default"><div class="el-scrollbar__view" style="display: inline-block; vertical-align: middle;"><table class="el-table__body" cellspacing="0" cellpadding="0" border="0" style="table-layout: fixed; width: 823px;"><colgroup><col name="el-table_5_column_18" width="90"><col name="el-table_5_column_19" width="80"><col name="el-table_5_column_20" width="653"></colgroup><!--v-if--><tbody tabindex="-1"><tr class="el-table__row"><td colspan="1" rowspan="1" class="el-table_5_column_18 el-table__cell"><div class="cell"><!----><code data-v-3f0d6ecb="">type</code></div></td><td colspan="1" rowspan="1" class="el-table_5_column_19 el-table__cell"><div class="cell"><!---->string</div></td><td colspan="1" rowspan="1" class="el-table_5_column_20 el-table__cell"><div class="cell"><!---->请求类型，固定为 "http"</div></td></tr><tr class="el-table__row"><td colspan="1" rowspan="1" class="el-table_5_column_18 el-table__cell"><div class="cell"><!----><code data-v-3f0d6ecb="">method</code></div></td><td colspan="1" rowspan="1" class="el-table_5_column_19 el-table__cell"><div class="cell"><!---->string</div></td><td colspan="1" rowspan="1" class="el-table_5_column_20 el-table__cell"><div class="cell"><!---->HTTP 方法：GET 或 POST</div></td></tr><tr class="el-table__row"><td colspan="1" rowspan="1" class="el-table_5_column_18 el-table__cell"><div class="cell"><!----><code data-v-3f0d6ecb="">url</code></div></td><td colspan="1" rowspan="1" class="el-table_5_column_19 el-table__cell"><div class="cell"><!---->string</div></td><td colspan="1" rowspan="1" class="el-table_5_column_20 el-table__cell"><div class="cell"><!---->请求目标 URL</div></td></tr><tr class="el-table__row"><td colspan="1" rowspan="1" class="el-table_5_column_18 el-table__cell"><div class="cell"><!----><code data-v-3f0d6ecb="">params</code></div></td><td colspan="1" rowspan="1" class="el-table_5_column_19 el-table__cell"><div class="cell"><!---->object</div></td><td colspan="1" rowspan="1" class="el-table_5_column_20 el-table__cell"><div class="cell"><!---->URL 查询参数，值中可能包含 {{变量}} 占位符</div></td></tr><tr class="el-table__row"><td colspan="1" rowspan="1" class="el-table_5_column_18 el-table__cell"><div class="cell"><!----><code data-v-3f0d6ecb="">body</code></div></td><td colspan="1" rowspan="1" class="el-table_5_column_19 el-table__cell"><div class="cell"><!---->object</div></td><td colspan="1" rowspan="1" class="el-table_5_column_20 el-table__cell"><div class="cell"><!---->请求体（POST 请求）</div></td></tr><tr class="el-table__row"><td colspan="1" rowspan="1" class="el-table_5_column_18 el-table__cell"><div class="cell"><!----><code data-v-3f0d6ecb="">headers</code></div></td><td colspan="1" rowspan="1" class="el-table_5_column_19 el-table__cell"><div class="cell"><!---->object</div></td><td colspan="1" rowspan="1" class="el-table_5_column_20 el-table__cell"><div class="cell"><!---->请求头</div></td></tr><tr class="el-table__row"><td colspan="1" rowspan="1" class="el-table_5_column_18 el-table__cell"><div class="cell"><!----><code data-v-3f0d6ecb="">transform</code></div></td><td colspan="1" rowspan="1" class="el-table_5_column_19 el-table__cell"><div class="cell"><!---->string</div></td><td colspan="1" rowspan="1" class="el-table_5_column_20 el-table__cell"><div class="cell"><!---->可选，转换函数字符串</div></td></tr></tbody><!--v-if--></table><!--v-if--><!--v-if--></div></div><div class="el-scrollbar__bar is-horizontal" style="display: none;"><div class="el-scrollbar__thumb" style="transform: translateX(0%);"></div></div><div class="el-scrollbar__bar is-vertical" style="display: none;"><div class="el-scrollbar__thumb" style="transform: translateY(0%);"></div></div></div></div><!--v-if--><div class="el-table__border-left-patch"></div></div><div class="el-table__column-resize-proxy" style="display: none;"></div></div></div><h3 data-v-3f0d6ecb="">使用示例</h3><p data-v-3f0d6ecb="" class="mb-2"><strong data-v-3f0d6ecb="">Step 1:</strong> 获取搜索方法配置</p><div data-v-3f0d6ecb="" class="code-block mb-4"><div data-v-3f0d6ecb="" class="code-header">GET /v1/methods/kuwo/search</div><pre data-v-3f0d6ecb="">{
+  "code": 0,
+  "data": {
+    "type": "http",
+    "method": "GET",
+    "url": "http://search.kuwo.cn/r.s",
+    "params": {
+      "client": "kt",
+      "all": "",
+      "pn": "0",
+      "rn": "30"
+    },
+    "headers": { "User-Agent": "okhttp/4.9.0" },
+    "transform": "function(response) { ... }"
+  }
+}</pre></div><p data-v-3f0d6ecb="" class="mb-2"><strong data-v-3f0d6ecb="">Step 2:</strong> 客户端替换模板变量并发起请求</p><div data-v-3f0d6ecb="" class="code-block mb-4"><div data-v-3f0d6ecb="" class="code-header">JavaScript 示例</div><pre data-v-3f0d6ecb="">// 1. 获取方法配置
+const res = await fetch('/api/v1/methods/kuwo/search');
+const { data: config } = await res.json();
+
+// 2. 替换模板变量
+const params = {};
+for (const [key, value] of Object.entries(config.params)) {
+  params[key] = value
+    .replace('', '周杰伦')
+    .replace('0', '0');
+}
+
+// 3. 发起请求
+const url = new URL(config.url);
+url.search = new URLSearchParams(params);
+const response = await fetch(url, {
+  method: config.method,
+  headers: config.headers
+});</pre></div><div data-v-3f0d6ecb="" class="el-alert el-alert--warning is-light" role="alert"><i class="el-icon el-alert__icon is-big"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" d="M512 64a448 448 0 1 1 0 896 448 448 0 0 1 0-896m0 192a58.43 58.43 0 0 0-58.24 63.744l23.36 256.384a35.072 35.072 0 0 0 69.76 0l23.296-256.384A58.43 58.43 0 0 0 512 256m0 512a51.2 51.2 0 1 0 0-102.4 51.2 51.2 0 0 0 0 102.4"></path></svg></i><div class="el-alert__content"><span class="el-alert__title with-description">跨域提示</span><p class="el-alert__description"> 部分平台接口存在 CORS 限制，浏览器端直接调用可能失败。建议在服务端或使用代理转发请求。 </p><!--v-if--></div></div></div><!--v-if--></div></div><div data-v-3f0d6ecb="" id="errors" class="mb-4 scroll-target"><div data-v-3f0d6ecb="" class="el-card is-hover-shadow"><div class="el-card__header">错误代码</div><div class="el-card__body" style=""><div data-v-3f0d6ecb="" class="table-wrapper"><div data-v-3f0d6ecb="" class="el-table--fit el-table--striped el-table--border el-table--enable-row-hover el-table--enable-row-transition el-table--small el-table el-table--layout-fixed is-scrolling-none" data-prefix="el"><div class="el-table__inner-wrapper"><div class="hidden-columns"><div data-v-3f0d6ecb=""></div><div data-v-3f0d6ecb=""></div><div data-v-3f0d6ecb=""></div></div><div class="el-table__header-wrapper"><table class="el-table__header" border="0" cellpadding="0" cellspacing="0" style="width: 823px;"><colgroup><col name="el-table_6_column_21" width="80"><col name="el-table_6_column_22" width="130"><col name="el-table_6_column_23" width="613"></colgroup><thead class=""><tr class=""><th class="el-table_6_column_21 is-leaf el-table__cell" colspan="1" rowspan="1" scope="col"><div class="cell">Code<!----><!----></div></th><th class="el-table_6_column_22 is-leaf el-table__cell" colspan="1" rowspan="1" scope="col"><div class="cell">Message<!----><!----></div></th><th class="el-table_6_column_23 is-leaf el-table__cell" colspan="1" rowspan="1" scope="col"><div class="cell">说明<!----><!----></div></th></tr></thead></table></div><div class="el-table__body-wrapper"><div class="el-scrollbar"><div class="el-scrollbar__wrap el-scrollbar__wrap--hidden-default"><div class="el-scrollbar__view" style="display: inline-block; vertical-align: middle;"><table class="el-table__body" cellspacing="0" cellpadding="0" border="0" style="table-layout: fixed; width: 823px;"><colgroup><col name="el-table_6_column_21" width="80"><col name="el-table_6_column_22" width="130"><col name="el-table_6_column_23" width="613"></colgroup><!--v-if--><tbody tabindex="-1"><tr class="el-table__row"><td colspan="1" rowspan="1" class="el-table_6_column_21 el-table__cell"><div class="cell"><!----><code data-v-3f0d6ecb="">0</code></div></td><td colspan="1" rowspan="1" class="el-table_6_column_22 el-table__cell"><div class="cell"><!---->Success</div></td><td colspan="1" rowspan="1" class="el-table_6_column_23 el-table__cell"><div class="cell"><!---->请求成功</div></td></tr><tr class="el-table__row el-table__row--striped"><td colspan="1" rowspan="1" class="el-table_6_column_21 el-table__cell"><div class="cell"><!----><code data-v-3f0d6ecb="">-1</code></div></td><td colspan="1" rowspan="1" class="el-table_6_column_22 el-table__cell"><div class="cell"><!---->Error</div></td><td colspan="1" rowspan="1" class="el-table_6_column_23 el-table__cell"><div class="cell"><!---->通用错误</div></td></tr><tr class="el-table__row"><td colspan="1" rowspan="1" class="el-table_6_column_21 el-table__cell"><div class="cell"><!----><code data-v-3f0d6ecb="">-2</code></div></td><td colspan="1" rowspan="1" class="el-table_6_column_22 el-table__cell"><div class="cell"><!---->Insufficient credits</div></td><td colspan="1" rowspan="1" class="el-table_6_column_23 el-table__cell"><div class="cell"><!---->账户积分不足</div></td></tr><tr class="el-table__row el-table__row--striped"><td colspan="1" rowspan="1" class="el-table_6_column_21 el-table__cell"><div class="cell"><!----><code data-v-3f0d6ecb="">401</code></div></td><td colspan="1" rowspan="1" class="el-table_6_column_22 el-table__cell"><div class="cell"><!---->Unauthorized</div></td><td colspan="1" rowspan="1" class="el-table_6_column_23 el-table__cell"><div class="cell"><!---->API Key 无效或未提供</div></td></tr><tr class="el-table__row"><td colspan="1" rowspan="1" class="el-table_6_column_21 el-table__cell"><div class="cell"><!----><code data-v-3f0d6ecb="">403</code></div></td><td colspan="1" rowspan="1" class="el-table_6_column_22 el-table__cell"><div class="cell"><!---->Forbidden</div></td><td colspan="1" rowspan="1" class="el-table_6_column_23 el-table__cell"><div class="cell"><!---->账户被封禁或 Key 已禁用</div></td></tr><tr class="el-table__row el-table__row--striped"><td colspan="1" rowspan="1" class="el-table_6_column_21 el-table__cell"><div class="cell"><!----><code data-v-3f0d6ecb="">404</code></div></td><td colspan="1" rowspan="1" class="el-table_6_column_22 el-table__cell"><div class="cell"><!---->Not Found</div></td><td colspan="1" rowspan="1" class="el-table_6_column_23 el-table__cell"><div class="cell"><!---->请求的资源不存在</div></td></tr><tr class="el-table__row"><td colspan="1" rowspan="1" class="el-table_6_column_21 el-table__cell"><div class="cell"><!----><code data-v-3f0d6ecb="">500</code></div></td><td colspan="1" rowspan="1" class="el-table_6_column_22 el-table__cell"><div class="cell"><!---->Server Error</div></td><td colspan="1" rowspan="1" class="el-table_6_column_23 el-table__cell"><div class="cell"><!---->服务器内部错误</div></td></tr></tbody><!--v-if--></table><!--v-if--><!--v-if--></div></div><div class="el-scrollbar__bar is-horizontal" style="display: none;"><div class="el-scrollbar__thumb" style="transform: translateX(0%);"></div></div><div class="el-scrollbar__bar is-vertical" style="display: none;"><div class="el-scrollbar__thumb" style="transform: translateY(0%);"></div></div></div></div><!--v-if--><div class="el-table__border-left-patch"></div></div><div class="el-table__column-resize-proxy" style="display: none;"></div></div></div></div><!--v-if--></div></div></div></div></div></main></section></div>
+
+
+
+<div id="el-popper-container-8619"><div class="el-popper is-pure is-light el-tooltip el-dropdown__popper" tabindex="-1" aria-hidden="true" data-popper-reference-hidden="false" data-popper-escaped="false" data-popper-placement="bottom" style="z-index: 2001; position: absolute; inset: 58px auto auto 1362px; display: none;"><div class="el-scrollbar"><div class="el-scrollbar__wrap el-scrollbar__wrap--hidden-default"><div class="el-scrollbar__view el-dropdown__list" style=""><ul data-v-66bf675e="" class="el-dropdown-menu" tabindex="-1" role="menu" aria-labelledby="el-id-8619-0" id="el-id-8619-1" style="outline: none;"><li role="separator" class="el-dropdown-menu__item--divided"></li><li data-el-collection-item="" aria-disabled="false" class="el-dropdown-menu__item" tabindex="-1" role="menuitem"><!--v-if-->退出登录</li></ul></div></div><div class="el-scrollbar__bar is-horizontal" style="display: none;"><div class="el-scrollbar__thumb" style="transform: translateX(0%);"></div></div><div class="el-scrollbar__bar is-vertical" style="display: none;"><div class="el-scrollbar__thumb" style="transform: translateY(0%);"></div></div></div><span class="el-popper__arrow" data-popper-arrow="" style="position: absolute; left: 5.33333px;"></span></div><div class="el-popper is-pure is-light el-tooltip el-select__popper" tabindex="-1" aria-hidden="true" role="tooltip" id="el-id-8619-10" data-popper-reference-hidden="true" data-popper-escaped="true" data-popper-placement="bottom-start" style="z-index: 2006; position: absolute; inset: 12px auto auto 0px; display: none;"><div class="el-select-dropdown"><!--v-if--><!--v-if--><div class="el-scrollbar" style=""><div class="el-select-dropdown__wrap el-scrollbar__wrap el-scrollbar__wrap--hidden-default"><ul id="el-id-8619-9" class="el-scrollbar__view el-select-dropdown__list" role="listbox" aria-orientation="vertical" style=""><!--v-if--><li data-v-3f0d6ecb="" id="el-id-8619-11" class="el-select-dropdown__item" role="option" aria-selected="false"><span>平台概述</span></li><li data-v-3f0d6ecb="" id="el-id-8619-12" class="el-select-dropdown__item" role="option" aria-selected="false"><span>鉴权认证</span></li><li data-v-3f0d6ecb="" id="el-id-8619-13" class="el-select-dropdown__item is-selected" role="option" aria-selected="true"><span>解析接口</span></li><li data-v-3f0d6ecb="" id="el-id-8619-14" class="el-select-dropdown__item" role="option" aria-selected="false"><span>方法下发</span></li><li data-v-3f0d6ecb="" id="el-id-8619-15" class="el-select-dropdown__item" role="option" aria-selected="false"><span>错误代码</span></li></ul></div><div class="el-scrollbar__bar is-horizontal" style="display: none;"><div class="el-scrollbar__thumb" style="transform: translateX(0%);"></div></div><div class="el-scrollbar__bar is-vertical" style="display: none;"><div class="el-scrollbar__thumb" style="transform: translateY(0%);"></div></div></div><!--v-if--><!--v-if--><!--v-if--></div><span class="el-popper__arrow" data-popper-arrow="" style="position: absolute; left: 5.33333px;"></span></div></div></body><div id="immersive-translate-popup" style="all: initial"><template shadowrootmode="open"><style id="mkw8ilbk.6hi">/** 基础色阶定义 **/
+:root,
+#mount[data-theme="light"],
+#mount:not([data-theme="dark"]) {
+  /* 中性灰阶（light） */
+  --c-00: #000000;
+  --c-22: #222222;
+  --c-33: #333333;
+  --c-66: #666666;
+  --c-83: #838383;
+  --c-99: #999999;
+  --c-c7: #c7c7c7;
+  --c-cc: #cccccc;
+  --c-e6: #e6e6e6;
+  --c-f5: #f5f5f5;
+  --c-ff: #ffffff;
+  /* 品牌主色阶（light） */
+  --p-main: #ea4c89;
+  --p-hover: #ec5e95;
+  --p-active: #e34a85;
+  --p-special: #ee71a2;
+  --p-disabled: #f4a5c4;
+  --p-text-disabled: #f9c9dc;
+  --p-weak: #fdedf3;
+  /* Surface 层级（light，TC 填充-1） */
+  --s-1: #f3f5f6;
+  --s-1-hover: #f6f8f9;
+  --s-1-active: #edf1f2;
+  --s-1-weak: #fafbfb;
+  /* 输入/边框（light，TC 填充-2） */
+  --input-bg-base: #fafbfc;
+  --input-border: #ecf0f7;
+  --input-border-strong: #e0e0e6;
+  --input-bg-strong: #fafdff;
+}
+
+:root[data-theme="dark"],
+[data-theme="dark"] {
+  /* 中性灰阶（dark） */
+  --c-00: #ffffff;
+  --c-22: #dbdbdb;
+  --c-33: #dbdbdb;
+  --c-66: #b3b3b3;
+  --c-83: #838383;
+  --c-99: #707070;
+  --c-c7: #666666;
+  --c-cc: #5c5c5c;
+  --c-e6: #3b3b3b;
+  --c-f5: #262626;
+  --c-ff: #222222;
+  /* 品牌主色阶（dark） */
+  --p-main: #e23c7c;
+  --p-hover: #ea4c89;
+  --p-active: #d5467d;
+  --p-special: #a93a65;
+  --p-disabled: #7e2f4d;
+  --p-text-disabled: #522335;
+  --p-weak: #26171d;
+  /* Surface 层级（dark，TC 填充-1） */
+  --s-1: #2d2e2f;
+  --s-1-hover: #323434;
+  --s-1-active: #202121;
+  --s-1-weak: #262627;
+  /* 输入/边框（dark，TC 填充-2） */
+  --input-bg-base: #2b2d30;
+  --input-border: #3e434b;
+  --input-border-strong: #43474b;
+  --input-bg-strong: #1f2123;
+}
+
+:root,
+#mount [data-theme] {
+  /* 业务/通用变量引用色阶（全局可见，含 Shadow DOM） */
+  --primary: var(--p-main);
+  --primary-hover: var(--p-hover);
+  --primary-inverse: #fff;
+  --modal-background: var(--s-1);
+  --modal-border: var(--input-border);
+  --modal-text: var(--c-22);
+  --modal-text-secondary: var(--c-66);
+  --modal-error: var(--p-main);
+  --modal-required: #f53f3f;
+  --modal-success: #68cd52;
+  --modal-button-background: var(--p-main);
+  --modal-button-text: var(--c-ff);
+  --modal-input-background: var(--input-bg-base);
+  --modal-check-color: var(--p-main);
+  --background-color: var(--c-ff);
+  --background-light-green: var(--s-1-weak, #f5f7f9);
+  --text-black-2: var(--c-22);
+  --text-gray-2: var(--c-22);
+  --text-gray-6: var(--c-66);
+  --text-gray-9: var(--c-99);
+  --text-gray-c2: var(--c-c7);
+  --switch-background-color: var(--c-c7, hsl(205deg, 16%, 77%));
+  --float-ball-more-button-border-color: var(--c-f5, #f6f6f6);
+  --float-ball-more-button-background-color: var(--c-ff);
+  --float-ball-more-button-svg-color: #6c6f73;
+  --service-bg-hover: var(--s-1-hover, #f7faff);
+  --service-bg: var(--s-1-weak, #fafbfb);
+}
+
+#mount {
+  --font-family: system-ui, -apple-system, "Segoe UI", "Roboto", "Ubuntu",
+    "Cantarell", "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+    "Segoe UI Symbol", "Noto Color Emoji";
+  /* PC/H5 兼容的字号、间距、圆角、阴影变量 */
+  --f-12: 12px;
+  --f-14: 14px;
+  --f-15: 15px;
+  --f-16: 16px;
+  --f-18: 18px;
+  --f-20: 20px;
+  --space-4: 4px;
+  --space-6: 6px;
+  --space-8: 8px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-18: 18px;
+  --space-24: 24px;
+  --radius-8: 8px;
+  --radius-12: 12px;
+  --radius-16: 16px;
+  --control-height-lg: 44px;
+  --width-28: 28px;
+  --width-24: 24px;
+  --width-20: 20px;
+  --width-18: 18px;
+  --width-16: 16px;
+  --width-label-md: 56px;
+  --shadow-lg: 0 18px 48px rgba(0, 0, 0, 0.12);
+
+  /* 常规变量 */
+  --line-height: 1.5;
+  --font-weight: 400;
+  --font-size: 16px;
+  --border-radius: 4px;
+  --border-width: 2px;
+  --outline-width: 3px;
+  --spacing: 16px;
+  --typography-spacing-vertical: 24px;
+  --block-spacing-vertical: calc(var(--spacing) * 2);
+  --block-spacing-horizontal: var(--spacing);
+  --grid-spacing-vertical: 0;
+  --grid-spacing-horizontal: var(--spacing);
+  --form-element-spacing-vertical: 12px;
+  --form-element-spacing-horizontal: 16px;
+  --nav-element-spacing-vertical: 16px;
+  --nav-element-spacing-horizontal: 8px;
+  --nav-link-spacing-vertical: 8px;
+  --nav-link-spacing-horizontal: 8px;
+  --form-label-font-weight: var(--font-weight);
+  --transition: 0.2s ease-in-out;
+  --modal-overlay-backdrop-filter: blur(4px);
+  --switch-color: var(--primary-inverse);
+  --switch-checked-background-color: var(--primary);
+  --icon-xia: url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGcgaWQ9IkZyYW1lIj4KPHBhdGggaWQ9IlZlY3RvciIgZD0iTTguMDAyOTEgOS42Nzk4M0wzLjgzMzM5IDUuNTEyMjFMMy4wMjUzOSA2LjMxOTgzTDguMDAzMjkgMTEuMjk1MUwxMi45NzYyIDYuMzE5ODNMMTIuMTY3OSA1LjUxMjIxTDguMDAyOTEgOS42Nzk4M1oiIGZpbGw9IiM4MzgzODMiLz4KPC9nPgo8L3N2Zz4K");
+  /* 兼容旧变量：主色直接引用品牌主色阶 */
+  --primary: var(--p-main);
+  --primary-hover: var(--p-hover);
+  --primary-inverse: #fff;
+  /* Modal 业务变量引用色阶 */
+  --modal-background: var(--s-1);
+  --modal-border: var(--input-border);
+  --modal-text: var(--c-22);
+  --modal-text-secondary: var(--c-66);
+  --modal-error: var(--p-main);
+  --modal-required: #f53f3f;
+  --modal-success: #68cd52;
+  --modal-button-background: var(--p-main);
+  --modal-button-text: var(--c-ff);
+  --modal-input-background: var(--input-bg-base);
+  --modal-check-color: var(--p-main);
+  --background-color: var(--c-ff);
+  --background-light-green: var(--s-1-weak, #f5f7f9);
+  --text-black-2: var(--c-22);
+  --text-gray-2: var(--c-22);
+  --text-gray-6: var(--c-66);
+  --text-gray-9: var(--c-99);
+  --text-gray-c2: var(--c-c7);
+  --switch-background-color: var(--c-c7, hsl(205deg, 16%, 77%));
+  --float-ball-more-button-border-color: var(--c-f5, #f6f6f6);
+  --float-ball-more-button-background-color: var(--c-ff);
+  --float-ball-more-button-svg-color: #6c6f73;
+  --service-bg-hover: var(--s-1-hover, #f7faff);
+  --service-bg: var(--s-1-weak, #fafbfb);
+  line-height: var(--line-height);
+  font-family: var(--font-family);
+  font-size: var(--font-size);
+}
+
+@media (max-width: 480px) {
+  :root,
+  #mount {
+    --f-12: 10px;
+    --f-14: 12px;
+    --f-15: 13px;
+    --f-16: 14px;
+    --f-18: 16px;
+    --f-20: 18px;
+    --space-4: 4px;
+    --space-6: 4px;
+    --space-8: 6px;
+    --space-12: 8px;
+    --space-16: 12px;
+    --space-18: 14px;
+    --space-24: 18px;
+    --radius-8: 6px;
+    --radius-12: 10px;
+    --radius-16: 12px;
+    --control-height-lg: 38px;
+    --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.1);
+    --width-28: 24px;
+    --width-24: 20px;
+    --width-20: 16px;
+    --width-18: 14px;
+    --width-16: 12px;
+    --width-label-md: 52px;
+  }
+}
+
+#mount * {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+:where(#mount) a,
+:where(#mount) [role="link"] {
+  --color: var(--primary);
+  --background-color: transparent;
+  outline: none;
+  background-color: var(--background-color);
+  color: var(--color);
+  -webkit-text-decoration: var(--text-decoration);
+  text-decoration: var(--text-decoration);
+  transition: background-color var(--transition), color var(--transition),
+    box-shadow var(--transition), -webkit-text-decoration var(--transition);
+  transition: background-color var(--transition), color var(--transition),
+    text-decoration var(--transition), box-shadow var(--transition);
+  transition: background-color var(--transition), color var(--transition),
+    text-decoration var(--transition), box-shadow var(--transition),
+    -webkit-text-decoration var(--transition);
+}
+:where(#mount) a:is([aria-current], :hover, :active, :focus),
+:where(#mount) [role="link"]:is([aria-current], :hover, :active, :focus) {
+  --color: var(--primary-hover);
+  --text-decoration: underline;
+}
+
+:where(#mount) label {
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--text-gray-2, #222222);
+}
+
+:where(#mount) button {
+  width: 100%;
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.3;
+  min-height: 44px;
+  border-radius: 12px;
+  padding: 0 14px;
+  border: none;
+  background-color: var(--primary, #ea4c89);
+  color: #ffffff;
+  cursor: pointer;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+}
+
+:where(#mount) button:hover {
+  background-color: var(--primary-hover, #f082ac);
+}
+
+:where(#mount) button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+:where(#mount) select,
+:where(#mount) input,
+:where(#mount) textarea {
+  font-family: inherit;
+  color: var(--text-gray-2, #222222);
+}
+
+:where(#mount) select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  font-family: inherit;
+  color: var(--text-gray-2, inherit);
+  font-size: 13px;
+  line-height: 1.3;
+  outline: none;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 12px;
+  background-color: var(--popup-item-background-color, transparent);
+  background-image: var(--icon-xia, none);
+  background-repeat: no-repeat;
+  background-position: center right 12px;
+  background-size: 16px auto;
+  cursor: pointer;
+}
+
+:where(#mount) input[type="checkbox"] {
+  accent-color: var(--primary, #ea4c89);
+}
+
+[type="checkbox"],
+[type="radio"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  width: 1.25em;
+  height: 1.25em;
+  margin-top: -0.125em;
+  margin-right: 0.375em;
+  margin-left: 0;
+  -webkit-margin-start: 0;
+  margin-inline-start: 0;
+  -webkit-margin-end: 0.375em;
+  margin-inline-end: 0.375em;
+  border-width: var(--border-width);
+  font-size: inherit;
+  vertical-align: middle;
+  cursor: pointer;
+}
+[type="checkbox"]::-ms-check,
+[type="radio"]::-ms-check {
+  display: none;
+}
+[type="checkbox"]:checked,
+[type="checkbox"]:checked:active,
+[type="checkbox"]:checked:focus,
+[type="radio"]:checked,
+[type="radio"]:checked:active,
+[type="radio"]:checked:focus {
+  --background-color: var(--primary);
+  --border-color: var(--primary);
+  background-image: var(--icon-checkbox);
+  background-position: center;
+  background-size: 0.75em auto;
+  background-repeat: no-repeat;
+}
+[type="checkbox"] ~ label,
+[type="radio"] ~ label {
+  display: inline-block;
+  margin-right: 0.375em;
+  margin-bottom: 0;
+  cursor: pointer;
+}
+
+[type="checkbox"]:indeterminate {
+  --background-color: var(--primary);
+  --border-color: var(--primary);
+  background-image: var(--icon-minus);
+  background-position: center;
+  background-size: 0.75em auto;
+  background-repeat: no-repeat;
+}
+
+[type="radio"] {
+  border-radius: 50%;
+}
+[type="radio"]:checked,
+[type="radio"]:checked:active,
+[type="radio"]:checked:focus {
+  --background-color: var(--primary-inverse);
+  border-width: 0.35em;
+  background-image: none;
+}
+
+:where(#mount) [type="checkbox"][role="switch"] {
+  --background-color: var(--switch-background-color);
+  --border-color: var(--switch-background-color);
+  --color: var(--switch-color);
+  width: 2.25em;
+  height: 1.25em;
+  border: var(--border-width) solid var(--border-color);
+  border-radius: 1.25em;
+  background-color: var(--background-color);
+  line-height: 1.25em;
+}
+:where(#mount) [type="checkbox"][role="switch"]:focus {
+  --background-color: var(--switch-background-color);
+  --border-color: var(--switch-background-color);
+}
+:where(#mount) [type="checkbox"][role="switch"]:checked {
+  --background-color: var(--switch-checked-background-color);
+  --border-color: var(--switch-checked-background-color);
+}
+:where(#mount) [type="checkbox"][role="switch"]:before {
+  display: block;
+  width: calc(1.25em - (var(--border-width) * 2));
+  height: 100%;
+  border-radius: 50%;
+  background-color: var(--color);
+  content: "";
+  transition: margin 0.1s ease-in-out;
+}
+:where(#mount) [type="checkbox"][role="switch"]:checked {
+  background-image: none;
+}
+:where(#mount) [type="checkbox"][role="switch"]:checked::before {
+  margin-left: calc(1.125em - var(--border-width));
+  -webkit-margin-start: calc(1.125em - var(--border-width));
+  margin-inline-start: calc(1.125em - var(--border-width));
+}
+
+:where(#mount) [type="checkbox"][aria-invalid="false"],
+:where(#mount) [type="checkbox"]:checked[aria-invalid="false"],
+:where(#mount) [type="radio"][aria-invalid="false"],
+:where(#mount) [type="radio"]:checked[aria-invalid="false"],
+:where(#mount) [type="checkbox"][role="switch"][aria-invalid="false"],
+:where(#mount) [type="checkbox"][role="switch"]:checked[aria-invalid="false"] {
+  --border-color: var(--form-element-valid-border-color);
+}
+:where(#mount) [type="checkbox"][aria-invalid="true"],
+:where(#mount) [type="checkbox"]:checked[aria-invalid="true"],
+:where(#mount) [type="radio"][aria-invalid="true"],
+:where(#mount) [type="radio"]:checked[aria-invalid="true"],
+:where(#mount) [type="checkbox"][role="switch"][aria-invalid="true"],
+:where(#mount) [type="checkbox"][role="switch"]:checked[aria-invalid="true"] {
+  --border-color: var(--form-element-invalid-border-color);
+}
+
+.text-black {
+  color: var(--text-black-2);
+}
+
+.text-gray-2 {
+  color: var(--text-gray-2);
+}
+
+.text-gray-6 {
+  color: var(--text-gray-6);
+}
+
+.text-gray-9 {
+  color: var(--text-gray-9);
+}
+
+.text-gray-c2 {
+  color: var(--text-gray-c2);
+}
+
+.pt-4 {
+  padding-top: 16px;
+}
+
+.p-2 {
+  padding: 8px;
+}
+
+.pl-5 {
+  padding-left: 48px;
+}
+
+.p-0 {
+  padding: 0;
+}
+
+.pl-2 {
+  padding-left: 8px;
+}
+
+.pl-4 {
+  padding-left: 24px;
+}
+
+.pt-2 {
+  padding-top: 8px;
+}
+
+.pb-2 {
+  padding-bottom: 8px;
+}
+
+.pb-4 {
+  padding-bottom: 16px;
+}
+
+.pb-5 {
+  padding-bottom: 20px;
+}
+
+.pr-5 {
+  padding-right: 48px;
+}
+
+.text-sm {
+  font-size: 13px;
+}
+
+.text-base {
+  font-size: 16px;
+}
+
+.w-full {
+  width: 100%;
+}
+
+.flex {
+  display: flex;
+}
+
+.flex-row {
+  flex-direction: row;
+}
+
+.flex-wrap {
+  flex-wrap: wrap;
+}
+
+.flex-end {
+  justify-content: flex-end;
+}
+
+.flex-grow {
+  flex-grow: 1;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.mb-0 {
+  margin-bottom: 0px;
+}
+
+.mb-2 {
+  margin-bottom: 8px;
+}
+
+.mb-4 {
+  margin-bottom: 16px;
+}
+
+.mb-3 {
+  margin-bottom: 12px;
+}
+
+.inline-block {
+  display: inline-block;
+}
+
+.py-2 {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.py-2-5 {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.mt-0 {
+  margin-top: 0;
+}
+
+.mt-2 {
+  margin-top: 8px;
+}
+
+.mt-3 {
+  margin-top: 12px;
+}
+
+.mt-4 {
+  margin-top: 16px;
+}
+
+.mt-5 {
+  margin-top: 20px;
+}
+
+.mt-6 {
+  margin-top: 24px;
+}
+
+.mb-1 {
+  margin-bottom: 4px;
+}
+
+.ml-4 {
+  margin-left: 24px;
+}
+
+.ml-3 {
+  margin-left: 16px;
+}
+
+.ml-2 {
+  margin-left: 8px;
+}
+
+.ml-1 {
+  margin-left: 4px;
+}
+
+.mr-1 {
+  margin-right: 4px;
+}
+
+.mr-2 {
+  margin-right: 8px;
+}
+
+.mr-3 {
+  margin-right: 16px;
+}
+
+.mx-2 {
+  margin-left: 8px;
+  margin-right: 8px;
+}
+
+.pl-3 {
+  padding-left: 12px;
+}
+
+.pr-3 {
+  padding-right: 12px;
+}
+
+.p-3 {
+  padding: 12px;
+}
+
+.px-1 {
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+.px-3 {
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.pt-3 {
+  padding-top: 12px;
+}
+
+.px-6 {
+  padding-left: 18px;
+  padding-right: 18px;
+}
+
+.px-4 {
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+.pt-6 {
+  padding-top: 20px;
+}
+
+.py-3 {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.py-0 {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.left-auto {
+  left: auto !important;
+}
+
+.max-h-28 {
+  max-height: 112px;
+}
+
+.max-h-30 {
+  max-height: 120px;
+}
+
+.overflow-y-scroll {
+  overflow-y: scroll;
+}
+
+.text-xs {
+  font-size: 12px;
+}
+
+.inline-flex {
+  display: inline-flex;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+.flex-3 {
+  flex: 3;
+}
+
+.flex-4 {
+  flex: 4;
+}
+
+.flex-2 {
+  flex: 2;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.max-content {
+  width: max-content;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.items-end {
+  align-items: flex-end;
+}
+
+.items-baseline {
+  align-items: baseline;
+}
+
+.my-5 {
+  margin-top: 48px;
+  margin-bottom: 48px;
+}
+
+.my-4 {
+  margin-top: 24px;
+  margin-bottom: 24px;
+}
+
+.my-3 {
+  margin-top: 16px;
+  margin-bottom: 16px;
+}
+
+.pt-3 {
+  padding-top: 12px;
+}
+
+.px-3 {
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.pt-2 {
+  padding-top: 8px;
+}
+
+.px-2 {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.pt-1 {
+  padding-top: 4px;
+}
+
+.px-1 {
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+.pb-2 {
+  padding-bottom: 8px;
+}
+
+.justify-end {
+  justify-content: flex-end;
+}
+
+.w-auto {
+  width: auto;
+}
+
+.shrink-0 {
+  flex-shrink: 0;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.close {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+  background-image: var(--icon-close);
+  background-position: center;
+  background-size: auto 1rem;
+  background-repeat: no-repeat;
+  opacity: 0.5;
+  transition: opacity var(--transition);
+}
+
+.padding-two-column {
+  padding-left: 40px;
+  padding-right: 40px;
+}
+
+.muted {
+  color: #999;
+}
+
+.text-label {
+  color: #666;
+}
+
+.display-none {
+  display: none;
+}
+
+/* dark use #18232c */
+@media (prefers-color-scheme: dark) {
+  .text-label {
+    color: #9ca3af;
+  }
+}
+
+.text-decoration-none {
+  text-decoration: none;
+}
+
+.text-decoration-none:is([aria-current], :hover, :active, :focus),
+[role="link"]:is([aria-current], :hover, :active, :focus) {
+  --text-decoration: none !important;
+  background-color: transparent !important;
+}
+
+.text-overflow-ellipsis {
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.max-w-20 {
+  max-width: 180px;
+  white-space: nowrap;
+}
+
+[data-theme="light"],
+#mount:not([data-theme="dark"]) {
+  --popup-footer-background-color: #e8eaeb;
+  --popup-content-background-color: #ffffff;
+  --popup-item-background-color: #f3f5f6;
+  --popup-item-hover-background-color: #eaeced;
+  --popup-trial-pro-background-color: #f9fbfc;
+  --service-select-content-shadow: 0px 2px 12px 0px rgba(75, 76, 77, 0.2);
+  --service-select-border-color: #fafafa;
+  --service-select-selected-background-color: #f3f5f6;
+  --download-app-background: #f3f5f6;
+}
+
+[data-theme="dark"] {
+  --popup-footer-background-color: #0d0d0d;
+  --popup-content-background-color: #191919;
+  --popup-item-background-color: #272727;
+  --popup-item-hover-background-color: #333333;
+  --popup-trial-pro-background-color: #222222;
+  --service-select-content-shadow: 0px 2px 12px 0px rgba(0, 0, 0, 0.9);
+  --service-select-border-color: #2c2c2c;
+  --service-select-selected-background-color: #333333;
+  --download-app-background: #333;
+}
+
+#mount {
+  min-width: 268px;
+}
+
+body {
+  padding: 0;
+  margin: 0 auto;
+  min-width: 268px;
+  border-radius: 10px;
+}
+
+.popup-container {
+  font-size: 16px;
+  --font-size: 16px;
+  color: #666;
+  background-color: var(--popup-footer-background-color);
+  width: 316px;
+  min-width: 316px;
+}
+
+.popup-content {
+  background-color: var(--popup-content-background-color);
+  border-radius: 0px 0px 12px 12px;
+  padding: 16px 20px;
+}
+
+.immersive-translate-popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  touch-action: none;
+}
+
+.immersive-translate-popup-wrapper {
+  background: var(--background-color);
+  border-radius: 10px;
+  border: 1px solid var(--muted-border-color);
+}
+
+.main-button {
+  font-size: 15px;
+  vertical-align: middle;
+  border-radius: 12px;
+  padding: unset;
+  height: 44px;
+  line-height: 44px;
+}
+
+select.language-select,
+select.translate-service,
+select.min-select {
+  --form-element-spacing-horizontal: 0;
+  margin-bottom: 0px;
+  max-width: unset;
+  flex: 1;
+  overflow: hidden;
+  font-size: 13px;
+  border: none;
+  border-radius: 8px;
+  padding-right: 30px;
+  padding-left: 0px;
+  background-position: center right 12px;
+  background-size: 16px auto;
+  background-image: var(--icon-xia);
+  text-overflow: ellipsis;
+  color: var(--text-gray-2);
+  background-color: transparent;
+  box-shadow: unset !important;
+  cursor: pointer;
+}
+
+select.more {
+  background-position: center right;
+  padding-right: 20px;
+}
+
+select.translate-service {
+  color: var(--text-black-2);
+}
+
+.min-select-container.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.popup-footer {
+  background-color: var(--popup-footer-background-color);
+  height: 40px;
+}
+
+.language-select-container {
+  position: relative;
+  width: 100%;
+  background-color: var(--popup-item-background-color);
+  height: 55px;
+  border-radius: 12px;
+}
+
+select.language-select {
+  color: var(--text-black-2);
+  font-size: 14px;
+  padding: 8px 24px 24px 16px;
+  position: absolute;
+  border-radius: 12px;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+}
+
+.language-select-container label {
+  position: absolute;
+  bottom: 10px;
+  left: 16px;
+  font-size: 12px;
+  color: var(--text-gray-9);
+  line-height: 12px;
+  margin: 0;
+}
+
+.translation-service-container {
+  background-color: var(--popup-item-background-color);
+  border-radius: 12px;
+}
+
+.min-select-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 44px;
+  background-color: var(--popup-item-background-color);
+  padding-left: 16px;
+}
+
+.min-select-container:first-child {
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+}
+
+.min-select-container:last-child {
+  border-bottom-left-radius: 10px;
+  border-bottom-right-radius: 10px;
+}
+
+.min-select-container:only-child {
+  border-radius: 10px;
+}
+
+.translate-mode {
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  background-color: var(--popup-item-background-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.translate-mode svg {
+  fill: var(--text-gray-2);
+}
+
+.widgets-container {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  width: 100%;
+  gap: 9px;
+}
+
+/* 当只有两个小组件时的样式优化 */
+.widgets-container.widgets-two-items {
+  gap: 16px;
+}
+
+.widgets-container.widgets-two-items .widget-item {
+  flex: 0 1 auto;
+  min-width: 93px;
+  max-width: 120px;
+}
+
+.widget-item {
+  display: flex;
+  max-width: 93px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--popup-item-background-color);
+  font-size: 12px;
+  min-height: 44px;
+  height: 100%;
+  border-radius: 8px;
+  cursor: pointer;
+  flex: 1;
+  padding: 8px 4px;
+  text-align: center;
+}
+
+.widget-icon-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-gray-2);
+}
+
+.widgets-container svg {
+  fill: var(--text-gray-2);
+  color: var(--text-gray-2);
+}
+
+.share-button-container {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 2px 3px 0 8px;
+}
+
+.share-button-container svg {
+  fill: var(--text-gray-9);
+}
+
+.min-select-container:hover,
+.language-select-container:hover,
+.widget-item:hover,
+.translate-mode:hover {
+  background-color: var(--popup-item-hover-background-color);
+}
+
+.main-button:hover {
+  background-color: #f5508f;
+}
+
+.share-button-container:hover {
+  background-color: var(--popup-item-background-color);
+  border-radius: 6px;
+}
+
+.error-boundary {
+  background: #fff2f0;
+  border: 1px solid #ffccc7;
+  display: flex;
+  padding: 12px;
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.88);
+  word-break: break-all;
+  margin: 12px;
+  border-radius: 12px;
+  flex-direction: column;
+}
+
+.upgrade-pro {
+  border-radius: 11px;
+  background: linear-gradient(57deg, #272727 19.8%, #696969 82.2%);
+  padding: 2px 8px;
+  transform: scale(0.85);
+}
+
+.upgrade-pro span {
+  background: linear-gradient(180deg, #ffeab4 17.65%, #f8c235 85.29%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-size: 12px;
+  margin-left: 4px;
+}
+
+.upgrade-pro svg {
+  margin-top: -2px;
+}
+
+.upgrade-pro:hover {
+  background: linear-gradient(57deg, #3d3d3d 19.8%, #949494 82.2%);
+}
+
+.border-bottom-radius-0 {
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+}
+
+.trial-pro-container {
+  border-radius: 0px 0px 12px 12px;
+  background: var(--popup-trial-pro-background-color);
+  display: flex;
+  align-items: center;
+  height: 44px;
+  padding-left: 16px;
+  padding-right: 12px;
+  font-size: 12px;
+}
+
+.trial-pro-container label {
+  line-height: 13px;
+  color: var(--text-black-2);
+}
+
+.trial-pro-container img {
+  margin-left: 5px;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.upgrade-pro-discount-act {
+  height: 25px;
+  display: flex;
+  padding: 0 4px;
+  align-items: center;
+  border-radius: 15px;
+  background: linear-gradient(
+    90deg,
+    #cefbfa 11.33%,
+    #d7f56f 63.75%,
+    #fccd5e 100%
+  );
+  transform: scale(0.9);
+  box-shadow: 0px 1.8px 3.6px 0px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+}
+
+.upgrade-pro-discount-act span {
+  font-size: 12px;
+  font-weight: 700;
+  margin-left: 4px;
+  color: #222222;
+}
+
+.upgrade-pro-discount-act:hover {
+  text-decoration: unset;
+  background: linear-gradient(
+    90deg,
+    #e2fffe 11.33%,
+    #e6ff91 63.75%,
+    #ffdf93 100%
+  );
+}
+
+.custom-select-container {
+  width: 200px;
+  position: relative;
+  flex: 1;
+}
+
+#translation-service-select {
+  padding-right: 12px;
+  padding-left: 6px;
+}
+
+.custom-select-content {
+  border-radius: 12px;
+  background: var(--popup-content-background-color);
+  box-shadow: var(--service-select-content-shadow);
+  border: 1px solid var(--service-select-border-color);
+  padding: 4px 5px;
+  position: absolute;
+  left: -10px;
+  right: 0;
+  z-index: 100;
+  overflow-y: auto;
+}
+
+.custom-select-item.default {
+  width: 100%;
+  padding: 0;
+}
+
+.custom-select-item {
+  font-size: 13px;
+  padding: 5px 6px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  color: var(--text-black-2);
+  width: auto;
+  overflow: hidden;
+  height: 30px;
+  line-height: 30px;
+}
+
+.custom-select-item-img {
+  width: 20px;
+  height: 20px;
+  margin-right: 4px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .custom-select-item-img {
+    margin-right: 6px;
+  }
+}
+
+.custom-select-content .custom-select-item.selected,
+.custom-select-content .custom-select-item:hover {
+  background: var(--service-select-selected-background-color);
+}
+
+.custom-select-item > span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.custom-select-item-pro {
+  font-size: 12px;
+  margin-left: 6px;
+  display: flex;
+}
+
+.custom-select-item-pro img {
+  margin: 0 3px;
+  width: 20px;
+  flex-shrink: 0;
+}
+
+.custom-select-group-header {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-gray-9);
+  padding: 6px 8px 4px;
+  margin-top: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.more-container {
+  position: relative;
+}
+
+.new-menu-indicator {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background-color: #ef3434;
+  border-radius: 50%;
+  right: 18px;
+  top: 4px;
+}
+
+.download-app {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 8px;
+  background: var(--download-app-background);
+  padding: 4px 8px;
+  color: var(--text-gray-6);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+/* Popup 动画效果 */
+@keyframes popup-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes popup-fade-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(10px) scale(0.95);
+  }
+}
+
+.popup-generic-content {
+  animation: popup-fade-in 0.2s ease-out;
+}
+
+.popup-generic-content.hiding {
+  animation: popup-fade-out 0.15s ease-in;
+}
+
+select.min-select {
+  --form-element-spacing-horizontal: 0;
+  max-width: 128px;
+  overflow: hidden;
+  color: var(--primary);
+  font-size: 13px;
+  border: none;
+  padding: 0;
+  padding-right: 20px;
+  text-overflow: ellipsis;
+  color: var(--color);
+}
+select.min-select-secondary {
+  color: var(--color);
+}
+select.min-select:focus {
+  outline: none;
+  border: none;
+  --box-shadow: none;
+}
+
+select.min-select-left {
+  padding-right: 0px;
+  /* padding-left: 24px; */
+  /* background-position: center left 0; */
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+select.transform-padding-left {
+  padding-left: 12px;
+  transform: translateX(-12px);
+  background-position: center right 0px;
+}
+
+select.text-gray-6 {
+  color: var(--text-gray-6);
+}
+
+/* dark use black, for windows */
+@media (prefers-color-scheme: dark) {
+  select.language-select option,
+  select.translate-service option,
+  select.min-select option {
+    background-color: #666666;
+  }
+}
+
+select.min-select-no-arrow {
+  background-image: none;
+  padding-right: 0;
+}
+
+
+
+.activity-tips {
+  border-radius: 8px;
+  padding: 0px 8px;
+  min-height: 28px;
+  background: linear-gradient(83deg, #FACCDE -0.87%, #FCE7EF 43.13%, #FBD6E4 72.08%, #FFB3D1 96.34%);  gap: 2px;
+  color: #333;
+  cursor: pointer;
+  gap: 4px;
+}
+
+.activity-tips-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.countdown-container {
+  min-width: 50px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.01em;
+}
+
+.activity-tips-text {
+  font-weight: 600;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html {
+  font-size: 17px;
+}
+
+@media print {
+  .imt-fb-container {
+    display: none !important;
+  }
+}
+
+#mount {
+  position: absolute;
+  display: none;
+  min-width: 250px;
+  height: auto;
+  --font-size: 17px;
+  font-size: 17px;
+}
+
+/* float-ball */
+.imt-fb-container {
+  position: fixed;
+  padding: 0;
+  top: 335px;
+  width: fit-content;
+  display: flex;
+  flex-direction: column;
+  display: none;
+  direction: ltr;
+  background-color: transparent !important;
+}
+
+.imt-fb-container.left {
+  align-items: flex-start;
+  left: 0;
+}
+
+.imt-fb-container.right {
+  align-items: flex-end;
+  right: 0;
+}
+
+.imt-fb-btn {
+  cursor: pointer;
+  background: var(--float-ball-more-button-background-color);
+  height: 36px;
+  width: 56px;
+  box-shadow: 2px 6px 10px 0px #0e121629;
+}
+
+.imt-fb-btn.left {
+  border-top-right-radius: 36px;
+  border-bottom-right-radius: 36px;
+}
+
+.imt-fb-btn.right {
+  border-top-left-radius: 36px;
+  border-bottom-left-radius: 36px;
+}
+
+.imt-fb-btn div {
+  background: var(--float-ball-more-button-background-color);
+  height: 36px;
+  width: 54px;
+  display: flex;
+  align-items: center;
+}
+
+.imt-fb-btn.left div {
+  border-top-right-radius: 34px;
+  border-bottom-right-radius: 34px;
+  justify-content: flex-end;
+}
+
+.imt-fb-btn.right div {
+  border-top-left-radius: 34px;
+  border-bottom-left-radius: 34px;
+}
+
+.imt-fb-logo-img {
+  width: 20px;
+  height: 20px;
+  margin: 0 10px;
+}
+
+.imt-fb-logo-img-big-bg {
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  padding: 4px;
+  background-color: #ed6d8f;
+  border-radius: 50%;
+  margin: 0 5px;
+}
+
+.imt-float-ball-translated {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  bottom: 4px;
+  right: 20px;
+}
+
+.btn-animate {
+  -webkit-transform: translate3d(0, 0, 0);
+  transform: translate3d(0, 0, 0);
+  -webkit-transition: -webkit-transform ease-out 250ms;
+  transition: -webkit-transform ease-out 250ms;
+  transition: transform ease-out 250ms;
+  transition: transform ease-out 250ms, -webkit-transform ease-out 250ms;
+}
+
+.imt-fb-setting-btn {
+  margin-right: 18px;
+  width: 28px;
+  height: 28px;
+}
+
+.immersive-translate-popup-wrapper {
+  background: var(--background-color);
+  border-radius: 20px;
+  box-shadow: 2px 10px 24px 0px #0e121614;
+  border: none;
+}
+
+.popup-container {
+  border-radius: 20px;
+}
+
+.popup-content {
+  border-radius: 20px 20px 12px 12px;
+}
+.popup-footer {
+  border-radius: 20px;
+}
+
+.imt-fb-close-button {
+  pointer-events: all;
+  cursor: pointer;
+  position: absolute;
+  margin-top: -10px;
+}
+
+.imt-fb-close-content {
+  padding: 22px;
+  width: 320px;
+  pointer-events: all;
+}
+
+.imt-fb-close-title {
+  font-weight: 500;
+  color: var(--h2-color);
+}
+
+.imt-fb-close-radio-content {
+  background-color: var(--background-light-green);
+  padding: 8px 20px;
+}
+
+.imt-fb-radio-sel,
+.imt-fb-radio-nor {
+  width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.imt-fb-radio-sel {
+  border: 2px solid var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.imt-fb-radio-sel div {
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  background-color: var(--primary);
+}
+
+.imt-fb-radio-nor {
+  border: 2px solid #d3d4d6;
+}
+
+.imt-fb-primary-btn {
+  background-color: var(--primary);
+  width: 72px;
+  height: 32px;
+  color: white;
+  border-radius: 8px;
+  text-align: center;
+  line-height: 32px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.imt-fb-default-btn {
+  border: 1px solid var(--primary);
+  width: 72px;
+  height: 32px;
+  border-radius: 8px;
+  color: var(--primary);
+  line-height: 32px;
+  text-align: center;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.imt-fb-guide-container {
+  width: 312px;
+  transform: translateY(-45%);
+}
+
+.imt-fb-guide-bg {
+  position: absolute;
+  left: 30px;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: -1;
+  height: 100%;
+  width: 90%;
+}
+
+.imt-fb-guide-bg.left {
+  transform: scaleX(-1);
+}
+
+.imt-fb-guide-content {
+  margin: 16px -30px 80px 0px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.imt-fb-guide-content.left {
+  margin: 16px 21px 60px 32px;
+}
+
+.imt-fb-guide-img {
+  width: 220px;
+  height: 112px;
+}
+
+.imt-fb-guide-message {
+  font-size: 14px;
+  line-height: 28px;
+  color: #333333;
+  white-space: pre-wrap;
+  text-align: center;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+
+.imt-manga-guide-message {
+  font-size: 16px;
+  line-height: 24px;
+  color: #333333;
+  text-align: center;
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+
+.imt-fb-guide-button {
+  margin-top: 16px;
+  line-height: 40px;
+  height: 40px;
+  padding: 0 20px;
+  width: unset;
+}
+
+.imt-fb-more-buttons {
+  box-shadow: 0px 2px 10px 0px #00000014;
+  border: none;
+  background: var(--float-ball-more-button-background-color);
+  width: 36px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 18px;
+  margin-top: 0px;
+  padding: 7px 0 7px 0;
+}
+
+.imt-fb-more-buttons > div {
+  margin: auto;
+}
+
+.imt-fb-side,
+.imt-fb-reward {
+  border-radius: 50%;
+  cursor: pointer;
+  pointer-events: all;
+  position: relative;
+}
+
+.imt-fb-side {
+  margin: 10px 0;
+}
+
+.imt-fb-new-badge {
+  width: 26px;
+  height: 14px;
+  padding: 3px;
+  background-color: #f53f3f;
+  border-radius: 4px;
+  position: absolute;
+  top: -5px;
+  right: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.imt-fb-side *,
+.imt-fb-reward * {
+  pointer-events: all;
+}
+
+.imt-fb-more-button {
+  width: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+/* Sheet.css */
+.immersive-translate-sheet {
+  position: fixed;
+  transform: translateY(100%);
+  /* Start off screen */
+  left: 0;
+  right: 0;
+  background-color: white;
+  transition: transform 0.3s ease-out;
+  /* Smooth slide transition */
+  box-shadow: 0px -2px 10px rgba(0, 0, 0, 0.1);
+  /* Ensure it's above other content */
+  bottom: 0;
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+  overflow: hidden;
+}
+
+.immersive-translate-sheet.visible {
+  transform: translateY(0);
+}
+
+.immersive-translate-sheet-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transition: opacity 0.3s ease-out;
+}
+
+.immersive-translate-sheet-backdrop.visible {
+  opacity: 1;
+}
+
+.popup-container-sheet {
+  max-width: 100vw;
+  width: 100vw;
+}
+
+.imt-no-events svg * {
+  pointer-events: none !important;
+}
+
+.imt-manga-button {
+  width: 36px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  pointer-events: all;
+  margin: 0 0 10px 0;
+  background-color: var(--float-ball-more-button-background-color);
+  border-radius: 18px;
+  filter: drop-shadow(0px 2px 10px rgba(0, 0, 0, 0.08));
+  opacity: 0.5;
+  right: 8px;
+  padding: 10px 0 4px 0;
+}
+
+.imt-manga-feedback {
+  cursor: pointer;
+  margin-bottom: 10px;
+}
+
+.imt-fb-feedback {
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.imt-fb-upgrade-button {
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.imt-manga-button:hover {
+  opacity: 1;
+}
+
+.imt-manga-translated {
+  position: absolute;
+  left: 24px;
+  top: 20px;
+}
+
+.imt-float-ball-loading {
+  animation: imt-loading-animation 0.6s infinite linear !important;
+}
+
+.imt-manga-guide-bg {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: -1;
+  width: 100%;
+  transform: translateY(-50%);
+}
+.imt-manga-guide-content {
+  position: absolute;
+  top: 15px;
+  left: 0;
+  right: 0;
+  margin: 0 40px 0;
+}
+
+.img-manga-guide-button {
+  width: fit-content;
+  margin: 0 auto;
+}
+
+.img-manga-close {
+  position: absolute;
+  bottom: -200px;
+  width: 32px;
+  height: 32px;
+  left: 0;
+  right: 0;
+  margin: auto;
+  cursor: pointer;
+}
+
+.imt-fb-container.dragging .imt-fb-more-buttons,
+.imt-fb-container.dragging .imt-manga-button,
+.imt-fb-container.dragging .btn-animate:not(.imt-fb-btn) {
+  display: none !important;
+}
+
+.imt-fb-container.dragging .imt-fb-btn {
+  border-radius: 50% !important;
+  width: 36px !important;
+  height: 36px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: move !important;
+}
+
+.imt-fb-container.dragging .imt-fb-btn div {
+  border-radius: 50% !important;
+  width: 36px !important;
+  height: 36px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0 !important;
+}
+
+.imt-fb-container.dragging .imt-fb-btn.left,
+.imt-fb-container.dragging .imt-fb-btn.right {
+  border-radius: 50% !important;
+}
+
+.imt-fb-container.dragging .imt-fb-btn.left div,
+.imt-fb-container.dragging .imt-fb-btn.right div {
+  border-radius: 50% !important;
+}
+
+.imt-fb-container.dragging .imt-fb-logo-img {
+  margin: 0 !important;
+  padding: 4px !important;
+}
+
+.imt-fb-container.dragging .imt-float-ball-translated {
+  right: 2px !important;
+  bottom: 2px !important;
+}
+
+@-webkit-keyframes imt-loading-animation {
+  from {
+    -webkit-transform: rotate(0deg);
+  }
+
+  to {
+    -webkit-transform: rotate(359deg);
+  }
+}
+
+@keyframes imt-loading-animation {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(359deg);
+  }
+}
+
+.imt-fb-icon {
+  color: #666666;
+}
+
+[data-theme="dark"] .imt-fb-icon {
+  color: #b3b3b3;
+}
+
+[data-theme="light"] .imt-fb-icon {
+  color: #666666;
+}
+</style><div id="mount" style="display: block;"><div class="imt-fb-container right notranslate " data-theme="light" style="z-index: 2147483637; pointer-events: none; right: 0px; top: 210px; display: flex;"><div class="btn-animate" style="transform: translateX(60px); opacity: 1; padding-left: 10px;"><div class=" btn-animate" style="position: relative; pointer-events: all; display: inline-block;"><div><div class="imt-fb-btn imt-fb-more-button imt-fb-side"><svg class="imt-fb-icon" width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8.60547 12.9228C8.84029 12.9228 9.03755 13.0022 9.19629 13.161C9.3551 13.3198 9.43457 13.5171 9.43457 13.7519V18.5107C9.43457 18.7453 9.35513 18.9426 9.19629 19.1015C9.03755 19.2602 8.84029 19.3398 8.60547 19.3398H3.8457C3.61127 19.3397 3.41464 19.26 3.25586 19.1015C3.09712 18.9426 3.01758 18.7453 3.01758 18.5107V13.7519C3.01758 13.517 3.09712 13.3198 3.25586 13.161C3.41465 13.0023 3.61125 12.9229 3.8457 12.9228H8.60547ZM17.208 12.9228C17.4427 12.9228 17.6399 13.0022 17.7988 13.161C17.9575 13.3198 18.0371 13.5171 18.0371 13.7519V18.5107C18.0371 18.7453 17.9576 18.9426 17.7988 19.1015C17.6399 19.2602 17.4427 19.3398 17.208 19.3398H12.4492C12.2144 19.3398 12.0171 19.2602 11.8584 19.1015C11.6995 18.9426 11.6201 18.7453 11.6201 18.5107V13.7519C11.6201 13.517 11.6995 13.3198 11.8584 13.161C12.0171 13.0022 12.2144 12.9228 12.4492 12.9228H17.208ZM4.39258 17.9648H8.05957V14.2978H4.39258V17.9648ZM12.9951 17.9648H16.6621V14.2978H12.9951V17.9648ZM14.7598 2.92179C14.8641 2.57295 15.3576 2.57295 15.4619 2.92179L15.9561 4.57511C16.1376 5.18219 16.5965 5.66815 17.1924 5.8837L18.7412 6.44327C19.0635 6.56002 19.0633 7.01583 18.7412 7.13273L17.1924 7.69327C16.5966 7.90881 16.1376 8.39389 15.9561 9.00089L15.4619 10.6552C15.3575 11.0038 14.8642 11.0037 14.7598 10.6552L14.2646 9.00089C14.0831 8.39401 13.625 7.90881 13.0293 7.69327L11.4805 7.13273C11.158 7.01598 11.1579 6.55996 11.4805 6.44327L13.0293 5.8837C13.6251 5.66814 14.0831 5.18219 14.2646 4.57511L14.7598 2.92179ZM8.60547 4.32023C8.84029 4.32023 9.03755 4.39977 9.19629 4.55851C9.35496 4.71727 9.43448 4.91396 9.43457 5.14835V9.90812C9.43457 10.1429 9.35518 10.3402 9.19629 10.4989C9.03755 10.6578 8.84029 10.7372 8.60547 10.7372H3.8457C3.61131 10.7371 3.41463 10.6576 3.25586 10.4989C3.09712 10.3402 3.01758 10.1429 3.01758 9.90812V5.14835C3.01767 4.91386 3.09721 4.71731 3.25586 4.55851C3.41466 4.39986 3.61121 4.32032 3.8457 4.32023H8.60547ZM4.39258 9.36222H8.05957V5.69523H4.39258V9.36222Z" fill="currentColor"></path></svg><svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" style="position: absolute; right: 0px; top: 0px; display: none; transform: translate(30%, -30%);"><g clip-path="url(#clip0_34242_2370)"><path d="M7 14C5.14348 14 3.36301 13.2625 2.05025 11.9497C0.737498 10.637 0 8.85652 0 7C0 5.14348 0.737498 3.36301 2.05025 2.05025C3.36301 0.737498 5.14348 0 7 0C8.85652 0 10.637 0.737498 11.9497 2.05025C13.2625 3.36301 14 5.14348 14 7C14 8.85652 13.2625 10.637 11.9497 11.9497C10.637 13.2625 8.85652 14 7 14Z" fill="#B1B1B1" fill-opacity="0.32"></path><mask id="mask0_34242_2370" maskUnits="userSpaceOnUse" x="1" y="1" width="12" height="12" style="mask-type: alpha;"><rect x="1" y="1" width="12" height="12" fill="#D9D9D9"></rect></mask><g mask="url(#mask0_34242_2370)"><path d="M8.90169 3.66124V6.89549L9.94631 7.94012C9.9939 7.9877 10.0317 8.04208 10.0597 8.10324C10.0877 8.16441 10.1017 8.23328 10.1017 8.30987V8.61487C10.1017 8.76095 10.0516 8.88433 9.95144 8.98499C9.85119 9.08566 9.72835 9.13599 9.58294 9.13599H7.51881V11.8871C7.51881 12.0325 7.46898 12.1553 7.36931 12.2555C7.26956 12.3557 7.14735 12.4059 7.00269 12.4059C6.85802 12.4059 6.73494 12.3557 6.63344 12.2555C6.53202 12.1553 6.48131 12.0325 6.48131 11.8871V9.13599H4.41719C4.27177 9.13599 4.14894 9.08566 4.04869 8.98499C3.94852 8.88433 3.89844 8.76095 3.89844 8.61487V8.30987C3.89844 8.23328 3.91244 8.16441 3.94044 8.10324C3.96844 8.04208 4.00623 7.9877 4.05381 7.94012L5.09844 6.89549V3.66124H4.94844C4.82094 3.64733 4.71406 3.59299 4.62781 3.49824C4.54156 3.40358 4.49844 3.28987 4.49844 3.15712C4.49844 3.01245 4.54852 2.88937 4.64869 2.78787C4.74894 2.68645 4.87177 2.63574 5.01719 2.63574H8.98294C9.12835 2.63574 9.25119 2.68558 9.35144 2.78524C9.4516 2.88491 9.50169 3.00712 9.50169 3.15187C9.50169 3.28462 9.45856 3.3992 9.37231 3.49562C9.28606 3.59212 9.17919 3.64733 9.05169 3.66124H8.90169ZM5.36169 8.09849H8.63844L7.86419 7.32424V3.67324H6.13594V7.32424L5.36169 8.09849Z" fill="white"></path></g></g><defs><clippath id="clip0_34242_2370"><rect width="14" height="14" fill="white"></rect></clippath></defs></svg></div></div></div></div><div hidden="" class="imt-no-events btn-animate " id="manga-button" style="position: relative;"><div class="imt-manga-button" style="transform: translateX(2px);"><div class=" " style="position: relative; pointer-events: all; display: inline-block;"><div><svg class="imt-manga-feedback imt-fb-icon" width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11.0003 14.2749C11.213 14.2749 11.3895 14.2047 11.5299 14.0643C11.6705 13.9239 11.7408 13.7473 11.7408 13.5345C11.7408 13.3218 11.6705 13.1453 11.5299 13.0049C11.3895 12.8645 11.213 12.7943 11.0003 12.7943C10.7877 12.7943 10.6111 12.8645 10.4707 13.0049C10.3302 13.1453 10.2599 13.3218 10.2599 13.5345C10.2599 13.7473 10.3302 13.9239 10.4707 14.0643C10.6111 14.2047 10.7877 14.2749 11.0003 14.2749ZM11.0003 11.0842C11.1954 11.0842 11.3587 11.0185 11.4903 10.8869C11.622 10.7552 11.6878 10.5918 11.6878 10.3967V6.23645C11.6878 6.04135 11.622 5.87803 11.4903 5.74649C11.3587 5.6148 11.1954 5.54895 11.0003 5.54895C10.8052 5.54895 10.6419 5.6148 10.5104 5.74649C10.3787 5.87803 10.3128 6.04135 10.3128 6.23645V10.3967C10.3128 10.5918 10.3787 10.7552 10.5104 10.8869C10.6419 11.0185 10.8052 11.0842 11.0003 11.0842ZM5.53562 16.8311L3.70045 18.666C3.43966 18.9269 3.13968 18.9861 2.80051 18.8434C2.4615 18.7005 2.29199 18.4434 2.29199 18.072V4.73816C2.29199 4.27509 2.45241 3.88314 2.77324 3.5623C3.09408 3.24147 3.48603 3.08105 3.9491 3.08105H18.0516C18.5146 3.08105 18.9066 3.24147 19.2274 3.5623C19.5482 3.88314 19.7087 4.27509 19.7087 4.73816V15.174C19.7087 15.637 19.5482 16.029 19.2274 16.3498C18.9066 16.6706 18.5146 16.8311 18.0516 16.8311H5.53562ZM4.95033 15.4561H18.0516C18.1221 15.4561 18.1868 15.4266 18.2454 15.3678C18.3042 15.3092 18.3337 15.2445 18.3337 15.174V4.73816C18.3337 4.66758 18.3042 4.60295 18.2454 4.54428C18.1868 4.48546 18.1221 4.45605 18.0516 4.45605H3.9491C3.87851 4.45605 3.81389 4.48546 3.75522 4.54428C3.6964 4.60295 3.66699 4.66758 3.66699 4.73816V16.7254L4.95033 15.4561Z" fill="currentColor"></path></svg></div></div><div style="position: relative;"><svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="manhua"><path id="Vector" d="M14.8853 4.92364C14.8853 4.92364 16.3905 10.4362 22.6668 4C22.6668 4 20.3381 10.8907 25.3364 10.0843C25.3364 10.0843 22.0563 15.6994 29 18.0599C29 18.0599 22.9934 19.306 21.1617 28C21.1617 28 17.7679 24.54 14.8853 27.3549C14.8853 27.3549 13.3233 23.5724 7.33097 26.27C7.33097 26.27 10.1141 20.6549 4.83179 21.0507C4.83179 21.0507 7.16057 18.8955 3 15.9047C3 15.9047 7.50137 16.1833 6.33697 11.7117C6.33697 11.7117 10.0005 12.3421 8.66576 6.82957C8.65156 6.81491 12.4855 9.80574 14.8853 4.92364Z" fill="#ED6D8F"></path><path id="Vector_2" d="M20.8599 13.7022C20.885 13.1361 20.9543 12.5713 20.9959 12.0052C21.0337 11.568 20.8107 11.2794 20.3876 11.18C20.0759 11.1013 19.7508 11.0867 19.433 11.137C19.1951 11.1945 18.9542 11.2396 18.7113 11.2721C18.2403 11.3028 17.9973 11.5275 17.9796 11.988C17.977 12.0833 17.9596 12.1777 17.928 12.268C17.3034 13.9102 16.6774 15.5499 16.0503 17.1873C16.0301 17.2401 16.0062 17.2904 15.9671 17.3776C15.7291 16.8975 15.4281 16.4898 15.2745 15.9986C14.8073 14.5152 14.3186 13.033 13.8312 11.5594C13.6826 11.1112 13.3489 10.9344 12.8754 11.0216C12.7889 11.0365 12.7008 11.0398 12.6134 11.0314C12.2241 10.9938 11.8311 11.0404 11.4623 11.1677C11.0946 11.2991 10.9498 11.557 11.0152 11.9254C11.0428 12.0371 11.0643 12.1503 11.0795 12.2643C11.1223 13.1902 11.1777 14.1087 11.2054 15.0321C11.257 16.7992 11.2117 18.5651 11.0858 20.3284C11.0644 20.6354 11.0304 20.9424 11.0228 21.2494C11.0115 21.6092 11.1613 21.7811 11.5266 21.8143C11.9976 21.8573 12.4711 21.8708 12.9421 21.9088C13.0309 21.9201 13.121 21.9003 13.1962 21.8528C13.2714 21.8053 13.3268 21.7334 13.3527 21.6497C13.3996 21.5394 13.4252 21.4216 13.4282 21.3022C13.4295 20.8258 13.4207 20.3493 13.4081 19.8741C13.393 19.3264 13.3917 18.7763 13.3438 18.231C13.2857 17.5839 13.266 16.934 13.2847 16.2847C13.2847 16.2466 13.291 16.2073 13.2985 16.1312C13.3338 16.2024 13.3514 16.2356 13.3665 16.2712C13.9017 17.5228 14.3617 18.8037 14.7443 20.1074C14.7928 20.2421 14.7928 20.3889 14.7443 20.5237C14.6322 20.8196 14.7141 21.037 14.9659 21.1377C15.4445 21.3268 15.9331 21.4926 16.4155 21.6731C16.4865 21.7033 16.566 21.7091 16.6408 21.6895C16.7157 21.6698 16.7815 21.6259 16.8273 21.565C16.9085 21.4643 16.9743 21.3526 17.0225 21.2335C17.0537 21.1374 17.0798 21.0399 17.1006 20.9412C17.3185 20.2425 17.5653 19.5499 17.7517 18.8438C17.9785 17.9723 18.2624 17.1158 18.6018 16.2798C18.6201 16.2439 18.6411 16.2094 18.6647 16.1766C18.6761 16.2319 18.6761 16.254 18.6761 16.2761C18.6345 17.59 18.5955 18.8978 18.5501 20.2056C18.5363 20.5949 18.491 20.9829 18.4809 21.3722C18.4721 21.705 18.6207 21.8708 18.9557 21.9002C19.4355 21.9432 19.9191 21.9592 20.4002 21.9973C20.4888 22.0079 20.5784 21.9875 20.653 21.9399C20.7277 21.8922 20.7827 21.8203 20.8082 21.7369C20.8531 21.6305 20.8766 21.5167 20.8775 21.4017C20.88 20.7668 20.8674 20.132 20.8674 19.4971C20.8662 19.2846 20.8687 19.0722 20.8523 18.8622C20.8158 18.3968 20.7264 17.9314 20.7339 17.4685C20.7515 16.2122 20.8044 14.9572 20.8599 13.7022Z" fill="white"></path></g></svg></div></div></div><div class=" " style="position: relative; pointer-events: all; display: inline-block;"><div><div style="display: flex; align-items: center; flex-direction: row;"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" style="display: block; opacity: 0;"><g clip-path="url(#clip0_2589_9951)"><path d="M7 14C5.14348 14 3.36301 13.2625 2.05025 11.9497C0.737498 10.637 0 8.85652 0 7C0 5.14348 0.737498 3.36301 2.05025 2.05025C3.36301 0.737498 5.14348 0 7 0C8.85652 0 10.637 0.737498 11.9497 2.05025C13.2625 3.36301 14 5.14348 14 7C14 8.85652 13.2625 10.637 11.9497 11.9497C10.637 13.2625 8.85652 14 7 14ZM4.183 5.064L6.118 7L4.183 8.936C4.12409 8.99361 4.07719 9.06234 4.04502 9.1382C4.01285 9.21406 3.99605 9.29554 3.99559 9.37794C3.99513 9.46034 4.01101 9.54201 4.04234 9.61823C4.07366 9.69444 4.11978 9.76369 4.17805 9.82195C4.23631 9.88022 4.30556 9.92634 4.38177 9.95766C4.45799 9.98898 4.53966 10.0049 4.62206 10.0044C4.70446 10.004 4.78594 9.98715 4.8618 9.95498C4.93766 9.92281 5.00639 9.87591 5.064 9.817L7 7.882L8.936 9.817C9.05327 9.93168 9.21104 9.99548 9.37506 9.99457C9.53908 9.99365 9.69612 9.92809 9.8121 9.8121C9.92809 9.69612 9.99365 9.53908 9.99457 9.37506C9.99548 9.21104 9.93168 9.05327 9.817 8.936L7.882 7L9.817 5.064C9.87591 5.00639 9.92281 4.93766 9.95498 4.8618C9.98715 4.78594 10.004 4.70446 10.0044 4.62206C10.0049 4.53966 9.98898 4.45799 9.95766 4.38177C9.92634 4.30556 9.88022 4.23631 9.82195 4.17805C9.76369 4.11978 9.69444 4.07366 9.61823 4.04234C9.54201 4.01101 9.46034 3.99513 9.37794 3.99559C9.29554 3.99605 9.21406 4.01285 9.1382 4.04502C9.06234 4.07719 8.99361 4.12409 8.936 4.183L7 6.118L5.064 4.183C4.94673 4.06832 4.78896 4.00452 4.62494 4.00543C4.46092 4.00635 4.30388 4.07191 4.1879 4.1879C4.07191 4.30388 4.00635 4.46092 4.00543 4.62494C4.00452 4.78896 4.06832 4.94673 4.183 5.064Z" fill="#B1B1B1" fill-opacity="0.32"></path></g><defs><clippath id="clip0_2589_9951"><rect width="14" height="14" fill="white"></rect></clippath></defs></svg><div class="imt-fb-btn  right btn-animate " dir="ltr" style="transform: translateX(15px); opacity: 0.7;"><div><svg class="imt-fb-logo-img imt-fb-logo-img-big-bg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20"><path fill="none" d="M0 0h24v24H0z"></path><path d="M5 15v2a2 2 0 0 0 1.85 1.995L7 19h3v2H7a4 4 0 0 1-4-4v-2h2zm13-5l4.4 11h-2.155l-1.201-3h-4.09l-1.199 3h-2.154L16 10h2zm-1 2.885L15.753 16h2.492L17 12.885zM8 2v2h4v7H8v3H6v-3H2V4h4V2h2zm9 1a4 4 0 0 1 4 4v2h-2V7a2 2 0 0 0-2-2h-3V3h3zM6 6H4v3h2V6zm4 0H8v3h2V6z" fill="rgba(255,255,255,1)"></path></svg></div></div><svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" style="display: none; opacity: 0;"><g clip-path="url(#clip0_2589_9951)"><path d="M7 14C5.14348 14 3.36301 13.2625 2.05025 11.9497C0.737498 10.637 0 8.85652 0 7C0 5.14348 0.737498 3.36301 2.05025 2.05025C3.36301 0.737498 5.14348 0 7 0C8.85652 0 10.637 0.737498 11.9497 2.05025C13.2625 3.36301 14 5.14348 14 7C14 8.85652 13.2625 10.637 11.9497 11.9497C10.637 13.2625 8.85652 14 7 14ZM4.183 5.064L6.118 7L4.183 8.936C4.12409 8.99361 4.07719 9.06234 4.04502 9.1382C4.01285 9.21406 3.99605 9.29554 3.99559 9.37794C3.99513 9.46034 4.01101 9.54201 4.04234 9.61823C4.07366 9.69444 4.11978 9.76369 4.17805 9.82195C4.23631 9.88022 4.30556 9.92634 4.38177 9.95766C4.45799 9.98898 4.53966 10.0049 4.62206 10.0044C4.70446 10.004 4.78594 9.98715 4.8618 9.95498C4.93766 9.92281 5.00639 9.87591 5.064 9.817L7 7.882L8.936 9.817C9.05327 9.93168 9.21104 9.99548 9.37506 9.99457C9.53908 9.99365 9.69612 9.92809 9.8121 9.8121C9.92809 9.69612 9.99365 9.53908 9.99457 9.37506C9.99548 9.21104 9.93168 9.05327 9.817 8.936L7.882 7L9.817 5.064C9.87591 5.00639 9.92281 4.93766 9.95498 4.8618C9.98715 4.78594 10.004 4.70446 10.0044 4.62206C10.0049 4.53966 9.98898 4.45799 9.95766 4.38177C9.92634 4.30556 9.88022 4.23631 9.82195 4.17805C9.76369 4.11978 9.69444 4.07366 9.61823 4.04234C9.54201 4.01101 9.46034 3.99513 9.37794 3.99559C9.29554 3.99605 9.21406 4.01285 9.1382 4.04502C9.06234 4.07719 8.99361 4.12409 8.936 4.183L7 6.118L5.064 4.183C4.94673 4.06832 4.78896 4.00452 4.62494 4.00543C4.46092 4.00635 4.30388 4.07191 4.1879 4.1879C4.07191 4.30388 4.00635 4.46092 4.00543 4.62494C4.00452 4.78896 4.06832 4.94673 4.183 5.064Z" fill="#B1B1B1" fill-opacity="0.32"></path></g><defs><clippath id="clip0_2589_9951"><rect width="14" height="14" fill="white"></rect></clippath></defs></svg></div></div></div><div style="position: relative; width: 100%; opacity: 0;"><div title="关闭悬浮球" class="imt-fb-close-button" style="transform: translateX(100%);"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><g clip-path="url(#clip0_2589_9951)"><path d="M7 14C5.14348 14 3.36301 13.2625 2.05025 11.9497C0.737498 10.637 0 8.85652 0 7C0 5.14348 0.737498 3.36301 2.05025 2.05025C3.36301 0.737498 5.14348 0 7 0C8.85652 0 10.637 0.737498 11.9497 2.05025C13.2625 3.36301 14 5.14348 14 7C14 8.85652 13.2625 10.637 11.9497 11.9497C10.637 13.2625 8.85652 14 7 14ZM4.183 5.064L6.118 7L4.183 8.936C4.12409 8.99361 4.07719 9.06234 4.04502 9.1382C4.01285 9.21406 3.99605 9.29554 3.99559 9.37794C3.99513 9.46034 4.01101 9.54201 4.04234 9.61823C4.07366 9.69444 4.11978 9.76369 4.17805 9.82195C4.23631 9.88022 4.30556 9.92634 4.38177 9.95766C4.45799 9.98898 4.53966 10.0049 4.62206 10.0044C4.70446 10.004 4.78594 9.98715 4.8618 9.95498C4.93766 9.92281 5.00639 9.87591 5.064 9.817L7 7.882L8.936 9.817C9.05327 9.93168 9.21104 9.99548 9.37506 9.99457C9.53908 9.99365 9.69612 9.92809 9.8121 9.8121C9.92809 9.69612 9.99365 9.53908 9.99457 9.37506C9.99548 9.21104 9.93168 9.05327 9.817 8.936L7.882 7L9.817 5.064C9.87591 5.00639 9.92281 4.93766 9.95498 4.8618C9.98715 4.78594 10.004 4.70446 10.0044 4.62206C10.0049 4.53966 9.98898 4.45799 9.95766 4.38177C9.92634 4.30556 9.88022 4.23631 9.82195 4.17805C9.76369 4.11978 9.69444 4.07366 9.61823 4.04234C9.54201 4.01101 9.46034 3.99513 9.37794 3.99559C9.29554 3.99605 9.21406 4.01285 9.1382 4.04502C9.06234 4.07719 8.99361 4.12409 8.936 4.183L7 6.118L5.064 4.183C4.94673 4.06832 4.78896 4.00452 4.62494 4.00543C4.46092 4.00635 4.30388 4.07191 4.1879 4.1879C4.07191 4.30388 4.00635 4.46092 4.00543 4.62494C4.00452 4.78896 4.06832 4.94673 4.183 5.064Z" fill="#B1B1B1" fill-opacity="0.32"></path></g><defs><clippath id="clip0_2589_9951"><rect width="14" height="14" fill="white"></rect></clippath></defs></svg></div></div><div class="imt-fb-more-buttons btn-animate" style="margin-top: 10px; transform: translateX(60px);"><div class=" btn-animate" style="position: relative; pointer-events: all; display: inline-block;"><div><div class="imt-fb-more-button"><svg class="imt-fb-icon" width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 22px; height: 22px;"><path d="M16 7.66699H10.375" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path><path d="M11.625 14.333L6 14.333" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path><path d="M14.125 16C15.1605 16 16 15.1605 16 14.125C16 13.0895 15.1605 12.25 14.125 12.25C13.0895 12.25 12.25 13.0895 12.25 14.125C12.25 15.1605 13.0895 16 14.125 16Z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path><path d="M7.875 9.75C8.91053 9.75 9.75 8.91053 9.75 7.875C9.75 6.83947 8.91053 6 7.875 6C6.83947 6 6 6.83947 6 7.875C6 8.91053 6.83947 9.75 7.875 9.75Z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path><rect x="3" y="3" width="16" height="16" rx="1.66667" stroke="currentColor" stroke-width="1.4"></rect></svg></div></div></div><div class=" btn-animate" style="position: relative; pointer-events: all; display: inline-block;"><div><div class="imt-fb-more-button"><svg class="imt-fb-feedback imt-fb-icon" width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11.0003 14.2749C11.213 14.2749 11.3895 14.2047 11.5299 14.0643C11.6705 13.9239 11.7408 13.7473 11.7408 13.5345C11.7408 13.3218 11.6705 13.1453 11.5299 13.0049C11.3895 12.8645 11.213 12.7943 11.0003 12.7943C10.7877 12.7943 10.6111 12.8645 10.4707 13.0049C10.3302 13.1453 10.2599 13.3218 10.2599 13.5345C10.2599 13.7473 10.3302 13.9239 10.4707 14.0643C10.6111 14.2047 10.7877 14.2749 11.0003 14.2749ZM11.0003 11.0842C11.1954 11.0842 11.3587 11.0185 11.4903 10.8869C11.622 10.7552 11.6878 10.5918 11.6878 10.3967V6.23645C11.6878 6.04135 11.622 5.87803 11.4903 5.74649C11.3587 5.6148 11.1954 5.54895 11.0003 5.54895C10.8052 5.54895 10.6419 5.6148 10.5104 5.74649C10.3787 5.87803 10.3128 6.04135 10.3128 6.23645V10.3967C10.3128 10.5918 10.3787 10.7552 10.5104 10.8869C10.6419 11.0185 10.8052 11.0842 11.0003 11.0842ZM5.53562 16.8311L3.70045 18.666C3.43966 18.9269 3.13968 18.9861 2.80051 18.8434C2.4615 18.7005 2.29199 18.4434 2.29199 18.072V4.73816C2.29199 4.27509 2.45241 3.88314 2.77324 3.5623C3.09408 3.24147 3.48603 3.08105 3.9491 3.08105H18.0516C18.5146 3.08105 18.9066 3.24147 19.2274 3.5623C19.5482 3.88314 19.7087 4.27509 19.7087 4.73816V15.174C19.7087 15.637 19.5482 16.029 19.2274 16.3498C18.9066 16.6706 18.5146 16.8311 18.0516 16.8311H5.53562ZM4.95033 15.4561H18.0516C18.1221 15.4561 18.1868 15.4266 18.2454 15.3678C18.3042 15.3092 18.3337 15.2445 18.3337 15.174V4.73816C18.3337 4.66758 18.3042 4.60295 18.2454 4.54428C18.1868 4.48546 18.1221 4.45605 18.0516 4.45605H3.9491C3.87851 4.45605 3.81389 4.48546 3.75522 4.54428C3.6964 4.60295 3.66699 4.66758 3.66699 4.73816V16.7254L4.95033 15.4561Z" fill="currentColor"></path></svg></div></div></div></div><div hidden="" id="immersive-translate-popup-overlay" class="immersive-translate-popup-overlay"><div class="immersive-translate-popup-wrapper" style="position: fixed; top: 210px; right: 65px;"></div></div></div></div></template></div></html>
