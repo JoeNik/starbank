@@ -187,14 +187,13 @@ class MusicPlayerController extends GetxController {
             : null,
       );
 
+      // 准备 Headers
+      final Map<String, String> headers = _getHeaders(track);
+
       try {
         await audioPlayer.setAudioSource(AudioSource.uri(
           Uri.parse(playUrl),
-          headers: {
-            'User-Agent':
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Referer': 'https://www.google.com/',
-          },
+          headers: headers,
           tag: mediaItem,
         ));
       } catch (e) {
@@ -202,11 +201,7 @@ class MusicPlayerController extends GetxController {
         debugPrint('Protocol error, retrying with raw URL: $e');
         await audioPlayer.setAudioSource(AudioSource.uri(
           Uri.parse(currentUrl),
-          headers: {
-            'User-Agent':
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Referer': 'https://www.google.com/',
-          },
+          headers: headers,
           tag: mediaItem,
         ));
       }
@@ -313,6 +308,29 @@ class MusicPlayerController extends GetxController {
     }
     _sleepTimer?.cancel();
     super.onClose();
+  }
+
+  Map<String, String> _getHeaders(MusicTrack track) {
+    // 默认 Headers (模仿 PC Chrome)
+    final Map<String, String> headers = {
+      'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Referer': 'https://www.google.com/',
+    };
+
+    if (track.platform == 'netease') {
+      headers['Referer'] = 'https://music.163.com/';
+      // 网易云部分链接可能需要 Cookie，但通常 Referer 足够
+    } else if (track.platform == 'kuwo') {
+      headers['Referer'] = 'http://www.kuwo.cn/';
+      // 酷有时候对 HTTP 更友好，或者特定的 UA
+      headers['User-Agent'] =
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0';
+    } else if (track.platform == 'qq') {
+      headers['Referer'] = 'https://y.qq.com/';
+    }
+
+    return headers;
   }
 }
 
