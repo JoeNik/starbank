@@ -32,8 +32,7 @@ class MusicPlayerController extends GetxController {
   void onInit() {
     super.onInit();
     _loadFavorites();
-    // Do not auto-init here if possible, or init safely
-    _initAudioPlayer();
+    // REMOVED: Do not auto-init. Init lazily on first play.
   }
 
   void _loadFavorites() {
@@ -76,7 +75,7 @@ class MusicPlayerController extends GetxController {
     playTrack(favorites.first);
   }
 
-  // Modified Safe Init
+  // Modified Safe Init with Self-Healing
   Future<bool> _initAudioPlayer() async {
     if (isInitialized.value && audioPlayer != null) return true;
 
@@ -89,36 +88,63 @@ class MusicPlayerController extends GetxController {
 
       audioPlayer = AudioPlayer();
       isInitialized.value = true;
-
-      audioPlayer!.playerStateStream.listen((state) {
-        isPlaying.value = state.playing;
-        if (state.processingState == ProcessingState.completed) {
-          playNext();
-        }
-      });
-
-      audioPlayer!.positionStream.listen((p) {
-        position.value = p;
-        if (lyrics.isNotEmpty) {
-          final index = lyrics.lastIndexWhere((l) => l.startTime <= p);
-          if (index != -1 && index != currentLyricIndex.value) {
-            currentLyricIndex.value = index;
-          }
-        }
-      });
-
-      audioPlayer!.durationStream
-          .listen((d) => duration.value = d ?? Duration.zero);
-      audioPlayer!.bufferedPositionStream.listen((b) => buffered.value = b);
+      _setupPlayerListeners();
 
       debugPrint('MusicPlayerController: AudioPlayer initialized successfully');
       return true;
     } catch (e) {
+      // Check for LateInitializationError (JustAudioBackground issue) or similar errors
+      if (e.toString().contains("LateInitializationError") ||
+          e.toString().contains("just_audio_background")) {
+        debugPrint(
+            'MusicPlayerController: JustAudioBackground not initialized ($e). Attempting fallback init...');
+        try {
+          await JustAudioBackground.init(
+            androidNotificationChannelId: 'com.ryanheise.bg_demo.channel.audio',
+            androidNotificationChannelName: 'Audio playback',
+            androidNotificationOngoing: true,
+          );
+          debugPrint(
+              'MusicPlayerController: Fallback init success. Retrying Player creation...');
+
+          audioPlayer = AudioPlayer();
+          isInitialized.value = true;
+          _setupPlayerListeners();
+          return true;
+        } catch (initError) {
+          debugPrint('MusicPlayerController: Fallback init failed: $initError');
+        }
+      }
+
       debugPrint('MusicPlayerController: AudioPlayer init failed: $e');
       isInitialized.value = false;
       audioPlayer = null; // Clear it
       return false;
     }
+  }
+
+  void _setupPlayerListeners() {
+    if (audioPlayer == null) return;
+    audioPlayer!.playerStateStream.listen((state) {
+      isPlaying.value = state.playing;
+      if (state.processingState == ProcessingState.completed) {
+        playNext();
+      }
+    });
+
+    audioPlayer!.positionStream.listen((p) {
+      position.value = p;
+      if (lyrics.isNotEmpty) {
+        final index = lyrics.lastIndexWhere((l) => l.startTime <= p);
+        if (index != -1 && index != currentLyricIndex.value) {
+          currentLyricIndex.value = index;
+        }
+      }
+    });
+
+    audioPlayer!.durationStream
+        .listen((d) => duration.value = d ?? Duration.zero);
+    audioPlayer!.bufferedPositionStream.listen((b) => buffered.value = b);
   }
 
   Future<void> playTrack(MusicTrack track) async {
@@ -178,10 +204,18 @@ class MusicPlayerController extends GetxController {
     }
 
     // REMOVED: Cache buster (t=...) logic to prevent signature invalidation.
-    // Many music URLs are signed and modifying params breaks them.
 
     try {
-      await audioPlayer.stop();
+      // Lazy Init / Self-Healing
+      if (audioPlayer == null || !isInitialized.value) {
+        final success = await _initAudioPlayer();
+        if (!success) {
+          Get.snackbar('初始化失败', '无法启动音频服务，请重启应用或检查权限');
+          return;
+        }
+      }
+
+      await audioPlayer!.stop();
 
       final mediaItem = MediaItem(
         id: track.id,
@@ -197,15 +231,15 @@ class MusicPlayerController extends GetxController {
       final Map<String, String> headers = _getHeaders(track);
 
       try {
-        await audioPlayer.setAudioSource(AudioSource.uri(
+        await audioPlayer!.setAudioSource(AudioSource.uri(
           Uri.parse(playUrl),
           headers: headers,
           tag: mediaItem,
         ));
       } catch (e) {
-        // 容错回退：如果是 HTTPS 失败且平台是网易云，尝试退回原始 HTTP
+        // 容错回退
         debugPrint('Protocol error, retrying with raw URL: $e');
-        await audioPlayer.setAudioSource(AudioSource.uri(
+        await audioPlayer!.setAudioSource(AudioSource.uri(
           Uri.parse(currentUrl),
           headers: headers,
           tag: mediaItem,
@@ -219,11 +253,10 @@ class MusicPlayerController extends GetxController {
         currentIndex.value = playlist.length - 1;
       } else {
         currentIndex.value = index;
-        // 更新列表中的元数据（防止旧的封面/链接）
         playlist[index] = track;
       }
 
-      await audioPlayer.play();
+      await audioPlayer!.play();
     } on PlayerException catch (e) {
       debugPrint("Error code: ${e.code}");
       debugPrint("Error message: ${e.message}");
