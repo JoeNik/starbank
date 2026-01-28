@@ -53,11 +53,13 @@ void main() async {
     Get.put(TuneHubService());
 
     // Core Music Engine (Singleton) - Solves "Multiple Player Instance" crash
-    Get.put(MusicService(), permanent: true);
+    // Initialize AudioService for Android 14 Background support
+    await Get.put(MusicService(), permanent: true).init();
 
-    // Lazy load MusicPlayerController to prevent early initialization issues
-    // and ensuring JustAudioBackground is fully ready before Player creation.
-    Get.lazyPut(() => MusicPlayerController());
+    // Initialize MusicPlayerController as a permanent singleton.
+    // This ensures it is always available and persists across navigation,
+    // which is critical for a music player that plays in the background.
+    Get.put(MusicPlayerController(), permanent: true);
 
     debugPrint('All services initialized successfully');
   } catch (e, stack) {

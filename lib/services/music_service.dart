@@ -1,37 +1,59 @@
 import 'package:get/get.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:audio_service/audio_service.dart';
+import 'audio_handler.dart';
 
 class MusicService extends GetxService {
-  AudioPlayer? _player;
-  AudioPlayer? get player => _player;
+  MusicHandler? _audioHandler;
+
+  // 暴露 Handler 和 Player
+  MusicHandler get audioHandler => _audioHandler!;
+
+  // 为了兼容现有代码，直接暴露内部的 AudioPlayer
+  // 注意：原则上应尽量通过 handler 操作，但为了减少重构量，我们保留此 getter
+  AudioPlayer get player {
+    if (_audioHandler == null) {
+      throw Exception("MusicService not initialized yet");
+    }
+    return _audioHandler!.player;
+  }
 
   @override
   void onInit() {
     super.onInit();
-    _initPlayer();
+    // 不要在 onInit 中做异步初始化阻塞，改为单独调用或者在 main 中 await
   }
 
-  void _initPlayer() {
+  // 确保初始化完成
+  Future<MusicService> init() async {
     try {
-      debugPrint(
-          'MusicService: Creating Standard AudioPlayer (No Background)...');
-      _player = AudioPlayer();
+      debugPrint('MusicService: Initializing AudioService...');
+      final handler = await initAudioService();
+      if (handler is MusicHandler) {
+        _audioHandler = handler;
+      } else {
+        // Should not happen as we return MusicHandler
+        throw Exception("Initialized handler is not MusicHandler");
+      }
+      debugPrint('MusicService: AudioService Initialized Success');
     } catch (e) {
-      debugPrint('MusicService: Error creating AudioPlayer: $e');
+      debugPrint('MusicService: Error initializing AudioService: $e');
     }
+    return this;
   }
 
-  // Simplified getter for compatibility
+  // 兼容旧方法，但现在总是返回已初始化的 player（因为 init 在 main 做了）
   Future<AudioPlayer?> getOrInitPlayer() async {
-    if (_player != null) return _player;
-    _initPlayer();
-    return _player;
+    if (_audioHandler == null) {
+      await init();
+    }
+    return _audioHandler?.player;
   }
 
   @override
   void onClose() {
-    _player?.dispose();
+    _audioHandler?.stop();
     super.onClose();
   }
 }

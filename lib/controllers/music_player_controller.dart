@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:just_audio/just_audio.dart';
 // import 'package:just_audio_background/just_audio_background.dart';
+import 'package:audio_service/audio_service.dart';
 import '../models/music/music_track.dart';
 import '../models/music/playlist.dart';
 import '../services/tunehub_service.dart';
@@ -191,8 +192,17 @@ class MusicPlayerController extends GetxController {
 
       await player.stop();
 
-      // Disabled MediaItem usage for stability
-      // final mediaItem = MediaItem(...)
+      // Update MediaItem for Notification & Background Service
+      final mediaItem = MediaItem(
+        id: track.id,
+        title: track.title,
+        artist: track.artist ?? '',
+        album: track.album ?? '',
+        artUri: track.coverUrl != null && track.coverUrl!.isNotEmpty
+            ? Uri.parse(track.coverUrl!)
+            : null,
+      );
+      _musicService.audioHandler.updateMediaItem(mediaItem);
 
       // 准备 Headers
       final Map<String, String> headers = _getHeaders(track);
@@ -201,7 +211,7 @@ class MusicPlayerController extends GetxController {
         await player.setAudioSource(AudioSource.uri(
           Uri.parse(playUrl),
           headers: headers,
-          // tag: mediaItem,
+          tag: mediaItem,
         ));
       } catch (e) {
         // 容错回退
