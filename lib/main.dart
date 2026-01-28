@@ -11,7 +11,7 @@ import 'controllers/app_mode_controller.dart';
 import 'services/tunehub_service.dart';
 import 'services/music_service.dart';
 import 'controllers/music_player_controller.dart';
-import 'package:just_audio_background/just_audio_background.dart';
+// import 'package:just_audio_background/just_audio_background.dart';
 
 import 'pages/home_page.dart';
 import 'theme/app_theme.dart';
@@ -30,18 +30,8 @@ import 'pages/record_page.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  try {
-    // Only initialize JustAudioBackground on Android and iOS
-    if (GetPlatform.isAndroid || GetPlatform.isIOS) {
-      await JustAudioBackground.init(
-        androidNotificationChannelId: 'com.ryanheise.bg_demo.channel.audio',
-        androidNotificationChannelName: 'Audio playback',
-        androidNotificationOngoing: true,
-      );
-    }
-  } catch (e) {
-    debugPrint('JustAudioBackground init failed: $e');
-  }
+  // JustAudioBackground is DISABLED to fix Android 14 Crashes.
+  // Do not initialize it.
 
   try {
     // 1. Initialize Storage Service (Essential)

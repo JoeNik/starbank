@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:just_audio_background/just_audio_background.dart';
+// import 'package:just_audio_background/just_audio_background.dart';
 import '../models/music/music_track.dart';
 import '../models/music/playlist.dart';
 import '../services/tunehub_service.dart';
@@ -191,32 +191,25 @@ class MusicPlayerController extends GetxController {
 
       await player.stop();
 
-      final mediaItem = MediaItem(
-        id: track.id,
-        album: track.album ?? 'Unknown Album',
-        title: track.title,
-        artist: track.artist,
-        artUri: track.coverUrl != null && track.coverUrl!.startsWith('http')
-            ? Uri.parse(track.coverUrl!)
-            : null,
-      );
+      // Disabled MediaItem usage for stability
+      // final mediaItem = MediaItem(...)
 
       // 准备 Headers
       final Map<String, String> headers = _getHeaders(track);
 
       try {
-        await audioPlayer!.setAudioSource(AudioSource.uri(
+        await player.setAudioSource(AudioSource.uri(
           Uri.parse(playUrl),
           headers: headers,
-          tag: mediaItem,
+          // tag: mediaItem,
         ));
       } catch (e) {
         // 容错回退
         debugPrint('Protocol error, retrying with raw URL: $e');
-        await audioPlayer!.setAudioSource(AudioSource.uri(
+        await player.setAudioSource(AudioSource.uri(
           Uri.parse(currentUrl),
           headers: headers,
-          tag: mediaItem,
+          // tag: mediaItem,
         ));
       }
 
@@ -230,7 +223,7 @@ class MusicPlayerController extends GetxController {
         playlist[index] = track;
       }
 
-      await audioPlayer!.play();
+      await player.play();
     } on PlayerException catch (e) {
       debugPrint("Error code: ${e.code}");
       debugPrint("Error message: ${e.message}");

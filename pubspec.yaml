@@ -53,9 +53,10 @@ dependencies:
   permission_handler: ^12.0.1   # 权限管理
   speech_to_text: ^7.3.0        # 语音识别
   just_audio: ^0.10.5
-  just_audio_background: ^0.0.1-beta.15
-  just_audio_windows: ^0.2.2
-  just_audio_web: ^0.4.13
+  # just_audio_background: ^0.0.1-beta.15 # Disabled due to Android 14 Zombie Service Crash
+  # just_audio_windows: ^0.2.2
+  # just_audio_web: ^0.4.13
+
   audio_video_progress_bar: ^2.0.3
   palette_generator: ^0.3.3+7
   flutter_lyric: ^3.0.2
