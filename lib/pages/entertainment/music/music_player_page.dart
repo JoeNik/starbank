@@ -66,8 +66,8 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black, // Fallback color
-      extendBodyBehindAppBar: true, // Allow background to extend
+      backgroundColor: const Color(0xFF121212), // 默认深色背景，防止白屏刺眼
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text('正在播放',
             style: TextStyle(color: Colors.white, fontSize: 18)),
@@ -83,34 +83,40 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
         ],
       ),
       body: Stack(
+        fit: StackFit.expand,
         children: [
-          // 1. Background Image with Dark Overlay (No Blur for Stability)
+          // 1. Background Layer (Isolated Error Boundary)
           Obx(() {
-            // 安全获取当前 Track，防止数组越界
-            MusicTrack? track;
+            String? coverUrl;
+            // Defensive Logic for Track Access
             if (_controller.playlist.isNotEmpty &&
                 _controller.currentIndex.value >= 0 &&
                 _controller.currentIndex.value < _controller.playlist.length) {
-              track = _controller.playlist[_controller.currentIndex.value];
+              final track =
+                  _controller.playlist[_controller.currentIndex.value];
+              if (track.coverUrl != null && track.coverUrl!.isNotEmpty) {
+                coverUrl = track.coverUrl;
+              }
             }
 
-            if (track?.coverUrl == null || track!.coverUrl!.isEmpty) {
-              return Container(color: const Color(0xFF121212));
+            if (coverUrl == null) {
+              return Container(color: const Color(0xFF1E1E1E));
             }
 
             return Stack(
               fit: StackFit.expand,
               children: [
-                // 背景图
                 Image.network(
-                  track.coverUrl!,
+                  coverUrl!,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) =>
-                      Container(color: const Color(0xFF121212)),
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(color: const Color(0xFF1E1E1E));
+                  },
                 ),
-                // 黑色遮罩 (替代高斯模糊，性能更好且不白屏)
-                Container(
-                  color: Colors.black.withOpacity(0.85),
+                Container(color: Colors.black.withOpacity(0.7)), // Dim layer
+                BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                  child: Container(color: Colors.transparent),
                 ),
               ],
             );
@@ -124,183 +130,188 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
                 children: [
                   SizedBox(height: 20.h),
 
-                  // Content Area (Disc or Lyrics)
-                  Expanded(
-                    child: Obx(() {
-                      if (!_controller.isPlaying.value) {
-                        _rotateController.stop();
-                      } else {
-                        _rotateController.repeat();
-                      }
-
-                      final currentTrack = _controller.playlist.isNotEmpty &&
-                              _controller.playlist.length >
-                                  _controller.currentIndex.value
-                          ? _controller.playlist[_controller.currentIndex.value]
-                          : null;
-
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() => _showLyrics = !_showLyrics);
-                          if (_showLyrics) {
-                            // Correct scroll position when switching to lyrics
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              if (_controller.lyrics.isNotEmpty &&
-                                  _lyricScrollController.hasClients) {
-                                _lyricScrollController.jumpTo(
-                                    _controller.currentLyricIndex.value * 50.h);
-                              }
-                            });
-                          }
-                        },
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 500),
-                          transitionBuilder: (child, animation) {
-                            return FadeTransition(
-                                opacity: animation, child: child);
-                          },
-                          child: _showLyrics
-                              ? _buildLyricsView(currentTrack)
-                              : _buildCoverView(currentTrack),
-                        ),
-                      );
-                    }),
-                  ),
+                  // Content Area (Lyrics / Disc)
+                  Expanded(child: _buildCenterContent()),
 
                   SizedBox(height: 30.h),
 
                   // Track Info
-                  Obx(() {
-                    if (_controller.playlist.isEmpty)
-                      return const SizedBox.shrink();
-                    final track =
-                        _controller.playlist[_controller.currentIndex.value];
-                    return Column(
-                      children: [
-                        Text(
-                          track.title,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 22.sp,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.0,
-                          ),
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        SizedBox(height: 8.h),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              track.artist,
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 15.sp,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            SizedBox(width: 8.w),
-                            Obx(() => IconButton(
-                                  constraints: const BoxConstraints(),
-                                  padding: EdgeInsets.zero,
-                                  icon: Icon(
-                                    _controller.isFavorite(track)
-                                        ? Icons.favorite
-                                        : Icons.favorite_border,
-                                    color: _controller.isFavorite(track)
-                                        ? const Color(0xFFFF6B6B)
-                                        : Colors.white38,
-                                    size: 20.sp,
-                                  ),
-                                  onPressed: () =>
-                                      _controller.toggleFavorite(track),
-                                )),
-                          ],
-                        ),
-                      ],
-                    );
-                  }),
+                  _buildTrackInfo(),
 
                   SizedBox(height: 30.h),
 
-                  // Progress Bar
-                  Obx(() => ProgressBar(
-                        progress: _controller.position.value,
-                        total: _controller.duration.value,
-                        buffered: _controller.buffered.value,
-                        onSeek: _controller.seek,
-                        baseBarColor: Colors.white12,
-                        progressBarColor: Colors.white,
-                        bufferedBarColor: Colors.white24,
-                        thumbColor: Colors.white,
-                        barHeight: 4.0,
-                        thumbRadius: 6.0,
-                        timeLabelTextStyle:
-                            TextStyle(color: Colors.white54, fontSize: 12.sp),
-                      )),
+                  // Progress Bar (Defensive)
+                  Obx(() {
+                    final pos = _controller.position.value;
+                    final dur = _controller.duration.value;
+                    final buf = _controller.buffered.value;
+
+                    // Ensure Total is never smaller than Progress and never Zero to prevent crashes
+                    final safeTotal =
+                        dur > pos ? dur : (pos + const Duration(seconds: 1));
+                    final safeBuffered = buf <= safeTotal ? buf : safeTotal;
+
+                    return ProgressBar(
+                      progress: pos,
+                      total: safeTotal,
+                      buffered: safeBuffered,
+                      onSeek: _controller.seek,
+                      baseBarColor: Colors.white12,
+                      progressBarColor: Colors.white,
+                      bufferedBarColor: Colors.white24,
+                      thumbColor: Colors.white,
+                      barHeight: 4.0,
+                      thumbRadius: 6.0,
+                      timeLabelTextStyle:
+                          TextStyle(color: Colors.white54, fontSize: 12.sp),
+                    );
+                  }),
 
                   SizedBox(height: 20.h),
 
                   // Controls
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      IconButton(
-                        icon: Icon(Icons.shuffle,
-                            color: Colors.white38, size: 24.sp),
-                        onPressed: () {/* TODO: Shuffle */},
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.skip_previous_rounded,
-                            color: Colors.white, size: 42.sp),
-                        onPressed: _controller.playPrevious,
-                      ),
-                      Obx(() => Container(
-                            width: 72.w,
-                            height: 72.w,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.white.withOpacity(0.1),
-                              border:
-                                  Border.all(color: Colors.white30, width: 1.5),
-                            ),
-                            child: IconButton(
-                              icon: Icon(
-                                _controller.isPlaying.value
-                                    ? Icons.pause_rounded
-                                    : Icons.play_arrow_rounded,
-                                color: Colors.white,
-                                size: 38.sp,
-                              ),
-                              onPressed: _controller.togglePlay,
-                            ),
-                          )),
-                      IconButton(
-                        icon: Icon(Icons.skip_next_rounded,
-                            color: Colors.white, size: 42.sp),
-                        onPressed: _controller.playNext,
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.list_rounded,
-                            color: Colors.white38, size: 24.sp),
-                        onPressed: () {/* TODO: Playlist */},
-                      ),
-                    ],
-                  ),
+                  _buildControls(),
+
                   SizedBox(height: 48.h),
                 ],
               ),
             ),
-          ),
+          )
         ],
       ),
     );
   }
 
-  // --- Components ---
+  Widget _buildCenterContent() {
+    return Obx(() {
+      // Logic to control rotation animation state
+      if (!_controller.isPlaying.value) {
+        _rotateController.stop();
+      } else {
+        _rotateController.repeat();
+      }
+
+      MusicTrack? currentTrack;
+      if (_controller.playlist.isNotEmpty &&
+          _controller.currentIndex.value >= 0 &&
+          _controller.currentIndex.value < _controller.playlist.length) {
+        currentTrack = _controller.playlist[_controller.currentIndex.value];
+      }
+
+      return GestureDetector(
+        onTap: () {
+          setState(() => _showLyrics = !_showLyrics);
+        },
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 500),
+          child: _showLyrics
+              ? _buildLyricsView(currentTrack)
+              : _buildCoverView(currentTrack),
+        ),
+      );
+    });
+  }
+
+  Widget _buildTrackInfo() {
+    return Obx(() {
+      if (_controller.playlist.isEmpty) return const SizedBox.shrink();
+
+      final index = _controller.currentIndex.value;
+      if (index < 0 || index >= _controller.playlist.length)
+        return const SizedBox.shrink();
+
+      final track = _controller.playlist[index];
+
+      return Column(
+        children: [
+          Text(
+            track.title,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 22.sp,
+              fontWeight: FontWeight.bold,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          SizedBox(height: 8.h),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                track.artist,
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 15.sp,
+                ),
+              ),
+              SizedBox(width: 8.w),
+              // Favorite Button
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: Icon(
+                  _controller.isFavorite(track)
+                      ? Icons.favorite
+                      : Icons.favorite_border,
+                  color: _controller.isFavorite(track)
+                      ? Colors.redAccent
+                      : Colors.white38,
+                  size: 20.sp,
+                ),
+                onPressed: () => _controller.toggleFavorite(track),
+              ),
+            ],
+          ),
+        ],
+      );
+    });
+  }
+
+  Widget _buildControls() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        IconButton(
+          icon: Icon(Icons.shuffle, color: Colors.white38, size: 24.sp),
+          onPressed: () {},
+        ),
+        IconButton(
+          icon: Icon(Icons.skip_previous_rounded,
+              color: Colors.white, size: 42.sp),
+          onPressed: _controller.playPrevious,
+        ),
+        Obx(() => Container(
+              width: 72.w,
+              height: 72.w,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.1),
+                border: Border.all(color: Colors.white30, width: 1.5),
+              ),
+              child: IconButton(
+                icon: Icon(
+                  _controller.isPlaying.value
+                      ? Icons.pause_rounded
+                      : Icons.play_arrow_rounded,
+                  color: Colors.white,
+                  size: 38.sp,
+                ),
+                onPressed: _controller.togglePlay,
+              ),
+            )),
+        IconButton(
+          icon: Icon(Icons.skip_next_rounded, color: Colors.white, size: 42.sp),
+          onPressed: _controller.playNext,
+        ),
+        IconButton(
+          icon: Icon(Icons.list_rounded, color: Colors.white38, size: 24.sp),
+          onPressed: () {},
+        ),
+      ],
+    );
+  }
 
   Widget _buildCoverView(dynamic currentTrack) {
     return Center(
