@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:audio_video_progress_bar/audio_video_progress_bar.dart';
 import '../../../controllers/music_player_controller.dart';
+import '../../../models/music/music_track.dart';
 import 'dart:math' as math;
 import 'dart:ui';
 
@@ -83,37 +84,37 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
       ),
       body: Stack(
         children: [
-          // 1. Immersive Blurred Background
+          // 1. Background Image with Dark Overlay (No Blur for Stability)
           Obx(() {
-            final track = _controller.playlist.isNotEmpty &&
-                    _controller.playlist.length > _controller.currentIndex.value
-                ? _controller.playlist[_controller.currentIndex.value]
-                : null;
-            if (track?.coverUrl == null)
-              return Container(color: Colors.grey[900]);
+            // 安全获取当前 Track，防止数组越界
+            MusicTrack? track;
+            if (_controller.playlist.isNotEmpty &&
+                _controller.currentIndex.value >= 0 &&
+                _controller.currentIndex.value < _controller.playlist.length) {
+              track = _controller.playlist[_controller.currentIndex.value];
+            }
 
-            return Positioned.fill(
-              child: Image.network(
-                track!.coverUrl!,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) =>
-                    Container(color: Colors.grey[900]),
-              ),
+            if (track?.coverUrl == null || track!.coverUrl!.isEmpty) {
+              return Container(color: const Color(0xFF121212));
+            }
+
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                // 背景图
+                Image.network(
+                  track.coverUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) =>
+                      Container(color: const Color(0xFF121212)),
+                ),
+                // 黑色遮罩 (替代高斯模糊，性能更好且不白屏)
+                Container(
+                  color: Colors.black.withOpacity(0.85),
+                ),
+              ],
             );
           }),
-          // Blur Overlay
-          // Blur Overlay
-          Positioned.fill(
-            child: ClipRect(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-                child: Container(
-                  color: Colors.black
-                      .withOpacity(0.6), // Dark overlay for text readability
-                ),
-              ),
-            ),
-          ),
 
           // 2. Main Content
           SafeArea(
