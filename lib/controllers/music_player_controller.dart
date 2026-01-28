@@ -98,6 +98,20 @@ class MusicPlayerController extends GetxController {
     if (audioPlayer == null) return;
 
     // We bind Listeners to the Singleton Player
+
+    // Bind AudioHandler callbacks for Lock Screen / Notification controls
+    try {
+      _musicService.audioHandler.onSkipToNext = () {
+        debugPrint('Notification: Skip to Next');
+        playNext();
+      };
+      _musicService.audioHandler.onSkipToPrevious = () {
+        debugPrint('Notification: Skip to Previous');
+        playPrevious();
+      };
+    } catch (e) {
+      debugPrint('Error binding AudioHandler callbacks: $e');
+    }
     audioPlayer!.playerStateStream.listen((state) {
       isPlaying.value = state.playing;
       if (state.processingState == ProcessingState.completed) {
