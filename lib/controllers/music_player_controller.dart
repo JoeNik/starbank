@@ -24,6 +24,7 @@ class MusicPlayerController extends GetxController {
   final RxBool isPlaying = false.obs;
   // isInitialized effectively reflects if the Service has a player, which is always true now
   final RxBool isInitialized = true.obs;
+  bool _isPlayerSetup = false;
 
   // Progress
   final Rx<Duration> position = Duration.zero.obs;
@@ -82,8 +83,15 @@ class MusicPlayerController extends GetxController {
     playTrack(favorites.first);
   }
 
-  // Deprecated: _initAudioPlayer is handled by MusicService now.
-  // We keep the listeners setup logic though.
+  // Ensure Player is Initialized & Listeners Attached
+  Future<AudioPlayer?> _ensurePlayer() async {
+    final p = await _musicService.getOrInitPlayer();
+    if (p != null && !_isPlayerSetup) {
+      _setupPlayerListeners();
+      _isPlayerSetup = true;
+    }
+    return p;
+  }
 
   void _setupPlayerListeners() {
     if (audioPlayer == null) return;
@@ -174,13 +182,14 @@ class MusicPlayerController extends GetxController {
     // REMOVED: Cache buster (t=...) logic to prevent signature invalidation.
 
     try {
-      // Lazy Init / Self-Healing is now handled by MusicService Singleton
-      if (audioPlayer == null) {
-        Get.snackbar('错误', '音频服务不可用');
+      // Lazy Init & Ensure Singleton Check
+      final player = await _ensurePlayer();
+      if (player == null) {
+        Get.snackbar('错误', '音频服务初始化失败，请重启应用');
         return;
       }
 
-      await audioPlayer!.stop();
+      await player.stop();
 
       final mediaItem = MediaItem(
         id: track.id,
@@ -318,10 +327,8 @@ class MusicPlayerController extends GetxController {
 
   @override
   void onClose() {
-    // Safely dispose
-    if (isInitialized.value && audioPlayer != null) {
-      audioPlayer?.dispose();
-    }
+    // Cannot dispose global player from controller!
+    // _musicService handles lifecycle if needed.
     _sleepTimer?.cancel();
     super.onClose();
   }

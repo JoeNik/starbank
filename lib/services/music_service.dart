@@ -4,36 +4,51 @@ import 'package:just_audio_background/just_audio_background.dart';
 import 'package:flutter/foundation.dart';
 
 class MusicService extends GetxService {
-  late AudioPlayer player;
+  AudioPlayer? _player;
+  AudioPlayer? get player => _player;
 
   @override
   void onInit() {
     super.onInit();
-    _initPlayer();
+    // Do not init player here to avoid startup crash
   }
 
-  void _initPlayer() {
+  Future<AudioPlayer?> getOrInitPlayer() async {
+    if (_player != null) return _player;
+
+    debugPrint('MusicService: Initializing AudioPlayer lazy...');
+
+    // Attempt 1: Normal Create
     try {
-      // 核心：全局唯一的播放器实例
-      player = AudioPlayer();
+      _player = AudioPlayer();
+      return _player;
     } catch (e) {
-      debugPrint('MusicService: Error creating AudioPlayer: $e');
-      // 如果是为了解决热重载导致的单例问题，这里可能很难捕获，
-      // 因为 PlatformException 通常在构造函数内部或 native 调用时抛出
+      debugPrint('MusicService: First attempt failed ($e). trying fallback...');
     }
-  }
 
-  Future<void> init() async {
-    // 确保 JustAudioBackground 初始化
-    // 注意：JustAudioBackground.init() 应该在 main.dart 中调用
-    // 但为了保险，这里可以检查或再次调用（虽然它是一个 Future）
-    debugPrint('MusicService initialized');
+    // Attempt 2: Re-init Background then Create (Self-Healing)
+    try {
+      if (GetPlatform.isAndroid || GetPlatform.isIOS) {
+        await JustAudioBackground.init(
+          androidNotificationChannelId: 'com.ryanheise.bg_demo.channel.audio',
+          androidNotificationChannelName: 'Audio playback',
+          androidNotificationOngoing: true,
+        );
+      }
+      debugPrint(
+          'MusicService: Fallback init success. Retrying Player creation...');
+      _player = AudioPlayer();
+      return _player;
+    } catch (e) {
+      debugPrint('MusicService: Critical Error initializing player: $e');
+    }
+
+    return null;
   }
 
   @override
   void onClose() {
-    // 全局服务一般不销毁播放器，除非应用退出
-    player.dispose();
+    _player?.dispose();
     super.onClose();
   }
 }
