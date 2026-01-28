@@ -56,6 +56,7 @@ class _StoryGamePageState extends State<StoryGamePage> {
   String? _aiError; // AI 错误信息
   int get _maxRounds => _gameConfig?.maxRounds ?? 5;
   bool _isImageCollapsed = false; // 图片折叠状态
+  int _requestGenerationId = 0; // 请求生成ID，用于取消过期的请求回调
 
   // 输入控制
   final TextEditingController _textController = TextEditingController();
@@ -330,6 +331,8 @@ class _StoryGamePageState extends State<StoryGamePage> {
       _aiError = null;
     });
 
+    final currentGenId = ++_requestGenerationId;
+
     try {
       // 获取配置的模型
       final visionConfig = _openAIService.configs
@@ -346,6 +349,8 @@ class _StoryGamePageState extends State<StoryGamePage> {
         _gameConfig!.visionAnalysisPrompt,
         _currentImageUrl,
       );
+
+      if (currentGenId != _requestGenerationId) return;
 
       // 添加 AI 回复
       _messages.add({
@@ -368,6 +373,7 @@ class _StoryGamePageState extends State<StoryGamePage> {
           volume: _gameConfig?.ttsVolume,
           pitch: _gameConfig?.ttsPitch);
     } catch (e) {
+      if (currentGenId != _requestGenerationId) return;
       debugPrint('图片分析失败: $e');
       setState(() => _isAIResponding = false);
 
@@ -391,7 +397,7 @@ class _StoryGamePageState extends State<StoryGamePage> {
     required Map<String, String> headers,
     required String body,
     int maxRetries = 2,
-    Duration timeout = const Duration(seconds: 50),
+    Duration timeout = const Duration(seconds: 40),
   }) async {
     int retryCount = 0;
     while (retryCount <= maxRetries) {
@@ -651,6 +657,9 @@ class _StoryGamePageState extends State<StoryGamePage> {
       _isAIResponding = true;
       _aiError = null;
     });
+
+    final currentGenId = ++_requestGenerationId;
+
     try {
       // 获取对话配置
       OpenAIConfig? chatConfig;
@@ -696,6 +705,8 @@ class _StoryGamePageState extends State<StoryGamePage> {
         }),
       );
 
+      if (currentGenId != _requestGenerationId) return;
+
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
         final aiResponse = data['choices'][0]['message']['content'] as String;
@@ -722,6 +733,7 @@ class _StoryGamePageState extends State<StoryGamePage> {
         throw Exception('对话请求失败');
       }
     } catch (e) {
+      if (currentGenId != _requestGenerationId) return;
       debugPrint('获取 AI 回复失败: $e');
       setState(() {
         _isAIResponding = false;
@@ -1207,7 +1219,25 @@ class _StoryGamePageState extends State<StoryGamePage> {
                   child: const CircularProgressIndicator(strokeWidth: 2),
                 ),
                 SizedBox(width: 12.w),
-                Text('AI 正在思考...', style: TextStyle(fontSize: 14.sp)),
+                Expanded(
+                    child:
+                        Text('AI 正在思考...', style: TextStyle(fontSize: 14.sp))),
+                // 取消按钮
+                TextButton.icon(
+                  onPressed: () {
+                    // 取消当前等待
+                    setState(() {
+                      _isAIResponding = false;
+                      _requestGenerationId++; // 增加 ID 以立即使之前的回调失效
+                    });
+                  },
+                  icon: const Icon(Icons.stop_circle_outlined,
+                      color: Colors.grey, size: 20),
+                  label: const Text('取消', style: TextStyle(color: Colors.grey)),
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.symmetric(horizontal: 8.w),
+                  ),
+                ),
               ],
             ),
           )
