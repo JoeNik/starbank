@@ -9,8 +9,10 @@ import 'controllers/user_controller.dart';
 import 'controllers/shop_controller.dart';
 import 'controllers/app_mode_controller.dart';
 import 'services/tunehub_service.dart';
+import 'services/music_service.dart';
 import 'controllers/music_player_controller.dart';
 import 'package:just_audio_background/just_audio_background.dart';
+
 import 'pages/home_page.dart';
 import 'theme/app_theme.dart';
 import 'pages/bank_page.dart';
@@ -59,6 +61,10 @@ void main() async {
     Get.put(ShopController());
     Get.put(AppModeController());
     Get.put(TuneHubService());
+
+    // Core Music Engine (Singleton) - Solves "Multiple Player Instance" crash
+    Get.put(MusicService(), permanent: true);
+
     // Lazy load MusicPlayerController to prevent early initialization issues
     // and ensuring JustAudioBackground is fully ready before Player creation.
     Get.lazyPut(() => MusicPlayerController());

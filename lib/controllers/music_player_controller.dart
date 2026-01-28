@@ -8,16 +8,22 @@ import '../models/music/playlist.dart';
 import '../services/tunehub_service.dart';
 import '../services/storage_service.dart';
 
+import '../services/music_service.dart';
+
 class MusicPlayerController extends GetxController {
   final TuneHubService _tuneHubService = Get.find<TuneHubService>();
   final StorageService _storage = Get.find<StorageService>();
-  AudioPlayer? audioPlayer;
+  final MusicService _musicService = Get.find<MusicService>();
+
+  // Use the singleton player from MusicService
+  AudioPlayer? get audioPlayer => _musicService.player;
 
   final RxList<MusicTrack> playlist = <MusicTrack>[].obs;
   final RxList<MusicTrack> favorites = <MusicTrack>[].obs;
   final RxInt currentIndex = 0.obs;
   final RxBool isPlaying = false.obs;
-  final RxBool isInitialized = false.obs;
+  // isInitialized effectively reflects if the Service has a player, which is always true now
+  final RxBool isInitialized = true.obs;
 
   // Progress
   final Rx<Duration> position = Duration.zero.obs;
@@ -32,7 +38,8 @@ class MusicPlayerController extends GetxController {
   void onInit() {
     super.onInit();
     _loadFavorites();
-    // REMOVED: Do not auto-init. Init lazily on first play.
+    // Setup listeners on the singleton player immediately
+    _setupPlayerListeners();
   }
 
   void _loadFavorites() {
@@ -75,59 +82,20 @@ class MusicPlayerController extends GetxController {
     playTrack(favorites.first);
   }
 
-  // Modified Safe Init with Self-Healing
-  Future<bool> _initAudioPlayer() async {
-    if (isInitialized.value && audioPlayer != null) return true;
-
-    try {
-      debugPrint('MusicPlayerController: Initializing AudioPlayer...');
-      // Ensure we don't have a lingering instance
-      if (audioPlayer != null) {
-        await audioPlayer!.dispose();
-      }
-
-      audioPlayer = AudioPlayer();
-      isInitialized.value = true;
-      _setupPlayerListeners();
-
-      debugPrint('MusicPlayerController: AudioPlayer initialized successfully');
-      return true;
-    } catch (e) {
-      // Check for LateInitializationError (JustAudioBackground issue) or similar errors
-      if (e.toString().contains("LateInitializationError") ||
-          e.toString().contains("just_audio_background")) {
-        debugPrint(
-            'MusicPlayerController: JustAudioBackground not initialized ($e). Attempting fallback init...');
-        try {
-          await JustAudioBackground.init(
-            androidNotificationChannelId: 'com.ryanheise.bg_demo.channel.audio',
-            androidNotificationChannelName: 'Audio playback',
-            androidNotificationOngoing: true,
-          );
-          debugPrint(
-              'MusicPlayerController: Fallback init success. Retrying Player creation...');
-
-          audioPlayer = AudioPlayer();
-          isInitialized.value = true;
-          _setupPlayerListeners();
-          return true;
-        } catch (initError) {
-          debugPrint('MusicPlayerController: Fallback init failed: $initError');
-        }
-      }
-
-      debugPrint('MusicPlayerController: AudioPlayer init failed: $e');
-      isInitialized.value = false;
-      audioPlayer = null; // Clear it
-      return false;
-    }
-  }
+  // Deprecated: _initAudioPlayer is handled by MusicService now.
+  // We keep the listeners setup logic though.
 
   void _setupPlayerListeners() {
     if (audioPlayer == null) return;
+
+    // We bind Listeners to the Singleton Player
     audioPlayer!.playerStateStream.listen((state) {
       isPlaying.value = state.playing;
       if (state.processingState == ProcessingState.completed) {
+        // Simple auto-next logic
+        // Note: This might fire multiple times if multiple controllers attach?
+        // Since playNext checks currentIndex, it should be relatively safe,
+        // but ideally MusicService handles the queue. For now, we keep it here.
         playNext();
       }
     });
@@ -206,13 +174,10 @@ class MusicPlayerController extends GetxController {
     // REMOVED: Cache buster (t=...) logic to prevent signature invalidation.
 
     try {
-      // Lazy Init / Self-Healing
-      if (audioPlayer == null || !isInitialized.value) {
-        final success = await _initAudioPlayer();
-        if (!success) {
-          Get.snackbar('初始化失败', '无法启动音频服务，请重启应用或检查权限');
-          return;
-        }
+      // Lazy Init / Self-Healing is now handled by MusicService Singleton
+      if (audioPlayer == null) {
+        Get.snackbar('错误', '音频服务不可用');
+        return;
       }
 
       await audioPlayer!.stop();
