@@ -102,12 +102,15 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
             );
           }),
           // Blur Overlay
+          // Blur Overlay
           Positioned.fill(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-              child: Container(
-                color: Colors.black
-                    .withOpacity(0.6), // Dark overlay for text readability
+            child: ClipRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+                child: Container(
+                  color: Colors.black
+                      .withOpacity(0.6), // Dark overlay for text readability
+                ),
               ),
             ),
           ),
@@ -568,8 +571,10 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
         controller: inputCtrl,
         keyboardType: TextInputType.number,
         autofocus: true,
+        style: const TextStyle(color: Colors.black), // Force black text
         decoration: InputDecoration(
           hintText: '输入分钟数 (如 20)',
+          hintStyle: const TextStyle(color: Colors.black38), // Visible hint
           suffixText: '分钟',
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
           filled: true,
