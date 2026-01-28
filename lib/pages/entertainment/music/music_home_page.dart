@@ -181,57 +181,59 @@ class _MusicHomePageState extends State<MusicHomePage> {
                             ],
                           ),
                         ),
-                        ..._controller.favorites
-                            .map((track) => ListTile(
-                                  leading: Container(
-                                    width: 50.w,
-                                    height: 50.w,
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(8.r),
-                                      image: track.coverUrl != null
-                                          ? DecorationImage(
-                                              image:
-                                                  NetworkImage(track.coverUrl!),
-                                              fit: BoxFit.cover)
-                                          : null,
-                                      color: Colors.grey[200],
-                                    ),
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(8.r),
-                                      child: track.coverUrl != null
-                                          ? Image.network(
-                                              track.coverUrl!,
-                                              fit: BoxFit.cover,
-                                              errorBuilder: (context, error,
-                                                      stackTrace) =>
-                                                  const Icon(Icons.music_note),
-                                            )
-                                          : const Icon(Icons.music_note),
-                                    ),
-                                  ),
-                                  title: Text(track.title),
-                                  subtitle: Text(track.artist),
-                                  trailing: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      IconButton(
-                                        icon: const Icon(Icons.favorite,
-                                            color: Colors.redAccent),
-                                        onPressed: () =>
-                                            _controller.toggleFavorite(track),
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(Icons.play_circle_fill,
-                                            color: AppTheme.primary),
-                                        onPressed: () {
-                                          _controller.playTrack(track);
-                                          Get.to(() => const MusicPlayerPage());
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                ))
-                            .toList(),
+                        ..._controller.favorites.map((track) {
+                          // Defensive Image Loading
+                          Widget imageWidget;
+                          if (track.coverUrl != null &&
+                              track.coverUrl!.isNotEmpty) {
+                            imageWidget = Image.network(
+                              track.coverUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (ctx, err, stack) => const Icon(
+                                  Icons.music_note,
+                                  color: Colors.grey),
+                            );
+                          } else {
+                            imageWidget = const Icon(Icons.music_note,
+                                color: Colors.grey);
+                          }
+
+                          return ListTile(
+                            leading: Container(
+                              width: 50.w,
+                              height: 50.w,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8.r),
+                                color: Colors.grey[200],
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(8.r),
+                                child: imageWidget,
+                              ),
+                            ),
+                            title: Text(track.title),
+                            subtitle: Text(track.artist),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.favorite,
+                                      color: Colors.redAccent),
+                                  onPressed: () =>
+                                      _controller.toggleFavorite(track),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.play_circle_fill,
+                                      color: AppTheme.primary),
+                                  onPressed: () {
+                                    _controller.playTrack(track);
+                                    Get.to(() => const MusicPlayerPage());
+                                  },
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
                       ],
                     );
                   }

@@ -69,6 +69,36 @@ void main() async {
     // However, if Storage fails, most likely anything touching UI will crash.
   }
 
+  // 4. Global Error Handling for Release Mode
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    return MaterialApp(
+      home: Scaffold(
+        backgroundColor: Colors.white,
+        body: SingleChildScrollView(
+          // Allow scrolling for long stack traces
+          padding: const EdgeInsets.all(20),
+          child: SafeArea(
+              child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.red, size: 48),
+              const SizedBox(height: 10),
+              const Text("应用遇到错误 (Application Error)",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 10),
+              Text(details.exception.toString(),
+                  style: const TextStyle(
+                      color: Colors.red, fontWeight: FontWeight.bold)),
+              const Divider(),
+              Text(details.stack.toString(),
+                  style: const TextStyle(fontSize: 12, color: Colors.black54)),
+            ],
+          )),
+        ),
+      ),
+    );
+  };
+
   runApp(const MyApp());
 }
 
