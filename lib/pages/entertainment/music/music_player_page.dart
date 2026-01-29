@@ -273,10 +273,29 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        IconButton(
-          icon: Icon(Icons.shuffle, color: Colors.white38, size: 24.sp),
-          onPressed: () {},
-        ),
+        // Mode Switch: Sequence -> Shuffle -> Single
+        Obx(() {
+          IconData icon;
+          Color color = Colors.white38;
+          switch (_controller.playMode.value) {
+            case PlayMode.sequence:
+              icon = Icons.repeat;
+              color = Colors.white38; // Inactive color
+              break;
+            case PlayMode.shuffle:
+              icon = Icons.shuffle;
+              color = Colors.white; // Active color
+              break;
+            case PlayMode.single:
+              icon = Icons.repeat_one;
+              color = Colors.white; // Active color
+              break;
+          }
+          return IconButton(
+            icon: Icon(icon, color: color, size: 24.sp),
+            onPressed: () => _controller.changePlayMode(),
+          );
+        }),
         IconButton(
           icon: Icon(Icons.skip_previous_rounded,
               color: Colors.white, size: 42.sp),
@@ -307,7 +326,7 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
         ),
         IconButton(
           icon: Icon(Icons.list_rounded, color: Colors.white38, size: 24.sp),
-          onPressed: () {},
+          onPressed: () => _showPlaylist(context),
         ),
       ],
     );
@@ -521,7 +540,7 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
                 spacing: 12.w,
                 runSpacing: 12.h,
                 alignment: WrapAlignment.start,
-                children: [15, 30, 45, 60, 90]
+                children: [10, 15, 20, 30, 40]
                     .map((min) => _buildTimerChip(context, min))
                     .toList()
                   ..add(
@@ -626,6 +645,113 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
       ),
       radius: 16.r,
       backgroundColor: Colors.white,
+    );
+  }
+
+  void _showPlaylist(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true, // Allow full height if needed
+      builder: (context) {
+        return Container(
+          height: 0.6.sh, // 60% of screen height
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E1E1E),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+          ),
+          child: Column(
+            children: [
+              // Header
+              Padding(
+                padding: EdgeInsets.all(20.w),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Obx(() => Text(
+                          '播放列表 (${_controller.playlist.length})',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18.sp,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )),
+                  ],
+                ),
+              ),
+              const Divider(color: Colors.white10, height: 1),
+              // List
+              Expanded(
+                child: Obx(() {
+                  if (_controller.playlist.isEmpty) {
+                    return const Center(
+                      child:
+                          Text('暂无歌曲', style: TextStyle(color: Colors.white38)),
+                    );
+                  }
+                  return ListView.builder(
+                    itemCount: _controller.playlist.length,
+                    padding: EdgeInsets.symmetric(vertical: 10.h),
+                    itemBuilder: (context, index) {
+                      final track = _controller.playlist[index];
+                      return Obx(() {
+                        final isPlaying =
+                            index == _controller.currentIndex.value;
+                        return ListTile(
+                          contentPadding: EdgeInsets.symmetric(
+                              horizontal: 20.w, vertical: 0),
+                          leading: isPlaying
+                              ? Icon(Icons.equalizer_rounded,
+                                  color: Colors.white, size: 20.sp)
+                              : Text('${index + 1}',
+                                  style: TextStyle(
+                                      color: Colors.white38, fontSize: 14.sp)),
+                          title: Text(
+                            track.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: isPlaying ? Colors.white : Colors.white70,
+                              fontSize: 16.sp,
+                              fontWeight: isPlaying
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            ),
+                          ),
+                          subtitle: Text(
+                            '${track.artist} - ${track.album ?? ""}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                                color:
+                                    isPlaying ? Colors.white70 : Colors.white38,
+                                fontSize: 12.sp),
+                          ),
+                          trailing: IconButton(
+                            icon: Icon(Icons.close_rounded,
+                                color: Colors.white30, size: 18.sp),
+                            onPressed: () {
+                              Get.snackbar('提示', '暂不支持移除',
+                                  duration: const Duration(seconds: 1),
+                                  backgroundColor: Colors.white12,
+                                  colorText: Colors.white);
+                            },
+                          ),
+                          onTap: () {
+                            if (!isPlaying) {
+                              _controller.playTrack(track);
+                            }
+                          },
+                        );
+                      });
+                    },
+                  );
+                }),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

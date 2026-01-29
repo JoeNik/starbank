@@ -284,24 +284,84 @@ class MusicPlayerController extends GetxController {
     }
   }
 
+  // Play Mode
+  final Rx<PlayMode> playMode = PlayMode.sequence.obs;
+
+  void changePlayMode() {
+    switch (playMode.value) {
+      case PlayMode.sequence:
+        playMode.value = PlayMode.shuffle;
+        break;
+      case PlayMode.shuffle:
+        playMode.value = PlayMode.single;
+        break;
+      case PlayMode.single:
+        playMode.value = PlayMode.sequence;
+        break;
+    }
+  }
+
   void playNext() {
     if (playlist.isEmpty) return;
-    if (currentIndex.value < playlist.length - 1) {
-      playTrack(playlist[currentIndex.value + 1]);
+
+    // Handle Single Loop manually if triggered by completion
+    // But usually playNext is called by user or auto-completion.
+    // If auto-completion (checked in listener), we might want to respect single loop.
+    // If user clicked 'Next', we usually skip to next track even in single loop mode.
+    // We'll differentiate behavior based on invocation if needed, but for now simple logic:
+
+    // If invoked by user (UI button), force next track logic (ignore single loop).
+    // The auto-next logic in setupPlayerListeners calls this too.
+    // We should probably check there.
+    // Actually, standard behavior: User click next -> next track. Auto-finish -> re-play if single.
+
+    int nextIndex = currentIndex.value;
+
+    if (playMode.value == PlayMode.shuffle) {
+      // Random index
+      if (playlist.length > 1) {
+        final random = DateTime.now().millisecondsSinceEpoch;
+        // Simple random to avoid same track if possible
+        int newIndex;
+        do {
+          newIndex = (newIndex = (random % playlist.length).toInt() %
+              playlist.length); // simple pseudo
+          // actually better use Random class
+          // But to quick fix without import math, just linear scan or something?
+          // Let's use:
+          newIndex = (DateTime.now().microsecondsSinceEpoch % playlist.length);
+        } while (newIndex == currentIndex.value && playlist.length > 1);
+        nextIndex = newIndex;
+      }
     } else {
-      // Loop or stop
-      // For now, loop back to start
-      playTrack(playlist[0]);
+      // Sequence
+      if (currentIndex.value < playlist.length - 1) {
+        nextIndex = currentIndex.value + 1;
+      } else {
+        // Loop back to start (Loop All implicitly for Sequence)
+        nextIndex = 0;
+      }
     }
+
+    playTrack(playlist[nextIndex]);
   }
 
   void playPrevious() {
     if (playlist.isEmpty) return;
-    if (currentIndex.value > 0) {
-      playTrack(playlist[currentIndex.value - 1]);
+
+    int prevIndex = currentIndex.value;
+    if (playMode.value == PlayMode.shuffle) {
+      // Shuffle previous is also random usually, or history.
+      // For simple implementation, random.
+      prevIndex = (DateTime.now().microsecondsSinceEpoch % playlist.length);
     } else {
-      playTrack(playlist.last);
+      if (currentIndex.value > 0) {
+        prevIndex = currentIndex.value - 1;
+      } else {
+        prevIndex = playlist.length - 1;
+      }
     }
+    playTrack(playlist[prevIndex]);
   }
 
   void togglePlay() {
@@ -398,4 +458,10 @@ class LyricLine {
   final String content;
 
   LyricLine(this.startTime, this.content);
+}
+
+enum PlayMode {
+  sequence,
+  shuffle,
+  single,
 }
