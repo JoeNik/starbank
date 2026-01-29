@@ -12,11 +12,10 @@ class MusicService extends GetxService {
 
   // 为了兼容现有代码，直接暴露内部的 AudioPlayer
   // 注意：原则上应尽量通过 handler 操作，但为了减少重构量，我们保留此 getter
-  AudioPlayer get player {
-    if (_audioHandler == null) {
-      throw Exception("MusicService not initialized yet");
-    }
-    return _audioHandler!.player;
+  // 为了兼容现有代码，暴露内部的 AudioPlayer
+  // 如果尚未初始化，返回 null 而不是抛出异常，防止 Release 模式崩溃
+  AudioPlayer? get player {
+    return _audioHandler?.player;
   }
 
   @override

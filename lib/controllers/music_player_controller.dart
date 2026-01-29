@@ -40,8 +40,25 @@ class MusicPlayerController extends GetxController {
   void onInit() {
     super.onInit();
     _loadFavorites();
-    // Setup listeners on the singleton player immediately
-    _setupPlayerListeners();
+
+    // 异步初始化播放器监听，防止因 Service 未就绪导致的阻塞或 Crash
+    _initControllerAsync();
+  }
+
+  void _initControllerAsync() async {
+    // 尝试等待 Service 初始化
+    int retries = 0;
+    while (audioPlayer == null && retries < 5) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      retries++;
+    }
+
+    if (audioPlayer != null) {
+      _setupPlayerListeners();
+    } else {
+      // 如果超时，尝试调用 ensurePlayer 强行拉起
+      _ensurePlayer();
+    }
   }
 
   void _loadFavorites() {
