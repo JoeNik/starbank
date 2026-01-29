@@ -10,7 +10,7 @@ class TtsService extends GetxService {
   late Box _settingsBox;
 
   // 可调参数
-  final RxDouble speechRate = 1.0.obs;
+  final RxDouble speechRate = 0.5.obs;
   final RxDouble pitch = 1.0.obs;
   final RxDouble volume = 1.0.obs;
 
@@ -29,6 +29,13 @@ class TtsService extends GetxService {
 
     // 加载保存的设置
     await _loadSettings();
+
+    // 显式设置中文
+    try {
+      await _flutterTts.setLanguage("zh-CN");
+    } catch (e) {
+      debugPrint('设置语言失败: $e');
+    }
 
     // 获取引擎列表
     if (GetPlatform.isAndroid) {
@@ -49,18 +56,28 @@ class TtsService extends GetxService {
     _flutterTts.setErrorHandler((msg) {
       isSpeaking.value = false;
       debugPrint('TTS Error: $msg');
+      // 尝试重置
+      if (msg.toString().contains('not bound')) {
+        _resetTts();
+      }
     });
 
     isInitialized.value = true;
-    debugPrint(
-        'TTS 服务初始化完成: 语速=${speechRate.value}, 音调=${pitch.value}, 音量=${volume.value}');
-
     return this;
+  }
+
+  Future<void> _resetTts() async {
+    try {
+      await _flutterTts.stop();
+      await _flutterTts.setLanguage("zh-CN");
+    } catch (e) {
+      debugPrint('Rest TTS Error $e');
+    }
   }
 
   /// 加载保存的设置
   Future<void> _loadSettings() async {
-    speechRate.value = _settingsBox.get('speech_rate', defaultValue: 1.0);
+    speechRate.value = _settingsBox.get('speech_rate', defaultValue: 0.5);
     pitch.value = _settingsBox.get('pitch', defaultValue: 1.0);
     volume.value = _settingsBox.get('volume', defaultValue: 1.0);
     final savedEngine = _settingsBox.get('tts_engine', defaultValue: '');
@@ -97,13 +114,16 @@ class TtsService extends GetxService {
       await stop();
     }
 
+    // 确保语言被设置 (Xiaomi fix)
+    await _flutterTts.setLanguage("zh-CN");
+
     if (rate != null || volume != null || pitch != null) {
       // 如果指定了参数，则临时设置
       if (rate != null) await _flutterTts.setSpeechRate(rate);
       if (volume != null) await _flutterTts.setVolume(volume);
       if (pitch != null) await _flutterTts.setPitch(pitch);
     } else {
-      // 否则应用全局设置，防止被之前的临时设置覆盖
+      // 否则应用全局设置
       await _applyGlobalSettings();
     }
 
