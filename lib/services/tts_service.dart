@@ -30,6 +30,11 @@ class TtsService extends GetxService {
     // 加载保存的设置
     await _loadSettings();
 
+    // Android 专用配置: 等待播放完成回调，这对于某些引擎的状态同步很重要
+    if (GetPlatform.isAndroid) {
+      await _flutterTts.awaitSpeakCompletion(true);
+    }
+
     // 显式设置中文
     try {
       await _flutterTts.setLanguage("zh-CN");
@@ -43,6 +48,21 @@ class TtsService extends GetxService {
         final engineList = await _flutterTts.getEngines;
         if (engineList != null && engineList is List) {
           engines.addAll(engineList.map((e) => e.toString()));
+
+          // 如果没有保存的引擎，尝试获取并设置默认引擎
+          // 这有助于在某些系统(如MIUI)上"唤醒"默认引擎
+          if (_settingsBox.get('tts_engine', defaultValue: '') == '') {
+            try {
+              final defaultEngine = await _flutterTts.getDefaultEngine;
+              if (defaultEngine != null && defaultEngine.isNotEmpty) {
+                await _flutterTts.setEngine(defaultEngine);
+                currentEngine.value = defaultEngine;
+                // 再次应用设置，确保生效
+                await Future.delayed(const Duration(milliseconds: 200));
+                await _applyGlobalSettings();
+              }
+            } catch (_) {}
+          }
         }
       } catch (e) {
         debugPrint('获取引擎列表失败: $e');
