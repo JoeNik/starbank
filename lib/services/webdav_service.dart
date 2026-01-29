@@ -184,8 +184,8 @@ class WebDavService extends GetxService {
 
       // 备份音乐数据 (歌单 & 收藏)
       try {
-        // 先检查 Box 是否打开，如果没有则打开
-        final playlistBox = await Hive.openBox<Playlist>('playlists');
+        // 使用 StorageService 中的实例，确保 Box 名称一致 ('playlistBox')
+        final playlistBox = _storage.playlistBox;
         backupData['musicPlaylists'] = playlistBox.values.map((p) {
           return {
             'id': p.id,
@@ -528,7 +528,7 @@ class WebDavService extends GetxService {
       // 恢复音乐数据
       if (backupData['musicPlaylists'] != null) {
         try {
-          final playlistBox = await Hive.openBox<Playlist>('playlists');
+          final playlistBox = _storage.playlistBox;
           await playlistBox.clear();
           for (var item in (backupData['musicPlaylists'] as List)) {
             if (item is Map) {

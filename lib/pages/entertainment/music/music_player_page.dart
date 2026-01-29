@@ -528,13 +528,17 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
                     ActionChip(
                       label: const Text('自定义'),
                       labelStyle: const TextStyle(color: Colors.white),
-                      backgroundColor: Colors.white10,
+                      backgroundColor: Colors.grey[800],
                       padding:
                           EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                       onPressed: () {
                         Get.back(); // close sheet first
                         _showCustomTimerDialog(context);
                       },
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20.r),
+                        side: BorderSide.none,
+                      ),
                     ),
                   ),
               ),
@@ -554,7 +558,8 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
         color: isSelected ? Colors.black : Colors.white,
         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
       ),
-      backgroundColor: isSelected ? Colors.white : Colors.white10,
+      // Fix: Use explicit dark color for unselected background to avoid white-on-white
+      backgroundColor: isSelected ? Colors.white : Colors.grey[800],
       padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
       onPressed: () {
         _controller.setSleepTimer(min);
@@ -567,8 +572,10 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
           snackPosition: SnackPosition.TOP,
         );
       },
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
-      side: BorderSide.none,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20.r),
+        side: BorderSide.none, // Remove default border
+      ),
     );
   }
 
