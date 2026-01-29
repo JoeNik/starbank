@@ -118,24 +118,24 @@ class MusicPlayerController extends GetxController {
 
     // Bind AudioHandler callbacks for Lock Screen / Notification controls
     try {
-      _musicService.audioHandler.onSkipToNext = () {
-        debugPrint('Notification: Skip to Next');
-        playNext();
-      };
-      _musicService.audioHandler.onSkipToPrevious = () {
-        debugPrint('Notification: Skip to Previous');
-        playPrevious();
-      };
+      if (_musicService.audioHandler != null) {
+        _musicService.audioHandler!.onSkipToNext = () {
+          debugPrint('Notification: Skip to Next');
+          playNext();
+        };
+        _musicService.audioHandler!.onSkipToPrevious = () {
+          debugPrint('Notification: Skip to Previous');
+          playPrevious();
+        };
+      }
     } catch (e) {
       debugPrint('Error binding AudioHandler callbacks: $e');
     }
+    
     audioPlayer!.playerStateStream.listen((state) {
       isPlaying.value = state.playing;
       if (state.processingState == ProcessingState.completed) {
         // Simple auto-next logic
-        // Note: This might fire multiple times if multiple controllers attach?
-        // Since playNext checks currentIndex, it should be relatively safe,
-        // but ideally MusicService handles the queue. For now, we keep it here.
         playNext();
       }
     });
@@ -211,16 +211,13 @@ class MusicPlayerController extends GetxController {
       playUrl = playUrl.replaceFirst('http://', 'https://');
     }
 
-    // REMOVED: Cache buster (t=...) logic to prevent signature invalidation.
-
     try {
       // Lazy Init & Ensure Singleton Check
       final player = await _ensurePlayer();
       if (player == null) {
         final errorMsg = _musicService.initErrorMessage.value;
         Get.snackbar('初始化失败', '音频服务无法启动: $errorMsg',
-            backgroundColor: Colors.redAccent,
-            colorText: Colors.white,
+            backgroundColor: Colors.redAccent, colorText: Colors.white,
             duration: const Duration(seconds: 5));
         return;
       }
@@ -237,7 +234,8 @@ class MusicPlayerController extends GetxController {
             ? Uri.parse(track.coverUrl!)
             : null,
       );
-      _musicService.audioHandler.updateMediaItem(mediaItem);
+      // Safe call here
+      _musicService.audioHandler?.updateMediaItem(mediaItem);
 
       // 准备 Headers
       final Map<String, String> headers = _getHeaders(track);
@@ -248,6 +246,159 @@ class MusicPlayerController extends GetxController {
           headers: headers,
           tag: mediaItem,
         ));
+      } catch (e) {
+        // 容错回退
+        debugPrint('Protocol error, retrying with raw URL: $e');
+        await player.setAudioSource(AudioSource.uri(
+          Uri.parse(currentUrl),
+          headers: headers,
+          // tag: mediaItem,
+        ));
+      }
+
+      final index = playlist
+          .indexWhere((t) => t.id == track.id && t.platform == track.platform);
+      if (index == -1) {
+        playlist.add(track);
+        currentIndex.value = playlist.length - 1;
+      } else {
+        currentIndex.value = index;
+        playlist[index] = track;
+      }
+
+      await player.play();
+    } on PlayerException catch (e) {
+      debugPrint("Error code: ${e.code}");
+      debugPrint("Error message: ${e.message}");
+      Get.snackbar('播放失败', '音频错误: ${e.message}',
+          backgroundColor: Colors.redAccent, colorText: Colors.white);
+    } on PlayerInterruptedException catch (e) {
+      debugPrint("Connection aborted: ${e.message}");
+    } catch (e, stackTrace) {
+      debugPrint('Audio play failed: $e');
+      debugPrintStack(stackTrace: stackTrace);
+      Get.snackbar('播放失败', '加载错误: ${e.toString()}',
+          backgroundColor: Colors.redAccent,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 5));
+    }
+  }
+
+  void playNext() {
+    if (playlist.isEmpty) return;
+    if (currentIndex.value < playlist.length - 1) {
+      playTrack(playlist[currentIndex.value + 1]);
+    } else {
+      // Loop or stop
+      // For now, loop back to start
+      playTrack(playlist[0]);
+    }
+  }
+
+  void playPrevious() {
+    if (playlist.isEmpty) return;
+    if (currentIndex.value > 0) {
+      playTrack(playlist[currentIndex.value - 1]);
+    } else {
+      playTrack(playlist.last);
+    }
+  }
+
+  void togglePlay() {
+    if (audioPlayer != null && isPlaying.value) {
+      audioPlayer!.pause();
+    } else if (audioPlayer != null) {
+      audioPlayer!.play();
+    }
+  }
+
+  void seek(Duration pos) {
+    audioPlayer?.seek(pos);
+  }
+
+  // Timer logic
+  void setSleepTimer(int minutes) {
+    _sleepTimer?.cancel();
+    sleepTimerMinutes.value = minutes;
+    if (minutes > 0) {
+      _sleepTimer = Timer(Duration(minutes: minutes), () {
+        audioPlayer?.pause();
+        sleepTimerMinutes.value = 0;
+        Get.snackbar('定时关闭', '音乐已停止');
+      });
+    }
+  }
+
+  // --- Lyrics Logic ---
+
+  final RxList<LyricLine> lyrics = <LyricLine>[].obs;
+  final RxInt currentLyricIndex = 0.obs;
+
+  void _parseLyrics(String? content) {
+    lyrics.clear();
+    currentLyricIndex.value = 0;
+    if (content == null || content.isEmpty) return;
+
+    // Regex to match [mm:ss.SS] or [mm:ss.SSS]
+    final regExp = RegExp(r'^\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)');
+    final lines = content.split('\n');
+
+    for (final line in lines) {
+      final match = regExp.firstMatch(line);
+      if (match != null) {
+        final min = int.parse(match.group(1)!);
+        final sec = int.parse(match.group(2)!);
+        final msStr = match.group(3)!;
+        // Normalize milliseconds: .1 -> 100, .12 -> 120, .123 -> 123
+        final ms = int.parse(msStr.padRight(3, '0'));
+
+        final time = Duration(minutes: min, seconds: sec, milliseconds: ms);
+        final text = match.group(4)!.trim();
+        // Skip empty lines if desired, or keep them for spacing
+        // Keeping them is better for fidelity
+        lyrics.add(LyricLine(time, text));
+      }
+    }
+  }
+
+  @override
+  void onClose() {
+    // Cannot dispose global player from controller!
+    // _musicService handles lifecycle if needed.
+    _sleepTimer?.cancel();
+    super.onClose();
+  }
+
+  Map<String, String> _getHeaders(MusicTrack track) {
+    // 默认 Headers (模仿 PC Chrome)
+    final Map<String, String> headers = {
+      'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Referer': 'https://www.google.com/',
+    };
+
+    if (track.platform == 'netease') {
+      headers['Referer'] = 'https://music.163.com/';
+      // 网易云部分链接可能需要 Cookie，但通常 Referer 足够
+    } else if (track.platform == 'kuwo') {
+      headers['Referer'] = 'http://www.kuwo.cn/';
+      // 酷有时候对 HTTP 更友好，或者特定的 UA
+      headers['User-Agent'] =
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0';
+    } else if (track.platform == 'qq') {
+      headers['Referer'] = 'https://y.qq.com/';
+    }
+
+    return headers;
+  }
+}
+
+class LyricLine {
+  final Duration startTime;
+  final String content;
+
+  LyricLine(this.startTime, this.content);
+}
       } catch (e) {
         // 容错回退
         debugPrint('Protocol error, retrying with raw URL: $e');

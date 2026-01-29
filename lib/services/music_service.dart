@@ -10,7 +10,7 @@ class MusicService extends GetxService {
   final RxString initErrorMessage = ''.obs;
 
   // 暴露 Handler 和 Player
-  MusicHandler get audioHandler => _audioHandler!;
+  MusicHandler? get audioHandler => _audioHandler;
 
   // 为了兼容现有代码，暴露内部的 AudioPlayer
   // 如果尚未初始化，返回 null 而不是抛出异常，防止 Release 模式崩溃
