@@ -217,7 +217,11 @@ class MusicPlayerController extends GetxController {
       // Lazy Init & Ensure Singleton Check
       final player = await _ensurePlayer();
       if (player == null) {
-        Get.snackbar('错误', '音频服务初始化失败，请重启应用');
+        final errorMsg = _musicService.initErrorMessage.value;
+        Get.snackbar('初始化失败', '音频服务无法启动: $errorMsg',
+            backgroundColor: Colors.redAccent,
+            colorText: Colors.white,
+            duration: const Duration(seconds: 5));
         return;
       }
 

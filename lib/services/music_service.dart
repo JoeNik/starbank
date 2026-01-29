@@ -24,6 +24,9 @@ class MusicService extends GetxService {
     // 不要在 onInit 中做异步初始化阻塞，改为单独调用或者在 main 中 await
   }
 
+  // Fallback player if AudioService fails
+  AudioPlayer? _fallbackPlayer;
+
   // 确保初始化完成
   Future<MusicService> init() async {
     try {
@@ -44,7 +47,14 @@ class MusicService extends GetxService {
     } catch (e, stack) {
       debugPrint('MusicService: Error initializing AudioService: $e');
       debugPrintStack(stackTrace: stack); // Log stack trace
-      initErrorMessage.value = e.toString();
+
+      initErrorMessage.value = 'Mode Restricted: ${e.toString()}';
+
+      // FALLBACK: Initialize basic AudioPlayer so app is usable
+      if (_fallbackPlayer == null) {
+        debugPrint('MusicService: Initializing Fallback Player...');
+        _fallbackPlayer = AudioPlayer();
+      }
     }
     return this;
   }
@@ -61,10 +71,11 @@ class MusicService extends GetxService {
 
   // 兼容旧方法，但现在总是返回已初始化的 player（因为 init 在 main 做了）
   Future<AudioPlayer?> getOrInitPlayer() async {
-    if (_audioHandler == null) {
+    if (_audioHandler == null && _fallbackPlayer == null) {
       await init();
     }
-    return _audioHandler?.player;
+    // Return either the full handler player or the fallback one
+    return _audioHandler?.player ?? _fallbackPlayer;
   }
 
   @override
