@@ -634,7 +634,7 @@ class _StoryGamePageState extends State<StoryGamePage> {
     _currentRound++;
 
     setState(() {
-      _isAIResponding = true;
+      // _isAIResponding = true; // 移至 _getAIResponse 中设置,否则会被拦截
       _aiError = null;
       _recognizedText = '';
     });
@@ -666,7 +666,7 @@ class _StoryGamePageState extends State<StoryGamePage> {
     }
 
     setState(() {
-      _isAIResponding = true;
+      // _isAIResponding = true; // 移至 _getAIResponse 中设置
       _aiError = null;
     });
 
@@ -1234,6 +1234,7 @@ class _StoryGamePageState extends State<StoryGamePage> {
               final isLast = messageIndex == _messages.length - 1;
 
               return _buildMessageBubble(
+                messageIndex,
                 message['content'] as String,
                 isAI: isAI,
                 isLast: isLast,
@@ -1339,7 +1340,7 @@ class _StoryGamePageState extends State<StoryGamePage> {
   }
 
   /// 消息气泡
-  Widget _buildMessageBubble(String content,
+  Widget _buildMessageBubble(int index, String content,
       {required bool isAI, bool isLast = false}) {
     return Align(
       alignment: isAI ? Alignment.centerLeft : Alignment.centerRight,
@@ -1411,9 +1412,9 @@ class _StoryGamePageState extends State<StoryGamePage> {
                     Get.snackbar('提示', '已复制到剪贴板',
                         snackPosition: SnackPosition.BOTTOM);
                   }),
-                  if (isLast && !_isAIResponding)
+                  if (!_isAIResponding)
                     _buildBubbleAction(
-                        Icons.refresh, () => _retryLastAIResponse()),
+                        Icons.refresh, () => _handleRetryAIResponse(index)),
                 ] else ...[
                   // 播放按钮
                   _buildBubbleAction(Icons.volume_up, () {
@@ -1479,7 +1480,7 @@ class _StoryGamePageState extends State<StoryGamePage> {
           ElevatedButton(
             onPressed: () {
               final newText = editController.text.trim();
-              if (newText.isNotEmpty && newText != oldContent) {
+              if (newText.isNotEmpty) {
                 Get.back();
                 _handleEditMessage(oldContent, newText);
               }
@@ -1510,11 +1511,44 @@ class _StoryGamePageState extends State<StoryGamePage> {
         _currentRound = _messages.where((m) => m['role'] == 'child').length;
       }
 
-      _isAIResponding = true;
+      // _isAIResponding = true; // 移至 _getAIResponse 中设置
     });
 
     // 重新触发 AI 回复
     await _getAIResponse();
+  }
+
+  /// 处理重新请求 AI 回复
+  void _handleRetryAIResponse(int index) {
+    if (_isAIResponding) return;
+
+    // 如果是最后一条，直接使用现有逻辑
+    if (index == _messages.length - 1) {
+      _retryLastAIResponse();
+      return;
+    }
+
+    // 如果不是最后一条，需要询问是否截断后续对话
+    Get.defaultDialog(
+      title: '重新请求',
+      middleText: '这将删除此条回复及之后的所有对话记录，并重新生成回答。\n确定要继续吗？',
+      textConfirm: '确定',
+      textCancel: '取消',
+      confirmTextColor: Colors.white,
+      onConfirm: () async {
+        Get.back(); // 关闭对话框
+
+        setState(() {
+          // 删除从该索引开始的所有消息
+          _messages.removeRange(index, _messages.length);
+          // 重新计算轮数
+          _currentRound = _messages.where((m) => m['role'] == 'child').length;
+          // 这一步不需要手动设 _isAIResponding，因为 _getAIResponse 会设
+        });
+
+        await _getAIResponse();
+      },
+    );
   }
 
   /// 显示全屏图片缩放
