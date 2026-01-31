@@ -1,16 +1,34 @@
-# star_bank
+# ✨ Star Bank (星球银行)
 
-A new Flutter project.
+一个充满趣味的家庭互动应用，旨在帮助家长通过奖励机制培养孩子的良好习惯，同时结合 AI 技术提供寓教于乐的互动体验。
 
-## Getting Started
+## 🌟 核心功能
 
-This project is a starting point for a Flutter application.
+### 1. 🏦 星星奖励系统
+- **行为记录**：家长可以方便地记录孩子的良好行为（获得星星）或待改进事项（扣除星星）。
+- **存钱罐与零花钱**：模拟银行系统，星星可以兑换为存款，甚至产生利息，培养孩子的财商。
+- **愿望清单**：孩子可以用积攒的星星兑换心仪的礼物。
 
-A few resources to get you started if this is your first Flutter project:
+### 2. 📖 AI 看图讲故事
+- **智能识图**：基于 OpenAI Vision 模型，精准识别上传或拍摄的图片内容。
+- **互动故事**：AI 化身老师，引导孩子根据图片发挥想象力讲故事，支持多轮对话。
+- **语音交互**：集成语音识别 (STT) 和语音合成 (TTS)，实现自然的语音对话体验。
+- **智能评价**：游戏结束后，AI 会根据故事内容的丰富度进行打分和点评，并自动奖励星星。
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+### 3. 🎵 娱乐中心
+- **音乐播放器**：支持本地音乐播放，包含精美的播放界面、歌词显示和后台播放功能。
+- **趣味猜谜**：AI 自动生成谜题与孩子互动。
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+### 4. 🛠 实用工具
+- **数据云同步**：内置 WebDAV 支持，可轻松备份和恢复数据，保障数据安全。
+- **家长/儿童模式**：一键切换使用模式，防止孩子误操作敏感设置。
+- **自动更新**：支持检测 GitHub Releases，实现应用内自动下载和更新。
+
+## 📱 技术栈
+- **框架**: Flutter
+- **状态管理**: GetX
+- **本地存储**: Hive
+- **AI 服务**: OpenAI API (Chat & Vision)
+
+---
+*让成长更有趣，让教育更简单。*

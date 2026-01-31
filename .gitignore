@@ -48,8 +48,3 @@ app.*.map.json
 temp_*.txt
 temp_*.log
 *.txt
-新增功能总结.md
-最新优化总结.md
-最新优化总结-第二批.md
-GitHub构建修复说明.md
-图片裁剪功能修复说明.md
