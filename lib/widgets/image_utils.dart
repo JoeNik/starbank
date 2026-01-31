@@ -42,8 +42,8 @@ class ImageUtils {
   /// 显示裁剪对话框
   static Future<Uint8List?> _showCropDialog(Uint8List imageBytes) async {
     final cropController = CropController();
-    // Uint8List? croppedData; // This line was removed in the provided diff, but not explicitly in the instruction. Assuming it should be removed as it's not used.
     final completer = Completer<Uint8List?>();
+    var isCropping = false;
 
     Get.dialog(
       WillPopScope(
@@ -53,82 +53,118 @@ class ImageUtils {
           }
           return true;
         },
-        child: Dialog(
-          backgroundColor: Colors.black,
-          insetPadding: EdgeInsets.zero,
-          child: SafeArea(
-            child: Column(
-              children: [
-                // 顶部工具栏
-                Container(
-                  color: Colors.black87,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.close, color: Colors.white),
-                        onPressed: () {
-                          if (!completer.isCompleted) {
-                            completer.complete(null);
-                          }
-                          Get.back();
-                        },
+        child: StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              backgroundColor: Colors.black,
+              insetPadding: EdgeInsets.zero,
+              child: SafeArea(
+                child: Column(
+                  children: [
+                    // 顶部工具栏
+                    Container(
+                      color: Colors.black87,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.close, color: Colors.white),
+                            onPressed: () {
+                              if (!completer.isCompleted) {
+                                completer.complete(null);
+                              }
+                              Get.back();
+                            },
+                          ),
+                          const Spacer(),
+                          const Text(
+                            '裁剪头像',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const Spacer(),
+                          if (isCropping)
+                            const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          else
+                            IconButton(
+                              icon:
+                                  const Icon(Icons.check, color: Colors.white),
+                              onPressed: () {
+                                setState(() {
+                                  isCropping = true;
+                                });
+                                try {
+                                  cropController.crop();
+                                } catch (e) {
+                                  debugPrint("Crop error: $e");
+                                  setState(() {
+                                    isCropping = false;
+                                  });
+                                  Get.snackbar("错误", "裁剪失败: $e");
+                                }
+                              },
+                            ),
+                        ],
                       ),
-                      const Spacer(),
-                      const Text(
-                        '裁剪头像',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        icon: const Icon(Icons.check, color: Colors.white),
-                        onPressed: () {
-                          cropController.crop();
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                // 裁剪区域
-                Expanded(
-                  child: Crop(
-                    image: imageBytes,
-                    controller: cropController,
-                    onCropped: (croppedImage) {
-                      // crop_your_image 2.0.0 返回 Uint8List
-                      if (!completer.isCompleted) {
-                        completer.complete(croppedImage as Uint8List);
-                      }
-                      Get.back();
-                    },
-                    aspectRatio: 1.0, // 正方形
-                    // initialSize: 0.8, // 2.0.0 版本不支持
-                    maskColor: Colors.black.withOpacity(0.7),
-                    cornerDotBuilder: (size, edgeAlignment) => const DotControl(
-                      color: Colors.white,
                     ),
-                    interactive: true,
-                    fixCropRect: false,
-                  ),
+                    // 裁剪区域
+                    Expanded(
+                      child: Stack(
+                        children: [
+                          Crop(
+                            image: imageBytes,
+                            controller: cropController,
+                            onCropped: (croppedImage) {
+                              if (!completer.isCompleted) {
+                                completer.complete(croppedImage as Uint8List);
+                              }
+                              Get.back();
+                            },
+                            aspectRatio: 1.0,
+                            // initialSize: 0.8, // 2.0.0 版本不支持
+                            maskColor: Colors.black.withOpacity(0.7),
+                            cornerDotBuilder: (size, edgeAlignment) =>
+                                const DotControl(color: Colors.white),
+                            interactive: true,
+                            fixCropRect: false,
+                          ),
+                          if (isCropping)
+                            Container(
+                              color: Colors.black54,
+                              child: const Center(
+                                child: Text("正在处理...",
+                                    style: TextStyle(color: Colors.white)),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    // 底部提示
+                    Container(
+                      color: Colors.black87,
+                      padding: const EdgeInsets.all(16),
+                      child: const Text(
+                        '拖动调整裁剪区域,点击✓完成',
+                        style: TextStyle(color: Colors.white70, fontSize: 14),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
                 ),
-                // 底部提示
-                Container(
-                  color: Colors.black87,
-                  padding: const EdgeInsets.all(16),
-                  child: const Text(
-                    '拖动调整裁剪区域,点击✓完成',
-                    style: TextStyle(color: Colors.white70, fontSize: 14),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         ),
       ),
       barrierDismissible: false,

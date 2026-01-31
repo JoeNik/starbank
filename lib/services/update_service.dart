@@ -377,16 +377,39 @@ class UpdateService extends GetxService {
                       '${(progress.value * 100).toStringAsFixed(1)}%',
                       style: TextStyle(fontSize: 12.sp, color: Colors.grey),
                     ),
+                  SizedBox(height: 8.h),
+                  if (status.value.contains('下载'))
+                    Text(
+                      '请保持应用在前台，否则下载可能中断',
+                      style: TextStyle(color: Colors.orange, fontSize: 12.sp),
+                    ),
                 ],
               )),
           actions: [
             Obx(() => isDownloading.value
-                ? TextButton(
-                    onPressed: () {
-                      isDownloading.value = false;
-                      Get.back();
-                    },
-                    child: const Text('取消'),
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () {
+                          isDownloading.value = false;
+                          Get.back();
+                        },
+                        child: const Text('取消'),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          isDownloading.value = false;
+                          Get.back();
+                          launchUrl(
+                              Uri.parse(useMirror
+                                  ? 'https://ghproxy.com/${release.downloadUrl}'
+                                  : release.downloadUrl),
+                              mode: LaunchMode.externalApplication);
+                        },
+                        child: const Text('浏览器下载'),
+                      ),
+                    ],
                   )
                 : Row(
                     mainAxisAlignment: MainAxisAlignment.end,

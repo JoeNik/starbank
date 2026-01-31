@@ -17,7 +17,10 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
   final userController = TextEditingController();
   final pwdController = TextEditingController();
 
-  final RxList<String> backupFiles = <String>[].obs;
+  final RxList<String> backupFiles = <String>[].obs; // 所有备份文件
+  final RxList<String> displayBackups = <String>[].obs; // 当前显示的备份文件
+  final int _pageSize = 10; // 每页显示数量
+
   final RxBool isLoading = false.obs;
   final RxBool obscurePassword = true.obs; // 密码隐藏状态
   final RxBool isConnected = false.obs; // 连接状态
@@ -57,6 +60,11 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
     try {
       final files = await webDavService.listBackups();
       backupFiles.assignAll(files.reversed.toList());
+
+      // 初始化显示列表
+      displayBackups.clear();
+      _loadMore();
+
       isConnected.value = true;
       connectionStatus.value = '已连接';
     } catch (e) {
@@ -69,12 +77,26 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
     isLoading.value = true;
     try {
       final files = await webDavService.listBackups();
-      backupFiles.assignAll(files.reversed.toList()); // Newest first
+      backupFiles.assignAll(files.reversed.toList());
+
+      // 重置分页
+      displayBackups.clear();
+      _loadMore();
     } catch (e) {
       Get.snackbar("错误", "获取备份列表失败: $e");
     } finally {
       isLoading.value = false;
     }
+  }
+
+  /// 加载更多备份
+  void _loadMore() {
+    final currentLength = displayBackups.length;
+    final total = backupFiles.length;
+    if (currentLength >= total) return;
+
+    final nextCount = (currentLength + _pageSize).clamp(0, total);
+    displayBackups.addAll(backupFiles.sublist(currentLength, nextCount));
   }
 
   @override
@@ -317,18 +339,21 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
                               },
                         icon: isLoading.value
                             ? SizedBox(
-                                width: 16.w,
-                                height: 16.w,
+                                width: 14.w,
+                                height: 14.w,
                                 child: const CircularProgressIndicator(
                                   strokeWidth: 2,
                                   valueColor: AlwaysStoppedAnimation<Color>(
                                       Colors.white),
                                 ),
                               )
-                            : const Icon(Icons.cloud_upload),
-                        label: Text(isLoading.value ? "备份中..." : "立即备份"),
+                            : Icon(Icons.cloud_upload, size: 18.sp),
+                        label: Text(isLoading.value ? "备份中" : "备份",
+                            style: TextStyle(fontSize: 14.sp)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.blue,
+                          padding: EdgeInsets.symmetric(vertical: 8.h),
+                          minimumSize: Size(0, 36.h),
                         ),
                       )),
                 ),
@@ -338,19 +363,22 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
                         onPressed: isLoading.value ? null : _loadBackups,
                         icon: isLoading.value
                             ? SizedBox(
-                                width: 16.w,
-                                height: 16.w,
+                                width: 14.w,
+                                height: 14.w,
                                 child: const CircularProgressIndicator(
                                   strokeWidth: 2,
                                   valueColor: AlwaysStoppedAnimation<Color>(
                                       Colors.white),
                                 ),
                               )
-                            : const Icon(Icons.refresh),
-                        label: Text(isLoading.value ? "加载中..." : "刷新列表"),
+                            : Icon(Icons.refresh, size: 18.sp),
+                        label: Text(isLoading.value ? "读取中" : "刷新",
+                            style: TextStyle(fontSize: 14.sp)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green,
                           foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(vertical: 8.h),
+                          minimumSize: Size(0, 36.h),
                         ),
                       )),
                 ),
@@ -381,21 +409,21 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.sp),
               ),
               SizedBox(height: 10.h),
-              if (backupFiles.isEmpty)
+              if (displayBackups.isEmpty)
                 const Center(
                   child: Padding(
                     padding: EdgeInsets.all(20.0),
                     child: Text("暂无备份文件"),
                   ),
                 )
-              else
+              else ...[
                 ListView.separated(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: backupFiles.length,
+                  itemCount: displayBackups.length,
                   separatorBuilder: (_, __) => const Divider(),
                   itemBuilder: (context, index) {
-                    final filename = backupFiles[index];
+                    final filename = displayBackups[index];
                     return ListTile(
                       leading: const Icon(
                         Icons.restore_page,
@@ -411,6 +439,21 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
                     );
                   },
                 ),
+                if (displayBackups.length < backupFiles.length)
+                  Padding(
+                    padding: EdgeInsets.only(top: 8.h),
+                    child: TextButton(
+                      onPressed: () {
+                        // 使用 setState 触发刷新(因为 List 更新不一定自动触发 Obx)
+                        setState(() {
+                          _loadMore();
+                        });
+                      },
+                      child: Text(
+                          "加载更多 (${backupFiles.length - displayBackups.length})"),
+                    ),
+                  ),
+              ],
             ],
           ),
         ),
