@@ -107,7 +107,7 @@ class ImageUtils {
                       Get.back();
                     },
                     aspectRatio: 1.0, // 正方形
-                    initialSize: 0.8,
+                    // initialSize: 0.8, // 2.0.0 版本不支持
                     maskColor: Colors.black.withOpacity(0.7),
                     cornerDotBuilder: (size, edgeAlignment) => const DotControl(
                       color: Colors.white,
