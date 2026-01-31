@@ -472,9 +472,30 @@ class UpdateService extends GetxService {
         dir = await getTemporaryDirectory();
       }
 
+      debugPrint('下载目录: ${dir.path}');
+
       final fileName = 'StarBank_${release.version}.apk';
       final filePath = '${dir.path}/$fileName';
       final file = File(filePath);
+
+      // 检查文件是否已存在
+      if (await file.exists()) {
+        final fileSize = await file.length();
+        if (fileSize > 1024 * 1024) {
+          // 文件大于1MB,认为是有效的安装包
+          status.value = '已找到已下载的安装包';
+          progress.value = 1.0;
+          isDownloading.value = false;
+          downloadedFilePath = filePath;
+          debugPrint(
+              '使用已存在的安装包: $filePath (${(fileSize / 1024 / 1024).toStringAsFixed(2)}MB)');
+          return;
+        } else {
+          // 文件太小,可能是损坏的,删除后重新下载
+          await file.delete();
+          debugPrint('删除损坏的安装包: $filePath');
+        }
+      }
 
       // 发起请求
       final request = http.Request('GET', Uri.parse(downloadUrl));

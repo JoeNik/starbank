@@ -1265,6 +1265,10 @@ class _StoryGamePageState extends State<StoryGamePage> {
                     setState(() {
                       _isAIResponding = false;
                       _requestGenerationId++; // 增加 ID 以立即使之前的回调失效
+                      // 如果消息为空(第一次分析被取消),显示重试提示
+                      if (_messages.isEmpty) {
+                        _aiError = '已取消图片分析,点击重试继续';
+                      }
                     });
                   },
                   icon: const Icon(Icons.stop_circle_outlined,
@@ -1295,7 +1299,12 @@ class _StoryGamePageState extends State<StoryGamePage> {
                     setState(() {
                       _aiError = null;
                     });
-                    _handleAIAction();
+                    // 如果消息为空,说明是第一次图片分析被取消,需要重新分析图片
+                    if (_messages.isEmpty) {
+                      _analyzeImageAndStart();
+                    } else {
+                      _handleAIAction();
+                    }
                   },
                   icon: const Icon(Icons.refresh, size: 16),
                   label: const Text('重试'),

@@ -893,6 +893,8 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                   const Spacer(),
+                  // 空白占位,与快捷记录保持一致的布局
+                  SizedBox(width: 8.w),
                   // 展开/收起图标
                   Icon(
                     _isStarLogsExpanded
@@ -1219,17 +1221,28 @@ class _HomePageState extends State<HomePage> {
                     // Close dialog FIRST
                     Get.back();
 
-                    // Then update and show feedback
-                    controller.updateStars(isAdd ? val : -val, reason);
+                    // 使用silent模式,避免重复弹框
+                    controller.updateStars(isAdd ? val : -val, reason,
+                        silent: true);
+
+                    // 只显示一次提示
                     Get.snackbar(
-                      isAdd ? '🎉 棒棒哒！' : '💪 继续加油',
+                      isAdd ? '🎉 棒棒哒！获得星星' : '💪 继续加油',
                       '已${isAdd ? "获得" : "扣除"} $val 颗星星 ($reason)',
                       snackPosition: SnackPosition.BOTTOM,
                       backgroundColor: isAdd
                           ? Colors.orange.withOpacity(0.1)
                           : Colors.grey.withOpacity(0.1),
                       colorText: Colors.black87,
-                      duration: const Duration(seconds: 2),
+                      duration: const Duration(seconds: 3),
+                      mainButton: TextButton(
+                        onPressed: () {
+                          controller.revertLastStarAction();
+                          Get.back();
+                        },
+                        child: const Text('撤销',
+                            style: TextStyle(color: Colors.orange)),
+                      ),
                     );
                   },
                   style: ElevatedButton.styleFrom(

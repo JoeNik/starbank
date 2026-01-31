@@ -1,12 +1,15 @@
 import 'dart:convert';
+import 'dart:typed_data';
+import 'dart:async';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:crop_your_image/crop_your_image.dart';
 
 class ImageUtils {
   static final ImagePicker _picker = ImagePicker();
 
-  /// 选择图片并返回Base64编码
-  /// enableCrop参数暂时保留但不生效,待image_cropper兼容问题解决后启用
+  /// 选择图片并裁剪,返回Base64编码
   static Future<String?> pickImageAndToBase64({
     bool enableCrop = false,
     dynamic aspectRatio,
@@ -14,21 +17,124 @@ class ImageUtils {
     try {
       final XFile? image = await _picker.pickImage(
         source: ImageSource.gallery,
-        maxWidth: 512,
-        maxHeight: 512,
-        imageQuality: 75,
+        imageQuality: 100,
       );
 
       if (image == null) return null;
 
-      // 暂时禁用裁剪功能,直接返回图片
-      // TODO: image_cropper与Flutter 3.27.0兼容问题解决后恢复裁剪功能
       final bytes = await image.readAsBytes();
-      return base64Encode(bytes);
+
+      // 如果启用裁剪
+      if (enableCrop) {
+        final croppedBytes = await _showCropDialog(bytes);
+        if (croppedBytes == null) return null;
+        return base64Encode(croppedBytes);
+      } else {
+        // 不裁剪,直接返回
+        return base64Encode(bytes);
+      }
     } catch (e) {
       debugPrint("Error picking image: $e");
       return null;
     }
+  }
+
+  /// 显示裁剪对话框
+  static Future<Uint8List?> _showCropDialog(Uint8List imageBytes) async {
+    final cropController = CropController();
+    // Uint8List? croppedData; // This line was removed in the provided diff, but not explicitly in the instruction. Assuming it should be removed as it's not used.
+    final completer = Completer<Uint8List?>();
+
+    Get.dialog(
+      WillPopScope(
+        onWillPop: () async {
+          if (!completer.isCompleted) {
+            completer.complete(null);
+          }
+          return true;
+        },
+        child: Dialog(
+          backgroundColor: Colors.black,
+          insetPadding: EdgeInsets.zero,
+          child: SafeArea(
+            child: Column(
+              children: [
+                // 顶部工具栏
+                Container(
+                  color: Colors.black87,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white),
+                        onPressed: () {
+                          if (!completer.isCompleted) {
+                            completer.complete(null);
+                          }
+                          Get.back();
+                        },
+                      ),
+                      const Spacer(),
+                      const Text(
+                        '裁剪头像',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.check, color: Colors.white),
+                        onPressed: () {
+                          cropController.crop();
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                // 裁剪区域
+                Expanded(
+                  child: Crop(
+                    image: imageBytes,
+                    controller: cropController,
+                    onCropped: (croppedImage) {
+                      // crop_your_image 2.0.0 返回 Uint8List
+                      if (!completer.isCompleted) {
+                        completer.complete(croppedImage as Uint8List);
+                      }
+                      Get.back();
+                    },
+                    aspectRatio: 1.0, // 正方形
+                    initialSize: 0.8,
+                    maskColor: Colors.black.withOpacity(0.7),
+                    cornerDotBuilder: (size, edgeAlignment) => const DotControl(
+                      color: Colors.white,
+                    ),
+                    interactive: true,
+                    fixCropRect: false,
+                  ),
+                ),
+                // 底部提示
+                Container(
+                  color: Colors.black87,
+                  padding: const EdgeInsets.all(16),
+                  child: const Text(
+                    '拖动调整裁剪区域,点击✓完成',
+                    style: TextStyle(color: Colors.white70, fontSize: 14),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      barrierDismissible: false,
+    );
+
+    return completer.future;
   }
 
   /// 显示图片

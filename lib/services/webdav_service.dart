@@ -71,6 +71,14 @@ class WebDavService extends GetxService {
     }
   }
 
+  /// 获取缓存的密码
+  String? getCachedPassword() {
+    return _storage.settingsBox.get('webdav_pwd') as String?;
+  }
+
+  /// 是否已配置WebDAV
+  bool get isConfigured => _client != null;
+
   /// 备份所有Hive数据到WebDAV
   Future<bool> backupData() async {
     if (_client == null) {

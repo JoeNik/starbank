@@ -20,6 +20,8 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
   final RxList<String> backupFiles = <String>[].obs;
   final RxBool isLoading = false.obs;
   final RxBool obscurePassword = true.obs; // 密码隐藏状态
+  final RxBool isConnected = false.obs; // 连接状态
+  final RxString connectionStatus = '未连接'.obs; // 连接状态文本
 
   @override
   void initState() {
@@ -27,8 +29,39 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
     urlController.text = webDavService.currentUrl.value;
     userController.text = webDavService.currentUser.value;
 
+    // 从缓存中读取密码
+    _loadCachedPassword();
+
     if (urlController.text.isNotEmpty) {
-      _loadBackups();
+      _checkConnection();
+    }
+  }
+
+  /// 从缓存读取密码
+  void _loadCachedPassword() {
+    try {
+      final pwd = webDavService.getCachedPassword();
+      if (pwd != null && pwd.isNotEmpty) {
+        pwdController.text = pwd;
+      }
+    } catch (e) {
+      debugPrint('读取缓存密码失败: $e');
+    }
+  }
+
+  /// 检查连接状态
+  Future<void> _checkConnection() async {
+    connectionStatus.value = '连接中...';
+    isConnected.value = false;
+
+    try {
+      final files = await webDavService.listBackups();
+      backupFiles.assignAll(files.reversed.toList());
+      isConnected.value = true;
+      connectionStatus.value = '已连接';
+    } catch (e) {
+      isConnected.value = false;
+      connectionStatus.value = '连接失败';
     }
   }
 
@@ -74,9 +107,59 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
         padding: EdgeInsets.all(16.w),
         child: Column(
           children: [
-            Text(
-              "WebDAV 配置",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.sp),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  "WebDAV 配置",
+                  style:
+                      TextStyle(fontWeight: FontWeight.bold, fontSize: 16.sp),
+                ),
+                SizedBox(width: 8.w),
+                // 连接状态指示器
+                Obx(() => Container(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+                      decoration: BoxDecoration(
+                        color: isConnected.value
+                            ? Colors.green.shade100
+                            : (connectionStatus.value == '连接中...'
+                                ? Colors.orange.shade100
+                                : Colors.grey.shade200),
+                        borderRadius: BorderRadius.circular(10.r),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isConnected.value
+                                ? Icons.cloud_done
+                                : (connectionStatus.value == '连接中...'
+                                    ? Icons.cloud_sync
+                                    : Icons.cloud_off),
+                            size: 12.sp,
+                            color: isConnected.value
+                                ? Colors.green
+                                : (connectionStatus.value == '连接中...'
+                                    ? Colors.orange
+                                    : Colors.grey),
+                          ),
+                          SizedBox(width: 4.w),
+                          Text(
+                            connectionStatus.value,
+                            style: TextStyle(
+                              fontSize: 10.sp,
+                              color: isConnected.value
+                                  ? Colors.green
+                                  : (connectionStatus.value == '连接中...'
+                                      ? Colors.orange
+                                      : Colors.grey),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )),
+              ],
             ),
             SizedBox(height: 16.h),
             TextField(
@@ -115,7 +198,7 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
                   ),
                 )),
             SizedBox(height: 16.h),
-            ElevatedButton(
+            ElevatedButton.icon(
               onPressed: () {
                 if (urlController.text.isEmpty) {
                   Get.snackbar("错误", "请输入服务器地址");
@@ -126,10 +209,15 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
                   userController.text,
                   pwdController.text,
                 );
-                Get.snackbar("成功", "配置已保存 (当前会话有效)");
-                _loadBackups(); // Try to load backups directly
+                Get.snackbar("成功", "配置已保存");
+                _checkConnection(); // 检查连接并刷新列表
               },
-              child: const Text("保存并连接"),
+              icon: const Icon(Icons.save),
+              label: const Text("保存并连接"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+              ),
             ),
           ],
         ),
@@ -246,7 +334,7 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
                 ),
                 SizedBox(width: 16.w),
                 Expanded(
-                  child: Obx(() => OutlinedButton.icon(
+                  child: Obx(() => ElevatedButton.icon(
                         onPressed: isLoading.value ? null : _loadBackups,
                         icon: isLoading.value
                             ? SizedBox(
@@ -254,10 +342,16 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
                                 height: 16.w,
                                 child: const CircularProgressIndicator(
                                   strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white),
                                 ),
                               )
                             : const Icon(Icons.refresh),
                         label: Text(isLoading.value ? "加载中..." : "刷新列表"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                        ),
                       )),
                 ),
               ],

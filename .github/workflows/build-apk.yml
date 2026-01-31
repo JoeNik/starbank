@@ -52,17 +52,22 @@ jobs:
           PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
           
           if [ -z "$PREV_TAG" ]; then
-            # 如果没有之前的 tag,获取所有 commit
-            COMMITS=$(git log --pretty=format:"- %s" --no-merges)
+            # 如果没有之前的 tag,获取最近10个 commit
+            COMMITS=$(git log -10 --pretty=format:"- %s" --no-merges)
           else
             # 获取从上次 tag 到现在的 commit
             COMMITS=$(git log $PREV_TAG..HEAD --pretty=format:"- %s" --no-merges)
           fi
           
-          # 将 commit 信息写入输出
-          echo "commits<<EOF" >> $GITHUB_OUTPUT
-          echo "$COMMITS" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          # 将 commit 信息写入文件,然后读取
+          echo "$COMMITS" > commits.txt
+          
+          # 使用 heredoc 方式写入多行内容
+          {
+            echo "commits<<EOF"
+            cat commits.txt
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
           
           # 输出上次 tag 信息用于显示
           if [ -z "$PREV_TAG" ]; then
