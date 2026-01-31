@@ -8,81 +8,62 @@ Try correcting the name to the name of an existing method, or defining a method 
 'android.crop_grid_color': int32(this.cropGridColor?.toARGB32()),
 ```
 
+以及:
+```
+Target kernel_snapshot_program failed: Exception
+```
+
 ## 原因分析
 
-- 使用的`image_cropper: ^8.0.2`版本与Flutter 3.27.0不兼容
-- `toARGB32()`方法在新版本的Flutter中已被移除
-- 需要升级到兼容的版本`^8.1.0`
+- `image_cropper`包与Flutter 3.27.0存在兼容性问题
+- `toARGB32()`方法在Flutter 3.27.0中已被移除
+- 所有版本的`image_cropper`(8.0.2、8.1.0等)都存在此问题
 
 ## 解决方案
 
-### 1. 更新依赖版本
+### 暂时禁用image_cropper
 
-**修改文件**: `pubspec.yaml`
+由于`image_cropper`与Flutter 3.27.0不兼容,暂时禁用裁剪功能。
+
+**修改文件1**: `pubspec.yaml`
 
 ```yaml
 # 修改前
 image_cropper: ^8.0.2          # 图片裁剪
 
 # 修改后
-image_cropper: ^8.1.0          # 图片裁剪(兼容Flutter 3.27)
+# image_cropper: ^8.1.0        # 暂时禁用,构建兼容性问题
 ```
 
-### 2. 代码无需修改
+**修改文件2**: `lib/widgets/image_utils.dart`
 
-`image_cropper: ^8.1.0`版本的API与之前的代码兼容,无需修改代码。
+- 移除`image_cropper`导入
+- 禁用裁剪逻辑
+- 保留`enableCrop`参数但不生效(保持API兼容)
+- 直接返回选择的图片
 
-## 版本兼容性
+## 功能影响
 
-| 包名 | 旧版本 | 新版本 | Flutter版本 |
-|------|--------|--------|-------------|
-| image_cropper | 8.0.2 | 9.1.1 | 3.27.0 |
+### 受影响的功能
+- ❌ 添加/编辑宝宝时的头像裁剪功能暂时不可用
+- ✅ 图片选择功能正常
+- ✅ 图片自动压缩到512x512
 
-## 测试建议
+### 用户体验
+- 选择头像时会直接使用原图(已压缩)
+- 建议用户选择方形或接近方形的图片
 
-1. **本地测试**:
-   ```bash
-   flutter clean
-   flutter pub get
-   flutter build apk --release
-   ```
+## 后续计划
 
-2. **功能测试**:
-   - 添加宝宝时选择头像并裁剪
-   - 编辑宝宝资料时更换头像并裁剪
-   - 验证裁剪界面正常显示
-   - 确认裁剪后的图片正确保存
+1. 等待`image_cropper`发布兼容Flutter 3.27的新版本
+2. 或寻找替代的图片裁剪方案
+3. 问题解决后恢复裁剪功能
 
-3. **GitHub Actions测试**:
-   - 提交代码后手动触发workflow
-   - 验证构建成功
-   - 检查生成的APK文件
+## 相关Issue
 
-## 注意事项
+- [image_cropper GitHub Issues](https://github.com/hnvn/flutter_image_cropper/issues)
+- Flutter 3.27.0中`Color.toARGB32()`被移除
 
-1. **Breaking Changes**:
-   - image_cropper 9.x版本API有变化
-   - 需要为Web平台添加`WebUiSettings`
-   - 需要导入`get`包以使用`Get.context`
+## 测试
 
-2. **平台支持**:
-   - Android: ✅ 支持
-   - iOS: ✅ 支持
-   - Web: ✅ 支持(新增)
-
-3. **依赖更新**:
-   - 运行`flutter pub get`更新依赖
-   - 可能需要`flutter clean`清理缓存
-
-## 相关链接
-
-- [image_cropper 9.x文档](https://pub.dev/packages/image_cropper)
-- [Flutter 3.27.0发布说明](https://docs.flutter.dev/release/release-notes)
-- [Breaking Changes说明](https://pub.dev/packages/image_cropper/changelog)
-
-## 修复后的效果
-
-✅ 构建成功
-✅ 裁剪功能正常
-✅ 支持所有平台
-✅ 兼容Flutter 3.27.0
+提交代码后重新触发GitHub Actions构建应该能成功。

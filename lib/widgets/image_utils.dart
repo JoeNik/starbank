@@ -1,66 +1,32 @@
 import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
-import 'package:image_cropper/image_cropper.dart';
 import 'package:flutter/material.dart';
 
 class ImageUtils {
   static final ImagePicker _picker = ImagePicker();
 
-  /// 选择图片并裁剪,返回Base64编码
+  /// 选择图片并返回Base64编码
+  /// enableCrop参数暂时保留但不生效,待image_cropper兼容问题解决后启用
   static Future<String?> pickImageAndToBase64({
     bool enableCrop = false,
-    CropAspectRatio? aspectRatio,
+    dynamic aspectRatio,
   }) async {
     try {
       final XFile? image = await _picker.pickImage(
         source: ImageSource.gallery,
-        maxWidth: enableCrop ? null : 512,
-        maxHeight: enableCrop ? null : 512,
-        imageQuality: enableCrop ? 100 : 75,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 75,
       );
 
       if (image == null) return null;
 
-      // 如果启用裁剪
-      if (enableCrop) {
-        final croppedFile = await ImageCropper().cropImage(
-          sourcePath: image.path,
-          aspectRatio:
-              aspectRatio ?? const CropAspectRatio(ratioX: 1, ratioY: 1),
-          compressQuality: 75,
-          maxWidth: 512,
-          maxHeight: 512,
-          uiSettings: [
-            AndroidUiSettings(
-              toolbarTitle: '裁剪头像',
-              toolbarColor: const Color(0xFFFF6B9D),
-              toolbarWidgetColor: Colors.white,
-              initAspectRatio: CropAspectRatioPreset.square,
-              lockAspectRatio: true,
-              aspectRatioPresets: [
-                CropAspectRatioPreset.square,
-              ],
-            ),
-            IOSUiSettings(
-              title: '裁剪头像',
-              aspectRatioPresets: [
-                CropAspectRatioPreset.square,
-              ],
-            ),
-          ],
-        );
-
-        if (croppedFile == null) return null;
-
-        final bytes = await croppedFile.readAsBytes();
-        return base64Encode(bytes);
-      } else {
-        // 不裁剪,直接返回
-        final bytes = await image.readAsBytes();
-        return base64Encode(bytes);
-      }
+      // 暂时禁用裁剪功能,直接返回图片
+      // TODO: image_cropper与Flutter 3.27.0兼容问题解决后恢复裁剪功能
+      final bytes = await image.readAsBytes();
+      return base64Encode(bytes);
     } catch (e) {
-      debugPrint("Error picking/cropping image: $e");
+      debugPrint("Error picking image: $e");
       return null;
     }
   }
