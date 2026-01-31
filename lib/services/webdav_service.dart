@@ -4,6 +4,7 @@ import 'package:webdav_client/webdav_client.dart' as webdav;
 import 'package:hive/hive.dart';
 import 'dart:convert';
 import 'storage_service.dart';
+import '../widgets/toast_utils.dart';
 import '../models/user_profile.dart';
 import '../models/baby.dart';
 import '../models/action_item.dart';
@@ -82,7 +83,7 @@ class WebDavService extends GetxService {
   /// 备份所有Hive数据到WebDAV
   Future<bool> backupData() async {
     if (_client == null) {
-      Get.snackbar('错误', '请先配置WebDAV');
+      ToastUtils.showError('请先配置WebDAV');
       return false;
     }
 
@@ -126,11 +127,9 @@ class WebDavService extends GetxService {
 
       // 备份 OpenAI 配置
       try {
-        final openaiBox = await Hive.openBox<dynamic>('openai_configs');
-        backupData['openaiConfigs'] = openaiBox.values.map((e) {
-          if (e is Map) return e;
-          return (e as dynamic).toJson();
-        }).toList();
+        final openaiBox = await Hive.openBox<OpenAIConfig>('openai_configs');
+        backupData['openaiConfigs'] =
+            openaiBox.values.map((e) => e.toJson()).toList();
       } catch (e) {
         print('备份 OpenAI 配置失败: $e');
       }
@@ -266,10 +265,11 @@ class WebDavService extends GetxService {
       // 清理旧备份
       await _cleanupOldBackups();
 
-      Get.snackbar('成功', '备份已存至: $remotePath');
+      Get.back();
+      ToastUtils.showSuccess('备份已存至: $remotePath');
       return true;
     } catch (e) {
-      Get.snackbar('错误', '备份失败: $e');
+      ToastUtils.showError('备份失败: $e');
       return false;
     }
   }
@@ -312,7 +312,7 @@ class WebDavService extends GetxService {
   /// 从WebDAV恢复数据
   Future<bool> restoreData(String remotePath) async {
     if (_client == null) {
-      Get.snackbar('错误', '请先配置WebDAV');
+      ToastUtils.showError('请先配置WebDAV');
       return false;
     }
 
@@ -386,10 +386,7 @@ class WebDavService extends GetxService {
           }
         } catch (e) {
           print('恢复便便记录失败: $e');
-          Get.snackbar('警告', '便便记录恢复失败: $e',
-              duration: const Duration(seconds: 5),
-              snackPosition: SnackPosition.BOTTOM,
-              backgroundColor: Colors.orange.shade100);
+          ToastUtils.showWarning('便便记录恢复失败: $e');
         }
       }
 
@@ -411,10 +408,7 @@ class WebDavService extends GetxService {
           }
         } catch (e) {
           print('恢复 AI 聊天记录失败: $e');
-          Get.snackbar('警告', 'AI 聊天记录恢复失败: $e',
-              duration: const Duration(seconds: 5),
-              snackPosition: SnackPosition.BOTTOM,
-              backgroundColor: Colors.orange.shade100);
+          ToastUtils.showWarning('AI 聊天记录恢复失败: $e');
         }
       }
 
@@ -434,10 +428,7 @@ class WebDavService extends GetxService {
           }
         } catch (e) {
           print('恢复 OpenAI 配置失败: $e');
-          Get.snackbar('警告', 'OpenAI 配置恢复失败: $e',
-              duration: const Duration(seconds: 5),
-              snackPosition: SnackPosition.BOTTOM,
-              backgroundColor: Colors.orange.shade100);
+          ToastUtils.showWarning('OpenAI 配置恢复失败: $e');
         }
 
         // 尝试刷新 OpenAIService
@@ -625,14 +616,10 @@ class WebDavService extends GetxService {
         } catch (_) {}
       }
 
-      Get.snackbar(
-        '成功',
-        '数据已恢复，请重启应用以生效',
-        duration: const Duration(seconds: 5),
-      );
+      ToastUtils.showSuccess('数据已恢复，请重启应用以生效');
       return true;
     } catch (e) {
-      Get.snackbar('错误', '恢复失败: $e');
+      ToastUtils.showError('恢复失败: $e');
       return false;
     }
   }
@@ -653,16 +640,16 @@ class WebDavService extends GetxService {
   /// 删除指定的备份文件
   Future<bool> deleteBackup(String remotePath) async {
     if (_client == null) {
-      Get.snackbar('错误', '请先配置WebDAV');
+      ToastUtils.showError('请先配置WebDAV');
       return false;
     }
 
     try {
       await _client!.remove(remotePath);
-      Get.snackbar('成功', '备份已删除', snackPosition: SnackPosition.BOTTOM);
+      ToastUtils.showSuccess('备份已删除');
       return true;
     } catch (e) {
-      Get.snackbar('错误', '删除失败: $e', snackPosition: SnackPosition.BOTTOM);
+      ToastUtils.showError('删除失败: $e');
       return false;
     }
   }

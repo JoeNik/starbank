@@ -10,6 +10,7 @@ import '../../theme/app_theme.dart';
 import '../openai_settings_page.dart';
 
 import '../../controllers/app_mode_controller.dart';
+import '../../widgets/toast_utils.dart';
 
 /// 故事游戏设置页面
 class StoryGameSettingsPage extends StatefulWidget {
@@ -81,7 +82,7 @@ class _StoryGameSettingsPageState extends State<StoryGameSettingsPage> {
     } catch (e) {
       debugPrint('加载配置失败: $e');
       setState(() => _isLoading = false);
-      Get.snackbar('错误', '加载配置失败: $e', snackPosition: SnackPosition.BOTTOM);
+      ToastUtils.showError('加载配置失败: $e');
     }
   }
 
@@ -97,7 +98,7 @@ class _StoryGameSettingsPageState extends State<StoryGameSettingsPage> {
     // 保存到 Hive
     await _configBox.put('config', _config!.toJson());
 
-    Get.snackbar('成功', '配置已保存', snackPosition: SnackPosition.BOTTOM);
+    ToastUtils.showSuccess('配置已保存');
   }
 
   @override
@@ -754,8 +755,7 @@ class _StoryGameSettingsPageState extends State<StoryGameSettingsPage> {
                   .toList();
               setState(() => _config!.fallbackImageUrls = urls);
               Navigator.pop(ctx);
-              Get.snackbar('成功', '已保存 ${urls.length} 张图片',
-                  snackPosition: SnackPosition.BOTTOM);
+              ToastUtils.showSuccess('已保存 ${urls.length} 张图片');
             },
             child: const Text('确定'),
           ),
@@ -805,8 +805,7 @@ class _StoryGameSettingsPageState extends State<StoryGameSettingsPage> {
             onPressed: () async {
               final url = urlController.text.trim();
               if (url.isEmpty || !url.startsWith('http')) {
-                Get.snackbar('错误', '请输入有效的URL',
-                    snackPosition: SnackPosition.BOTTOM);
+                ToastUtils.showError('请输入有效的URL');
                 return;
               }
 
@@ -835,9 +834,8 @@ class _StoryGameSettingsPageState extends State<StoryGameSettingsPage> {
                   // Replace existing content
                   controller.text = newUrls.join('\n');
 
-                  Get.snackbar('导入成功', '已导入 ${newUrls.length} 张图片URL',
-                      snackPosition: SnackPosition.BOTTOM,
-                      backgroundColor: Colors.green.shade100);
+                  ToastUtils.showSuccess('已导入 ${newUrls.length} 张图片URL',
+                      title: '导入成功');
                 } else {
                   throw Exception('HTTP ${response.statusCode}');
                 }
@@ -845,9 +843,7 @@ class _StoryGameSettingsPageState extends State<StoryGameSettingsPage> {
                 if (Get.isDialogOpen ?? false) {
                   Get.back(); // ensure loading closed if logic failed inside
                 }
-                Get.snackbar('导入失败', '$e',
-                    snackPosition: SnackPosition.BOTTOM,
-                    backgroundColor: Colors.red.shade100);
+                ToastUtils.showError('导入失败: $e');
               }
             },
             child: const Text('获取'),

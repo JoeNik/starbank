@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/tts_service.dart';
+import '../widgets/toast_utils.dart';
 
 /// TTS 语音设置页面
 /// 提供应用内个性化语音参数调整，不影响系统全局设置
@@ -152,7 +153,7 @@ class _TtsSettingsPageState extends State<TtsSettingsPage> {
     await _tts.setSpeechRate(1.0);
     await _tts.setPitch(1.0);
     await _tts.setVolume(1.0);
-    Get.snackbar('已重置', '语音参数已恢复默认', snackPosition: SnackPosition.BOTTOM);
+    ToastUtils.showSuccess('语音参数已恢复默认', title: '已重置');
   }
 
   Widget _buildSliderSection({
@@ -307,20 +308,10 @@ class _TtsSettingsPageState extends State<TtsSettingsPage> {
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri);
       } else {
-        Get.snackbar(
-          '提示',
-          '请手动打开：设置 → 辅助功能 → 文字转语音',
-          snackPosition: SnackPosition.BOTTOM,
-          duration: const Duration(seconds: 5),
-        );
+        ToastUtils.showInfo('请手动打开：设置 → 辅助功能 → 文字转语音');
       }
     } catch (e) {
-      Get.snackbar(
-        '提示',
-        '请手动打开：设置 → 辅助功能 → 文字转语音\n或在第三方 TTS 应用中设置声音',
-        snackPosition: SnackPosition.BOTTOM,
-        duration: const Duration(seconds: 5),
-      );
+      ToastUtils.showInfo('请手动打开：设置 → 辅助功能 → 文字转语音\n或在第三方 TTS 应用中设置声音');
     }
   }
 

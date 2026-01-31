@@ -11,6 +11,7 @@ import '../../controllers/user_controller.dart';
 import '../../services/openai_service.dart';
 import '../../theme/app_theme.dart';
 import '../openai_settings_page.dart';
+import '../../widgets/toast_utils.dart';
 
 /// 便便 AI 分析页面
 class PoopAIPage extends StatefulWidget {
@@ -120,7 +121,7 @@ class _PoopAIPageState extends State<PoopAIPage> {
     } catch (e) {
       debugPrint('Initialization error: $e');
       setState(() => _isLoading = false);
-      Get.snackbar('错误', '初始化失败: $e', snackPosition: SnackPosition.BOTTOM);
+      ToastUtils.showError('初始化失败: $e');
     }
   }
 
@@ -159,7 +160,7 @@ class _PoopAIPageState extends State<PoopAIPage> {
     }
 
     if (_records.isEmpty) {
-      Get.snackbar('提示', '所选时间范围内暂无记录', snackPosition: SnackPosition.BOTTOM);
+      ToastUtils.showInfo('所选时间范围内暂无记录');
       return;
     }
 
@@ -215,7 +216,7 @@ $recordsText''';
       await _chatBox.put(chat.id, chat);
       _loadChatHistory();
     } catch (e) {
-      Get.snackbar('分析失败', e.toString(), snackPosition: SnackPosition.BOTTOM);
+      ToastUtils.showError('分析失败: $e');
     } finally {
       setState(() => _isAnalyzing = false);
     }
@@ -790,8 +791,7 @@ $recordsText''';
                               await _chatBox.delete(chat.id);
                               _loadChatHistory();
                               Navigator.of(ctx).pop();
-                              Get.snackbar('成功', '已删除分析记录',
-                                  snackPosition: SnackPosition.BOTTOM);
+                              ToastUtils.showSuccess('已删除分析记录');
                             }
                           },
                         ),
@@ -842,7 +842,7 @@ $recordsText''';
               await _settingsBox.put('prompt', newPrompt);
               setState(() => _customPrompt = newPrompt);
               Navigator.of(ctx).pop();
-              Get.snackbar('成功', '提示词已保存', snackPosition: SnackPosition.BOTTOM);
+              ToastUtils.showSuccess('提示词已保存');
             },
             child: const Text('保存'),
           ),

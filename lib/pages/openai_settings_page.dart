@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../models/openai_config.dart';
 import '../services/openai_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/toast_utils.dart';
 
 /// OpenAI 设置页面
 class OpenAISettingsPage extends StatefulWidget {
@@ -272,7 +273,7 @@ class _OpenAISettingsPageState extends State<OpenAISettingsPage> {
   Future<void> _selectModel(OpenAIConfig config, String model) async {
     config.selectedModel = model;
     await _openAIService!.updateConfig(config);
-    Get.snackbar('成功', '已选择模型: $model', snackPosition: SnackPosition.BOTTOM);
+    ToastUtils.showSuccess('已选择模型: $model');
   }
 
   /// 显示所有模型对话框
@@ -402,13 +403,11 @@ class _OpenAISettingsPageState extends State<OpenAISettingsPage> {
         Navigator.of(context).pop(); // 关闭加载对话框
       } catch (e) {
         Navigator.of(context).pop(); // 关闭加载对话框
-        Get.snackbar('提示', '无法获取模型列表: ${_formatError(e)}',
-            snackPosition: SnackPosition.BOTTOM,
-            duration: const Duration(seconds: 5));
+        ToastUtils.showError('无法获取模型列表: ${_formatError(e)}', title: '提示');
       }
 
       await _openAIService!.addConfig(config);
-      Get.snackbar('成功', '配置已添加', snackPosition: SnackPosition.BOTTOM);
+      ToastUtils.showSuccess('配置已添加');
     }
   }
 
@@ -436,7 +435,7 @@ class _OpenAISettingsPageState extends State<OpenAISettingsPage> {
       config.apiKey = result['apiKey']!;
       config.enableWebSearch = result['enableWebSearch'] ?? false;
       await _openAIService!.updateConfig(config);
-      Get.snackbar('成功', '配置已更新', snackPosition: SnackPosition.BOTTOM);
+      ToastUtils.showSuccess('配置已更新');
     }
   }
 
@@ -450,13 +449,10 @@ class _OpenAISettingsPageState extends State<OpenAISettingsPage> {
       await _openAIService!.updateConfig(config);
 
       Navigator.of(context).pop();
-      Get.snackbar('成功', '已刷新 ${models.length} 个模型',
-          snackPosition: SnackPosition.BOTTOM);
+      ToastUtils.showSuccess('已刷新 ${models.length} 个模型');
     } catch (e) {
       Navigator.of(context).pop();
-      Get.snackbar('失败', '获取模型列表失败: ${_formatError(e)}',
-          snackPosition: SnackPosition.BOTTOM,
-          duration: const Duration(seconds: 5));
+      ToastUtils.showError('获取模型列表失败: ${_formatError(e)}');
     }
   }
 
@@ -481,7 +477,7 @@ class _OpenAISettingsPageState extends State<OpenAISettingsPage> {
 
     if (confirm == true) {
       await _openAIService!.deleteConfig(config);
-      Get.snackbar('成功', '配置已删除', snackPosition: SnackPosition.BOTTOM);
+      ToastUtils.showSuccess('配置已删除');
     }
   }
 
@@ -569,8 +565,7 @@ class _OpenAISettingsPageState extends State<OpenAISettingsPage> {
                 ElevatedButton(
                   onPressed: () {
                     if (name.isEmpty || baseUrl.isEmpty || apiKey.isEmpty) {
-                      Get.snackbar('错误', '请填写所有字段',
-                          snackPosition: SnackPosition.BOTTOM);
+                      ToastUtils.showError('请填写所有字段');
                       return;
                     }
                     Navigator.of(ctx).pop({

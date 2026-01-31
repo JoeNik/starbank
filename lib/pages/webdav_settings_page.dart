@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../services/webdav_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/toast_utils.dart';
 
 class WebDavSettingsPage extends StatefulWidget {
   const WebDavSettingsPage({super.key});
@@ -83,7 +84,7 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
       displayBackups.clear();
       _loadMore();
     } catch (e) {
-      Get.snackbar("错误", "获取备份列表失败: $e");
+      ToastUtils.showError("获取备份列表失败: $e");
     } finally {
       isLoading.value = false;
     }
@@ -223,7 +224,7 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
             ElevatedButton.icon(
               onPressed: () {
                 if (urlController.text.isEmpty) {
-                  Get.snackbar("错误", "请输入服务器地址");
+                  ToastUtils.showError("请输入服务器地址");
                   return;
                 }
                 webDavService.initClient(
@@ -231,7 +232,7 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
                   userController.text,
                   pwdController.text,
                 );
-                Get.snackbar("成功", "配置已保存");
+                ToastUtils.showSuccess("配置已保存");
                 _checkConnection(); // 检查连接并刷新列表
               },
               icon: const Icon(Icons.save),
@@ -292,10 +293,9 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
                         if (value != null) {
                           maxCount.value = value;
                           webDavService.setMaxBackupCount(value);
-                          Get.snackbar(
-                            '设置已保存',
+                          ToastUtils.showSuccess(
                             value == 0 ? '备份数量不限制' : '最多保留 $value 个备份',
-                            snackPosition: SnackPosition.BOTTOM,
+                            title: '设置已保存',
                           );
                         }
                       },

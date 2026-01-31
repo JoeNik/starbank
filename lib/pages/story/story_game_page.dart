@@ -18,6 +18,7 @@ import '../../services/tts_service.dart';
 import '../../theme/app_theme.dart';
 import 'story_game_settings_page.dart';
 import 'story_images.dart';
+import '../../widgets/toast_utils.dart';
 
 /// 图片描述故事游戏页面
 class StoryGamePage extends StatefulWidget {
@@ -167,11 +168,9 @@ class _StoryGamePageState extends State<StoryGamePage> {
           debugPrint('语音识别初始化失败，可能缺少 Google 服务或麦克风权限');
           _useKeyboard = true; // 自动启用键盘
 
-          Get.snackbar(
-            '语音不可用',
+          ToastUtils.showError(
             '请检查是否安装了 Google App 或开启了麦克风权限',
-            snackPosition: SnackPosition.BOTTOM,
-            duration: const Duration(seconds: 5),
+            title: '语音不可用',
             mainButton: TextButton(
               onPressed: () => openAppSettings(),
               child: const Text('去设置', style: TextStyle(color: Colors.blue)),
@@ -188,7 +187,7 @@ class _StoryGamePageState extends State<StoryGamePage> {
     } catch (e) {
       debugPrint('初始化故事游戏失败: $e');
       setState(() => _isLoading = false);
-      Get.snackbar('错误', '初始化失败: $e', snackPosition: SnackPosition.BOTTOM);
+      ToastUtils.showError('初始化失败: $e');
     }
   }
 
@@ -220,20 +219,19 @@ class _StoryGamePageState extends State<StoryGamePage> {
   /// 开始新游戏
   Future<void> _startNewGame() async {
     if (_gameConfig == null) {
-      Get.snackbar('提示', '请先配置游戏设置', snackPosition: SnackPosition.BOTTOM);
+      ToastUtils.showInfo('请先配置游戏设置');
       return;
     }
 
     // 检查每日限制
     if (_todayPlayCount >= _gameConfig!.dailyLimit) {
-      Get.snackbar('提示', '今天已经玩了${_gameConfig!.dailyLimit}次啦，明天再来吧！',
-          snackPosition: SnackPosition.BOTTOM);
+      ToastUtils.showInfo('今天已经玩了${_gameConfig!.dailyLimit}次啦，明天再来吧！');
       return;
     }
 
     // 检查是否配置了必要的模型
     if (_gameConfig!.visionConfigId.isEmpty) {
-      Get.snackbar('提示', '请先配置图像分析模型', snackPosition: SnackPosition.BOTTOM);
+      ToastUtils.showWarning('请先配置图像分析模型');
       Get.to(() => const StoryGameSettingsPage());
       return;
     }
@@ -270,7 +268,7 @@ class _StoryGamePageState extends State<StoryGamePage> {
       await _analyzeImageAndStart();
     } catch (e) {
       debugPrint('开始游戏失败: $e');
-      Get.snackbar('错误', '开始游戏失败: $e', snackPosition: SnackPosition.BOTTOM);
+      ToastUtils.showError('开始游戏失败: $e');
       setState(() {
         _isGeneratingImage = false;
         _gameStarted = false;
@@ -404,7 +402,7 @@ class _StoryGamePageState extends State<StoryGamePage> {
             volume: _gameConfig?.ttsVolume,
             pitch: _gameConfig?.ttsPitch);
 
-        Get.snackbar('提示', '已使用默认引导语开始游戏', snackPosition: SnackPosition.BOTTOM);
+        ToastUtils.showInfo('已使用默认引导语开始游戏');
       } else {
         // 还可以重试,显示错误和重试按钮
         setState(() {
@@ -412,8 +410,7 @@ class _StoryGamePageState extends State<StoryGamePage> {
           _aiError =
               '图片分析失败($_imageAnalysisRetryCount/$_maxImageAnalysisRetries): ${_formatError(e)}';
         });
-        Get.snackbar('提示', '图片分析失败,请点击重试按钮',
-            snackPosition: SnackPosition.BOTTOM);
+        ToastUtils.showWarning('图片分析失败,请点击重试按钮');
       }
     }
   }
@@ -441,13 +438,7 @@ class _StoryGamePageState extends State<StoryGamePage> {
         if (retryCount > 0) {
           debugPrint('正在进行第 $retryCount 次重试...');
           // 显示简短提示告知用户正在重试
-          Get.snackbar(
-            '提示',
-            '网络请求较慢，正在重试 ($retryCount/$maxRetries)...',
-            snackPosition: SnackPosition.BOTTOM,
-            duration: const Duration(seconds: 2),
-            backgroundColor: Colors.orange.withOpacity(0.1),
-          );
+          ToastUtils.showInfo('网络请求较慢，正在重试 ($retryCount/$maxRetries)...');
         }
 
         final response =
@@ -513,8 +504,7 @@ class _StoryGamePageState extends State<StoryGamePage> {
       }
 
       if (!status.isGranted) {
-        Get.snackbar('权限不足', '请在设置中开启麦克风权限以使用语音功能',
-            snackPosition: SnackPosition.BOTTOM);
+        ToastUtils.showError('请在设置中开启麦克风权限以使用语音功能', title: '权限不足');
         return;
       }
 
@@ -534,13 +524,9 @@ class _StoryGamePageState extends State<StoryGamePage> {
           _speechAvailable = true;
           _useKeyboard = false;
         });
-        Get.snackbar('成功', '语音服务已就绪',
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.green.withOpacity(0.1));
+        ToastUtils.showSuccess('语音服务已就绪');
       } else {
-        Get.snackbar('提示', '语音转文字服务初始化失败。请确认手机已安装语音引擎，并允许系统麦克风访问权限。',
-            snackPosition: SnackPosition.BOTTOM,
-            duration: const Duration(seconds: 5));
+        ToastUtils.showError('语音转文字服务初始化失败。请确认手机已安装语音引擎，并允许系统麦克风访问权限。');
       }
     } catch (e) {
       if (Get.isDialogOpen ?? false) Get.back();
@@ -551,12 +537,7 @@ class _StoryGamePageState extends State<StoryGamePage> {
   /// 开始录音
   void _startListening() async {
     if (!_speechAvailable) {
-      Get.snackbar(
-        '语音识别不可用',
-        '请在系统设置中允许应用使用麦克风权限',
-        snackPosition: SnackPosition.BOTTOM,
-        duration: const Duration(seconds: 4),
-      );
+      ToastUtils.showError('请在系统设置中允许应用使用麦克风权限', title: '语音识别不可用');
       return;
     }
 
@@ -615,9 +596,7 @@ class _StoryGamePageState extends State<StoryGamePage> {
         _textController.text = _recognizedText;
         _useKeyboard = true;
       });
-      Get.snackbar('识别成功', '已转为文字，可编辑后发送',
-          snackPosition: SnackPosition.BOTTOM,
-          duration: const Duration(seconds: 2));
+      ToastUtils.showSuccess('已转为文字，可编辑后发送', title: '识别成功');
     }
   }
 
@@ -776,7 +755,7 @@ class _StoryGamePageState extends State<StoryGamePage> {
         _aiError =
             'AI 暂时没反应过来 (${e.toString().contains('Timeout') ? '超时' : '错误'})';
       });
-      Get.snackbar('提示', 'AI 请求失败，请重试', snackPosition: SnackPosition.BOTTOM);
+      ToastUtils.showError('AI 请求失败，请重试');
     }
   }
 

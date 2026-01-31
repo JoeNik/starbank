@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:crop_your_image/crop_your_image.dart';
+import 'toast_utils.dart';
 
 class ImageUtils {
   static final ImagePicker _picker = ImagePicker();
@@ -129,7 +130,7 @@ class ImageUtils {
                                   setState(() {
                                     isCropping = false;
                                   });
-                                  Get.snackbar("错误", "裁剪启动失败: $e");
+                                  ToastUtils.showError("裁剪启动失败: $e");
                                 }
                               },
                             ),
@@ -158,7 +159,7 @@ class ImageUtils {
                                     // 检查是否有关键字
                                     final str = result.toString();
                                     if (str.contains('Failure')) {
-                                      Get.snackbar('错误', '裁剪失败');
+                                      ToastUtils.showError('裁剪失败');
                                       completer.complete(null);
                                     } else {
                                       // 尝试获取数据

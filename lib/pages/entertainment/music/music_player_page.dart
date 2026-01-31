@@ -6,6 +6,7 @@ import '../../../controllers/music_player_controller.dart';
 import '../../../models/music/music_track.dart';
 import 'dart:math' as math;
 import 'dart:ui';
+import '../../../widgets/toast_utils.dart';
 
 class MusicPlayerPage extends StatefulWidget {
   const MusicPlayerPage({super.key});
@@ -583,13 +584,7 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
       onPressed: () {
         _controller.setSleepTimer(min);
         Get.back();
-        Get.snackbar(
-          '定时设置',
-          '音乐将在 $min 分钟后暂停',
-          backgroundColor: Colors.white12,
-          colorText: Colors.white,
-          snackPosition: SnackPosition.TOP,
-        );
+        ToastUtils.showSuccess('音乐将在 $min 分钟后暂停', title: '定时设置');
       },
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20.r),
@@ -631,14 +626,9 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
           if (min != null && min > 0) {
             _controller.setSleepTimer(min);
             Get.back();
-            Get.snackbar(
-              '定时设置',
-              '音乐将在 $min 分钟后暂停',
-              backgroundColor: Colors.white12,
-              colorText: Colors.white,
-            );
+            ToastUtils.showSuccess('音乐将在 $min 分钟后暂停', title: '定时设置');
           } else {
-            Get.snackbar('输入错误', '请输入有效的分钟数', backgroundColor: Colors.red[100]);
+            ToastUtils.showError('请输入有效的分钟数', title: '输入错误');
           }
         },
         child: const Text('确定'),
@@ -731,10 +721,7 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
                             icon: Icon(Icons.close_rounded,
                                 color: Colors.white30, size: 18.sp),
                             onPressed: () {
-                              Get.snackbar('提示', '暂不支持移除',
-                                  duration: const Duration(seconds: 1),
-                                  backgroundColor: Colors.white12,
-                                  colorText: Colors.white);
+                              ToastUtils.showInfo('暂不支持移除');
                             },
                           ),
                           onTap: () {

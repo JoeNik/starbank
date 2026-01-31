@@ -7,6 +7,7 @@ import '../../models/poop_record.dart';
 import '../../controllers/user_controller.dart';
 import '../../controllers/app_mode_controller.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/toast_utils.dart';
 import 'poop_ai_page.dart';
 
 /// 便便记录主页面
@@ -477,7 +478,7 @@ class _PoopRecordPageState extends State<PoopRecordPage> {
   Future<void> _addRecord() async {
     final baby = _userController.currentBaby.value;
     if (baby == null) {
-      Get.snackbar('提示', '请先选择宝宝', snackPosition: SnackPosition.BOTTOM);
+      ToastUtils.showInfo('请先选择宝宝');
       return;
     }
 
@@ -494,7 +495,7 @@ class _PoopRecordPageState extends State<PoopRecordPage> {
 
       await _recordBox.put(record.id, record);
       _loadRecords();
-      Get.snackbar('成功', '记录已添加', snackPosition: SnackPosition.BOTTOM);
+      ToastUtils.showSuccess('记录已添加');
     }
   }
 
@@ -509,7 +510,7 @@ class _PoopRecordPageState extends State<PoopRecordPage> {
 
       await record.save();
       _loadRecords();
-      Get.snackbar('成功', '记录已更新', snackPosition: SnackPosition.BOTTOM);
+      ToastUtils.showSuccess('记录已更新');
     }
   }
 
@@ -536,7 +537,7 @@ class _PoopRecordPageState extends State<PoopRecordPage> {
     if (confirm == true) {
       await record.delete();
       _loadRecords();
-      Get.snackbar('成功', '记录已删除', snackPosition: SnackPosition.BOTTOM);
+      ToastUtils.showSuccess('记录已删除');
     }
   }
 

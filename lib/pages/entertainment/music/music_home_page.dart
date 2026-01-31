@@ -6,6 +6,7 @@ import '../../../services/tunehub_service.dart';
 import '../../../theme/app_theme.dart';
 import '../../../models/music/music_track.dart';
 import 'music_player_page.dart';
+import '../../../widgets/toast_utils.dart';
 
 class MusicHomePage extends StatefulWidget {
   const MusicHomePage({super.key});
@@ -40,7 +41,7 @@ class _MusicHomePageState extends State<MusicHomePage> {
           platform: _selectedPlatform.value);
       _searchResults.assignAll(results);
     } catch (e) {
-      Get.snackbar('搜索失败', e.toString());
+      ToastUtils.showError('搜索失败: $e');
     } finally {
       _isSearching.value = false;
     }

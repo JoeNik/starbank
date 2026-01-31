@@ -10,6 +10,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import '../widgets/toast_utils.dart';
 
 /// GitHub Release 信息模型
 class ReleaseInfo {
@@ -106,28 +107,14 @@ class UpdateService extends GetxService {
           _showUpdateDialog(release, currentVersion);
           return true;
         } else if (showNoUpdateMessage) {
-          Get.snackbar(
-            '已是最新版本',
-            '当前版本 v$currentVersion 已是最新',
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.green.withOpacity(0.9),
-            colorText: Colors.white,
-          );
+          ToastUtils.showSuccess('当前版本 v$currentVersion 已是最新');
         }
       } else if (showNoUpdateMessage) {
-        Get.snackbar(
-          '检查失败',
-          '无法获取版本信息',
-          snackPosition: SnackPosition.BOTTOM,
-        );
+        ToastUtils.showError('无法获取版本信息');
       }
     } catch (e) {
       if (showNoUpdateMessage) {
-        Get.snackbar(
-          '检查失败',
-          '网络错误: $e',
-          snackPosition: SnackPosition.BOTTOM,
-        );
+        ToastUtils.showError('网络错误: $e');
       }
     } finally {
       isChecking.value = false;
@@ -258,7 +245,7 @@ class UpdateService extends GetxService {
   /// 下载更新
   Future<void> _downloadUpdate(ReleaseInfo release) async {
     if (release.downloadUrl.isEmpty) {
-      Get.snackbar('错误', '未找到下载链接');
+      ToastUtils.showError('未找到下载链接');
       return;
     }
 
@@ -316,7 +303,7 @@ class UpdateService extends GetxService {
                     await launchUrl(uri, mode: LaunchMode.externalApplication);
                   }
                 } catch (e) {
-                  Get.snackbar('错误', '无法打开浏览器: $e');
+                  ToastUtils.showError('无法打开浏览器: $e');
                 }
               },
             ),
@@ -330,11 +317,7 @@ class UpdateService extends GetxService {
                 Navigator.of(ctx).pop();
                 await Clipboard.setData(
                     ClipboardData(text: release.downloadUrl));
-                Get.snackbar(
-                  '已复制',
-                  '下载链接已复制到剪贴板',
-                  snackPosition: SnackPosition.BOTTOM,
-                );
+                ToastUtils.showSuccess('下载链接已复制到剪贴板');
               },
             ),
 
@@ -573,18 +556,10 @@ class UpdateService extends GetxService {
     try {
       final result = await OpenFilex.open(filePath);
       if (result.type != ResultType.done) {
-        Get.snackbar(
-          '安装失败',
-          result.message,
-          snackPosition: SnackPosition.BOTTOM,
-        );
+        ToastUtils.showError(result.message);
       }
     } catch (e) {
-      Get.snackbar(
-        '安装失败',
-        '无法打开安装程序: $e',
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      ToastUtils.showError('无法打开安装程序: $e');
     }
   }
 }
