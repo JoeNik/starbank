@@ -19,6 +19,7 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
 
   final RxList<String> backupFiles = <String>[].obs;
   final RxBool isLoading = false.obs;
+  final RxBool obscurePassword = true.obs; // 密码隐藏状态
 
   @override
   void initState() {
@@ -95,14 +96,24 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
               ),
             ),
             SizedBox(height: 12.h),
-            TextField(
-              controller: pwdController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: "密码/应用令牌",
-                border: OutlineInputBorder(),
-              ),
-            ),
+            Obx(() => TextField(
+                  controller: pwdController,
+                  obscureText: obscurePassword.value,
+                  decoration: InputDecoration(
+                    labelText: "密码/应用令牌",
+                    border: const OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        obscurePassword.value
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                      ),
+                      onPressed: () {
+                        obscurePassword.value = !obscurePassword.value;
+                      },
+                    ),
+                  ),
+                )),
             SizedBox(height: 16.h),
             ElevatedButton(
               onPressed: () {
@@ -207,27 +218,47 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
             Row(
               children: [
                 Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () async {
-                      isLoading.value = true;
-                      await webDavService.backupData();
-                      isLoading.value = false;
-                      _loadBackups();
-                    },
-                    icon: const Icon(Icons.cloud_upload),
-                    label: const Text("立即备份"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                    ),
-                  ),
+                  child: Obx(() => ElevatedButton.icon(
+                        onPressed: isLoading.value
+                            ? null
+                            : () async {
+                                isLoading.value = true;
+                                await webDavService.backupData();
+                                isLoading.value = false;
+                                _loadBackups();
+                              },
+                        icon: isLoading.value
+                            ? SizedBox(
+                                width: 16.w,
+                                height: 16.w,
+                                child: const CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white),
+                                ),
+                              )
+                            : const Icon(Icons.cloud_upload),
+                        label: Text(isLoading.value ? "备份中..." : "立即备份"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                        ),
+                      )),
                 ),
                 SizedBox(width: 16.w),
                 Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _loadBackups,
-                    icon: const Icon(Icons.refresh),
-                    label: const Text("刷新列表"),
-                  ),
+                  child: Obx(() => OutlinedButton.icon(
+                        onPressed: isLoading.value ? null : _loadBackups,
+                        icon: isLoading.value
+                            ? SizedBox(
+                                width: 16.w,
+                                height: 16.w,
+                                child: const CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.refresh),
+                        label: Text(isLoading.value ? "加载中..." : "刷新列表"),
+                      )),
                 ),
               ],
             ),
@@ -277,7 +308,11 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
                         color: Colors.orange,
                       ),
                       title: Text(filename),
-                      subtitle: Text("点击恢复此版本"),
+                      subtitle: const Text("点击恢复此版本"),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () => _confirmDelete(filename),
+                      ),
                       onTap: () => _confirmRestore(filename),
                     );
                   },
@@ -301,6 +336,26 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
         isLoading.value = true;
         await webDavService.restoreData(filename);
         isLoading.value = false;
+      },
+    );
+  }
+
+  void _confirmDelete(String filename) {
+    Get.defaultDialog(
+      title: "确认删除?",
+      middleText: "删除后无法恢复,确定要删除这个备份吗?\n\n$filename",
+      textConfirm: "确定删除",
+      textCancel: "取消",
+      confirmTextColor: Colors.white,
+      buttonColor: Colors.red,
+      onConfirm: () async {
+        Get.back(); // close dialog
+        isLoading.value = true;
+        final success = await webDavService.deleteBackup(filename);
+        isLoading.value = false;
+        if (success) {
+          _loadBackups(); // 刷新列表
+        }
       },
     );
   }

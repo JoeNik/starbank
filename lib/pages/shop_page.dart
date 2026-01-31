@@ -133,10 +133,10 @@ class ShopPage extends StatelessWidget {
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
-                      childAspectRatio: 0.8,
-                      crossAxisSpacing: 10.w,
-                      mainAxisSpacing: 10.w,
+                      crossAxisCount: 2,
+                      childAspectRatio: 0.75,
+                      crossAxisSpacing: 12.w,
+                      mainAxisSpacing: 12.w,
                     ),
                     itemCount: redeemedProducts.length,
                     itemBuilder: (context, index) {

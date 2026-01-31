@@ -27,7 +27,7 @@ class _OpenAISettingsPageState extends State<OpenAISettingsPage> {
     try {
       _openAIService = Get.find<OpenAIService>();
     } catch (e) {
-      // 服务未注册，需要初始化
+      // 服务未注册,需要初始化
       _openAIService = await Get.putAsync(() => OpenAIService().init());
     }
     setState(() => _isLoading = false);
@@ -83,7 +83,7 @@ class _OpenAISettingsPageState extends State<OpenAISettingsPage> {
           ),
           SizedBox(height: 8.h),
           Text(
-            '添加 OpenAI 兼容的 API 配置\n支持 OpenAI、Claude、通义千问等',
+            '添加 OpenAI 兼容的 API 配置\\n支持 OpenAI、Claude、通义千问等',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 12.sp, color: Colors.grey),
           ),
@@ -160,9 +160,27 @@ class _OpenAISettingsPageState extends State<OpenAISettingsPage> {
                 config.selectedModel.isNotEmpty ? config.selectedModel : '未选择'),
             if (config.models.isNotEmpty) ...[
               SizedBox(height: 8.h),
-              Text(
-                '可用模型 (${config.models.length})',
-                style: TextStyle(fontSize: 12.sp, color: Colors.grey),
+              Row(
+                children: [
+                  Text(
+                    '可用模型 (${config.models.length})',
+                    style: TextStyle(fontSize: 12.sp, color: Colors.grey),
+                  ),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: () => _showAllModelsDialog(config),
+                    style: TextButton.styleFrom(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: Text(
+                      '查看全部',
+                      style: TextStyle(fontSize: 11.sp),
+                    ),
+                  ),
+                ],
               ),
               SizedBox(height: 4.h),
               Wrap(
@@ -257,6 +275,108 @@ class _OpenAISettingsPageState extends State<OpenAISettingsPage> {
     Get.snackbar('成功', '已选择模型: $model', snackPosition: SnackPosition.BOTTOM);
   }
 
+  /// 显示所有模型对话框
+  void _showAllModelsDialog(OpenAIConfig config) {
+    final searchController = TextEditingController();
+    final filteredModels = config.models.obs;
+
+    Get.dialog(
+      Dialog(
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+        child: Container(
+          constraints: BoxConstraints(maxHeight: 600.h),
+          padding: EdgeInsets.all(16.w),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 标题
+              Row(
+                children: [
+                  Text(
+                    '选择模型',
+                    style: TextStyle(
+                      fontSize: 18.sp,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Get.back(),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
+              SizedBox(height: 12.h),
+              // 搜索框
+              TextField(
+                controller: searchController,
+                decoration: InputDecoration(
+                  hintText: '搜索模型...',
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                ),
+                onChanged: (value) {
+                  if (value.isEmpty) {
+                    filteredModels.value = config.models;
+                  } else {
+                    filteredModels.value = config.models
+                        .where((m) =>
+                            m.toLowerCase().contains(value.toLowerCase()))
+                        .toList();
+                  }
+                },
+              ),
+              SizedBox(height: 12.h),
+              // 模型列表
+              Expanded(
+                child: Obx(() {
+                  if (filteredModels.isEmpty) {
+                    return const Center(child: Text('没有找到匹配的模型'));
+                  }
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: filteredModels.length,
+                    itemBuilder: (context, index) {
+                      final model = filteredModels[index];
+                      final isSelected = model == config.selectedModel;
+                      return ListTile(
+                        title: Text(
+                          model,
+                          style: TextStyle(
+                            fontSize: 13.sp,
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                          ),
+                        ),
+                        trailing: isSelected
+                            ? Icon(Icons.check_circle, color: AppTheme.primary)
+                            : null,
+                        selected: isSelected,
+                        selectedTileColor: AppTheme.primary.withOpacity(0.1),
+                        onTap: () async {
+                          await _selectModel(config, model);
+                          Get.back();
+                        },
+                      );
+                    },
+                  );
+                }),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _addConfig() async {
     final result = await _showConfigDialog();
     if (result != null) {
@@ -282,8 +402,9 @@ class _OpenAISettingsPageState extends State<OpenAISettingsPage> {
         Navigator.of(context).pop(); // 关闭加载对话框
       } catch (e) {
         Navigator.of(context).pop(); // 关闭加载对话框
-        Get.snackbar('提示', '无法获取模型列表，可稍后刷新: $e',
-            snackPosition: SnackPosition.BOTTOM);
+        Get.snackbar('提示', '无法获取模型列表: ${_formatError(e)}',
+            snackPosition: SnackPosition.BOTTOM,
+            duration: const Duration(seconds: 5));
       }
 
       await _openAIService!.addConfig(config);
@@ -333,7 +454,9 @@ class _OpenAISettingsPageState extends State<OpenAISettingsPage> {
           snackPosition: SnackPosition.BOTTOM);
     } catch (e) {
       Navigator.of(context).pop();
-      Get.snackbar('失败', '获取模型列表失败: $e', snackPosition: SnackPosition.BOTTOM);
+      Get.snackbar('失败', '获取模型列表失败: ${_formatError(e)}',
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 5));
     }
   }
 
@@ -342,7 +465,7 @@ class _OpenAISettingsPageState extends State<OpenAISettingsPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('确认删除'),
-        content: Text('确定要删除配置 "${config.name}" 吗？'),
+        content: Text('确定要删除配置 "${config.name}" 吗?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -360,6 +483,20 @@ class _OpenAISettingsPageState extends State<OpenAISettingsPage> {
       await _openAIService!.deleteConfig(config);
       Get.snackbar('成功', '配置已删除', snackPosition: SnackPosition.BOTTOM);
     }
+  }
+
+  /// 格式化错误信息,提取关键信息
+  String _formatError(dynamic error) {
+    final errorStr = error.toString();
+    // 尝试提取 Exception: 后面的内容
+    if (errorStr.contains('Exception:')) {
+      return errorStr.split('Exception:').last.trim();
+    }
+    // 尝试提取 error 字段
+    if (errorStr.contains('error')) {
+      return errorStr;
+    }
+    return errorStr;
   }
 
   Future<Map<String, dynamic>?> _showConfigDialog(
@@ -413,7 +550,7 @@ class _OpenAISettingsPageState extends State<OpenAISettingsPage> {
                     SizedBox(height: 16.h),
                     SwitchListTile(
                       title: const Text('启用联网搜索 (Web Search)'),
-                      subtitle: const Text('如果模型支持联网搜索，开启此选项'),
+                      subtitle: const Text('如果模型支持联网搜索,开启此选项'),
                       value: enableWebSearch,
                       onChanged: (val) {
                         setDialogState(() {

@@ -642,6 +642,23 @@ class WebDavService extends GetxService {
     }
   }
 
+  /// 删除指定的备份文件
+  Future<bool> deleteBackup(String remotePath) async {
+    if (_client == null) {
+      Get.snackbar('错误', '请先配置WebDAV');
+      return false;
+    }
+
+    try {
+      await _client!.remove(remotePath);
+      Get.snackbar('成功', '备份已删除', snackPosition: SnackPosition.BOTTOM);
+      return true;
+    } catch (e) {
+      Get.snackbar('错误', '删除失败: $e', snackPosition: SnackPosition.BOTTOM);
+      return false;
+    }
+  }
+
   /// 检查并注册适配器
   void _checkAdapters() {
     // OpenAIConfig (10)

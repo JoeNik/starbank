@@ -122,7 +122,7 @@ class UserController extends GetxController {
   }
 
   // Star Logic
-  void updateStars(int change, String reason) {
+  void updateStars(int change, String reason, {bool silent = false}) {
     if (currentBaby.value == null) return;
 
     currentBaby.value!.starCount += change;
@@ -131,23 +131,25 @@ class UserController extends GetxController {
 
     _addLog(change.toDouble(), reason, 'star');
 
-    // 显示 Snackbar 带撤销按钮
-    Get.snackbar(
-      change > 0 ? '⭐ 获得星星' : '⭐ 扣除星星',
-      '$reason ${change > 0 ? '+' : ''}$change 颗星星',
-      snackPosition: SnackPosition.BOTTOM,
-      duration: const Duration(seconds: 4),
-      mainButton: TextButton(
-        onPressed: () {
-          revertLastStarAction();
-          Get.back(); // 关闭 Snackbar
-        },
-        child: const Text(
-          '撤销',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+    // 只在非静默模式下显示 Snackbar
+    if (!silent) {
+      Get.snackbar(
+        change > 0 ? '⭐ 获得星星' : '⭐ 扣除星星',
+        '$reason ${change > 0 ? '+' : ''}$change 颗星星',
+        snackPosition: SnackPosition.BOTTOM,
+        duration: const Duration(seconds: 4),
+        mainButton: TextButton(
+          onPressed: () {
+            revertLastStarAction();
+            Get.back(); // 关闭 Snackbar
+          },
+          child: const Text(
+            '撤销',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
         ),
-      ),
-    );
+      );
+    }
   }
 
   /// 撤销上一次星星变动操作

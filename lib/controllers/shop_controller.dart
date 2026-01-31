@@ -80,6 +80,7 @@ class ShopController extends GetxController {
       _userController.updateStars(
         -product.price.toInt(),
         '兑换: ${product.name}',
+        silent: true, // 避免重复弹框,使用商店自己的成功提示
       );
     } else {
       _userController.updateWallet(

@@ -20,6 +20,10 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   // 快捷记录是否展开
   bool _isQuickActionsExpanded = false;
+  // 星星足迹是否展开
+  bool _isStarLogsExpanded = false;
+  // 星星足迹显示数量
+  int _starLogsPageSize = 5;
 
   @override
   Widget build(BuildContext context) {
@@ -76,40 +80,51 @@ class _HomePageState extends State<HomePage> {
               child: Row(
                 children: [
                   // 头像 - 带渐变边框
-                  Container(
-                    width: 56.w,
-                    height: 56.w,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: const LinearGradient(
-                        colors: [
-                          Color(0xFFFF6B9D),
-                          Color(0xFFFF8E53),
-                          Color(0xFFFFC371),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFFF6B9D).withOpacity(0.4),
-                          blurRadius: 12,
-                          spreadRadius: 2,
+                  GestureDetector(
+                    onTap: () {
+                      // 点击头像查看大图
+                      if (baby.avatarPath.isNotEmpty) {
+                        ImageUtils.showImagePreview(context, baby.avatarPath);
+                      }
+                    },
+                    child: Hero(
+                      tag: 'avatar_preview_${baby.avatarPath}',
+                      child: Container(
+                        width: 56.w,
+                        height: 56.w,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: const LinearGradient(
+                            colors: [
+                              Color(0xFFFF6B9D),
+                              Color(0xFFFF8E53),
+                              Color(0xFFFFC371),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFFF6B9D).withOpacity(0.4),
+                              blurRadius: 12,
+                              spreadRadius: 2,
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    child: Container(
-                      margin: EdgeInsets.all(3.w),
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white,
-                      ),
-                      child: ClipOval(
-                        child: ImageUtils.displayImage(
-                          baby.avatarPath,
-                          width: 50.w,
-                          height: 50.w,
-                          fit: BoxFit.cover,
+                        child: Container(
+                          margin: EdgeInsets.all(3.w),
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white,
+                          ),
+                          child: ClipOval(
+                            child: ImageUtils.displayImage(
+                              baby.avatarPath,
+                              width: 50.w,
+                              height: 50.w,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -531,7 +546,8 @@ class _HomePageState extends State<HomePage> {
         children: [
           GestureDetector(
             onTap: () async {
-              final img = await ImageUtils.pickImageAndToBase64();
+              final img =
+                  await ImageUtils.pickImageAndToBase64(enableCrop: true);
               if (img != null) selectedAvatar.value = img;
             },
             child: Obx(
@@ -839,45 +855,111 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildRecentLogs(UserController controller) {
-    return Padding(
-      padding: EdgeInsets.all(16.w),
+    return Card(
+      margin: EdgeInsets.all(16.w),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16.r),
+      ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                "星星足迹",
-                style: TextStyle(
-                  fontSize: 18.sp,
-                  fontWeight: FontWeight.w900,
-                  color: AppTheme.textMain,
-                ),
+          // 标题栏 - 可点击折叠/展开
+          InkWell(
+            onTap: () {
+              setState(() {
+                _isStarLogsExpanded = !_isStarLogsExpanded;
+              });
+            },
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(16.r),
+              bottom: _isStarLogsExpanded ? Radius.zero : Radius.circular(16.r),
+            ),
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.star,
+                    color: Colors.amber,
+                    size: 20.sp,
+                  ),
+                  SizedBox(width: 8.w),
+                  Text(
+                    "星星足迹",
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textMain,
+                    ),
+                  ),
+                  const Spacer(),
+                  // 展开/收起图标
+                  Icon(
+                    _isStarLogsExpanded
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                    color: AppTheme.textSub,
+                  ),
+                ],
               ),
-              TextButton(
-                onPressed: () {},
-                child: const Text(
-                  "更多",
-                  style: TextStyle(color: AppTheme.textSub),
-                ),
-              ),
-            ],
+            ),
           ),
-          Obx(() {
-            final starLogs =
-                controller.logs.where((l) => l.type == 'star').toList();
-            if (starLogs.isEmpty) return const Center(child: Text("还没有记录哦"));
-            return ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: starLogs.length > 5 ? 5 : starLogs.length,
-              itemBuilder: (context, index) {
-                final log = starLogs[index];
-                return _buildLogItem(log);
-              },
-            );
-          }),
+          // 记录列表 - 可折叠
+          AnimatedCrossFade(
+            firstChild: const SizedBox(width: double.infinity),
+            secondChild: Padding(
+              padding: EdgeInsets.fromLTRB(12.w, 0, 12.w, 12.h),
+              child: Obx(() {
+                final starLogs =
+                    controller.logs.where((l) => l.type == 'star').toList();
+                if (starLogs.isEmpty) {
+                  return Padding(
+                    padding: EdgeInsets.all(20.h),
+                    child: const Center(child: Text("还没有记录哦")),
+                  );
+                }
+                final displayCount = starLogs.length > _starLogsPageSize
+                    ? _starLogsPageSize
+                    : starLogs.length;
+                return Column(
+                  children: [
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: displayCount,
+                      itemBuilder: (context, index) {
+                        final log = starLogs[index];
+                        return _buildLogItem(log);
+                      },
+                    ),
+                    // 加载更多按钮
+                    if (starLogs.length > _starLogsPageSize)
+                      Padding(
+                        padding: EdgeInsets.only(top: 8.h),
+                        child: TextButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              _starLogsPageSize += 5;
+                            });
+                          },
+                          icon: const Icon(Icons.expand_more),
+                          label: Text(
+                            '加载更多 (还有 ${starLogs.length - _starLogsPageSize} 条)',
+                          ),
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppTheme.primary,
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              }),
+            ),
+            crossFadeState: _isStarLogsExpanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 300),
+          ),
         ],
       ),
     );
@@ -1176,7 +1258,8 @@ class _HomePageState extends State<HomePage> {
         children: [
           GestureDetector(
             onTap: () async {
-              final img = await ImageUtils.pickImageAndToBase64();
+              final img =
+                  await ImageUtils.pickImageAndToBase64(enableCrop: true);
               if (img != null) selectedAvatar.value = img;
             },
             child: Obx(

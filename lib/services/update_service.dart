@@ -423,30 +423,51 @@ class UpdateService extends GetxService {
       // 获取下载目录
       Directory? dir;
       if (Platform.isAndroid) {
-        // Android Specific: Try modern approach first
+        // Android: 优先使用公共下载目录
         try {
-          dir = await getDownloadsDirectory();
+          // 尝试使用标准下载目录
+          final downloadDir = Directory('/storage/emulated/0/Download');
+          if (await downloadDir.exists()) {
+            dir = downloadDir;
+          } else {
+            // 如果不存在,尝试创建
+            try {
+              dir = await downloadDir.create(recursive: true);
+            } catch (e) {
+              debugPrint('无法创建Download目录: $e');
+              dir = null;
+            }
+          }
         } catch (e) {
+          debugPrint('访问Download目录失败: $e');
           dir = null;
         }
 
-        // Fallback or specific handling
+        // 降级方案: 使用getDownloadsDirectory()
         if (dir == null) {
-          // Verify SDK version isn't easily possible without device_info,
-          // but we can try permissions if we really want strict public access.
-          // However, for updates, app-specific storage is safer and guaranteed writable.
+          try {
+            dir = await getDownloadsDirectory();
+          } catch (e) {
+            debugPrint('getDownloadsDirectory失败: $e');
+            dir = null;
+          }
+        }
 
-          // Try app-specific external storage first (Backwards compatible & Scoped Storage friendly)
+        // 最后降级: 使用应用专属外部存储
+        if (dir == null) {
           dir = await getExternalStorageDirectory();
         }
       } else {
+        // iOS/其他平台: 使用getDownloadsDirectory()
         try {
           dir = await getDownloadsDirectory();
         } catch (e) {
+          debugPrint('getDownloadsDirectory失败: $e');
           dir = null;
         }
       }
 
+      // 最终降级: 使用临时目录
       if (dir == null) {
         dir = await getTemporaryDirectory();
       }

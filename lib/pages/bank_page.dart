@@ -7,8 +7,18 @@ import '../theme/app_theme.dart';
 import '../widgets/image_utils.dart';
 import 'wallet_details_page.dart';
 
-class BankPage extends StatelessWidget {
+class BankPage extends StatefulWidget {
   const BankPage({super.key});
+
+  @override
+  State<BankPage> createState() => _BankPageState();
+}
+
+class _BankPageState extends State<BankPage> {
+  // 收支记录是否展开
+  bool _isMoneyLogsExpanded = false;
+  // 收支记录显示数量
+  int _moneyLogsPageSize = 10;
 
   @override
   Widget build(BuildContext context) {
@@ -208,7 +218,7 @@ class BankPage extends StatelessWidget {
                       _showWalletDialog(controller, title, false, isPiggy);
                     },
                     label: "取出",
-                    color: Colors.grey.shade400,
+                    color: Colors.orange.shade400,
                   ),
                 ),
               ],
@@ -585,39 +595,117 @@ class BankPage extends StatelessWidget {
   }
 
   Widget _buildLogSection(UserController controller) {
-    return Padding(
-      padding: EdgeInsets.all(16.w),
+    return Card(
+      margin: EdgeInsets.all(16.w),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16.r),
+      ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            "收支记录",
-            style: TextStyle(
-              fontSize: 18.sp,
-              fontWeight: FontWeight.w900,
-              color: AppTheme.textMain,
+          // 标题栏 - 可点击折叠/展开
+          InkWell(
+            onTap: () {
+              setState(() {
+                _isMoneyLogsExpanded = !_isMoneyLogsExpanded;
+              });
+            },
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(16.r),
+              bottom:
+                  _isMoneyLogsExpanded ? Radius.zero : Radius.circular(16.r),
+            ),
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.receipt_long,
+                    color: AppTheme.primary,
+                    size: 20.sp,
+                  ),
+                  SizedBox(width: 8.w),
+                  Text(
+                    "收支记录",
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textMain,
+                    ),
+                  ),
+                  const Spacer(),
+                  // 展开/收起图标
+                  Icon(
+                    _isMoneyLogsExpanded
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                    color: AppTheme.textSub,
+                  ),
+                ],
+              ),
             ),
           ),
-          SizedBox(height: 12.h),
-          Obx(() {
-            // 包含存钱罐、零花钱和利息记录
-            final moneyLogs = controller.logs
-                .where((l) =>
-                    l.type == 'piggy' ||
-                    l.type == 'pocket' ||
-                    l.type == 'interest')
-                .toList();
-            if (moneyLogs.isEmpty) return const Center(child: Text("还没有记录哦"));
-            return ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: moneyLogs.length > 10 ? 10 : moneyLogs.length,
-              itemBuilder: (context, index) {
-                final log = moneyLogs[index];
-                return _buildMoneyLogItem(log);
-              },
-            );
-          }),
+          // 记录列表 - 可折叠
+          AnimatedCrossFade(
+            firstChild: const SizedBox(width: double.infinity),
+            secondChild: Padding(
+              padding: EdgeInsets.fromLTRB(12.w, 0, 12.w, 12.h),
+              child: Obx(() {
+                // 包含存钱罐、零花钱和利息记录
+                final moneyLogs = controller.logs
+                    .where((l) =>
+                        l.type == 'piggy' ||
+                        l.type == 'pocket' ||
+                        l.type == 'interest')
+                    .toList();
+                if (moneyLogs.isEmpty) {
+                  return Padding(
+                    padding: EdgeInsets.all(20.h),
+                    child: const Center(child: Text("还没有记录哦")),
+                  );
+                }
+                final displayCount = moneyLogs.length > _moneyLogsPageSize
+                    ? _moneyLogsPageSize
+                    : moneyLogs.length;
+                return Column(
+                  children: [
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: displayCount,
+                      itemBuilder: (context, index) {
+                        final log = moneyLogs[index];
+                        return _buildMoneyLogItem(log);
+                      },
+                    ),
+                    // 加载更多按钮
+                    if (moneyLogs.length > _moneyLogsPageSize)
+                      Padding(
+                        padding: EdgeInsets.only(top: 8.h),
+                        child: TextButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              _moneyLogsPageSize += 10;
+                            });
+                          },
+                          icon: const Icon(Icons.expand_more),
+                          label: Text(
+                            '加载更多 (还有 ${moneyLogs.length - _moneyLogsPageSize} 条)',
+                          ),
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppTheme.primary,
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              }),
+            ),
+            crossFadeState: _isMoneyLogsExpanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 300),
+          ),
         ],
       ),
     );

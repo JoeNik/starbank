@@ -203,7 +203,7 @@ class _RiddlePageState extends State<RiddlePage> {
               borderRadius: BorderRadius.circular(20.r),
             ),
             child: Text(
-              '随机题库中',
+              '题库 ${_riddles.length} 题',
               style: TextStyle(
                 color: Colors.amber.shade800,
                 fontWeight: FontWeight.bold,

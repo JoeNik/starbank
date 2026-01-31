@@ -56,7 +56,9 @@ class _StoryGamePageState extends State<StoryGamePage> {
   String? _aiError; // AI 错误信息
   int get _maxRounds => _gameConfig?.maxRounds ?? 5;
   bool _isImageCollapsed = false; // 图片折叠状态
-  int _requestGenerationId = 0; // 请求生成ID，用于取消过期的请求回调
+  int _requestGenerationId = 0; // 请求生成ID,用于取消过期的请求回调
+  int _imageAnalysisRetryCount = 0; // 图片分析重试次数
+  static const int _maxImageAnalysisRetries = 2; // 最大重试次数
 
   // 输入控制
   final TextEditingController _textController = TextEditingController();
@@ -375,20 +377,54 @@ class _StoryGamePageState extends State<StoryGamePage> {
     } catch (e) {
       if (currentGenId != _requestGenerationId) return;
       debugPrint('图片分析失败: $e');
-      setState(() => _isAIResponding = false);
 
-      // 使用默认引导语
-      final defaultResponse = '哇，这是一张很有趣的图片呢！小朋友，你看到了什么？能给我讲讲这个故事吗？';
-      _messages.add({
-        'role': 'ai',
-        'content': defaultResponse,
-        'timestamp': DateTime.now().toIso8601String(),
-      });
-      await _ttsService.speak(defaultResponse,
-          rate: _gameConfig?.ttsRate,
-          volume: _gameConfig?.ttsVolume,
-          pitch: _gameConfig?.ttsPitch);
+      _imageAnalysisRetryCount++;
+
+      // 如果重试次数超过限制,使用默认引导语
+      if (_imageAnalysisRetryCount > _maxImageAnalysisRetries) {
+        debugPrint('图片分析重试次数已达上限,使用默认引导语');
+        setState(() => _isAIResponding = false);
+
+        final defaultResponse = '哇,这是一张很有趣的图片呢!小朋友,你看到了什么?能给我讲讲这个故事吗?';
+        _messages.add({
+          'role': 'ai',
+          'content': defaultResponse,
+          'timestamp': DateTime.now().toIso8601String(),
+        });
+
+        // 保存会话
+        if (_currentSession != null) {
+          _currentSession!.messages =
+              List<Map<String, dynamic>>.from(_messages);
+          await _currentSession!.save();
+        }
+
+        await _ttsService.speak(defaultResponse,
+            rate: _gameConfig?.ttsRate,
+            volume: _gameConfig?.ttsVolume,
+            pitch: _gameConfig?.ttsPitch);
+
+        Get.snackbar('提示', '已使用默认引导语开始游戏', snackPosition: SnackPosition.BOTTOM);
+      } else {
+        // 还可以重试,显示错误和重试按钮
+        setState(() {
+          _isAIResponding = false;
+          _aiError =
+              '图片分析失败($_imageAnalysisRetryCount/$_maxImageAnalysisRetries): ${_formatError(e)}';
+        });
+        Get.snackbar('提示', '图片分析失败,请点击重试按钮',
+            snackPosition: SnackPosition.BOTTOM);
+      }
     }
+  }
+
+  /// 格式化错误信息
+  String _formatError(dynamic error) {
+    final errorStr = error.toString();
+    if (errorStr.contains('Exception:')) {
+      return errorStr.split('Exception:').last.trim();
+    }
+    return errorStr;
   }
 
   /// 通用 API 请求方法，带重试逻辑
