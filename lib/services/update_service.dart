@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -216,11 +217,17 @@ class UpdateService extends GetxService {
             Container(
               constraints: BoxConstraints(maxHeight: 150.h),
               child: SingleChildScrollView(
-                child: Text(
-                  release.body.isNotEmpty ? release.body : '暂无更新说明',
-                  style: TextStyle(
-                    fontSize: 13.sp,
-                    color: Colors.grey.shade700,
+                child: MarkdownBody(
+                  data: release.body.isNotEmpty ? release.body : '暂无更新说明',
+                  styleSheet: MarkdownStyleSheet(
+                    p: TextStyle(
+                      fontSize: 13.sp,
+                      color: Colors.grey.shade700,
+                    ),
+                    listBullet: TextStyle(
+                      fontSize: 13.sp,
+                      color: Colors.grey.shade700,
+                    ),
                   ),
                 ),
               ),

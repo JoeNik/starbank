@@ -317,7 +317,7 @@ class _HomePageState extends State<HomePage> {
 
   void _handleQuickAction(UserController controller, ActionItem action) {
     // 快捷记录对应的是星星增减
-    controller.updateStars(action.value.toInt(), action.name);
+    controller.updateStars(action.value.toInt(), action.name, silent: true);
 
     Get.showSnackbar(GetSnackBar(
       title: action.value > 0 ? '🎉 加油！' : '💪 继续努力',

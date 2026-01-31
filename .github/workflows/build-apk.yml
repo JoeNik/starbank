@@ -44,37 +44,42 @@ jobs:
           echo "timestamp=$TIMESTAMP" >> $GITHUB_OUTPUT
           echo "tag=v$VERSION-$TIMESTAMP" >> $GITHUB_OUTPUT
       
-      # 获取从上次 tag 到当前的 commit log
-      - name: Get commit messages
-        id: commits
+      # 生成 Release 说明文件
+      - name: Generate Release Notes
         run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          TIMESTAMP="${{ steps.version.outputs.timestamp }}"
+          TAG_NAME="${{ steps.version.outputs.tag }}"
+          
           # 获取最近的 tag
           PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          PREV_TAG_DISPLAY=${PREV_TAG:-"初始版本"}
           
+          # 开始写入 Markdown 文件
+          echo "## 🌟 Star Bank v$VERSION" > release_body.md
+          echo "" >> release_body.md
+          echo "### 📅 构建信息" >> release_body.md
+          echo "- **版本**: $VERSION" >> release_body.md
+          echo "- **构建时间**: $TIMESTAMP" >> release_body.md
+          echo "- **从版本**: $PREV_TAG_DISPLAY" >> release_body.md
+          echo "" >> release_body.md
+          
+          echo "### 📝 更新内容" >> release_body.md
           if [ -z "$PREV_TAG" ]; then
-            # 如果没有之前的 tag,获取最近10个 commit
-            COMMITS=$(git log -10 --pretty=format:"- %s" --no-merges)
+            # 如果没有 tag，显示最近 20 条
+            git log -20 --pretty=format:"- %s" --no-merges >> release_body.md
           else
-            # 获取从上次 tag 到现在的 commit
-            COMMITS=$(git log $PREV_TAG..HEAD --pretty=format:"- %s" --no-merges)
+            # 显示两个 tag 之间的差异
+            git log $PREV_TAG..HEAD --pretty=format:"- %s" --no-merges >> release_body.md
           fi
           
-          # 将 commit 信息写入文件,然后读取
-          echo "$COMMITS" > commits.txt
+          echo "" >> release_body.md
+          echo "" >> release_body.md
+          echo "### 📥 下载说明" >> release_body.md
+          echo "请下载 \`star-bank-$VERSION.apk\` 文件并安装。" >> release_body.md
           
-          # 使用 heredoc 方式写入多行内容
-          {
-            echo "commits<<EOF"
-            cat commits.txt
-            echo "EOF"
-          } >> $GITHUB_OUTPUT
-          
-          # 输出上次 tag 信息用于显示
-          if [ -z "$PREV_TAG" ]; then
-            echo "prev_tag=初始版本" >> $GITHUB_OUTPUT
-          else
-            echo "prev_tag=$PREV_TAG" >> $GITHUB_OUTPUT
-          fi
+          # 打印内容以供检查
+          cat release_body.md
       
       # 重命名 APK 文件
       - name: Rename APK
@@ -87,20 +92,9 @@ jobs:
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           name: Star Bank ${{ steps.version.outputs.version }}
-          body: |
-            ## 🌟 Star Bank v${{ steps.version.outputs.version }}
-            
-            ### 📅 构建信息
-            - **版本**: ${{ steps.version.outputs.version }}
-            - **构建时间**: ${{ steps.version.outputs.timestamp }}
-            - **提交**: ${{ github.sha }}
-            - **从版本**: ${{ steps.commits.outputs.prev_tag }}
-            
-            ### 📝 更新内容
-            ${{ steps.commits.outputs.commits }}
-            
-            ### 📥 下载说明
-            请下载 `star-bank-${{ steps.version.outputs.version }}.apk` 文件并安装。
+          body_path: release_body.md
           files: build/app/outputs/flutter-apk/star-bank-${{ steps.version.outputs.version }}.apk
+          draft: false
+          prerelease: false
           draft: false
           prerelease: false
