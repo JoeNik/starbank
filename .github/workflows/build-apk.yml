@@ -94,7 +94,4 @@ jobs:
           name: Star Bank ${{ steps.version.outputs.version }}
           body_path: release_body.md
           files: build/app/outputs/flutter-apk/star-bank-${{ steps.version.outputs.version }}.apk
-          draft: false
-          prerelease: false
-          draft: false
           prerelease: false
