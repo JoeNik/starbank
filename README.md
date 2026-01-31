@@ -2,6 +2,10 @@
 
 一个充满趣味的家庭互动应用，旨在帮助家长通过奖励机制培养孩子的良好习惯，同时结合 AI 技术提供寓教于乐的互动体验。
 
+应用基于 Flutter 开发，支持 Android 和 iOS 平台。
+
+数据本地存储，支持 WebDAV 备份数据，保障数据安全。
+
 ## 🌟 核心功能
 
 ### 1. 🏦 星星奖励系统
@@ -32,3 +36,11 @@
 
 ---
 *让成长更有趣，让教育更简单。*
+
+部分截图:
+![image](temppic/1.jpg)
+![image](temppic/2.jpg)
+![image](temppic/3.jpg)
+![image](temppic/4.jpg)
+![image](temppic/5.jpg)
+![image](temppic/6.jpg)
