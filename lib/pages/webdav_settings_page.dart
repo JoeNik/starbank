@@ -416,44 +416,54 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
                     child: Text("暂无备份文件"),
                   ),
                 )
-              else ...[
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: displayBackups.length,
-                  separatorBuilder: (_, __) => const Divider(),
-                  itemBuilder: (context, index) {
-                    final filename = displayBackups[index];
-                    return ListTile(
-                      leading: const Icon(
-                        Icons.restore_page,
-                        color: Colors.orange,
-                      ),
-                      title: Text(filename),
-                      subtitle: const Text("点击恢复此版本"),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () => _confirmDelete(filename),
-                      ),
-                      onTap: () => _confirmRestore(filename),
-                    );
-                  },
-                ),
-                if (displayBackups.length < backupFiles.length)
-                  Padding(
-                    padding: EdgeInsets.only(top: 8.h),
-                    child: TextButton(
-                      onPressed: () {
-                        // 使用 setState 触发刷新(因为 List 更新不一定自动触发 Obx)
-                        setState(() {
-                          _loadMore();
-                        });
+              else
+                SizedBox(
+                  height: 400.h,
+                  child: NotificationListener<ScrollNotification>(
+                    onNotification: (ScrollNotification scrollInfo) {
+                      if (scrollInfo.metrics.pixels >=
+                          scrollInfo.metrics.maxScrollExtent - 50) {
+                        _loadMore();
+                      }
+                      return false;
+                    },
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: displayBackups.length +
+                          (displayBackups.length < backupFiles.length ? 1 : 0),
+                      separatorBuilder: (_, __) => const Divider(),
+                      itemBuilder: (context, index) {
+                        if (index == displayBackups.length) {
+                          return const Padding(
+                            padding: EdgeInsets.all(16.0),
+                            child: Center(
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            ),
+                          );
+                        }
+                        final filename = displayBackups[index];
+                        return ListTile(
+                          leading: const Icon(
+                            Icons.restore_page,
+                            color: Colors.orange,
+                          ),
+                          title: Text(filename),
+                          subtitle: const Text("点击恢复此版本"),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () => _confirmDelete(filename),
+                          ),
+                          onTap: () => _confirmRestore(filename),
+                        );
                       },
-                      child: Text(
-                          "加载更多 (${backupFiles.length - displayBackups.length})"),
                     ),
                   ),
-              ],
+                ),
             ],
           ),
         ),

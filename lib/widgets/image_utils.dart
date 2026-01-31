@@ -17,7 +17,7 @@ class ImageUtils {
     try {
       final XFile? image = await _picker.pickImage(
         source: ImageSource.gallery,
-        imageQuality: 100,
+        imageQuality: 80, // 进一步压缩
       );
 
       if (image == null) return null;
@@ -104,14 +104,32 @@ class ImageUtils {
                                 setState(() {
                                   isCropping = true;
                                 });
+
+                                // 超时保护 (10秒)
+                                Future.delayed(const Duration(seconds: 10), () {
+                                  // 简单的超时机制，如果10秒后还在loading状态，强制取消
+                                  // 注意: 这里无法准确判断是否已经被关闭，但setState如果是安全的则无妨
+                                  // 由于是在StatefulBuilder中，如果Dialog关闭了，setState可能会报错，
+                                  // 但在Dialog关闭时通常整个UI树都卸载了。
+                                  try {
+                                    if (isCropping) {
+                                      setState(() {
+                                        isCropping = false;
+                                      });
+                                      debugPrint("Crop operation timed out");
+                                    }
+                                  } catch (_) {}
+                                });
+
                                 try {
+                                  debugPrint("Starting crop...");
                                   cropController.crop();
                                 } catch (e) {
                                   debugPrint("Crop error: $e");
                                   setState(() {
                                     isCropping = false;
                                   });
-                                  Get.snackbar("错误", "裁剪失败: $e");
+                                  Get.snackbar("错误", "裁剪启动失败: $e");
                                 }
                               },
                             ),
@@ -125,11 +143,47 @@ class ImageUtils {
                           Crop(
                             image: imageBytes,
                             controller: cropController,
-                            onCropped: (croppedImage) {
+                            onCropped: (result) {
+                              debugPrint(
+                                  'onCropped called, type: ${result.runtimeType}');
                               if (!completer.isCompleted) {
-                                completer.complete(croppedImage as Uint8List);
+                                try {
+                                  // 尝试作为 Uint8List 处理 (旧版本)
+                                  if (result is Uint8List) {
+                                    completer.complete(result as Uint8List);
+                                  } else {
+                                    // 新版本 CropResult
+                                    // 使用 dynamic 避免编译时类型检查错误 (如果我们没 import 具体类)
+                                    final dynamic r = result;
+                                    // 检查是否有关键字
+                                    final str = result.toString();
+                                    if (str.contains('Failure')) {
+                                      Get.snackbar('错误', '裁剪失败');
+                                      completer.complete(null);
+                                    } else {
+                                      // 尝试获取数据
+                                      try {
+                                        completer.complete(
+                                            r.croppedImage as Uint8List?);
+                                      } catch (_) {
+                                        // 备选字段 data
+                                        try {
+                                          completer
+                                              .complete(r.data as Uint8List?);
+                                        } catch (e) {
+                                          debugPrint(
+                                              "Failed to extract data: $e");
+                                          completer.complete(null);
+                                        }
+                                      }
+                                    }
+                                  }
+                                } catch (e) {
+                                  debugPrint("onCropped error: $e");
+                                  completer.complete(null);
+                                }
                               }
-                              Get.back();
+                              Navigator.of(context).pop();
                             },
                             aspectRatio: 1.0,
                             // initialSize: 0.8, // 2.0.0 版本不支持
@@ -138,13 +192,29 @@ class ImageUtils {
                                 const DotControl(color: Colors.white),
                             interactive: true,
                             fixCropRect: false,
+                            withCircleUi: false,
+                            onStatusChanged: (status) {
+                              debugPrint('CropStatus: $status');
+                            },
+                            // format: ImageFormat.jpeg,
                           ),
                           if (isCropping)
                             Container(
                               color: Colors.black54,
                               child: const Center(
-                                child: Text("正在处理...",
-                                    style: TextStyle(color: Colors.white)),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    CircularProgressIndicator(
+                                      color: Colors.white,
+                                    ),
+                                    SizedBox(height: 16),
+                                    Text(
+                                      "处理中...",
+                                      style: TextStyle(color: Colors.white),
+                                    )
+                                  ],
+                                ),
                               ),
                             ),
                         ],
