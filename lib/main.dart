@@ -12,6 +12,7 @@ import 'controllers/shop_controller.dart';
 import 'controllers/app_mode_controller.dart';
 import 'services/tunehub_service.dart';
 import 'services/music_service.dart';
+import 'services/music_cache_service.dart';
 import 'controllers/music_player_controller.dart';
 // import 'package:just_audio_background/just_audio_background.dart';
 
@@ -64,6 +65,10 @@ void main() async {
     // Core Music Engine (Singleton) - Solves "Multiple Player Instance" crash
     // Initialize AudioService for Android 14 Background support
     await Get.put(MusicService(), permanent: true).init();
+
+    // Initialize Music Cache Service
+    final musicCacheService = Get.put(MusicCacheService(), permanent: true);
+    await musicCacheService.initialize();
 
     // Initialize MusicPlayerController as a permanent singleton.
     // This ensures it is always available and persists across navigation,
