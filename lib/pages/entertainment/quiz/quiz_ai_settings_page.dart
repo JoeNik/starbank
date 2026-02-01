@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import '../../models/quiz_config.dart';
-import '../../services/quiz_service.dart';
-import '../../services/openai_service.dart';
-import '../../theme/app_theme.dart';
+import '../../../models/quiz_config.dart';
+import '../../../services/quiz_service.dart';
+import '../../../services/openai_service.dart';
+import '../../../theme/app_theme.dart';
 import '../../../widgets/toast_utils.dart';
 import '../../../controllers/app_mode_controller.dart';
 
