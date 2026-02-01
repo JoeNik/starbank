@@ -33,6 +33,10 @@ class QuizConfig extends HiveObject {
   @HiveField(5, defaultValue: false)
   bool enableQuestionGen;
 
+  /// 每日限玩次数 (0表示不限制)
+  @HiveField(6, defaultValue: 0)
+  int dailyPlayLimit;
+
   QuizConfig({
     this.imageGenConfigId,
     this.chatConfigId,
@@ -42,6 +46,7 @@ class QuizConfig extends HiveObject {
         '你是一个儿童教育专家,请为以下新年知识点生成一个适合儿童的问答题:\n{knowledge}\n\n要求:\n1. 问题简单易懂,适合3-8岁儿童\n2. 提供4个选项,其中1个正确\n3. 包含详细的知识点解释\n4. 语言生动有趣',
     this.enableImageGen = false,
     this.enableQuestionGen = false,
+    this.dailyPlayLimit = 0,
   });
 
   /// 转换为 JSON
@@ -52,6 +57,7 @@ class QuizConfig extends HiveObject {
         'chatPrompt': chatPrompt,
         'enableImageGen': enableImageGen,
         'enableQuestionGen': enableQuestionGen,
+        'dailyPlayLimit': dailyPlayLimit,
       };
 
   /// 从 JSON 创建
@@ -64,5 +70,6 @@ class QuizConfig extends HiveObject {
             '你是一个儿童教育专家,请为以下新年知识点生成一个适合儿童的问答题:\n{knowledge}\n\n要求:\n1. 问题简单易懂,适合3-8岁儿童\n2. 提供4个选项,其中1个正确\n3. 包含详细的知识点解释\n4. 语言生动有趣',
         enableImageGen: json['enableImageGen'] as bool? ?? false,
         enableQuestionGen: json['enableQuestionGen'] as bool? ?? false,
+        dailyPlayLimit: json['dailyPlayLimit'] as int? ?? 0,
       );
 }

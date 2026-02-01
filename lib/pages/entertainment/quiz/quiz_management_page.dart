@@ -4,10 +4,13 @@ import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import '../../services/quiz_service.dart';
-import '../../theme/app_theme.dart';
-import '../../widgets/toast_utils.dart';
+import '../../../services/quiz_service.dart';
+import '../../../services/quiz_management_service.dart';
+import '../../../services/ai_generation_service.dart';
+import '../../../theme/app_theme.dart';
+import '../../../widgets/toast_utils.dart';
 import 'quiz_ai_settings_page.dart';
+import 'question_edit_dialog.dart';
 
 /// 题库管理页面
 class QuizManagementPage extends StatefulWidget {
@@ -19,6 +22,9 @@ class QuizManagementPage extends StatefulWidget {
 
 class _QuizManagementPageState extends State<QuizManagementPage> {
   final QuizService _quizService = Get.find<QuizService>();
+  final AIGenerationService _aiService = AIGenerationService();
+  final QuizManagementService _quizManagementService =
+      QuizManagementService.instance;
 
   @override
   Widget build(BuildContext context) {
@@ -213,6 +219,14 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
                 ),
               ),
             ],
+          ),
+          SizedBox(height: 12.h),
+          // AI 生成题目
+          _buildActionButton(
+            icon: Icons.auto_awesome,
+            label: 'AI 生成题目',
+            color: const Color(0xFF9C27B0),
+            onTap: _showAIGenerateDialog,
           ),
         ],
       ),
@@ -444,6 +458,16 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
           PopupMenuButton<String>(
             onSelected: (value) => _handleQuestionAction(value, question),
             itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'edit',
+                child: Row(
+                  children: [
+                    Icon(Icons.edit, size: 18),
+                    SizedBox(width: 8),
+                    Text('编辑'),
+                  ],
+                ),
+              ),
               if (question.canGenerateImage)
                 const PopupMenuItem(
                   value: 'generate',
@@ -460,12 +484,22 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
                   value: 'delete_image',
                   child: Row(
                     children: [
-                      Icon(Icons.delete, size: 18),
+                      Icon(Icons.image_not_supported, size: 18),
                       SizedBox(width: 8),
                       Text('删除图片'),
                     ],
                   ),
                 ),
+              const PopupMenuItem(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    Icon(Icons.delete, size: 18, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text('删除题目', style: TextStyle(color: Colors.red)),
+                  ],
+                ),
+              ),
             ],
           ),
         ],
@@ -489,11 +523,17 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
   /// 处理题目操作
   void _handleQuestionAction(String action, question) async {
     switch (action) {
+      case 'edit':
+        await _editQuestion(question);
+        break;
       case 'generate':
         await _generateImageForQuestion(question);
         break;
       case 'delete_image':
         await _deleteQuestionImage(question);
+        break;
+      case 'delete':
+        await _deleteQuestion(question);
         break;
     }
   }
@@ -507,24 +547,67 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
         title: const Text('导入题库'),
         content: SizedBox(
           width: double.maxFinite,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '支持 JSON 格式或 URL',
-                style: TextStyle(fontSize: 12.sp, color: Colors.grey),
-              ),
-              SizedBox(height: 8.h),
-              TextField(
-                controller: controller,
-                maxLines: 5,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  hintText: '粘贴 JSON 内容或 http://... 链接',
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '支持 JSON 格式或 URL',
+                  style: TextStyle(fontSize: 12.sp, color: Colors.grey),
                 ),
-              ),
-            ],
+                SizedBox(height: 8.h),
+                TextField(
+                  controller: controller,
+                  maxLines: 5,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    hintText: '粘贴 JSON 内容或 http://... 链接',
+                  ),
+                ),
+                SizedBox(height: 12.h),
+                // 格式说明
+                Container(
+                  padding: EdgeInsets.all(12.w),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(8.r),
+                    border: Border.all(color: Colors.blue.shade200),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'JSON 格式示例:',
+                        style: TextStyle(
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue.shade900,
+                        ),
+                      ),
+                      SizedBox(height: 8.h),
+                      Text(
+                        '[\n'
+                        '  {\n'
+                        '    "question": "问题文本",\n'
+                        '    "emoji": "🧧",\n'
+                        '    "options": ["选项1", "选项2", "选项3", "选项4"],\n'
+                        '    "correctIndex": 0,\n'
+                        '    "explanation": "知识点解释",\n'
+                        '    "category": "分类"\n'
+                        '  }\n'
+                        ']',
+                        style: TextStyle(
+                          fontSize: 10.sp,
+                          fontFamily: 'monospace',
+                          color: Colors.blue.shade900,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
         actions: [
@@ -794,6 +877,181 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
             child: const Text('确认'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 编辑题目
+  Future<void> _editQuestion(question) async {
+    final result = await Get.dialog<bool>(
+      QuestionEditDialog(question: question),
+    );
+
+    if (result == true) {
+      setState(() {});
+    }
+  }
+
+  /// 删除题目
+  Future<void> _deleteQuestion(question) async {
+    Get.dialog(
+      AlertDialog(
+        title: const Text('确认删除'),
+        content: Text('确定要删除题目"${question.question}"吗?'),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text('取消'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Get.back();
+              try {
+                await _quizManagementService.deleteQuestion(question.id);
+                ToastUtils.showSuccess('删除成功');
+              } catch (e) {
+                ToastUtils.showError('删除失败: $e');
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('确认'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 显示 AI 生成对话框
+  Future<void> _showAIGenerateDialog() async {
+    int count = 1;
+    String category = '';
+    bool isGenerating = false;
+
+    await Get.dialog(
+      StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('AI 生成题目'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('生成数量'),
+                Slider(
+                  value: count.toDouble(),
+                  min: 1,
+                  max: 3,
+                  divisions: 2,
+                  label: count.toString(),
+                  onChanged: isGenerating
+                      ? null
+                      : (value) {
+                          setDialogState(() => count = value.toInt());
+                        },
+                ),
+                Text('$count 道题目'),
+                SizedBox(height: 16.h),
+                TextField(
+                  decoration: const InputDecoration(
+                    labelText: '题目分类(可选)',
+                    hintText: '例如:习俗、美食、传说',
+                    border: OutlineInputBorder(),
+                  ),
+                  enabled: !isGenerating,
+                  onChanged: (value) => category = value,
+                ),
+                SizedBox(height: 16.h),
+                const Text(
+                  '提示:AI 将生成适合儿童的新年知识问答题,重复的题目会自动跳过。',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            if (!isGenerating)
+              TextButton(
+                onPressed: () => Get.back(),
+                child: const Text('取消'),
+              ),
+            ElevatedButton(
+              onPressed: isGenerating
+                  ? null
+                  : () async {
+                      setDialogState(() => isGenerating = true);
+                      try {
+                        final (success, skip, fail, errors) =
+                            await _aiService.generateAndImportQuestions(
+                          count: count,
+                          category: category.isEmpty ? null : category,
+                        );
+
+                        Get.back();
+
+                        // 显示结果
+                        _showGenerationResult(
+                          success: success,
+                          skip: skip,
+                          fail: fail,
+                          errors: errors,
+                          type: '题目',
+                        );
+
+                        setState(() {});
+                      } catch (e) {
+                        setDialogState(() => isGenerating = false);
+                        ToastUtils.showError('生成失败: $e');
+                      }
+                    },
+              child: isGenerating
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('开始生成'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 显示生成结果
+  void _showGenerationResult({
+    required int success,
+    required int skip,
+    required int fail,
+    required List<String> errors,
+    required String type,
+  }) {
+    Get.dialog(
+      AlertDialog(
+        title: Text('生成$type结果'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('✅ 成功: $success'),
+              Text('⏭️ 跳过(重复): $skip'),
+              Text('❌ 失败: $fail'),
+              if (errors.isNotEmpty) ...[
+                SizedBox(height: 16.h),
+                const Text('错误详情:',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                ...errors.map(
+                    (e) => Text('• $e', style: const TextStyle(fontSize: 12))),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text('确定'),
           ),
         ],
       ),

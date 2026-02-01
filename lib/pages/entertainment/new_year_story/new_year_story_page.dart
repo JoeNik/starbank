@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../data/new_year_story_data.dart';
 import '../../../theme/app_theme.dart';
 import '../../../services/tts_service.dart';
+import 'story_management_page.dart';
 
 /// 新年故事听听页面
 class NewYearStoryPage extends StatefulWidget {
@@ -294,6 +295,15 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
         title: const Text('新年故事听听'),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: '故事管理',
+            onPressed: () {
+              Get.to(() => const StoryManagementPage());
+            },
+          ),
+        ],
       ),
       body: SafeArea(
         child: _currentStory == null ? _buildStoryList() : _buildStoryReader(),

@@ -4,6 +4,9 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../data/quiz_data.dart';
 import '../../../theme/app_theme.dart';
 import '../../../services/tts_service.dart';
+import '../../../services/quiz_service.dart';
+import 'quiz_ai_settings_page.dart';
+import 'quiz_management_page.dart';
 
 /// 小年兽问答页面
 class QuizPage extends StatefulWidget {
@@ -16,6 +19,7 @@ class QuizPage extends StatefulWidget {
 class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
   // 使用全局 TTS 服务
   final TtsService _tts = Get.find<TtsService>();
+  final QuizService _quizService = Get.find<QuizService>();
 
   // 题目列表
   late List<Map<String, dynamic>> _questions;
@@ -45,6 +49,30 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+
+    // 检查游玩次数
+    if (!_quizService.canPlay()) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Get.dialog(
+          AlertDialog(
+            title: const Text('今日已达上限'),
+            content: Text('今日游玩次数已用完\n明天再来挑战吧!'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Get.back(); // 关闭对话框
+                  Get.back(); // 返回上一页
+                },
+                child: const Text('知道了'),
+              ),
+            ],
+          ),
+          barrierDismissible: false,
+        );
+      });
+      return;
+    }
+
     _questions = QuizData.getRandomQuestions(10); // 每次10道题
 
     // 初始化小年兽动画(跳跃)
@@ -88,10 +116,26 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
     });
   }
 
-  /// 播放题目语音
+  /// 播放题目和选项语音
   Future<void> _speakQuestion() async {
     final question = _questions[_currentIndex];
+    final options = question['options'] as List;
+
+    // 播放题目
     await _tts.speak(question['question']);
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    // 播放选项
+    for (int i = 0; i < options.length; i++) {
+      await _tts.speak('选项${i + 1}: ${options[i]}');
+      await Future.delayed(const Duration(milliseconds: 300));
+    }
+  }
+
+  /// 重播知识点
+  Future<void> _replayExplanation() async {
+    final question = _questions[_currentIndex];
+    await _tts.speak(question['explanation']);
   }
 
   /// 选择答案
@@ -126,8 +170,17 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
       _fireworkController.forward(from: 0);
       _tts.speak('答对啦!真棒!${question['explanation']}');
     } else {
-      _tts.speak('没关系,再听听故事吧~${question['explanation']}');
+      // 答错后先说鼓励的话,停顿1秒,再播放知识点
+      _speakWrongAnswer();
     }
+  }
+
+  /// 播放答错提示(带停顿)
+  Future<void> _speakWrongAnswer() async {
+    final question = _questions[_currentIndex];
+    await _tts.speak('没关系,再听听');
+    await Future.delayed(const Duration(seconds: 1)); // 停顿1秒
+    await _tts.speak(question['explanation']);
   }
 
   /// 下一题
@@ -150,6 +203,9 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
   /// 显示最终结果
   void _showFinalResult() {
     final score = (_correctCount / _questions.length * 100).toInt();
+
+    // 记录一次游玩
+    _quizService.recordPlay();
 
     Get.dialog(
       AlertDialog(
@@ -275,6 +331,22 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
               ),
             ),
           ),
+          // 题库管理按钮
+          IconButton(
+            onPressed: () {
+              Get.to(() => const QuizManagementPage());
+            },
+            icon: const Icon(Icons.library_books),
+            tooltip: '题库管理',
+          ),
+          // AI设置按钮
+          IconButton(
+            onPressed: () {
+              Get.to(() => const QuizAISettingsPage());
+            },
+            icon: const Icon(Icons.settings),
+            tooltip: 'AI设置',
+          ),
         ],
       ),
       body: SafeArea(
@@ -330,7 +402,7 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
             padding: EdgeInsets.all(20.w),
             child: Column(
               children: [
-                // 小年兽表情
+                // 小年兽表情 - 缩小
                 Text(
                   _showResult
                       ? (_selectedAnswer ==
@@ -338,16 +410,16 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
                           ? '😊' // 开心
                           : '🤗') // 鼓励
                       : '🧧', // 默认
-                  style: TextStyle(fontSize: 60.sp),
+                  style: TextStyle(fontSize: 40.sp), // 从60减小到40
                 ),
-                SizedBox(height: 8.h),
-                // 小年兽说话
+                SizedBox(height: 4.h), // 从8减小到4
+                // 小年兽说话 - 缩小
                 Container(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                  padding: EdgeInsets.symmetric(
+                      horizontal: 12.w, vertical: 6.h), // 缩小padding
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(20.r),
+                    borderRadius: BorderRadius.circular(16.r),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.05),
@@ -364,7 +436,7 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
                             : '没关系,再听听~')
                         : '来挑战新年知识吧!',
                     style: TextStyle(
-                      fontSize: 14.sp,
+                      fontSize: 12.sp, // 从14减小到12
                       color: AppTheme.textMain,
                       fontWeight: FontWeight.w600,
                     ),
@@ -610,6 +682,24 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
                     fontSize: 15.sp,
                     color: AppTheme.textMain,
                     height: 1.6,
+                  ),
+                ),
+                SizedBox(height: 12.h),
+                // 重播知识点按钮
+                OutlinedButton.icon(
+                  onPressed: _replayExplanation,
+                  icon: Icon(Icons.replay, size: 16.sp),
+                  label: const Text('重播知识点'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.blue,
+                    side: BorderSide(color: Colors.blue.shade200),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 12.w,
+                      vertical: 6.h,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16.r),
+                    ),
                   ),
                 ),
               ],

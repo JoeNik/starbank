@@ -5,7 +5,8 @@ import '../../models/quiz_config.dart';
 import '../../services/quiz_service.dart';
 import '../../services/openai_service.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/toast_utils.dart';
+import '../../../widgets/toast_utils.dart';
+import '../../../controllers/app_mode_controller.dart';
 
 /// 问答 AI 设置页面
 class QuizAISettingsPage extends StatefulWidget {
@@ -419,6 +420,20 @@ class _QuizAISettingsPageState extends State<QuizAISettingsPage> {
             },
             activeColor: AppTheme.primary,
           ),
+
+          Divider(height: 32.h),
+
+          // 每日限玩次数 (仅家长模式可编辑)
+          ListTile(
+            title: const Text('每日限玩次数'),
+            subtitle: Text(_config.dailyPlayLimit == 0
+                ? '不限制'
+                : '每天${_config.dailyPlayLimit}次'),
+            trailing: IconButton(
+              icon: const Icon(Icons.edit),
+              onPressed: () => _showPlayLimitDialog(),
+            ),
+          ),
         ],
       ),
     );
@@ -463,6 +478,71 @@ class _QuizAISettingsPageState extends State<QuizAISettingsPage> {
               color: Colors.blue.shade900,
               height: 1.5,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 显示每日限玩次数设置对话框
+  void _showPlayLimitDialog() {
+    final modeController = Get.find<AppModeController>();
+
+    // 检查是否是家长模式
+    if (!modeController.isParentMode) {
+      ToastUtils.showWarning('请先切换到家长模式');
+      return;
+    }
+
+    final controller = TextEditingController(
+      text:
+          _config.dailyPlayLimit == 0 ? '' : _config.dailyPlayLimit.toString(),
+    );
+
+    Get.dialog(
+      AlertDialog(
+        title: const Text('设置每日限玩次数'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: '每日次数',
+                hintText: '输入0表示不限制',
+                suffixText: '次',
+              ),
+            ),
+            SizedBox(height: 12.h),
+            Text(
+              '设置为0表示不限制每日游玩次数',
+              style: TextStyle(
+                fontSize: 12.sp,
+                color: Colors.grey,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text('取消'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final value = int.tryParse(controller.text) ?? 0;
+              if (value < 0) {
+                ToastUtils.showError('请输入有效的数字');
+                return;
+              }
+              setState(() {
+                _config.dailyPlayLimit = value;
+              });
+              Get.back();
+              ToastUtils.showSuccess('设置成功');
+            },
+            child: const Text('确定'),
           ),
         ],
       ),

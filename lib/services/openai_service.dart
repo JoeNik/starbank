@@ -226,17 +226,218 @@ class OpenAIService extends GetxService {
     }
   }
 
-  /// 导出配置（用于备份）
+  /// 导出配置(用于备份)
   List<Map<String, dynamic>> exportConfigs() {
     return configs.map((c) => c.toJson()).toList();
   }
 
-  /// 导入配置（用于恢复）
+  /// 导入配置(用于恢复)
   Future<void> importConfigs(List<dynamic> data) async {
     for (var item in data) {
       final config = OpenAIConfig.fromJson(item as Map<String, dynamic>);
       await _configBox.put(config.id, config);
     }
     loadConfigs();
+  }
+
+  /// 生成新年故事
+  /// [count] 生成数量(1-3)
+  /// [theme] 故事主题
+  /// [customPrompt] 自定义提示词(可选)
+  Future<List<Map<String, dynamic>>> generateStories({
+    required int count,
+    String? theme,
+    String? customPrompt,
+    OpenAIConfig? config,
+  }) async {
+    if (count < 1 || count > 3) {
+      throw Exception('生成数量必须在 1-3 之间');
+    }
+
+    final systemPrompt = '''你是一个专业的儿童故事创作者,擅长创作适合儿童的中国新年相关故事。
+请严格按照 JSON 格式返回,不要添加任何其他文字说明。''';
+
+    final userPrompt = customPrompt ??
+        '''请生成 $count 个适合儿童的中国新年相关故事。
+
+要求:
+1. ${theme != null ? '故事主题: $theme' : '主题可以是春节习俗、传统文化、民间传说等'}
+2. 每个故事包含 5-7 个页面
+3. 每页包含: text(文本内容)、emoji(表情符号)、tts(语音播报文本)
+4. 至少包含 1 个互动问题,问题包含: text(问题)、options(3个选项数组)、correctIndex(正确答案索引0-2)
+5. 故事要有教育意义,语言简单易懂
+6. 时长控制在 1-2 分钟
+
+返回格式(JSON数组):
+[
+  {
+    "id": "唯一标识(使用拼音_时间戳)",
+    "title": "故事标题",
+    "emoji": "🎊",
+    "duration": "2分钟",
+    "pages": [
+      {
+        "text": "故事文本",
+        "emoji": "😊",
+        "tts": "语音播报文本",
+        "question": {
+          "text": "问题文本",
+          "options": ["选项1", "选项2", "选项3"],
+          "correctIndex": 0
+        }
+      }
+    ]
+  }
+]
+
+请直接返回 JSON 数组,不要添加任何解释文字。''';
+
+    try {
+      final response = await chat(
+        systemPrompt: systemPrompt,
+        userMessage: userPrompt,
+        config: config,
+      );
+
+      // 提取 JSON 内容(处理可能的 markdown 代码块)
+      String jsonStr = response.trim();
+      if (jsonStr.startsWith('```json')) {
+        jsonStr = jsonStr.substring(7);
+      } else if (jsonStr.startsWith('```')) {
+        jsonStr = jsonStr.substring(3);
+      }
+      if (jsonStr.endsWith('```')) {
+        jsonStr = jsonStr.substring(0, jsonStr.length - 3);
+      }
+      jsonStr = jsonStr.trim();
+
+      final List<dynamic> stories = jsonDecode(jsonStr);
+      return stories.cast<Map<String, dynamic>>();
+    } catch (e) {
+      debugPrint('生成故事失败: $e');
+      rethrow;
+    }
+  }
+
+  /// 生成新年问答题目
+  /// [count] 生成数量(1-3)
+  /// [category] 题目分类
+  /// [customPrompt] 自定义提示词(可选)
+  Future<List<Map<String, dynamic>>> generateQuizQuestions({
+    required int count,
+    String? category,
+    String? customPrompt,
+    OpenAIConfig? config,
+  }) async {
+    if (count < 1 || count > 3) {
+      throw Exception('生成数量必须在 1-3 之间');
+    }
+
+    final systemPrompt = '''你是一个专业的儿童教育专家,擅长设计适合儿童的中国新年知识问答题。
+请严格按照 JSON 格式返回,不要添加任何其他文字说明。''';
+
+    final userPrompt = customPrompt ??
+        '''请生成 $count 道关于中国新年的问答题。
+
+要求:
+1. ${category != null ? '题目分类: $category' : '分类可以是习俗、美食、传说、文化等'}
+2. 每题包含: 问题、emoji、4个选项、正确答案索引(0-3)、知识点解释
+3. 难度适合 3-8 岁儿童
+4. 知识点解释要简单易懂,有教育意义
+5. 选项要有一定迷惑性,但不要太难
+
+返回格式(JSON数组):
+[
+  {
+    "id": "唯一标识(使用拼音_时间戳)",
+    "question": "问题文本",
+    "emoji": "🎊",
+    "options": ["选项1", "选项2", "选项3", "选项4"],
+    "correctIndex": 0,
+    "explanation": "知识点解释",
+    "category": "${category ?? 'general'}"
+  }
+]
+
+请直接返回 JSON 数组,不要添加任何解释文字。''';
+
+    try {
+      final response = await chat(
+        systemPrompt: systemPrompt,
+        userMessage: userPrompt,
+        config: config,
+      );
+
+      // 提取 JSON 内容(处理可能的 markdown 代码块)
+      String jsonStr = response.trim();
+      if (jsonStr.startsWith('```json')) {
+        jsonStr = jsonStr.substring(7);
+      } else if (jsonStr.startsWith('```')) {
+        jsonStr = jsonStr.substring(3);
+      }
+      if (jsonStr.endsWith('```')) {
+        jsonStr = jsonStr.substring(0, jsonStr.length - 3);
+      }
+      jsonStr = jsonStr.trim();
+
+      final List<dynamic> questions = jsonDecode(jsonStr);
+      return questions.cast<Map<String, dynamic>>();
+    } catch (e) {
+      debugPrint('生成题目失败: $e');
+      rethrow;
+    }
+  }
+
+  /// 验证生成的故事格式是否正确
+  bool validateStoryFormat(Map<String, dynamic> story) {
+    try {
+      if (!story.containsKey('id') ||
+          !story.containsKey('title') ||
+          !story.containsKey('emoji') ||
+          !story.containsKey('duration') ||
+          !story.containsKey('pages')) {
+        return false;
+      }
+
+      final pages = story['pages'] as List;
+      if (pages.isEmpty) return false;
+
+      for (var page in pages) {
+        if (!page.containsKey('text') ||
+            !page.containsKey('emoji') ||
+            !page.containsKey('tts')) {
+          return false;
+        }
+      }
+
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// 验证生成的题目格式是否正确
+  bool validateQuestionFormat(Map<String, dynamic> question) {
+    try {
+      if (!question.containsKey('id') ||
+          !question.containsKey('question') ||
+          !question.containsKey('emoji') ||
+          !question.containsKey('options') ||
+          !question.containsKey('correctIndex') ||
+          !question.containsKey('explanation') ||
+          !question.containsKey('category')) {
+        return false;
+      }
+
+      final options = question['options'] as List;
+      if (options.length != 4) return false;
+
+      final correctIndex = question['correctIndex'] as int;
+      if (correctIndex < 0 || correctIndex >= 4) return false;
+
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 }

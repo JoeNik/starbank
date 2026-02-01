@@ -30,6 +30,12 @@ class QuizService extends GetxService {
   // 图片缓存目录
   late Directory _imageDir;
 
+  // 游玩记录Box
+  late Box<dynamic> _playRecordBox;
+
+  // 今日已玩次数
+  final RxInt todayPlayCount = 0.obs;
+
   Future<QuizService> init() async {
     // 注册适配器
     if (!Hive.isAdapterRegistered(20)) {
@@ -41,6 +47,7 @@ class QuizService extends GetxService {
 
     _configBox = await Hive.openBox<QuizConfig>('quiz_config');
     _questionBox = await Hive.openBox<QuizQuestion>('quiz_questions');
+    _playRecordBox = await Hive.openBox('quiz_play_record');
 
     // 初始化图片缓存目录
     final appDir = await getApplicationDocumentsDirectory();
@@ -54,6 +61,9 @@ class QuizService extends GetxService {
 
     // 加载题目
     _loadQuestions();
+
+    // 加载今日游玩次数
+    _loadTodayPlayCount();
 
     return this;
   }
@@ -94,6 +104,40 @@ class QuizService extends GetxService {
   Future<void> updateConfig(QuizConfig newConfig) async {
     await newConfig.save();
     config.value = newConfig;
+  }
+
+  /// 加载今日游玩次数
+  void _loadTodayPlayCount() {
+    final today = _getTodayKey();
+    todayPlayCount.value = _playRecordBox.get(today, defaultValue: 0) as int;
+  }
+
+  /// 获取今日日期key
+  String _getTodayKey() {
+    final now = DateTime.now();
+    return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+  }
+
+  /// 检查是否可以游玩
+  bool canPlay() {
+    final limit = config.value?.dailyPlayLimit ?? 0;
+    if (limit == 0) return true; // 0表示不限制
+    return todayPlayCount.value < limit;
+  }
+
+  /// 获取剩余次数
+  int getRemainingPlays() {
+    final limit = config.value?.dailyPlayLimit ?? 0;
+    if (limit == 0) return -1; // -1表示不限制
+    return (limit - todayPlayCount.value).clamp(0, limit);
+  }
+
+  /// 记录一次游玩
+  Future<void> recordPlay() async {
+    final today = _getTodayKey();
+    final count = (_playRecordBox.get(today, defaultValue: 0) as int) + 1;
+    await _playRecordBox.put(today, count);
+    todayPlayCount.value = count;
   }
 
   /// 导入题库(JSON 格式)
