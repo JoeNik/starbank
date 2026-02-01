@@ -7,6 +7,8 @@ import 'services/update_service.dart';
 import 'services/tts_service.dart';
 import 'services/story_management_service.dart';
 import 'services/quiz_management_service.dart';
+import 'services/openai_service.dart';
+import 'services/quiz_service.dart';
 import 'controllers/user_controller.dart';
 import 'controllers/shop_controller.dart';
 import 'controllers/app_mode_controller.dart';
@@ -55,6 +57,9 @@ void main() async {
     await quizManagementService.init();
 
     // 4. Initialize Other Services and Controllers
+    Get.put(OpenAIService());
+    await Get.put(QuizService()).init();
+
     Get.put(WebDavService());
     Get.put(UpdateService());
     Get.put(UserController());

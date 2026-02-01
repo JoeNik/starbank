@@ -6,7 +6,7 @@ import '../models/log.dart';
 import '../services/storage_service.dart';
 
 class UserController extends GetxController {
-  final StorageService _storage = Get.find<StorageService>();
+  StorageService get _storage => Get.find<StorageService>();
 
   final RxList<Baby> babies = <Baby>[].obs;
   final Rx<Baby?> currentBaby = Rx<Baby?>(null);

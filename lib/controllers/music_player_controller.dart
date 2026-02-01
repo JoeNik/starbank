@@ -13,9 +13,9 @@ import '../services/music_cache_service.dart';
 import '../services/music_service.dart';
 
 class MusicPlayerController extends GetxController {
-  final TuneHubService _tuneHubService = Get.find<TuneHubService>();
-  final StorageService _storage = Get.find<StorageService>();
-  final MusicService _musicService = Get.find<MusicService>();
+  TuneHubService get _tuneHubService => Get.find<TuneHubService>();
+  StorageService get _storage => Get.find<StorageService>();
+  MusicService get _musicService => Get.find<MusicService>();
   late final MusicCacheService _cacheService;
 
   // Use the singleton player from MusicService

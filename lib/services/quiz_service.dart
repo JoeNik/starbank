@@ -16,7 +16,7 @@ class QuizService extends GetxService {
   late Box<QuizConfig> _configBox;
   late Box<QuizQuestion> _questionBox;
 
-  final OpenAIService _openAIService = Get.find<OpenAIService>();
+  OpenAIService get _openAIService => Get.find<OpenAIService>();
 
   // 当前配置
   final Rx<QuizConfig?> config = Rx<QuizConfig?>(null);
