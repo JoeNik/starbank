@@ -5,6 +5,8 @@ import '../theme/app_theme.dart';
 import 'riddle_page.dart';
 import 'story/story_game_page.dart';
 import 'entertainment/music/music_home_page.dart';
+import 'entertainment/quiz/quiz_page.dart';
+import 'entertainment/new_year_story/new_year_story_page.dart';
 
 /// 娱乐模块入口页面
 class EntertainmentPage extends StatelessWidget {
@@ -115,6 +117,22 @@ class EntertainmentPage extends StatelessWidget {
                     subtitle: '海量儿歌随心听',
                     color: const Color(0xFF64B5F6),
                     onTap: () => Get.to(() => const MusicHomePage()),
+                  ),
+                  // 新年知多少
+                  _buildFeatureCard(
+                    emoji: '🧧',
+                    title: '新年知多少',
+                    subtitle: '小年兽问答',
+                    color: const Color(0xFFEF5350),
+                    onTap: () => Get.to(() => const QuizPage()),
+                  ),
+                  // 新年故事听听
+                  _buildFeatureCard(
+                    emoji: '📖',
+                    title: '新年故事',
+                    subtitle: '语音绘本模式',
+                    color: const Color(0xFFAB47BC),
+                    onTap: () => Get.to(() => const NewYearStoryPage()),
                   ),
                 ],
               ),
