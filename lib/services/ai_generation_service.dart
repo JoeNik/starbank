@@ -116,6 +116,7 @@ class AIGenerationService {
     required int count,
     String? category,
     String? customPrompt,
+    OpenAIConfig? config,
     String? model,
   }) async {
     int successCount = 0;
@@ -129,6 +130,7 @@ class AIGenerationService {
         count: count,
         category: category,
         customPrompt: customPrompt,
+        config: config,
         model: model,
       );
 

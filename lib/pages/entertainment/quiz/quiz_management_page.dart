@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../../../models/openai_config.dart';
 import '../../../services/quiz_service.dart';
 import '../../../services/quiz_management_service.dart';
 import '../../../services/ai_generation_service.dart';
@@ -941,27 +942,103 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
 
   /// 显示 AI 生成对话框
   Future<void> _showAIGenerateDialog() async {
-    int count = 1;
-    String category = '';
-
-    // 获取当前配置的模型列表
-    final currentConfig = _openAIService.currentConfig.value;
-    List<String> models = currentConfig?.models ?? [];
-    String? selectedModel = currentConfig?.selectedModel;
-    if (selectedModel != null && selectedModel.isEmpty) selectedModel = null;
-    // 如果没有选中模型但有模型列表，默认选第一个
-    if (selectedModel == null && models.isNotEmpty)
-      selectedModel = models.first;
-    // 确保选中的模型在列表中
-    if (selectedModel != null && !models.contains(selectedModel)) {
-      if (models.isNotEmpty) selectedModel = models.first;
+    final configs = _openAIService.configs;
+    if (configs.isEmpty) {
+      ToastUtils.showWarning('请先在 AI 设置中配置 OpenAI');
+      return;
     }
 
-    String customPrompt = '';
+    // 初始化配置
+    final quizConfig = _quizService.config.value;
+    OpenAIConfig? selectedConfig;
+
+    // 1. 尝试使用问答设置中的配置
+    if (quizConfig?.chatConfigId != null) {
+      try {
+        selectedConfig =
+            configs.firstWhere((c) => c.id == quizConfig!.chatConfigId);
+      } catch (_) {}
+    }
+    // 2. 尝试使用全局当前配置
+    if (selectedConfig == null) {
+      selectedConfig = _openAIService.currentConfig.value;
+    }
+    // 3. 默认使用第一个
+    if (selectedConfig == null && configs.isNotEmpty) {
+      selectedConfig = configs.first;
+    }
+
+    // 初始化模型
+    String? selectedModel = quizConfig?.chatModel;
+    if (selectedModel == null || selectedModel.isEmpty) {
+      selectedModel = selectedConfig?.selectedModel;
+    }
+
+    // 确保模型在当前配置中存在
+    if (selectedConfig != null && selectedModel != null) {
+      if (!selectedConfig.models.contains(selectedModel)) {
+        selectedModel = null;
+      }
+    }
+    // 如果没有选中模型，默认选推荐的或第一个
+    if (selectedModel == null &&
+        selectedConfig != null &&
+        selectedConfig.models.isNotEmpty) {
+      // try recommended
+      try {
+        selectedModel = selectedConfig.models
+            .firstWhere((m) => m.toLowerCase().contains('gpt-4'));
+      } catch (_) {
+        try {
+          selectedModel = selectedConfig.models
+              .firstWhere((m) => m.toLowerCase().contains('claude'));
+        } catch (_) {
+          selectedModel = selectedConfig.models.first;
+        }
+      }
+    }
+
+    int count = 1;
+    String category = '';
+    // String customPrompt = ''; // Removed variable, used controller instead
     bool isGenerating = false;
 
-    await Get.dialog(
-      StatefulBuilder(
+    TextEditingController promptController = TextEditingController();
+    bool isPromptModified = false;
+
+    String getPrompt(int c, String cat) {
+      return '''请生成 $c 道关于中国新年的问答题。
+
+要求:
+1. ${cat.isNotEmpty ? '题目分类: $cat' : '分类可以是习俗、美食、传说、文化等'}
+2. 每题包含: 问题、emoji、4个选项、正确答案索引(0-3)、知识点解释
+3. 难度适合 3-8 岁儿童
+4. 知识点解释要简单易懂,有教育意义
+5. 选项要有一定迷惑性,但不要太难
+
+返回格式(JSON数组):
+[
+{
+  "id": "唯一标识(使用拼音_时间戳)",
+  "question": "问题文本",
+  "emoji": "🎊",
+  "options": ["选项1", "选项2", "选项3", "选项4"],
+  "correctIndex": 0,
+  "explanation": "知识点解释",
+  "category": "${cat.isNotEmpty ? cat : 'general'}"
+}
+]
+
+请直接返回 JSON 数组,不要添加任何解释文字。''';
+    }
+
+    // Initialize prompt
+    promptController.text = getPrompt(count, category);
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           title: const Text('AI 生成题目'),
           content: SingleChildScrollView(
@@ -979,36 +1056,81 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
                   onChanged: isGenerating
                       ? null
                       : (value) {
-                          setDialogState(() => count = value.toInt());
+                          setDialogState(() {
+                            count = value.toInt();
+                            if (!isPromptModified) {
+                              promptController.text =
+                                  getPrompt(count, category);
+                            }
+                          });
                         },
                 ),
                 Text('$count 道题目'),
+                SizedBox(height: 16.h),
+
+                // 接口选择
+                DropdownButtonFormField<OpenAIConfig>(
+                  decoration: const InputDecoration(
+                    labelText: '选择接口',
+                    border: OutlineInputBorder(),
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                  ),
+                  value: selectedConfig,
+                  items: configs
+                      .map((c) => DropdownMenuItem(
+                            value: c,
+                            child: Text(c.name,
+                                style: TextStyle(fontSize: 14.sp),
+                                overflow: TextOverflow.ellipsis),
+                          ))
+                      .toList(),
+                  onChanged: isGenerating
+                      ? null
+                      : (val) {
+                          if (val == null) return;
+                          setDialogState(() {
+                            selectedConfig = val;
+                            // Reset model
+                            selectedModel = null;
+                            if (selectedConfig!.models.isNotEmpty) {
+                              // try recommended
+                              try {
+                                selectedModel = selectedConfig!.models
+                                    .firstWhere((m) =>
+                                        m.toLowerCase().contains('gpt-4'));
+                              } catch (_) {
+                                selectedModel = selectedConfig!.models.first;
+                              }
+                            }
+                          });
+                        },
+                  isExpanded: true,
+                ),
+                SizedBox(height: 16.h),
 
                 // 模型选择
-                if (models.isNotEmpty) ...[
-                  SizedBox(height: 16.h),
-                  DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(
-                      labelText: '选择模型',
-                      border: OutlineInputBorder(),
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 10, vertical: 0),
-                    ),
-                    value: selectedModel,
-                    items: models
-                        .map((m) => DropdownMenuItem(
-                              value: m,
-                              child: Text(m,
-                                  style: TextStyle(fontSize: 14.sp),
-                                  overflow: TextOverflow.ellipsis),
-                            ))
-                        .toList(),
-                    onChanged: isGenerating
-                        ? null
-                        : (val) => setDialogState(() => selectedModel = val),
-                    isExpanded: true,
+                DropdownButtonFormField<String>(
+                  decoration: const InputDecoration(
+                    labelText: '选择模型',
+                    border: OutlineInputBorder(),
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 10, vertical: 0),
                   ),
-                ],
+                  value: selectedModel,
+                  items: (selectedConfig?.models ?? [])
+                      .map((m) => DropdownMenuItem(
+                            value: m,
+                            child: Text(m,
+                                style: TextStyle(fontSize: 14.sp),
+                                overflow: TextOverflow.ellipsis),
+                          ))
+                      .toList(),
+                  onChanged: isGenerating
+                      ? null
+                      : (val) => setDialogState(() => selectedModel = val),
+                  isExpanded: true,
+                ),
 
                 SizedBox(height: 16.h),
                 TextField(
@@ -1018,21 +1140,28 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
                     border: OutlineInputBorder(),
                   ),
                   enabled: !isGenerating,
-                  onChanged: (value) => category = value,
+                  onChanged: (value) {
+                    category = value;
+                    if (!isPromptModified) {
+                      // Update default prompt (no setState needed for controller update, but category var needs to be current)
+                      promptController.text = getPrompt(count, category);
+                    }
+                  },
                 ),
 
                 SizedBox(height: 16.h),
                 TextField(
+                  controller: promptController,
                   decoration: const InputDecoration(
                     labelText: '自定义 Prompt (可选)',
                     hintText: '完全覆盖默认 Prompt，需小心使用',
                     border: OutlineInputBorder(),
                     helperText: '如果不填则使用默认模板',
                   ),
-                  maxLines: 3,
+                  maxLines: 8,
                   enabled: !isGenerating,
                   style: TextStyle(fontSize: 12.sp),
-                  onChanged: (value) => customPrompt = value,
+                  onChanged: (value) => isPromptModified = true,
                 ),
 
                 SizedBox(height: 16.h),
@@ -1059,8 +1188,10 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
                             await _aiService.generateAndImportQuestions(
                           count: count,
                           category: category.isEmpty ? null : category,
-                          customPrompt:
-                              customPrompt.isEmpty ? null : customPrompt,
+                          customPrompt: promptController.text.isEmpty
+                              ? null
+                              : promptController.text,
+                          config: selectedConfig,
                           model: selectedModel,
                         );
 

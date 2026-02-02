@@ -13,6 +13,7 @@ import '../../../services/openai_service.dart';
 import '../../../services/story_management_service.dart';
 import '../../../controllers/app_mode_controller.dart';
 import 'story_management_page.dart';
+import '../../../models/new_year_story.dart';
 
 /// 新年故事听听页面
 class NewYearStoryPage extends StatefulWidget {
@@ -31,7 +32,7 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
   final StoryManagementService _storyService = StoryManagementService.instance;
 
   // 故事列表
-  final List<Map<String, dynamic>> _stories = NewYearStoryData.getAllStories();
+  List<Map<String, dynamic>> _stories = [];
 
   // 当前选中的故事
   Map<String, dynamic>? _currentStory;
@@ -66,6 +67,7 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
   @override
   void initState() {
     super.initState();
+    _loadStories();
     _pageController = PageController();
 
     // 初始化翻页动画
@@ -286,6 +288,24 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
     });
   }
 
+  /// 加载故事列表
+  Future<void> _loadStories() async {
+    await _storyService.init();
+    final stories = _storyService.getAllStoriesLegacy();
+
+    // 如果为空（理论上不会，因为Service会导入内置），尝试手动加载静态
+    if (stories.isEmpty) {
+      final staticStories = NewYearStoryData.getAllStories();
+      setState(() {
+        _stories = staticStories;
+      });
+    } else {
+      setState(() {
+        _stories = stories;
+      });
+    }
+  }
+
   /// 重新生成当前页面的图片
   Future<void> _regenerateCurrentPageImage(Map<String, dynamic> page) async {
     if (_currentStory == null) return;
@@ -303,20 +323,29 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
         return;
       }
 
-      // 显示加载对话框
-      Get.dialog(
-        const Center(child: CircularProgressIndicator()),
-        barrierDismissible: false,
-      );
-
       // 获取第一个可用的配置
       final config = _openAIService.configs.first;
+
+      // 显示加载对话框
+      Get.dialog(
+        const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('正在优化提示词...', style: TextStyle(color: Colors.white)),
+            ],
+          ),
+        ),
+        barrierDismissible: false,
+      );
 
       // 构建提示词
       final pageText = page['text'] as String;
       final prompt = '请为以下儿童故事情节生成一张可爱的插画:\n$pageText';
 
-      // 调用AI生成图片提示词
+      // 1. 调用AI生成图片提示词
       final imagePrompt = await _openAIService.chat(
         systemPrompt:
             '你是一个专业的儿童插画提示词生成专家。请根据用户提供的内容生成适合 DALL-E 或 Stable Diffusion 的英文提示词。\n\n'
@@ -334,28 +363,141 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
 
       debugPrint('生成的图片提示词: $imagePrompt');
 
-      // 调用生图API
-      final imageUrl = await _generateImage(imagePrompt, config);
+      // 更新加载提示
+      if (Get.isDialogOpen ?? false) Get.back();
+      Get.dialog(
+        const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('正在生成 4 张备选图片...', style: TextStyle(color: Colors.white)),
+            ],
+          ),
+        ),
+        barrierDismissible: false,
+      );
 
-      // 下载并保存图片
+      // 2. 调用生图API (生成4张)
+      // 注意：OpenAIService 需要支持 generateImages 返回 List<String>
+      // 如果不支持，需要先修改 OpenAIService (已完成)
+      final imageUrls = await _openAIService.generateImages(
+        prompt: imagePrompt,
+        n: 4,
+        config: config,
+      );
+
+      // 关闭加载对话框
+      if (Get.isDialogOpen ?? false) Get.back();
+
+      // 3. 显示图片选择对话框
+      final selectedUrl = await showDialog<String>(
+        context: context,
+        barrierDismissible: false, // 强制选择
+        builder: (context) => AlertDialog(
+          title: const Text('请选择一张喜欢的图片'),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 400.h,
+            child: GridView.builder(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 8.w,
+                mainAxisSpacing: 8.h,
+              ),
+              itemCount: imageUrls.length,
+              itemBuilder: (context, index) {
+                final url = imageUrls[index];
+                return GestureDetector(
+                  onTap: () => Navigator.pop(context, url),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(8.r),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Image.network(
+                      url,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (ctx, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return const Center(child: CircularProgressIndicator());
+                      },
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context), // 返回 null
+              child: const Text('取消'),
+            ),
+          ],
+        ),
+      );
+
+      if (selectedUrl == null) return; // 用户取消
+
+      // 显示保存进度
+      Get.dialog(
+        const Center(child: CircularProgressIndicator()),
+        barrierDismissible: false,
+      );
+
+      // 4. 下载并保存图片
       final imagePath = await _downloadAndSaveImage(
-        imageUrl,
-        '${_currentStory!['id']}_${_currentPageIndex}',
+        selectedUrl,
+        '${_currentStory!['id']}_${_currentPageIndex}_${DateTime.now().millisecondsSinceEpoch}',
       );
 
       // 更新当前页面的图片路径
       page['image'] = imagePath;
 
-      // 保存到数据库
+      // 5. 保存到数据库
       final storyId = _currentStory!['id'] as String;
-      final story = _storyService.getStoryById(storyId);
-      if (story != null) {
-        // 更新story的pages数据
+
+      // 注意：这里需要根据 storyId 查找是在 Service 里的动态故事，还是静态故事
+      // 静态故事无法持久化保存修改，必须先"另存为"动态故事，或者我们假定用户只能修改动态故事。
+      // 如果用户修改静态故事，我们应该提示或者将其转存为动态故事。
+      // 为简化逻辑，我们尝试在 StoryService 中查找。找不到则创建。
+
+      var story = _storyService.getStoryById(storyId);
+      if (story == null) {
+        // 如果是静态故事，创建一个新的动态副本
+        // 先提示用户
+        // 但为了流畅体验，我们静默创建副本？或者只在内存中修改？
+        // 简单起见，如果是在 storyService 中找不到，我们不做持久化（或者报错）。
+        // 但通常 flow 是：用户玩静态故事 -> 重新生成图片 -> 期望保存。
+        // 我们需要把当前 _currentStory 存入 storyService。
+
+        // 这里的 _currentStory 是 Map。转 Save。
+        // 暂不支持修改静态故事并保存为新故事的复杂逻辑，
+        // 假设用户操作的是已经存在的动态故事，或者接受只能在内存中修改（重启丢失）。
+        // 但用户肯定希望保存。
+
+        // 尝试创建/更新
+        final newStory = NewYearStory(
+          id: storyId, // 保持ID? 如果ID与静态冲突，可能会有问题。但前面load逻辑是合并。
+          title: _currentStory!['title'],
+          emoji: _currentStory!['emoji'],
+          duration: _currentStory!['duration'],
+          pagesJson: jsonEncode(_currentStory!['pages']),
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+        await _storyService.addStory(newStory);
+      } else {
+        // 更新现有故事
         final pages = _currentStory!['pages'] as List;
         story.pagesJson = jsonEncode(pages);
+        story.updatedAt = DateTime.now();
         await _storyService.updateStory(story);
-        debugPrint('故事图片已保存到数据库: $imagePath');
       }
+
+      debugPrint('故事图片已保存到数据库: $imagePath');
 
       // 关闭加载对话框
       if (Get.isDialogOpen ?? false) Get.back();
@@ -375,52 +517,15 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
       // 关闭加载对话框
       if (Get.isDialogOpen ?? false) Get.back();
 
-      // 显示错误提示
+      // 显示错误提示 (显示原始错误信息)
       Get.snackbar(
-        '错误',
-        '生成失败: $e',
+        '生成失败',
+        '$e'.replaceAll('Exception:', ''),
         snackPosition: SnackPosition.TOP,
-        backgroundColor: Colors.red.withOpacity(0.8),
+        backgroundColor: Colors.red.withOpacity(0.9),
         colorText: Colors.white,
+        duration: const Duration(seconds: 5), // 显示久一点
       );
-    }
-  }
-
-  /// 调用生图 API
-  Future<String> _generateImage(String prompt, dynamic config) async {
-    try {
-      final uri = Uri.parse('${config.baseUrl}/v1/images/generations');
-      final response = await http
-          .post(
-            uri,
-            headers: {
-              'Authorization': 'Bearer ${config.apiKey}',
-              'Content-Type': 'application/json',
-            },
-            body: jsonEncode({
-              'model': config.selectedModel.isNotEmpty
-                  ? config.selectedModel
-                  : 'dall-e-3',
-              'prompt': prompt,
-              'n': 1,
-              'size': '1024x1024',
-              'quality': 'standard',
-            }),
-          )
-          .timeout(const Duration(seconds: 120));
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final imageUrl = data['data'][0]['url'] as String;
-        return imageUrl;
-      } else {
-        final error = jsonDecode(response.body);
-        throw Exception(
-            error['error']?['message'] ?? '生成图片失败: ${response.statusCode}');
-      }
-    } catch (e) {
-      debugPrint('生图 API 调用失败: $e');
-      rethrow;
     }
   }
 

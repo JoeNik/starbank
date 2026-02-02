@@ -144,7 +144,7 @@ class _OpenAISettingsPageState extends State<OpenAISettingsPage> {
                       const PopupMenuItem(
                           value: 'default', child: Text('设为默认')),
                     const PopupMenuItem(value: 'edit', child: Text('编辑')),
-                    const PopupMenuItem(value: 'refresh', child: Text('刷新模型')),
+                    const PopupMenuItem(value: 'refresh', child: Text('管理模型')),
                     const PopupMenuItem(
                       value: 'delete',
                       child: Text('删除', style: TextStyle(color: Colors.red)),
@@ -166,6 +166,22 @@ class _OpenAISettingsPageState extends State<OpenAISettingsPage> {
                   Text(
                     '可用模型 (${config.models.length})',
                     style: TextStyle(fontSize: 12.sp, color: Colors.grey),
+                  ),
+                  SizedBox(width: 8.w),
+                  Tooltip(
+                    message: '从在线列表添加/管理模型',
+                    child: InkWell(
+                      onTap: () => _manageOnlineModels(config),
+                      borderRadius: BorderRadius.circular(12.r),
+                      child: Padding(
+                        padding: EdgeInsets.all(4.w),
+                        child: Icon(
+                          Icons.add_circle_outline,
+                          size: 16.sp,
+                          color: AppTheme.primary,
+                        ),
+                      ),
+                    ),
                   ),
                   const Spacer(),
                   TextButton(
@@ -262,7 +278,7 @@ class _OpenAISettingsPageState extends State<OpenAISettingsPage> {
         _editConfig(config);
         break;
       case 'refresh':
-        _refreshModels(config);
+        _manageOnlineModels(config);
         break;
       case 'delete':
         _deleteConfig(config);
@@ -439,21 +455,186 @@ class _OpenAISettingsPageState extends State<OpenAISettingsPage> {
     }
   }
 
-  Future<void> _refreshModels(OpenAIConfig config) async {
+  Future<void> _manageOnlineModels(OpenAIConfig config) async {
     try {
-      _showLoadingDialog('正在获取模型列表...');
+      _showLoadingDialog('正在获取在线模型列表...');
 
-      final models =
+      final onlineModels =
           await _openAIService!.fetchModels(config.baseUrl, config.apiKey);
-      config.models = models;
-      await _openAIService!.updateConfig(config);
 
-      Navigator.of(context).pop();
-      ToastUtils.showSuccess('已刷新 ${models.length} 个模型');
+      Navigator.of(context).pop(); // 关闭加载对话框
+
+      if (onlineModels.isEmpty) {
+        ToastUtils.showWarning('未获取到任何模型');
+        return;
+      }
+
+      // 弹出多选对话框
+      final selectedModels = await _showModelManageDialog(
+        currentModels: config.models,
+        userSelectableModels: onlineModels,
+      );
+
+      if (selectedModels != null) {
+        config.models = selectedModels;
+        // 如果当前选中的模型不在新列表中且列表不为空，重置为第一个
+        if (config.models.isNotEmpty &&
+            !config.models.contains(config.selectedModel)) {
+          config.selectedModel = config.models.first;
+        }
+        // 如果列表为空，清空选中
+        if (config.models.isEmpty) {
+          config.selectedModel = '';
+        }
+
+        await _openAIService!.updateConfig(config);
+        ToastUtils.showSuccess('模型列表已更新，共 ${config.models.length} 个模型');
+      }
     } catch (e) {
-      Navigator.of(context).pop();
+      if (Navigator.canPop(context)) Navigator.of(context).pop();
       ToastUtils.showError('获取模型列表失败: ${_formatError(e)}');
     }
+  }
+
+  /// 显示模型管理对话框(多选)
+  Future<List<String>?> _showModelManageDialog({
+    required List<String> currentModels,
+    required List<String> userSelectableModels,
+  }) async {
+    // 确保当前已保存的模型也在列表中(防止服务商删除了但本地还想保留的情况? 或者取并集?)
+    // 这里为了简单，以在线列表为主，并在顶部显示已选。
+    // 逻辑：展示 userSelectableModels。默认勾选 currentModels 中的项。
+
+    final RxList<String> selected = RxList<String>.from(currentModels);
+    final RxList<String> filteredList =
+        RxList<String>.from(userSelectableModels);
+    final searchController = TextEditingController();
+
+    return Get.dialog<List<String>>(
+      Dialog(
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+        child: Container(
+          constraints: BoxConstraints(maxHeight: 700.h),
+          padding: EdgeInsets.all(16.w),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 标题
+              Row(
+                children: [
+                  Text(
+                    '管理模型',
+                    style: TextStyle(
+                      fontSize: 18.sp,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const Spacer(),
+                  Obx(() => Text(
+                        '已选: ${selected.length}',
+                        style: TextStyle(
+                          fontSize: 14.sp,
+                          color: AppTheme.primary,
+                        ),
+                      )),
+                ],
+              ),
+              SizedBox(height: 4.h),
+              Text(
+                '从服务商提供的列表中选择要使用的模型',
+                style: TextStyle(fontSize: 12.sp, color: Colors.grey),
+              ),
+              SizedBox(height: 12.h),
+
+              // 搜索框
+              TextField(
+                controller: searchController,
+                decoration: InputDecoration(
+                  hintText: '搜索模型...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.clear),
+                    onPressed: () {
+                      searchController.clear();
+                      filteredList.value = userSelectableModels;
+                    },
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                ),
+                onChanged: (value) {
+                  if (value.isEmpty) {
+                    filteredList.value = userSelectableModels;
+                  } else {
+                    filteredList.value = userSelectableModels
+                        .where((m) =>
+                            m.toLowerCase().contains(value.toLowerCase()))
+                        .toList();
+                  }
+                },
+              ),
+              SizedBox(height: 12.h),
+
+              // 列表
+              Expanded(
+                child: Obx(() {
+                  if (filteredList.isEmpty) {
+                    return const Center(child: Text('没有找到匹配的模型'));
+                  }
+                  return ListView.builder(
+                    itemCount: filteredList.length,
+                    itemBuilder: (context, index) {
+                      final model = filteredList[index];
+                      return Obx(() {
+                        final isChecked = selected.contains(model);
+                        return CheckboxListTile(
+                          title: Text(
+                            model,
+                            style: TextStyle(fontSize: 13.sp),
+                          ),
+                          value: isChecked,
+                          activeColor: AppTheme.primary,
+                          dense: true,
+                          controlAffinity: ListTileControlAffinity.leading,
+                          onChanged: (bool? value) {
+                            if (value == true) {
+                              selected.add(model);
+                            } else {
+                              selected.remove(model);
+                            }
+                          },
+                        );
+                      });
+                    },
+                  );
+                }),
+              ),
+              SizedBox(height: 16.h),
+
+              // 按钮
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Get.back(),
+                    child: const Text('取消'),
+                  ),
+                  SizedBox(width: 16.w),
+                  ElevatedButton(
+                    onPressed: () => Get.back(result: selected.toList()),
+                    child: const Text('保存'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _deleteConfig(OpenAIConfig config) async {

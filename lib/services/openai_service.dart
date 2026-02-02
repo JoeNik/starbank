@@ -88,17 +88,7 @@ class OpenAIService extends GetxService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final models =
-            (data['data'] as List).map((m) => m['id'] as String).where((id) {
-          // 排除明显不是对话模型的（嵌入模型、音频模型、图像生成模型等）
-          final lowerCaseId = id.toLowerCase();
-          return !lowerCaseId.contains('embedding') &&
-              !lowerCaseId.contains('whisper') &&
-              !lowerCaseId.contains('tts') &&
-              !lowerCaseId.contains('dall-e') &&
-              !lowerCaseId.contains('imagine') &&
-              !lowerCaseId.contains('stable-diffusion') &&
-              !lowerCaseId.startsWith('text-embedding');
-        }).toList();
+            (data['data'] as List).map((m) => m['id'] as String).toList();
         models.sort();
         return models;
       } else {
@@ -448,12 +438,10 @@ class OpenAIService extends GetxService {
     }
   }
 
-  /// 生成图片
-  /// [prompt] 提示词
-  /// [config] OpenAI 配置
-  /// [model] 可选模型(覆盖配置)
-  Future<String> generateImage({
+  /// 生成图片(多张)
+  Future<List<String>> generateImages({
     required String prompt,
+    int n = 1,
     OpenAIConfig? config,
     String? model,
   }) async {
@@ -477,7 +465,7 @@ class OpenAIService extends GetxService {
             body: jsonEncode({
               'model': modelName,
               'prompt': prompt,
-              'n': 1,
+              'n': n,
               'size': '1024x1024',
               'quality': 'standard',
             }),
@@ -485,11 +473,18 @@ class OpenAIService extends GetxService {
           .timeout(const Duration(seconds: 120));
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final imageUrl = data['data'][0]['url'] as String;
-        return imageUrl;
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        final List<dynamic> list = data['data'];
+        return list.map((e) => e['url'] as String).toList();
       } else {
-        final error = jsonDecode(response.body);
+        Map<String, dynamic> error;
+        try {
+          error = jsonDecode(utf8.decode(response.bodyBytes));
+        } catch (_) {
+          error = {
+            'error': {'message': 'Response: ${response.body}'}
+          };
+        }
         throw Exception(
             error['error']?['message'] ?? '生成图片失败: ${response.statusCode}');
       }
@@ -497,5 +492,20 @@ class OpenAIService extends GetxService {
       debugPrint('生图 API 调用失败: $e');
       rethrow;
     }
+  }
+
+  /// 生成单张图片 (兼容旧代码)
+  Future<String> generateImage({
+    required String prompt,
+    OpenAIConfig? config,
+    String? model,
+  }) async {
+    final images = await generateImages(
+      prompt: prompt,
+      n: 1,
+      config: config,
+      model: model,
+    );
+    return images.first;
   }
 }

@@ -293,84 +293,70 @@ class _StoryManagementPageState extends State<StoryManagementPage> {
                   ),
                 ),
                 SizedBox(height: 8.h),
-                if (isImage) ...[
-                  // 图片模型 - 文本输入
-                  TextFormField(
-                    initialValue: selectedModel,
-                    decoration: InputDecoration(
-                      hintText: '推荐: dall-e-3',
-                      hintStyle: TextStyle(color: Colors.grey[400]),
-                      filled: true,
-                      fillColor: Colors.grey[50],
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12.r),
-                        borderSide: BorderSide(color: Colors.grey[300]!),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12.r),
-                        borderSide: BorderSide(color: Colors.grey[300]!),
-                      ),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 16.w,
-                        vertical: 14.h,
-                      ),
-                    ),
-                    enabled: !isGenerating,
-                    onChanged: onModelChanged,
-                  )
-                ] else ...[
-                  // 文本模型 - 下拉选择
-                  Builder(
-                    builder: (context) {
-                      // 获取推荐模型
-                      String recommendedModel = '可选任意 LLM';
-                      if (selectedConfig != null &&
-                          selectedConfig.models.isNotEmpty) {
-                        final gpt4 = selectedConfig.models.firstWhere(
+                // 模型选择 - 下拉框
+                Builder(
+                  builder: (context) {
+                    // 获取推荐模型
+                    String recommendedModel = '可选任意模型';
+                    final models = selectedConfig?.models ?? [];
+
+                    if (models.isNotEmpty) {
+                      if (isImage) {
+                        // 图片模型推荐逻辑
+                        recommendedModel = models.firstWhere(
+                          (m) =>
+                              m.toLowerCase().contains('dall-e') ||
+                              m.toLowerCase().contains('image') ||
+                              m.toLowerCase().contains('flux'),
+                          orElse: () => models.first,
+                        );
+                      } else {
+                        // 文本模型推荐逻辑
+                        recommendedModel = models.firstWhere(
                           (m) => m.toLowerCase().contains('gpt-4'),
-                          orElse: () => selectedConfig.models.firstWhere(
+                          orElse: () => models.firstWhere(
                             (m) => m.toLowerCase().contains('claude'),
-                            orElse: () => selectedConfig.models.first,
+                            orElse: () => models.first,
                           ),
                         );
-                        recommendedModel = gpt4;
                       }
+                    }
 
-                      return DropdownButtonFormField<String>(
-                        decoration: InputDecoration(
-                          hintText: recommendedModel == '可选任意 LLM'
-                              ? recommendedModel
-                              : '推荐: $recommendedModel',
-                          hintStyle: TextStyle(color: Colors.grey[400]),
-                          filled: true,
-                          fillColor: Colors.grey[50],
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12.r),
-                            borderSide: BorderSide(color: Colors.grey[300]!),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12.r),
-                            borderSide: BorderSide(color: Colors.grey[300]!),
-                          ),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 16.w,
-                            vertical: 14.h,
-                          ),
+                    return DropdownButtonFormField<String>(
+                      decoration: InputDecoration(
+                        hintText: recommendedModel == '可选任意模型'
+                            ? recommendedModel
+                            : '推荐: $recommendedModel',
+                        hintStyle: TextStyle(color: Colors.grey[400]),
+                        filled: true,
+                        fillColor: Colors.grey[50],
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12.r),
+                          borderSide: BorderSide(color: Colors.grey[300]!),
                         ),
-                        value: selectedModel,
-                        items: (selectedConfig?.models ?? [])
-                            .map((m) => DropdownMenuItem(
-                                  value: m,
-                                  child:
-                                      Text(m, overflow: TextOverflow.ellipsis),
-                                ))
-                            .toList(),
-                        onChanged: isGenerating ? null : onModelChanged,
-                        isExpanded: true,
-                      );
-                    },
-                  ),
-                ]
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12.r),
+                          borderSide: BorderSide(color: Colors.grey[300]!),
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 16.w,
+                          vertical: 14.h,
+                        ),
+                      ),
+                      // 确保选中的值在列表中，否则为 null
+                      value:
+                          models.contains(selectedModel) ? selectedModel : null,
+                      items: models
+                          .map((m) => DropdownMenuItem(
+                                value: m,
+                                child: Text(m, overflow: TextOverflow.ellipsis),
+                              ))
+                          .toList(),
+                      onChanged: isGenerating ? null : onModelChanged,
+                      isExpanded: true,
+                    );
+                  },
+                )
               ],
             );
           }
