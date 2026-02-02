@@ -8,7 +8,7 @@ part of 'playlist.dart';
 
 class PlaylistAdapter extends TypeAdapter<Playlist> {
   @override
-  final int typeId = 21;
+  final int typeId = 31;
 
   @override
   Playlist read(BinaryReader reader) {

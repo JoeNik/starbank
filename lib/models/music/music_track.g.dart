@@ -8,7 +8,7 @@ part of 'music_track.dart';
 
 class MusicTrackAdapter extends TypeAdapter<MusicTrack> {
   @override
-  final int typeId = 20;
+  final int typeId = 30;
 
   @override
   MusicTrack read(BinaryReader reader) {
