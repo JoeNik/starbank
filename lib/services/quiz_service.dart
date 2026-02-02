@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
@@ -44,11 +45,13 @@ class QuizService extends GetxService {
     _questionBox = await Hive.openBox<QuizQuestion>('quiz_questions');
     _playRecordBox = await Hive.openBox('quiz_play_record');
 
-    // 初始化图片缓存目录
-    final appDir = await getApplicationDocumentsDirectory();
-    _imageDir = Directory('${appDir.path}/quiz_images');
-    if (!await _imageDir.exists()) {
-      await _imageDir.create(recursive: true);
+    // 初始化图片缓存目录 (仅在非 Web 环境下)
+    if (!kIsWeb) {
+      final appDir = await getApplicationDocumentsDirectory();
+      _imageDir = Directory('${appDir.path}/quiz_images');
+      if (!await _imageDir.exists()) {
+        await _imageDir.create(recursive: true);
+      }
     }
 
     // 加载配置
@@ -62,6 +65,8 @@ class QuizService extends GetxService {
 
     return this;
   }
+
+  // ... (省略中间未变代码)
 
   /// 加载配置
   void _loadConfig() {
@@ -97,7 +102,18 @@ class QuizService extends GetxService {
 
   /// 更新配置
   Future<void> updateConfig(QuizConfig newConfig) async {
-    await newConfig.save();
+    // 如果配置已经在box中，使用save()
+    // 否则使用putAt更新第一个配置
+    if (newConfig.isInBox) {
+      await newConfig.save();
+    } else {
+      // 更新box中的第一个配置
+      if (_configBox.isNotEmpty) {
+        await _configBox.putAt(0, newConfig);
+      } else {
+        await _configBox.add(newConfig);
+      }
+    }
     config.value = newConfig;
   }
 
@@ -135,6 +151,22 @@ class QuizService extends GetxService {
     todayPlayCount.value = count;
   }
 
+  /// 添加题目
+  Future<void> addQuestion(QuizQuestion question) async {
+    await _questionBox.put(question.id, question);
+    if (!questions.any((q) => q.id == question.id)) {
+      questions.add(question);
+    } else {
+      final index = questions.indexWhere((q) => q.id == question.id);
+      questions[index] = question;
+    }
+  }
+
+  /// 检查题目是否重复
+  bool isDuplicate(String questionText) {
+    return questions.any((q) => q.question == questionText);
+  }
+
   /// 导入题库(JSON 格式)
   Future<void> importQuestions(String jsonStr) async {
     try {
@@ -153,12 +185,43 @@ class QuizService extends GetxService {
             question = QuizQuestion.fromLegacyMap(item);
           }
 
+          // 处理图片导入: 如果是非Web环境且是Base64图片,转存为本地文件
+          if (!kIsWeb &&
+              question.imagePath != null &&
+              question.imagePath!.startsWith('data:image')) {
+            try {
+              final base64Data = question.imagePath!.split(',')[1];
+              final bytes = base64Decode(base64Data);
+              // 确保存储目录存在
+              if (!await _imageDir.exists()) {
+                await _imageDir.create(recursive: true);
+              }
+              final file = File('${_imageDir.path}/${question.id}.png');
+              await file.writeAsBytes(bytes);
+              question.imagePath = file.path;
+              debugPrint('已将导入的Base64图片转存为本地文件: ${file.path}');
+            } catch (e) {
+              debugPrint('转存Base64图片失败: $e');
+              // 失败则保留Base64原样
+            }
+          }
+
           await _questionBox.put(question.id, question);
+
+          // 如果列表中已有该ID，更新它；否则添加
+          final index = questions.indexWhere((q) => q.id == question.id);
+          if (index != -1) {
+            questions[index] = question;
+          } else {
+            questions.add(question);
+          }
+
           imported++;
         }
       }
 
-      questions.assignAll(_questionBox.values.toList());
+      // 整体刷新一次列表以确保UI更新
+      questions.refresh();
       Get.snackbar('导入成功', '成功导入 $imported 道题目');
     } catch (e) {
       debugPrint('导入题库失败: $e');
@@ -167,8 +230,45 @@ class QuizService extends GetxService {
   }
 
   /// 导出题库
-  String exportQuestions() {
-    final list = questions.map((q) => q.toJson()).toList();
+  Future<String> exportQuestions() async {
+    final List<Map<String, dynamic>> list = [];
+
+    for (var q in questions) {
+      final json = q.toJson();
+
+      // 处理图片导出: 将本地图片转换为Base64内联到JSON中
+      if (q.imagePath != null) {
+        if (kIsWeb) {
+          // Web端直接使用现有的 path (Base64 or URL)
+          json['imagePath'] = q.imagePath;
+        } else {
+          // 移动端：如果是文件路径，转为 Base64
+          // 检查是否是 Base64 (如果之前导入失败保留了Base64)
+          if (q.imagePath!.startsWith('data:image')) {
+            json['imagePath'] = q.imagePath;
+          } else {
+            // 尝试读取文件
+            final file = File(q.imagePath!);
+            if (await file.exists()) {
+              try {
+                final bytes = await file.readAsBytes();
+                final base64 = base64Encode(bytes);
+                // 假设是 PNG, 后续可以根据文件头判断
+                json['imagePath'] = 'data:image/png;base64,$base64';
+              } catch (e) {
+                debugPrint('导出图片失败: $e');
+                // 读取失败，保留路径或者置空? 保留路径让用户知道有问题
+                json['imagePath'] = q.imagePath;
+              }
+            } else {
+              // 文件不存在或 URL
+              json['imagePath'] = q.imagePath;
+            }
+          }
+        }
+      }
+      list.add(json);
+    }
     return jsonEncode(list);
   }
 
@@ -242,15 +342,20 @@ class QuizService extends GetxService {
       debugPrint('生成的图片提示词: $imagePrompt');
 
       // 调用生图 API,生成多张图片
-      // User shared OpenAIService.generateImages logic handles 'n' and error parsing.
       final imageUrls = await _openAIService.generateImages(
         prompt: imagePrompt,
         n: imageCount,
         config: imageGenConfig,
-        model: config.value!.imageGenModel, // Use configured model properly
+        model: config.value!.imageGenModel,
       );
 
-      // 如果生成了多张图片,取第一张(后续会添加选择对话框)
+      if (imageUrls.isEmpty) {
+        throw Exception('未能生成图片');
+      }
+
+      // 这里返回图片URL列表，让UI层处理选择
+      // 但由于这是service层，我们需要一个回调或者直接使用第一张
+      // 为了保持简单，我们使用第一张图片
       final imageUrl = imageUrls.first;
 
       // 下载并保存图片
@@ -320,20 +425,54 @@ class QuizService extends GetxService {
   // _generateImage is removed in favor of _openAIService.generateImages
 
   /// 下载并保存图片
-  Future<String> _downloadAndSaveImage(String url, String questionId) async {
+  Future<String> _downloadAndSaveImage(
+      String urlOrDataUri, String questionId) async {
     try {
-      final response =
-          await http.get(Uri.parse(url)).timeout(const Duration(seconds: 60));
+      if (kIsWeb) {
+        // Web 环境: 尝试将 URL 转为 Base64 以便持久化存储
+        if (urlOrDataUri.startsWith('data:image')) {
+          return urlOrDataUri;
+        } else {
+          try {
+            final response = await http
+                .get(Uri.parse(urlOrDataUri))
+                .timeout(const Duration(seconds: 60));
+            if (response.statusCode == 200) {
+              final base64String = base64Encode(response.bodyBytes);
+              // 假设是 PNG
+              return 'data:image/png;base64,$base64String';
+            }
+          } catch (e) {
+            debugPrint('Web端图片转Base64失败: $e');
+          }
+          return urlOrDataUri;
+        }
+      }
 
-      if (response.statusCode == 200) {
-        final file = File('${_imageDir.path}/$questionId.png');
-        await file.writeAsBytes(response.bodyBytes);
+      final file = File('${_imageDir.path}/$questionId.png');
+
+      // 判断是 URL 还是 base64 data URI
+      if (urlOrDataUri.startsWith('data:image')) {
+        // Base64 格式
+        final base64Data = urlOrDataUri.split(',')[1];
+        final bytes = base64Decode(base64Data);
+        await file.writeAsBytes(bytes);
         return file.path;
       } else {
-        throw Exception('下载图片失败: ${response.statusCode}');
+        // URL 格式: 下载图片
+        final response = await http
+            .get(Uri.parse(urlOrDataUri))
+            .timeout(const Duration(seconds: 60));
+
+        if (response.statusCode == 200) {
+          await file.writeAsBytes(response.bodyBytes);
+          return file.path;
+        } else {
+          throw Exception('下载图片失败: ${response.statusCode}');
+        }
       }
     } catch (e) {
-      debugPrint('下载图片失败: $e');
+      debugPrint('保存图片失败: $e');
       rethrow;
     }
   }
@@ -341,9 +480,11 @@ class QuizService extends GetxService {
   /// 删除题目图片
   Future<void> deleteQuestionImage(QuizQuestion question) async {
     if (question.imagePath != null) {
-      final file = File(question.imagePath!);
-      if (await file.exists()) {
-        await file.delete();
+      if (!kIsWeb) {
+        final file = File(question.imagePath!);
+        if (await file.exists()) {
+          await file.delete();
+        }
       }
 
       question.imagePath = null;
@@ -358,6 +499,8 @@ class QuizService extends GetxService {
   /// 获取图片缓存大小
   Future<int> getImageCacheSize() async {
     int totalSize = 0;
+
+    if (kIsWeb) return 0;
 
     if (await _imageDir.exists()) {
       final files = await _imageDir.list().toList();
@@ -374,7 +517,9 @@ class QuizService extends GetxService {
 
   /// 清空图片缓存
   Future<void> clearImageCache() async {
-    if (await _imageDir.exists()) {
+    if (kIsWeb) {
+      // Web 清除逻辑 (如果有)
+    } else if (await _imageDir.exists()) {
       await _imageDir.delete(recursive: true);
       await _imageDir.create();
     }

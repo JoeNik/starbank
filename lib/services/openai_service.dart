@@ -161,7 +161,7 @@ class OpenAIService extends GetxService {
 
       var response = await http
           .post(uri, headers: headers, body: jsonEncode(requestBody))
-          .timeout(const Duration(seconds: 60));
+          .timeout(const Duration(seconds: 180));
 
       if (response.statusCode != 200) {
         final error = jsonDecode(response.body);
@@ -202,7 +202,7 @@ class OpenAIService extends GetxService {
 
         response = await http
             .post(uri, headers: headers, body: jsonEncode(requestBody))
-            .timeout(const Duration(seconds: 60));
+            .timeout(const Duration(seconds: 180));
 
         if (response.statusCode != 200) {
           throw Exception('Tool response failed');
@@ -450,20 +450,26 @@ class OpenAIService extends GetxService {
       throw Exception('未配置 OpenAI');
     }
 
-    // 根据配置的供应商类型选择不同的图片生成逻辑
-    // 假设 OpenAIConfig 中有一个 providerType 字段，或者根据 baseUrl 判断
-    // 为了兼容性，这里暂时只处理 OpenAI 的逻辑，但结构上为未来扩展留出接口
-    // 实际重构时，可能需要引入一个抽象的 ImageGenerator 接口和不同的实现类
-    // 例如:
-    // if (cfg.providerType == ProviderType.openAI) {
-    //   return _generateImagesWithOpenAI(prompt, n, cfg, model);
-    // } else if (cfg.providerType == ProviderType.stabilityAI) {
-    //   return _generateImagesWithStabilityAI(prompt, n, cfg, model);
-    // } else {
-    //   throw Exception('不支持的图片生成供应商');
-    // }
+    final modelName = model ??
+        (cfg.selectedModel.isNotEmpty ? cfg.selectedModel : 'dall-e-3');
 
-    // 目前仍沿用 OpenAI 的实现，但将其封装成私有方法，便于未来替换或扩展
+    // 检测是否需要使用流式API
+    // grok-imagine 等模型使用流式API
+    final useStreamApi = modelName.toLowerCase().contains('grok-imagine') ||
+        modelName.toLowerCase().contains('flux') ||
+        modelName.toLowerCase().contains('stable-diffusion');
+
+    if (useStreamApi) {
+      debugPrint('🔄 检测到流式图片生成模型，使用流式API');
+      return generateImagesStream(
+        prompt: prompt,
+        n: n,
+        config: config,
+        model: model,
+      );
+    }
+
+    // 使用传统的OpenAI图片生成API
     return _generateImagesWithOpenAI(prompt, n, cfg, model);
   }
 
@@ -475,21 +481,40 @@ class OpenAIService extends GetxService {
     String? model,
   ) async {
     try {
-      final uri = Uri.parse('${cfg.baseUrl}/v1/images/generations');
+      // 使用 chat/completions 接口而非 images/generations
+      // 某些 API 提供商(如 grok-imagine)通过此接口生成图片
+      final uri = Uri.parse('${cfg.baseUrl}/v1/chat/completions');
       final modelName = model ??
           (cfg.selectedModel.isNotEmpty ? cfg.selectedModel : 'dall-e-3');
 
+      debugPrint('🎨 ========== 图片生成请求 ==========');
+      debugPrint('📍 API 地址: $uri');
+      debugPrint('🤖 模型: $modelName');
+      debugPrint('📝 提示词: $prompt');
+      debugPrint('🔢 数量: $n');
+
       // DALL-E 3 不支持 n > 1,需要循环调用
-      // DALL-E 2 支持 n 参数
       final isDallE3 = modelName.toLowerCase().contains('dall-e-3');
 
       if (isDallE3 && n > 1) {
-        // DALL-E 3: 循环生成多张图片
-        debugPrint('🎨 DALL-E 3 检测到,将循环生成 $n 张图片');
+        debugPrint('⚠️ DALL-E 3 不支持 n>1,将循环生成 $n 张图片');
         final List<String> allUrls = [];
 
         for (int i = 0; i < n; i++) {
-          debugPrint('🎨 正在生成第 ${i + 1}/$n 张图片...');
+          debugPrint('🎨 [${i + 1}/$n] 开始生成...');
+
+          final requestBody = {
+            'messages': [
+              {
+                'role': 'user',
+                'content': '生成图片：$prompt',
+              }
+            ],
+            'model': modelName,
+            'stream': false,
+          };
+
+          debugPrint('📤 请求体: ${jsonEncode(requestBody)}');
 
           final response = await http
               .post(
@@ -498,51 +523,79 @@ class OpenAIService extends GetxService {
                   'Authorization': 'Bearer ${cfg.apiKey}',
                   'Content-Type': 'application/json',
                 },
-                body: jsonEncode({
-                  'model': modelName,
-                  'prompt': prompt,
-                  'n': 1,
-                  'size': '1024x1024',
-                }),
+                body: jsonEncode(requestBody),
               )
-              .timeout(const Duration(seconds: 120));
+              .timeout(const Duration(seconds: 300));
+
+          debugPrint('📥 响应状态码: ${response.statusCode}');
+          debugPrint('📥 响应头: ${response.headers}');
 
           if (response.statusCode == 200) {
-            final data = jsonDecode(utf8.decode(response.bodyBytes));
+            final responseText = utf8.decode(response.bodyBytes);
+            debugPrint('📥 响应体: $responseText');
+
+            final data = jsonDecode(responseText);
             final List<dynamic> list = data['data'];
 
-            // 解析图片,支持 URL 和 base64
-            final imageData = list.first;
-            if (imageData['url'] != null) {
-              allUrls.add(imageData['url'] as String);
-            } else if (imageData['b64_json'] != null) {
-              allUrls.add('data:image/png;base64,${imageData['b64_json']}');
-            } else {
-              throw Exception('图片响应格式错误');
+            if (list.isEmpty) {
+              throw Exception('API 返回的 data 数组为空');
             }
 
-            // 避免频繁调用 API,添加延迟
+            final imageData = list.first;
+            if (imageData['url'] != null) {
+              final url = imageData['url'] as String;
+              debugPrint('✅ [${i + 1}/$n] 成功获取图片 URL: $url');
+              allUrls.add(url);
+            } else if (imageData['b64_json'] != null) {
+              debugPrint('✅ [${i + 1}/$n] 成功获取 Base64 图片');
+              allUrls.add('data:image/png;base64,${imageData['b64_json']}');
+            } else {
+              throw Exception('图片响应格式错误: ${jsonEncode(imageData)}');
+            }
+
             if (i < n - 1) {
               await Future.delayed(const Duration(milliseconds: 500));
             }
           } else {
+            final errorBody = utf8.decode(response.bodyBytes);
+            debugPrint('❌ 错误响应体: $errorBody');
+
             Map<String, dynamic> error;
             try {
-              error = jsonDecode(utf8.decode(response.bodyBytes));
+              error = jsonDecode(errorBody);
             } catch (_) {
               error = {
-                'error': {'message': 'Response: ${response.body}'}
+                'error': {
+                  'message': 'HTTP ${response.statusCode}: $errorBody',
+                  'type': 'http_error',
+                }
               };
             }
-            throw Exception(
-                error['error']?['message'] ?? '生成图片失败: ${response.statusCode}');
+
+            final errorMsg = error['error']?['message'] ??
+                error['message'] ??
+                'HTTP ${response.statusCode}: $errorBody';
+            throw Exception('生成第 ${i + 1} 张图片失败: $errorMsg');
           }
         }
 
-        debugPrint('🎨 DALL-E 3 成功生成 ${allUrls.length} 张图片');
+        debugPrint('🎉 成功生成 ${allUrls.length} 张图片');
         return allUrls;
       } else {
         // DALL-E 2 或单张图片: 直接调用
+        final requestBody = {
+          'messages': [
+            {
+              'role': 'user',
+              'content': '生成图片：$prompt',
+            }
+          ],
+          'model': modelName,
+          'stream': false,
+        };
+
+        debugPrint('📤 请求体: ${jsonEncode(requestBody)}');
+
         final response = await http
             .post(
               uri,
@@ -550,51 +603,62 @@ class OpenAIService extends GetxService {
                 'Authorization': 'Bearer ${cfg.apiKey}',
                 'Content-Type': 'application/json',
               },
-              body: jsonEncode({
-                'model': modelName,
-                'prompt': prompt,
-                'n': n,
-                'size': '1024x1024',
-              }),
+              body: jsonEncode(requestBody),
             )
-            .timeout(const Duration(seconds: 120));
+            .timeout(const Duration(seconds: 300));
+
+        debugPrint('📥 响应状态码: ${response.statusCode}');
+        debugPrint('📥 响应头: ${response.headers}');
 
         if (response.statusCode == 200) {
-          final data = jsonDecode(utf8.decode(response.bodyBytes));
+          final responseText = utf8.decode(response.bodyBytes);
+          debugPrint('📥 响应体: $responseText');
+
+          final data = jsonDecode(responseText);
           final List<dynamic> list = data['data'];
 
-          // 解析图片数据,支持两种格式:
-          // 1. URL 格式: {"url": "https://..."}
-          // 2. Base64 格式: {"b64_json": "iVBORw0KGgo..."}
-          return list.map((e) {
-            // 优先使用 URL
+          if (list.isEmpty) {
+            throw Exception('API 返回的 data 数组为空');
+          }
+
+          final urls = list.map((e) {
             if (e['url'] != null) {
               return e['url'] as String;
-            }
-            // 如果是 base64,返回 data URI
-            else if (e['b64_json'] != null) {
+            } else if (e['b64_json'] != null) {
               return 'data:image/png;base64,${e['b64_json']}';
-            }
-            // 兜底错误
-            else {
-              throw Exception('图片响应格式错误: 既没有 url 也没有 b64_json');
+            } else {
+              throw Exception('图片响应格式错误: ${jsonEncode(e)}');
             }
           }).toList();
+
+          debugPrint('🎉 成功生成 ${urls.length} 张图片');
+          return urls;
         } else {
+          final errorBody = utf8.decode(response.bodyBytes);
+          debugPrint('❌ 错误响应体: $errorBody');
+
           Map<String, dynamic> error;
           try {
-            error = jsonDecode(utf8.decode(response.bodyBytes));
+            error = jsonDecode(errorBody);
           } catch (_) {
             error = {
-              'error': {'message': 'Response: ${response.body}'}
+              'error': {
+                'message': 'HTTP ${response.statusCode}: $errorBody',
+                'type': 'http_error',
+              }
             };
           }
-          throw Exception(
-              error['error']?['message'] ?? '生成图片失败: ${response.statusCode}');
+
+          final errorMsg = error['error']?['message'] ??
+              error['message'] ??
+              'HTTP ${response.statusCode}: $errorBody';
+          throw Exception('生成图片失败: $errorMsg');
         }
       }
-    } catch (e) {
-      debugPrint('生图 API 调用失败: $e');
+    } catch (e, stackTrace) {
+      debugPrint('❌ ========== 图片生成失败 ==========');
+      debugPrint('错误: $e');
+      debugPrint('堆栈: $stackTrace');
       rethrow;
     }
   }
@@ -612,5 +676,155 @@ class OpenAIService extends GetxService {
       model: model,
     );
     return images.first;
+  }
+
+  /// 使用流式API生成图片 (支持grok-imagine等流式返回的API)
+  /// 返回图片URL列表或base64数据URI列表
+  Future<List<String>> generateImagesStream({
+    required String prompt,
+    int n = 1,
+    OpenAIConfig? config,
+    String? model,
+  }) async {
+    final cfg = config ?? currentConfig.value;
+    if (cfg == null) {
+      throw Exception('未配置 OpenAI');
+    }
+
+    try {
+      final uri = Uri.parse('${cfg.baseUrl}/v1/chat/completions');
+      final modelName = model ??
+          (cfg.selectedModel.isNotEmpty
+              ? cfg.selectedModel
+              : 'grok-imagine-0.9');
+
+      debugPrint('🎨 ========== 流式图片生成请求 ==========');
+      debugPrint('📍 API 地址: $uri');
+      debugPrint('🤖 模型: $modelName');
+      debugPrint('📝 提示词: $prompt');
+      debugPrint('🔢 数量: $n');
+
+      // 构建请求体 - 使用流式API格式
+      final requestBody = {
+        'messages': [
+          {
+            'role': 'user',
+            'content': '生成图片：$prompt',
+          }
+        ],
+        'model': modelName,
+        'stream': true,
+        'stream_options': {
+          'include_usage': true,
+        },
+        'temperature': 1,
+      };
+
+      debugPrint('📤 请求体: ${jsonEncode(requestBody)}');
+
+      final request = http.Request('POST', uri);
+      request.headers.addAll({
+        'Authorization': 'Bearer ${cfg.apiKey}',
+        'Content-Type': 'application/json',
+      });
+      request.body = jsonEncode(requestBody);
+
+      final streamedResponse = await request.send().timeout(
+            const Duration(seconds: 300),
+          );
+
+      debugPrint('📥 响应状态码: ${streamedResponse.statusCode}');
+
+      if (streamedResponse.statusCode != 200) {
+        final errorBody = await streamedResponse.stream.bytesToString();
+        debugPrint('❌ 错误响应体: $errorBody');
+        throw Exception('流式图片生成失败: HTTP ${streamedResponse.statusCode}');
+      }
+
+      // 解析流式响应
+      final List<String> imageUrls = [];
+      String accumulatedContent = '';
+
+      await for (var chunk in streamedResponse.stream.transform(utf8.decoder)) {
+        debugPrint('📦 收到数据块: $chunk');
+
+        // 处理多行数据
+        final lines = chunk.split('\n');
+        for (var line in lines) {
+          line = line.trim();
+          if (line.isEmpty || !line.startsWith('data: ')) continue;
+
+          final dataStr = line.substring(6); // 移除 "data: " 前缀
+          if (dataStr == '[DONE]') continue;
+
+          try {
+            final data = jsonDecode(dataStr);
+            final choices = data['choices'] as List?;
+            if (choices == null || choices.isEmpty) continue;
+
+            final delta = choices[0]['delta'];
+            final content = delta['content'] as String?;
+            if (content != null) {
+              accumulatedContent += content;
+            }
+
+            final finishReason = choices[0]['finish_reason'];
+            if (finishReason == 'stop') {
+              debugPrint('✅ 流式响应完成，累积内容: $accumulatedContent');
+            }
+          } catch (e) {
+            debugPrint('⚠️ 解析数据块失败: $e, 数据: $dataStr');
+          }
+        }
+      }
+
+      // 从累积的内容中提取图片URL
+      imageUrls.addAll(_extractImageUrls(accumulatedContent));
+
+      if (imageUrls.isEmpty) {
+        throw Exception('未能从响应中提取到图片URL');
+      }
+
+      debugPrint('🎉 成功提取 ${imageUrls.length} 张图片');
+      for (var url in imageUrls) {
+        debugPrint('  - $url');
+      }
+
+      return imageUrls;
+    } catch (e, stackTrace) {
+      debugPrint('❌ ========== 流式图片生成失败 ==========');
+      debugPrint('错误: $e');
+      debugPrint('堆栈: $stackTrace');
+      rethrow;
+    }
+  }
+
+  /// 从文本中提取图片URL
+  /// 支持markdown格式: ![alt](url)
+  /// 支持base64格式: data:image/...;base64,...
+  List<String> _extractImageUrls(String text) {
+    final List<String> urls = [];
+
+    // 提取markdown格式的图片链接: ![...](url)
+    final markdownRegex = RegExp(r'!\[.*?\]\((.*?)\)');
+    final markdownMatches = markdownRegex.allMatches(text);
+    for (var match in markdownMatches) {
+      final url = match.group(1);
+      if (url != null && url.isNotEmpty) {
+        urls.add(url);
+      }
+    }
+
+    // 提取base64格式的图片数据
+    final base64Regex = RegExp(r'data:image/[^;]+;base64,[A-Za-z0-9+/=]+');
+    final base64Matches = base64Regex.allMatches(text);
+    for (var match in base64Matches) {
+      final dataUri = match.group(0);
+      if (dataUri != null && dataUri.isNotEmpty) {
+        urls.add(dataUri);
+      }
+    }
+
+    return urls;
   }
 }

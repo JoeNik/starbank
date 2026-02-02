@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import '../../../models/new_year_story.dart';
@@ -10,6 +11,7 @@ import '../../../widgets/toast_utils.dart';
 import '../../../services/quiz_service.dart';
 import '../../../models/quiz_config.dart';
 import 'story_edit_dialog.dart';
+import '../../../widgets/ai_generation_progress_dialog.dart';
 
 /// 故事管理页面
 class StoryManagementPage extends StatefulWidget {
@@ -223,6 +225,49 @@ class _StoryManagementPageState extends State<StoryManagementPage> {
     String theme = '';
     String customPrompt = '';
     bool isGenerating = false;
+
+    // 添加 TextEditingController
+    final TextEditingController _promptController = TextEditingController();
+
+    // 获取默认 Prompt 的函数
+    String getDefaultPrompt(int c, String t) {
+      return '''请生成 $c 个适合儿童的中国新年相关故事。
+
+要求:
+1. ${t.isNotEmpty ? '故事主题: $t' : '主题可以是春节习俗、传统文化、民间传说等'}
+2. 每个故事包含 5-7 个页面
+3. 每页包含: text(文本内容)、emoji(表情符号)、tts(语音播报文本)
+4. 至少包含 1 个互动问题,问题包含: text(问题)、options(3个选项数组)、correctIndex(正确答案索引0-2)
+5. 故事要有教育意义,语言简单易懂
+6. 时长控制在 1-2 分钟
+
+返回格式(JSON数组):
+[
+{
+  "id": "唯一标识(使用拼音_时间戳)",
+  "title": "故事标题",
+  "emoji": "🎊",
+  "duration": "2分钟",
+  "pages": [
+    {
+      "text": "故事文本",
+      "emoji": "😊",
+      "tts": "语音播报文本",
+      "question": {
+        "text": "问题文本",
+        "options": ["选项1", "选项2", "选项3"],
+        "correctIndex": 0
+      }
+    }
+  ]
+}
+]
+
+请直接返回 JSON 数组,不要添加任何解释文字。''';
+    }
+
+    // 初始化 Prompt
+    _promptController.text = '';
 
     await showDialog(
       context: context,
@@ -512,18 +557,37 @@ class _StoryManagementPageState extends State<StoryManagementPage> {
                         ),
                       ),
                       SizedBox(height: 8.h),
+                      Padding(
+                        padding: EdgeInsets.only(bottom: 12.h, right: 16.w),
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton.icon(
+                            onPressed: () {
+                              final defaultPrompt =
+                                  getDefaultPrompt(count, theme);
+                              _promptController.text = defaultPrompt;
+                              // 手动更新 customPrompt，因为设置 controller.text 不会触发 onChanged
+                              customPrompt = defaultPrompt;
+                            },
+                            icon: const Icon(Icons.copy_all, size: 16),
+                            label: const Text('复制模板到下方编辑'),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
 
                   SizedBox(height: 12.h),
                   TextField(
+                    controller: _promptController,
                     decoration: const InputDecoration(
                       labelText: '自定义 Prompt (高级)',
                       helperText: '注意:将覆盖默认模板(含格式要求),请慎用',
                       helperMaxLines: 1,
                       border: OutlineInputBorder(),
                     ),
-                    maxLines: 2,
+                    maxLines: 4,
+                    minLines: 2,
                     enabled: !isGenerating,
                     style: TextStyle(fontSize: 12.sp),
                     onChanged: (value) => customPrompt = value,
@@ -541,9 +605,37 @@ class _StoryManagementPageState extends State<StoryManagementPage> {
                 onPressed: isGenerating
                     ? null
                     : () async {
-                        setDialogState(() => isGenerating = true);
+                        // 1. 关闭配置对话框
+                        Navigator.pop(context);
+
+                        // 2. 准备进度步骤
+                        final steps = <GenerationStep>[
+                          GenerationStep(
+                            title: '生成故事文本',
+                            description: '正在连接 AI 生成故事内容...',
+                            status: StepStatus.running,
+                          ),
+                          if (enableImageGen)
+                            GenerationStep(
+                              title: '生成插图',
+                              description: '等待文本生成完成...',
+                              status: StepStatus.pending,
+                            ),
+                          GenerationStep(
+                            title: '验证与保存',
+                            description: '等待生成完成...',
+                            status: StepStatus.pending,
+                          ),
+                        ].obs;
+
+                        // 3. 显示进度对话框
+                        AIGenerationProgressDialog.show(
+                          steps: steps,
+                          onClose: () => Get.back(),
+                        );
+
                         try {
-                          // Save AI Settings to QuizConfig for persistence
+                          // 保存配置
                           final currentQuizConfig = _quizService.config.value;
                           if (currentQuizConfig != null) {
                             if (textConfig != null) {
@@ -558,7 +650,8 @@ class _StoryManagementPageState extends State<StoryManagementPage> {
                             await _quizService.updateConfig(currentQuizConfig);
                           }
 
-                          final (success, skip, fail, errors) =
+                          // 4. 开始生成
+                          final result =
                               await _aiService.generateAndImportStories(
                             count: count,
                             theme: theme.isEmpty ? null : theme,
@@ -568,76 +661,95 @@ class _StoryManagementPageState extends State<StoryManagementPage> {
                             textModel: textModel,
                             imageConfig: enableImageGen ? imageConfig : null,
                             imageModel: imageModel,
+                            onProgress: (step, message,
+                                {Map<String, dynamic>? details}) {
+                              switch (step) {
+                                case 'text':
+                                  steps[0].setRunning(description: message);
+                                  break;
+                                case 'text_done':
+                                  steps[0].setSuccess(
+                                    description: message,
+                                    details: details?['raw']?.toString(),
+                                  );
+                                  // 如果有图片生成，开启第二步
+                                  if (enableImageGen && steps.length > 2) {
+                                    steps[1]
+                                        .setRunning(description: '准备生成插图...');
+                                  } else {
+                                    // 否则直接跳到最后一步
+                                    steps.last
+                                        .setRunning(description: '正在保存数据...');
+                                  }
+                                  break;
+                                case 'image':
+                                  if (enableImageGen && steps.length > 2) {
+                                    steps[1].setRunning(description: message);
+                                  }
+                                  break;
+                                case 'image_download':
+                                  if (enableImageGen && steps.length > 2) {
+                                    steps[1].setRunning(description: message);
+                                  }
+                                  break;
+                                case 'import':
+                                  // 如果有图片步，先完成它
+                                  if (enableImageGen && steps.length > 2) {
+                                    steps[1].setSuccess(description: '插图生成完成');
+                                  }
+                                  steps.last.setRunning(description: message);
+                                  break;
+                                case 'done':
+                                  steps.last.setSuccess(description: '流程结束');
+                                  break;
+                                case 'error':
+                                  // 找到当前正在运行的步骤报错
+                                  final currentStep = steps.firstWhere(
+                                    (s) => s.status.value == StepStatus.running,
+                                    orElse: () => steps.last,
+                                  );
+                                  currentStep.setError(message);
+                                  break;
+                              }
+                            },
                           );
 
-                          Navigator.pop(context);
+                          // 5. 添加结果汇总
+                          final (success, skip, fail, errors) = result;
+                          final summary =
+                              '生成完成\n成功: $success\n跳过: $skip\n失败: $fail';
 
-                          // 显示结果
-                          _showGenerationResult(
-                            success: success,
-                            skip: skip,
-                            fail: fail,
-                            errors: errors,
-                            type: '故事',
-                          );
+                          if (fail > 0 || errors.isNotEmpty) {
+                            steps.add(GenerationStep(
+                              title: '生成结果',
+                              status: StepStatus
+                                  .error, // Partial error implies warning/error
+                              description: summary,
+                              details: errors.join('\n'),
+                            ));
+                          } else {
+                            steps.add(GenerationStep(
+                              title: '生成结果',
+                              status: StepStatus.success,
+                              description: summary,
+                            ));
+                          }
 
+                          // 刷新列表
                           setState(() {});
                         } catch (e) {
-                          setDialogState(() => isGenerating = false);
-                          ToastUtils.showError('生成失败: $e');
+                          steps.add(GenerationStep(
+                            title: '发生异常',
+                            status: StepStatus.error,
+                            error: e.toString(),
+                          ));
                         }
                       },
-                child: isGenerating
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('开始生成'),
+                child: const Text('开始生成'),
               ),
             ],
           );
         },
-      ),
-    );
-  }
-
-  /// 显示生成结果
-  void _showGenerationResult({
-    required int success,
-    required int skip,
-    required int fail,
-    required List<String> errors,
-    required String type,
-  }) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('生成$type结果'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('✅ 成功: $success'),
-              Text('⏭️ 跳过(重复): $skip'),
-              Text('❌ 失败: $fail'),
-              if (errors.isNotEmpty) ...[
-                SizedBox(height: 16.h),
-                const Text('错误详情:',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                ...errors.map(
-                    (e) => Text('• $e', style: const TextStyle(fontSize: 12))),
-              ],
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('确定'),
-          ),
-        ],
       ),
     );
   }

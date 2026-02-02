@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
@@ -7,14 +9,14 @@ import '../models/quiz_question.dart';
 import '../models/openai_config.dart';
 import 'openai_service.dart';
 import 'story_management_service.dart';
-import 'quiz_management_service.dart';
+import 'quiz_service.dart';
 
 /// AI 生成助手服务
 /// 协调 AI 生成和知识库导入
 class AIGenerationService {
   final OpenAIService _openAIService = Get.find<OpenAIService>();
   final StoryManagementService _storyService = StoryManagementService.instance;
-  final QuizManagementService _quizService = QuizManagementService.instance;
+  final QuizService _quizService = Get.find<QuizService>();
 
   /// 生成并导入故事
   /// 返回: (成功数量, 跳过数量, 失败数量, 错误信息列表)
@@ -26,6 +28,8 @@ class AIGenerationService {
     String? textModel,
     OpenAIConfig? imageConfig,
     String? imageModel,
+    Function(String step, String message, {Map<String, dynamic>? details})?
+        onProgress,
   }) async {
     int successCount = 0;
     int skipCount = 0;
@@ -33,7 +37,9 @@ class AIGenerationService {
     List<String> errors = [];
 
     try {
-      // 调用 AI 生成故事文本
+      // 1. 调用 AI 生成故事文本
+      onProgress?.call('text', '正在请求 AI 生成故事文本...');
+
       final generatedStories = await _openAIService.generateStories(
         count: count,
         theme: theme,
@@ -42,11 +48,28 @@ class AIGenerationService {
         model: textModel,
       );
 
-      // 如果配置了生图模型,则为每个页面生成图片
+      onProgress?.call('text_done', '故事文本生成完成', details: {
+        'count': generatedStories.length,
+        'raw': jsonEncode(generatedStories) // 简单模拟 Raw JSON
+      });
+
+      // 2. 如果配置了生图模型,则为每个页面生成图片
       if (imageConfig != null) {
+        int totalImages = generatedStories.fold<int>(
+            0, (sum, story) => sum + (story['pages'] as List).length);
+        int currentImage = 0;
+
         for (var story in generatedStories) {
           final pages = story['pages'] as List;
+          final storyTitle = story['title'] as String? ?? '未命名';
+
           for (int i = 0; i < pages.length; i++) {
+            currentImage++;
+            onProgress?.call(
+              'image',
+              '正在生成图片 ($currentImage/$totalImages)\n$storyTitle - 第 ${i + 1} 页',
+            );
+
             try {
               final page = pages[i] as Map<String, dynamic>;
               final text = page['text'] as String;
@@ -64,6 +87,11 @@ class AIGenerationService {
               );
 
               // 下载并保存图片
+              onProgress?.call(
+                'image_download',
+                '正在保存图片 ($currentImage/$totalImages)...',
+              );
+
               final imagePath =
                   await _downloadAndSaveImage(imageUrl, '${story['title']}_$i');
               page['image'] = imagePath; // Set image path
@@ -75,7 +103,9 @@ class AIGenerationService {
         }
       }
 
-      // 逐个验证和导入
+      // 3. 逐个验证和导入
+      onProgress?.call('import', '正在验证并导入数据...');
+
       for (var storyMap in generatedStories) {
         try {
           // 验证格式
@@ -102,9 +132,12 @@ class AIGenerationService {
           failCount++;
         }
       }
+
+      onProgress?.call('done', '生成流程结束');
     } catch (e) {
       errors.add('AI 生成失败: $e');
       failCount = count;
+      onProgress?.call('error', '生成失败: $e');
     }
 
     return (successCount, skipCount, failCount, errors);
@@ -118,6 +151,8 @@ class AIGenerationService {
     String? customPrompt,
     OpenAIConfig? config,
     String? model,
+    Function(String step, String message, {Map<String, dynamic>? details})?
+        onProgress,
   }) async {
     int successCount = 0;
     int skipCount = 0;
@@ -125,7 +160,9 @@ class AIGenerationService {
     List<String> errors = [];
 
     try {
-      // 调用 AI 生成题目
+      // 1. 调用 AI 生成题目
+      onProgress?.call('text', '正在请求 AI 生成题目文本...');
+
       final generatedQuestions = await _openAIService.generateQuizQuestions(
         count: count,
         category: category,
@@ -134,7 +171,14 @@ class AIGenerationService {
         model: model,
       );
 
-      // 逐个验证和导入
+      onProgress?.call('text_done', '题目文本生成完成', details: {
+        'count': generatedQuestions.length,
+        'raw': jsonEncode(generatedQuestions)
+      });
+
+      // 2. 逐个验证和导入
+      onProgress?.call('import', '正在验证并导入数据...');
+
       for (var questionMap in generatedQuestions) {
         try {
           // 验证格式
@@ -161,9 +205,12 @@ class AIGenerationService {
           failCount++;
         }
       }
+
+      onProgress?.call('done', '生成流程结束');
     } catch (e) {
       errors.add('AI 生成失败: $e');
       failCount = count;
+      onProgress?.call('error', '生成失败: $e');
     }
 
     return (successCount, skipCount, failCount, errors);
@@ -265,11 +312,21 @@ class AIGenerationService {
 
   /// 下载并保存图片
   Future<String> _downloadAndSaveImage(
-      String imageUrl, String fileNamePrefix) async {
+      String urlOrDataUri, String fileNamePrefix) async {
     try {
-      final response = await http.get(Uri.parse(imageUrl));
-      if (response.statusCode != 200) {
-        throw Exception('下载图片失败: ${response.statusCode}');
+      if (kIsWeb) {
+        // Web 环境: 不保存文件,直接返回 Data URI
+        if (urlOrDataUri.startsWith('data:image')) {
+          return urlOrDataUri;
+        } else {
+          // 下载并转换为 Base64
+          final response = await http.get(Uri.parse(urlOrDataUri));
+          if (response.statusCode == 200) {
+            final base64String = base64Encode(response.bodyBytes);
+            return 'data:image/png;base64,$base64String';
+          }
+          throw Exception('下载图片失败: ${response.statusCode}');
+        }
       }
 
       final appDir = await getApplicationDocumentsDirectory();
@@ -281,9 +338,26 @@ class AIGenerationService {
       final fileName =
           '${fileNamePrefix}_${DateTime.now().millisecondsSinceEpoch}.png';
       final file = File('${imagesDir.path}/$fileName');
-      await file.writeAsBytes(response.bodyBytes);
 
-      return file.path;
+      // 判断是 URL 还是 base64 data URI
+      if (urlOrDataUri.startsWith('data:image')) {
+        // Base64 格式: data:image/png;base64,iVBORw0KGgo...
+        print('📥 检测到base64图片数据，直接保存');
+        final base64Data = urlOrDataUri.split(',')[1];
+        final bytes = base64Decode(base64Data);
+        await file.writeAsBytes(bytes);
+        return file.path;
+      } else {
+        // URL 格式: 下载图片
+        print('📥 从URL下载图片: $urlOrDataUri');
+        final response = await http.get(Uri.parse(urlOrDataUri));
+        if (response.statusCode != 200) {
+          throw Exception('下载图片失败: ${response.statusCode}');
+        }
+
+        await file.writeAsBytes(response.bodyBytes);
+        return file.path;
+      }
     } catch (e) {
       print('下载保存图片失败: $e');
       rethrow;

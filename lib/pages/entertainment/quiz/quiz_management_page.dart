@@ -1,9 +1,11 @@
 import 'dart:io';
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
 import '../../../models/openai_config.dart';
 import '../../../services/quiz_service.dart';
 import '../../../services/quiz_management_service.dart';
@@ -13,6 +15,7 @@ import '../../../theme/app_theme.dart';
 import '../../../widgets/toast_utils.dart';
 import 'quiz_ai_settings_page.dart';
 import 'question_edit_dialog.dart';
+import '../../../widgets/ai_generation_progress_dialog.dart';
 
 /// 题库管理页面
 class QuizManagementPage extends StatefulWidget {
@@ -416,14 +419,52 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
               child: question.hasImage && question.imagePath != null
                   ? ClipRRect(
                       borderRadius: BorderRadius.circular(8.r),
-                      child: Image.file(
-                        File(question.imagePath!),
-                        width: 48.w,
-                        height: 48.w,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Icon(Icons.broken_image,
-                              color: Colors.grey, size: 24.sp);
+                      child: Builder(
+                        builder: (context) {
+                          final path = question.imagePath!;
+                          if (kIsWeb) {
+                            if (path.startsWith('data:image')) {
+                              try {
+                                final base64Data = path.split(',')[1];
+                                final bytes = base64Decode(base64Data);
+                                return Image.memory(
+                                  bytes,
+                                  width: 48.w,
+                                  height: 48.w,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Icon(
+                                      Icons.broken_image,
+                                      color: Colors.grey,
+                                      size: 24.sp),
+                                );
+                              } catch (e) {
+                                return Icon(Icons.broken_image,
+                                    color: Colors.grey, size: 24.sp);
+                              }
+                            } else {
+                              return Image.network(
+                                path,
+                                width: 48.w,
+                                height: 48.w,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Icon(
+                                    Icons.broken_image,
+                                    color: Colors.grey,
+                                    size: 24.sp),
+                              );
+                            }
+                          }
+                          // Mobile/Desktop
+                          return Image.file(
+                            File(path),
+                            width: 48.w,
+                            height: 48.w,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Icon(Icons.broken_image,
+                                  color: Colors.grey, size: 24.sp);
+                            },
+                          );
                         },
                       ),
                     )
@@ -683,9 +724,9 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
   }
 
   /// 导出题库
-  void _exportQuestions() {
+  Future<void> _exportQuestions() async {
     try {
-      final json = _quizService.exportQuestions();
+      final json = await _quizService.exportQuestions();
       // 这里可以保存到文件或复制到剪贴板
       Get.dialog(
         AlertDialog(
@@ -1152,8 +1193,17 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
                 SizedBox(height: 16.h),
                 TextField(
                   controller: promptController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: '自定义 Prompt (可选)',
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.copy),
+                      onPressed: () {
+                        Clipboard.setData(
+                            ClipboardData(text: promptController.text));
+                        ToastUtils.showSuccess('已复制 Prompt');
+                      },
+                      tooltip: '复制 Prompt',
+                    ),
                     hintText: '完全覆盖默认 Prompt，需小心使用',
                     border: OutlineInputBorder(),
                     helperText: '如果不填则使用默认模板',
@@ -1182,21 +1232,42 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
               onPressed: isGenerating
                   ? null
                   : () async {
-                      setDialogState(() => isGenerating = true);
+                      // 1. 关闭配置对话框
+                      Get.back();
+
+                      // 2. 准备进度步骤
+                      final steps = <GenerationStep>[
+                        GenerationStep(
+                          title: '生成题目',
+                          description: '正在连接 AI 生成题目...',
+                          status: StepStatus.running,
+                        ),
+                        GenerationStep(
+                          title: '验证与导入',
+                          description: '等待生成完成...',
+                          status: StepStatus.pending,
+                        ),
+                      ].obs;
+
+                      // 3. 显示进度对话框
+                      AIGenerationProgressDialog.show(
+                        steps: steps,
+                        onClose: () => Get.back(),
+                      );
+
                       try {
-                        // Save config to QuizConfig
+                        // Save config
                         if (selectedConfig != null) {
                           final currentCfg = _quizService.config.value;
                           if (currentCfg != null) {
                             currentCfg.chatConfigId = selectedConfig!.id;
                             currentCfg.chatModel = selectedModel;
-                            // Note: We don't have separate Image Config in this dialog currently,
-                            // or we assume this is for Text (Questions).
                             await _quizService.updateConfig(currentCfg);
                           }
                         }
 
-                        final (success, skip, fail, errors) =
+                        // 4. Generate
+                        final result =
                             await _aiService.generateAndImportQuestions(
                           count: count,
                           category: category.isEmpty ? null : category,
@@ -1205,74 +1276,57 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
                               : promptController.text,
                           config: selectedConfig,
                           model: selectedModel,
+                          onProgress: (step, message,
+                              {Map<String, dynamic>? details}) {
+                            switch (step) {
+                              case 'text':
+                                steps[0].setRunning(description: message);
+                                break;
+                              case 'text_done':
+                                steps[0].setSuccess(
+                                    description: message,
+                                    details: details?['raw']?.toString());
+                                steps[1].setRunning(description: '准备导入...');
+                                break;
+                              case 'import':
+                                steps[1].setRunning(description: message);
+                                break;
+                              case 'done':
+                                steps[1].setSuccess(description: '流程结束');
+                                break;
+                              case 'error':
+                                final current = steps.firstWhere(
+                                    (s) => s.status.value == StepStatus.running,
+                                    orElse: () => steps.last);
+                                current.setError(message);
+                                break;
+                            }
+                          },
                         );
 
-                        Get.back();
+                        // 5. Add result summary step
+                        final (success, skip, fail, errors) = result;
+                        steps.add(GenerationStep(
+                            title: '生成结果',
+                            status: fail > 0
+                                ? StepStatus.error
+                                : StepStatus.success,
+                            description: '成功: $success, 跳过: $skip, 失败: $fail',
+                            details: errors.join('\n')));
 
-                        // 显示结果
-                        _showGenerationResult(
-                          success: success,
-                          skip: skip,
-                          fail: fail,
-                          errors: errors,
-                          type: '题目',
-                        );
-
+                        // Refresh
                         setState(() {});
                       } catch (e) {
-                        setDialogState(() => isGenerating = false);
-                        ToastUtils.showError('生成失败: $e');
+                        steps.add(GenerationStep(
+                            title: '异常',
+                            status: StepStatus.error,
+                            error: e.toString()));
                       }
                     },
-              child: isGenerating
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('开始生成'),
+              child: const Text('开始生成'),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  /// 显示生成结果
-  void _showGenerationResult({
-    required int success,
-    required int skip,
-    required int fail,
-    required List<String> errors,
-    required String type,
-  }) {
-    Get.dialog(
-      AlertDialog(
-        title: Text('生成$type结果'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('✅ 成功: $success'),
-              Text('⏭️ 跳过(重复): $skip'),
-              Text('❌ 失败: $fail'),
-              if (errors.isNotEmpty) ...[
-                SizedBox(height: 16.h),
-                const Text('错误详情:',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                ...errors.map(
-                    (e) => Text('• $e', style: const TextStyle(fontSize: 12))),
-              ],
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('确定'),
-          ),
-        ],
       ),
     );
   }

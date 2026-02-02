@@ -42,12 +42,19 @@ class _QuizAISettingsPageState extends State<QuizAISettingsPage> {
 
   /// 保存配置
   Future<void> _saveConfig() async {
+    debugPrint('🔧 ========== 开始保存 AI 配置 ==========');
+    debugPrint('📝 图片生成 Prompt: ${_imagePromptController.text}');
+    debugPrint('📝 问答 Prompt: ${_chatPromptController.text}');
+
     _config.imageGenPrompt = _imagePromptController.text;
     _config.chatPrompt = _chatPromptController.text;
 
+    debugPrint('💾 正在保存到 Hive...');
     await _quizService.updateConfig(_config);
+    debugPrint('✅ 保存成功!');
 
     if (mounted) {
+      debugPrint('📢 显示成功提示...');
       // 使用 ScaffoldMessenger 确保提示一定显示
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -67,6 +74,9 @@ class _QuizAISettingsPageState extends State<QuizAISettingsPage> {
           ),
         ),
       );
+      debugPrint('✅ 提示已显示');
+    } else {
+      debugPrint('⚠️ Widget 已卸载,无法显示提示');
     }
   }
 

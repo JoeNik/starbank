@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:http/http.dart' as http;
@@ -407,45 +408,13 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
         model: usedModel,
       );
 
-      // 更新加载提示 - 下载图片
-      if (Get.isDialogOpen ?? false) Get.back();
-      Get.dialog(
-        AlertDialog(
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(),
-              SizedBox(height: 16.h),
-              const Text('正在下载图片到本地...',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-            ],
-          ),
-        ),
-        barrierDismissible: false,
-      );
-
-      // 3. 立即下载所有图片到本地缓存,避免 URL 过期(OpenAI URL 只有1小时有效期)
-      final List<String> localPaths = [];
-      for (int i = 0; i < imageUrls.length; i++) {
-        try {
-          final tempPath = await _downloadAndSaveImage(
-            imageUrls[i],
-            '${_currentStory!['id']}_${_currentPageIndex}_temp_$i',
-          );
-          localPaths.add(tempPath);
-        } catch (e) {
-          debugPrint('下载图片 $i 失败: $e');
-          // 继续下载其他图片
-        }
-      }
-
       // 关闭加载对话框
       if (Get.isDialogOpen ?? false) Get.back();
 
-      if (localPaths.isEmpty) {
+      if (imageUrls.isEmpty) {
         Get.snackbar(
           '错误',
-          '所有图片下载失败,请检查网络连接',
+          '未能生成图片',
           snackPosition: SnackPosition.TOP,
           backgroundColor: Colors.red.withOpacity(0.8),
           colorText: Colors.white,
@@ -453,7 +422,7 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
         return;
       }
 
-      // 4. 显示图片选择对话框 (使用本地文件)
+      // 3. 显示图片选择对话框 (直接显示URL/Base64图片)
       final selectedIndex = await showDialog<int>(
         context: context,
         barrierDismissible: false,
@@ -468,9 +437,9 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
                 crossAxisSpacing: 8.w,
                 mainAxisSpacing: 8.h,
               ),
-              itemCount: localPaths.length,
+              itemCount: imageUrls.length,
               itemBuilder: (context, index) {
-                final localPath = localPaths[index];
+                final imageUrl = imageUrls[index];
                 return GestureDetector(
                   onTap: () => Navigator.pop(context, index),
                   child: Container(
@@ -479,15 +448,7 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
                       borderRadius: BorderRadius.circular(8.r),
                     ),
                     clipBehavior: Clip.antiAlias,
-                    child: Image.file(
-                      File(localPath),
-                      fit: BoxFit.cover,
-                      errorBuilder: (ctx, error, stack) {
-                        return const Center(
-                          child: Icon(Icons.error, color: Colors.red),
-                        );
-                      },
-                    ),
+                    child: _buildImageWidget(imageUrl),
                   ),
                 );
               },
@@ -503,34 +464,29 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
       );
 
       if (selectedIndex == null) {
-        // 用户取消,删除临时文件
-        for (final path in localPaths) {
-          try {
-            await File(path).delete();
-          } catch (e) {
-            debugPrint('删除临时文件失败: $e');
-          }
-        }
+        // 用户取消
         return;
       }
 
-      // 5. 使用选中的图片
-      final selectedPath = localPaths[selectedIndex];
+      // 4. 下载选中的图片到本地
+      Get.dialog(
+        AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              SizedBox(height: 16.h),
+              const Text('正在保存图片...',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
+        barrierDismissible: false,
+      );
 
-      // 删除未选中的临时文件
-      for (int i = 0; i < localPaths.length; i++) {
-        if (i != selectedIndex) {
-          try {
-            await File(localPaths[i]).delete();
-          } catch (e) {
-            debugPrint('删除临时文件失败: $e');
-          }
-        }
-      }
-
-      // 重命名选中的文件为正式文件名
-      final finalPath = await _renameImage(
-        selectedPath,
+      final selectedUrl = imageUrls[selectedIndex];
+      final finalPath = await _downloadAndSaveImage(
+        selectedUrl,
         '${_currentStory!['id']}_${_currentPageIndex}_${DateTime.now().millisecondsSinceEpoch}',
       );
 
@@ -610,10 +566,78 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
     }
   }
 
+  /// 构建图片Widget，支持URL、Base64和本地文件
+  Widget _buildImageWidget(String imageSource) {
+    // 判断图片来源类型
+    if (imageSource.startsWith('data:image')) {
+      // Base64格式
+      try {
+        final base64Data = imageSource.split(',')[1];
+        final bytes = base64Decode(base64Data);
+        return Image.memory(
+          bytes,
+          fit: BoxFit.cover,
+          errorBuilder: (ctx, error, stack) {
+            return const Center(
+              child: Icon(Icons.error, color: Colors.red),
+            );
+          },
+        );
+      } catch (e) {
+        debugPrint('Base64图片解析失败: $e');
+        return const Center(
+          child: Icon(Icons.error, color: Colors.red),
+        );
+      }
+    } else if (imageSource.startsWith('http://') ||
+        imageSource.startsWith('https://')) {
+      // URL格式
+      return Image.network(
+        imageSource,
+        fit: BoxFit.cover,
+        loadingBuilder: (ctx, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Center(
+            child: CircularProgressIndicator(
+              value: loadingProgress.expectedTotalBytes != null
+                  ? loadingProgress.cumulativeBytesLoaded /
+                      loadingProgress.expectedTotalBytes!
+                  : null,
+            ),
+          );
+        },
+        errorBuilder: (ctx, error, stack) {
+          return const Center(
+            child: Icon(Icons.error, color: Colors.red),
+          );
+        },
+      );
+    } else {
+      // 本地文件路径
+      return Image.file(
+        File(imageSource),
+        fit: BoxFit.cover,
+        errorBuilder: (ctx, error, stack) {
+          return const Center(
+            child: Icon(Icons.error, color: Colors.red),
+          );
+        },
+      );
+    }
+  }
+
   /// 下载并保存图片
   Future<String> _downloadAndSaveImage(
       String urlOrDataUri, String imageId) async {
     try {
+      // Web平台不支持path_provider的getApplicationDocumentsDirectory和dart:io的文件操作
+      // 直接返回原数据(Base64或URL)用于展示
+      if (kIsWeb) {
+        debugPrint(
+            'Web environment: Skipping file save, using original source');
+        return urlOrDataUri;
+      }
+
       // 获取应用文档目录
       final appDir = await getApplicationDocumentsDirectory();
       final imageDir = Directory('${appDir.path}/story_images');
@@ -628,12 +652,14 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
       // 判断是 URL 还是 base64 data URI
       if (urlOrDataUri.startsWith('data:image')) {
         // Base64 格式: data:image/png;base64,iVBORw0KGgo...
+        debugPrint('📥 检测到base64图片数据，直接保存');
         final base64Data = urlOrDataUri.split(',')[1];
         final bytes = base64Decode(base64Data);
         await file.writeAsBytes(bytes);
         return file.path;
       } else {
         // URL 格式: 下载图片
+        debugPrint('📥 从URL下载图片: $urlOrDataUri');
         final response = await http
             .get(Uri.parse(urlOrDataUri))
             .timeout(const Duration(seconds: 60));
@@ -978,6 +1004,19 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
 
   /// 故事页面
   Widget _buildStoryPage(Map<String, dynamic> page) {
+    final imagePath = page['image'] as String?;
+    bool showImage = false;
+    if (imagePath != null && imagePath.isNotEmpty) {
+      if (kIsWeb) {
+        showImage =
+            imagePath.startsWith('http') || imagePath.startsWith('data:');
+      } else {
+        showImage = imagePath.startsWith('http') ||
+            imagePath.startsWith('data:') ||
+            File(imagePath).existsSync();
+      }
+    }
+
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: EdgeInsets.all(20.w),
@@ -1003,17 +1042,16 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 // Emoji 插图或图片
-                if (page['image'] != null &&
-                    page['image'].isNotEmpty &&
-                    File(page['image']).existsSync())
+                // Emoji 插图或图片
+                if (showImage)
                   Column(
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(16.r),
-                        child: Image.file(
-                          File(page['image']),
+                        child: SizedBox(
                           height: 250.h,
-                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          child: _buildImageWidget(imagePath!),
                         ),
                       ),
                       SizedBox(height: 32.h),
@@ -1489,25 +1527,5 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
         ],
       ),
     );
-  }
-
-  /// 重命名图片文件
-  Future<String> _renameImage(String oldPath, String newFilename) async {
-    try {
-      final oldFile = File(oldPath);
-      final dir = oldFile.parent;
-      final newFile = File('${dir.path}/$newFilename.png');
-
-      // 如果新文件已存在,先删除
-      if (await newFile.exists()) {
-        await newFile.delete();
-      }
-
-      await oldFile.rename(newFile.path);
-      return newFile.path;
-    } catch (e) {
-      debugPrint('重命名图片失败: $e');
-      rethrow;
-    }
   }
 }

@@ -1,3 +1,6 @@
+import 'dart:io';
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -5,6 +8,7 @@ import '../../../data/quiz_data.dart';
 import '../../../theme/app_theme.dart';
 import '../../../services/tts_service.dart';
 import '../../../services/quiz_service.dart';
+import '../../../widgets/toast_utils.dart';
 import '../../../services/openai_service.dart';
 import '../../../controllers/app_mode_controller.dart';
 import 'quiz_ai_settings_page.dart';
@@ -86,8 +90,10 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
       final quizQuestions = _quizService.questions.toList()..shuffle();
       _questions = quizQuestions.take(10).map((q) {
         return {
+          'id': q.id,
           'question': q.question,
           'emoji': q.emoji,
+          'imagePath': q.imagePath,
           'options': q.options,
           'correctIndex': q.correctIndex,
           'explanation': q.explanation,
@@ -208,19 +214,28 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
 
       // 检查OpenAI配置
       if (_openAIService.configs.isEmpty) {
-        Get.snackbar(
-          '提示',
-          '请先配置OpenAI接口',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: Colors.orange.withOpacity(0.8),
-          colorText: Colors.white,
-        );
+        ToastUtils.showWarning('请先配置OpenAI接口');
         return;
       }
 
       // 显示加载对话框
       Get.dialog(
-        const Center(child: CircularProgressIndicator()),
+        AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              SizedBox(height: 16.h),
+              const Text("正在请求 AI 绘图...", style: TextStyle(fontSize: 16)),
+              SizedBox(height: 8.h),
+              Text(
+                "生成过程可能需要 1-2 分钟，请耐心等待",
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
         barrierDismissible: false,
       );
 
@@ -255,29 +270,41 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
 
       debugPrint('生成的图片提示词: $imagePrompt');
 
-      // 关闭加载对话框
-      if (Get.isDialogOpen ?? false) Get.back();
+      // 注意：此处不要关闭对话框，等待图片生成完成
 
-      // 显示成功提示
-      Get.snackbar(
-        '成功',
-        '图片提示词生成成功!(完整功能开发中)',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: Colors.green.withOpacity(0.8),
-        colorText: Colors.white,
-      );
+      // 调用 QuizService 生成图片
+      // 首先找到对应的 QuizQuestion 对象
+      final questionId = currentQuestion['id'] as String?;
+      if (questionId != null) {
+        final quizQuestion =
+            _quizService.questions.firstWhereOrNull((q) => q.id == questionId);
+
+        if (quizQuestion != null) {
+          await _quizService.generateImageForQuestion(quizQuestion,
+              imageCount: 1);
+
+          // 关闭加载对话框 (移动到此处)
+          if (Get.isDialogOpen ?? false) Get.back();
+
+          // 更新当前界面显示的图片路径
+          setState(() {
+            currentQuestion['imagePath'] = quizQuestion.imagePath;
+          });
+
+          ToastUtils.showSuccess('图片生成成功!');
+          return;
+        }
+      }
+
+      // 未找到对象，关闭对话框并报错
+      if (Get.isDialogOpen ?? false) Get.back();
+      throw Exception('未找到对应的题目对象');
     } catch (e) {
       // 关闭加载对话框
       if (Get.isDialogOpen ?? false) Get.back();
 
       // 显示错误提示
-      Get.snackbar(
-        '错误',
-        '生成失败: $e',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: Colors.red.withOpacity(0.8),
-        colorText: Colors.white,
-      );
+      ToastUtils.showError('生成失败: $e');
 
       debugPrint('生成图片失败: $e');
     }
@@ -614,11 +641,57 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
       ),
       child: Column(
         children: [
-          // Emoji 图标
-          Text(
-            question['emoji'],
-            style: TextStyle(fontSize: 64.sp),
-          ),
+          // Emoji 图标 或 图片
+          if (question['imagePath'] != null)
+            Container(
+              height: 180.h,
+              width: double.infinity,
+              margin: EdgeInsets.only(bottom: 16.h),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16.r),
+                child: Builder(builder: (context) {
+                  final path = question['imagePath'] as String;
+                  if (kIsWeb) {
+                    if (path.startsWith('data:image')) {
+                      try {
+                        final base64Data = path.split(',')[1];
+                        final bytes = base64Decode(base64Data);
+                        return Image.memory(
+                          bytes,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Center(
+                            child: Text(question['emoji'],
+                                style: TextStyle(fontSize: 64.sp)),
+                          ),
+                        );
+                      } catch (_) {}
+                    } else {
+                      return Image.network(
+                        path,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Center(
+                          child: Text(question['emoji'],
+                              style: TextStyle(fontSize: 64.sp)),
+                        ),
+                      );
+                    }
+                  }
+                  return Image.file(
+                    File(path),
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Center(
+                      child: Text(question['emoji'],
+                          style: TextStyle(fontSize: 64.sp)),
+                    ),
+                  );
+                }),
+              ),
+            )
+          else
+            Text(
+              question['emoji'],
+              style: TextStyle(fontSize: 64.sp),
+            ),
           SizedBox(height: 16.h),
 
           // 问题文本
