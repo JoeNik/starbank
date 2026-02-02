@@ -1,6 +1,10 @@
+import 'dart:io';
 import 'package:get/get.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:http/http.dart' as http;
 import '../models/new_year_story.dart';
 import '../models/quiz_question.dart';
+import '../models/openai_config.dart';
 import 'openai_service.dart';
 import 'story_management_service.dart';
 import 'quiz_management_service.dart';
@@ -18,6 +22,10 @@ class AIGenerationService {
     required int count,
     String? theme,
     String? customPrompt,
+    OpenAIConfig? textConfig,
+    String? textModel,
+    OpenAIConfig? imageConfig,
+    String? imageModel,
   }) async {
     int successCount = 0;
     int skipCount = 0;
@@ -25,12 +33,47 @@ class AIGenerationService {
     List<String> errors = [];
 
     try {
-      // 调用 AI 生成故事
+      // 调用 AI 生成故事文本
       final generatedStories = await _openAIService.generateStories(
         count: count,
         theme: theme,
         customPrompt: customPrompt,
+        config: textConfig,
+        model: textModel,
       );
+
+      // 如果配置了生图模型,则为每个页面生成图片
+      if (imageConfig != null) {
+        for (var story in generatedStories) {
+          final pages = story['pages'] as List;
+          for (int i = 0; i < pages.length; i++) {
+            try {
+              final page = pages[i] as Map<String, dynamic>;
+              final text = page['text'] as String;
+
+              // 构建生图提示词
+              final imagePrompt =
+                  'Children book illustration, Chinese New Year theme. '
+                  'Scene: $text. '
+                  'Style: Cute, colorful, warm, flat vector art, simple background, suited for kids.';
+
+              final imageUrl = await _openAIService.generateImage(
+                prompt: imagePrompt,
+                config: imageConfig,
+                model: imageModel,
+              );
+
+              // 下载并保存图片
+              final imagePath =
+                  await _downloadAndSaveImage(imageUrl, '${story['title']}_$i');
+              page['image'] = imagePath; // Set image path
+            } catch (e) {
+              errors.add('为故事 "${story['title']}" 第 ${i + 1} 页生成图片失败: $e');
+              // Continue without image
+            }
+          }
+        }
+      }
 
       // 逐个验证和导入
       for (var storyMap in generatedStories) {
@@ -73,6 +116,7 @@ class AIGenerationService {
     required int count,
     String? category,
     String? customPrompt,
+    String? model,
   }) async {
     int successCount = 0;
     int skipCount = 0;
@@ -85,6 +129,7 @@ class AIGenerationService {
         count: count,
         category: category,
         customPrompt: customPrompt,
+        model: model,
       );
 
       // 逐个验证和导入
@@ -214,5 +259,32 @@ class AIGenerationService {
     onProgress?.call(totalCount, totalCount);
 
     return (totalSuccess, totalSkip, totalFail, allErrors);
+  }
+
+  /// 下载并保存图片
+  Future<String> _downloadAndSaveImage(
+      String imageUrl, String fileNamePrefix) async {
+    try {
+      final response = await http.get(Uri.parse(imageUrl));
+      if (response.statusCode != 200) {
+        throw Exception('下载图片失败: ${response.statusCode}');
+      }
+
+      final appDir = await getApplicationDocumentsDirectory();
+      final imagesDir = Directory('${appDir.path}/story_images');
+      if (!await imagesDir.exists()) {
+        await imagesDir.create(recursive: true);
+      }
+
+      final fileName =
+          '${fileNamePrefix}_${DateTime.now().millisecondsSinceEpoch}.png';
+      final file = File('${imagesDir.path}/$fileName');
+      await file.writeAsBytes(response.bodyBytes);
+
+      return file.path;
+    } catch (e) {
+      print('下载保存图片失败: $e');
+      rethrow;
+    }
   }
 }

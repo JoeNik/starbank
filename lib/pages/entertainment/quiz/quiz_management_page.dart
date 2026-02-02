@@ -7,6 +7,7 @@ import 'dart:convert';
 import '../../../services/quiz_service.dart';
 import '../../../services/quiz_management_service.dart';
 import '../../../services/ai_generation_service.dart';
+import '../../../services/openai_service.dart';
 import '../../../theme/app_theme.dart';
 import '../../../widgets/toast_utils.dart';
 import 'quiz_ai_settings_page.dart';
@@ -23,6 +24,7 @@ class QuizManagementPage extends StatefulWidget {
 class _QuizManagementPageState extends State<QuizManagementPage> {
   final QuizService _quizService = Get.find<QuizService>();
   final AIGenerationService _aiService = AIGenerationService();
+  final OpenAIService _openAIService = Get.find<OpenAIService>();
   final QuizManagementService _quizManagementService =
       QuizManagementService.instance;
 
@@ -222,11 +224,17 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
           ),
           SizedBox(height: 12.h),
           // AI 生成题目
-          _buildActionButton(
-            icon: Icons.auto_awesome,
-            label: 'AI 生成题目',
-            color: const Color(0xFF9C27B0),
-            onTap: _showAIGenerateDialog,
+          Row(
+            children: [
+              Expanded(
+                child: _buildActionButton(
+                  icon: Icons.auto_awesome,
+                  label: 'AI 生成题目',
+                  color: const Color(0xFF9C27B0),
+                  onTap: _showAIGenerateDialog,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -454,6 +462,25 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
             ),
           ),
 
+          // 生成图片按钮(始终显示)
+          Padding(
+            padding: EdgeInsets.only(right: 8.w),
+            child: IconButton(
+              onPressed: () => _generateImageForQuestion(question),
+              icon: Icon(
+                Icons.auto_awesome,
+                color: const Color(0xFF9C27B0),
+                size: 20.sp,
+              ),
+              tooltip: '生成图片',
+              style: IconButton.styleFrom(
+                backgroundColor: const Color(0xFF9C27B0).withOpacity(0.1),
+                padding: EdgeInsets.all(8.w),
+                minimumSize: Size(36.w, 36.w),
+              ),
+            ),
+          ),
+
           // 操作按钮
           PopupMenuButton<String>(
             onSelected: (value) => _handleQuestionAction(value, question),
@@ -468,17 +495,6 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
                   ],
                 ),
               ),
-              if (question.canGenerateImage)
-                const PopupMenuItem(
-                  value: 'generate',
-                  child: Row(
-                    children: [
-                      Icon(Icons.auto_awesome, size: 18),
-                      SizedBox(width: 8),
-                      Text('生成图片'),
-                    ],
-                  ),
-                ),
               if (question.hasImage)
                 const PopupMenuItem(
                   value: 'delete_image',
@@ -927,6 +943,21 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
   Future<void> _showAIGenerateDialog() async {
     int count = 1;
     String category = '';
+
+    // 获取当前配置的模型列表
+    final currentConfig = _openAIService.currentConfig.value;
+    List<String> models = currentConfig?.models ?? [];
+    String? selectedModel = currentConfig?.selectedModel;
+    if (selectedModel != null && selectedModel.isEmpty) selectedModel = null;
+    // 如果没有选中模型但有模型列表，默认选第一个
+    if (selectedModel == null && models.isNotEmpty)
+      selectedModel = models.first;
+    // 确保选中的模型在列表中
+    if (selectedModel != null && !models.contains(selectedModel)) {
+      if (models.isNotEmpty) selectedModel = models.first;
+    }
+
+    String customPrompt = '';
     bool isGenerating = false;
 
     await Get.dialog(
@@ -952,6 +983,33 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
                         },
                 ),
                 Text('$count 道题目'),
+
+                // 模型选择
+                if (models.isNotEmpty) ...[
+                  SizedBox(height: 16.h),
+                  DropdownButtonFormField<String>(
+                    decoration: const InputDecoration(
+                      labelText: '选择模型',
+                      border: OutlineInputBorder(),
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                    ),
+                    value: selectedModel,
+                    items: models
+                        .map((m) => DropdownMenuItem(
+                              value: m,
+                              child: Text(m,
+                                  style: TextStyle(fontSize: 14.sp),
+                                  overflow: TextOverflow.ellipsis),
+                            ))
+                        .toList(),
+                    onChanged: isGenerating
+                        ? null
+                        : (val) => setDialogState(() => selectedModel = val),
+                    isExpanded: true,
+                  ),
+                ],
+
                 SizedBox(height: 16.h),
                 TextField(
                   decoration: const InputDecoration(
@@ -962,6 +1020,21 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
                   enabled: !isGenerating,
                   onChanged: (value) => category = value,
                 ),
+
+                SizedBox(height: 16.h),
+                TextField(
+                  decoration: const InputDecoration(
+                    labelText: '自定义 Prompt (可选)',
+                    hintText: '完全覆盖默认 Prompt，需小心使用',
+                    border: OutlineInputBorder(),
+                    helperText: '如果不填则使用默认模板',
+                  ),
+                  maxLines: 3,
+                  enabled: !isGenerating,
+                  style: TextStyle(fontSize: 12.sp),
+                  onChanged: (value) => customPrompt = value,
+                ),
+
                 SizedBox(height: 16.h),
                 const Text(
                   '提示:AI 将生成适合儿童的新年知识问答题,重复的题目会自动跳过。',
@@ -986,6 +1059,9 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
                             await _aiService.generateAndImportQuestions(
                           count: count,
                           category: category.isEmpty ? null : category,
+                          customPrompt:
+                              customPrompt.isEmpty ? null : customPrompt,
+                          model: selectedModel,
                         );
 
                         Get.back();

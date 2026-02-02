@@ -19,6 +19,8 @@ class QuizConfigAdapter extends TypeAdapter<QuizConfig> {
     return QuizConfig(
       imageGenConfigId: fields[0] as String?,
       chatConfigId: fields[1] as String?,
+      imageGenModel: fields[7] as String?,
+      chatModel: fields[8] as String?,
       imageGenPrompt: fields[2] == null
           ? '请为以下新年知识点生成一张可爱的儿童插画:\n{knowledge}\n\n要求:\n1. 儿童插画风格,色彩明亮温暖,画面可爱有趣\n2. 符合中国传统新年文化,展现节日喜庆氛围\n3. 适合3-8岁儿童观看,内容健康积极\n4. 画面简洁清晰,主题突出,避免复杂细节\n5. 使用卡通风格,圆润可爱的造型\n6. 严格禁止任何暴力、恐怖、成人或不适合儿童的内容'
           : fields[2] as String,
@@ -34,11 +36,15 @@ class QuizConfigAdapter extends TypeAdapter<QuizConfig> {
   @override
   void write(BinaryWriter writer, QuizConfig obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.imageGenConfigId)
       ..writeByte(1)
       ..write(obj.chatConfigId)
+      ..writeByte(7)
+      ..write(obj.imageGenModel)
+      ..writeByte(8)
+      ..write(obj.chatModel)
       ..writeByte(2)
       ..write(obj.imageGenPrompt)
       ..writeByte(3)

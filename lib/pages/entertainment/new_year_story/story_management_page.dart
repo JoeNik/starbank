@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart';
 import '../../../models/new_year_story.dart';
+import '../../../models/openai_config.dart';
 import '../../../services/story_management_service.dart';
 import '../../../services/ai_generation_service.dart';
+import '../../../services/openai_service.dart';
 import '../../../widgets/toast_utils.dart';
 import 'story_edit_dialog.dart';
 
@@ -17,6 +20,7 @@ class StoryManagementPage extends StatefulWidget {
 class _StoryManagementPageState extends State<StoryManagementPage> {
   final StoryManagementService _storyService = StoryManagementService.instance;
   final AIGenerationService _aiService = AIGenerationService();
+  final OpenAIService _openAIService = Get.find<OpenAIService>();
 
   // 选中的故事 ID 列表
   final Set<String> _selectedIds = {};
@@ -164,97 +168,371 @@ class _StoryManagementPageState extends State<StoryManagementPage> {
 
   /// 显示 AI 生成对话框
   Future<void> _showAIGenerateDialog() async {
+    final configs = _openAIService.configs;
+    if (configs.isEmpty) {
+      ToastUtils.showWarning('请先在设置中配置 OpenAI');
+      return;
+    }
+
+    // 初始化状态: Story Config
+    OpenAIConfig? textConfig = _openAIService.currentConfig.value;
+    if (textConfig == null || !configs.any((c) => c.id == textConfig!.id)) {
+      textConfig = configs.first;
+    } else {
+      textConfig = configs.firstWhere((c) => c.id == textConfig!.id,
+          orElse: () => configs.first);
+    }
+
+    String? textModel =
+        textConfig.selectedModel.isNotEmpty ? textConfig.selectedModel : null;
+    if (textModel == null && textConfig.models.isNotEmpty) {
+      textModel = textConfig.models.first;
+    }
+
+    // 初始化状态: Image Config
+    OpenAIConfig? imageConfig = _openAIService.currentConfig.value;
+    if (imageConfig == null || !configs.any((c) => c.id == imageConfig!.id)) {
+      imageConfig = configs.first;
+    } else {
+      imageConfig = configs.firstWhere((c) => c.id == imageConfig!.id,
+          orElse: () => configs.first);
+    }
+    String? imageModel = 'dall-e-3';
+
+    bool enableImageGen = true;
     int count = 1;
     String theme = '';
+    String customPrompt = '';
     bool isGenerating = false;
 
     await showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('AI 生成故事'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+        builder: (context, setDialogState) {
+          // 配置块构建器
+          Widget buildConfigSection({
+            required String title,
+            required IconData icon,
+            required OpenAIConfig? selectedConfig,
+            required String? selectedModel,
+            required Function(OpenAIConfig?) onConfigChanged,
+            required Function(String?) onModelChanged,
+            bool isImage = false,
+          }) {
+            return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('生成数量'),
-                Slider(
-                  value: count.toDouble(),
-                  min: 1,
-                  max: 3,
-                  divisions: 2,
-                  label: count.toString(),
-                  onChanged: isGenerating
-                      ? null
-                      : (value) {
-                          setDialogState(() => count = value.toInt());
-                        },
+                // 标题
+                Row(
+                  children: [
+                    Icon(icon, color: Colors.blue, size: 18.sp),
+                    SizedBox(width: 6.w),
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 15.sp,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
                 ),
-                Text('$count 个故事'),
-                SizedBox(height: 16.h),
-                TextField(
-                  decoration: const InputDecoration(
-                    labelText: '故事主题(可选)',
-                    hintText: '例如:元宵节、舞龙舞狮',
-                    border: OutlineInputBorder(),
+                SizedBox(height: 12.h),
+
+                // 选择接口
+                Text(
+                  '选择接口',
+                  style: TextStyle(
+                    fontSize: 13.sp,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
                   ),
-                  enabled: !isGenerating,
-                  onChanged: (value) => theme = value,
                 ),
-                SizedBox(height: 16.h),
-                const Text(
-                  '提示:AI 将生成适合儿童的新年相关故事,重复的故事会自动跳过。',
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                SizedBox(height: 8.h),
+                DropdownButtonFormField<OpenAIConfig>(
+                  decoration: InputDecoration(
+                    hintText: '请选择接口',
+                    hintStyle: TextStyle(color: Colors.grey[400]),
+                    filled: true,
+                    fillColor: Colors.grey[50],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12.r),
+                      borderSide: BorderSide(color: Colors.grey[300]!),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12.r),
+                      borderSide: BorderSide(color: Colors.grey[300]!),
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 16.w,
+                      vertical: 14.h,
+                    ),
+                  ),
+                  value: selectedConfig,
+                  items: configs
+                      .map((c) => DropdownMenuItem(
+                            value: c,
+                            child:
+                                Text(c.name, overflow: TextOverflow.ellipsis),
+                          ))
+                      .toList(),
+                  onChanged: isGenerating ? null : onConfigChanged,
+                  isExpanded: true,
                 ),
-              ],
-            ),
-          ),
-          actions: [
-            if (!isGenerating)
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('取消'),
-              ),
-            ElevatedButton(
-              onPressed: isGenerating
-                  ? null
-                  : () async {
-                      setDialogState(() => isGenerating = true);
-                      try {
-                        final (success, skip, fail, errors) =
-                            await _aiService.generateAndImportStories(
-                          count: count,
-                          theme: theme.isEmpty ? null : theme,
+
+                SizedBox(height: 12.h),
+
+                // 选择模型
+                Text(
+                  '选择模型',
+                  style: TextStyle(
+                    fontSize: 13.sp,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                SizedBox(height: 8.h),
+                if (isImage) ...[
+                  // 图片模型 - 文本输入
+                  TextFormField(
+                    initialValue: selectedModel,
+                    decoration: InputDecoration(
+                      hintText: '推荐: dall-e-3',
+                      hintStyle: TextStyle(color: Colors.grey[400]),
+                      filled: true,
+                      fillColor: Colors.grey[50],
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12.r),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12.r),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 16.w,
+                        vertical: 14.h,
+                      ),
+                    ),
+                    enabled: !isGenerating,
+                    onChanged: onModelChanged,
+                  )
+                ] else ...[
+                  // 文本模型 - 下拉选择
+                  Builder(
+                    builder: (context) {
+                      // 获取推荐模型
+                      String recommendedModel = '可选任意 LLM';
+                      if (selectedConfig != null &&
+                          selectedConfig.models.isNotEmpty) {
+                        final gpt4 = selectedConfig.models.firstWhere(
+                          (m) => m.toLowerCase().contains('gpt-4'),
+                          orElse: () => selectedConfig.models.firstWhere(
+                            (m) => m.toLowerCase().contains('claude'),
+                            orElse: () => selectedConfig.models.first,
+                          ),
                         );
-
-                        Navigator.pop(context);
-
-                        // 显示结果
-                        _showGenerationResult(
-                          success: success,
-                          skip: skip,
-                          fail: fail,
-                          errors: errors,
-                          type: '故事',
-                        );
-
-                        setState(() {});
-                      } catch (e) {
-                        setDialogState(() => isGenerating = false);
-                        ToastUtils.showError('生成失败: $e');
+                        recommendedModel = gpt4;
                       }
+
+                      return DropdownButtonFormField<String>(
+                        decoration: InputDecoration(
+                          hintText: recommendedModel == '可选任意 LLM'
+                              ? recommendedModel
+                              : '推荐: $recommendedModel',
+                          hintStyle: TextStyle(color: Colors.grey[400]),
+                          filled: true,
+                          fillColor: Colors.grey[50],
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12.r),
+                            borderSide: BorderSide(color: Colors.grey[300]!),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12.r),
+                            borderSide: BorderSide(color: Colors.grey[300]!),
+                          ),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 16.w,
+                            vertical: 14.h,
+                          ),
+                        ),
+                        value: selectedModel,
+                        items: (selectedConfig?.models ?? [])
+                            .map((m) => DropdownMenuItem(
+                                  value: m,
+                                  child:
+                                      Text(m, overflow: TextOverflow.ellipsis),
+                                ))
+                            .toList(),
+                        onChanged: isGenerating ? null : onModelChanged,
+                        isExpanded: true,
+                      );
                     },
-              child: isGenerating
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('开始生成'),
+                  ),
+                ]
+              ],
+            );
+          }
+
+          return AlertDialog(
+            title: const Text('AI 故事生成配置'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 1. 故事生成配置
+                  buildConfigSection(
+                    title: '故事生成配置 (Text)',
+                    icon: Icons.chat_bubble_outline,
+                    selectedConfig: textConfig,
+                    selectedModel: textModel,
+                    onConfigChanged: (val) {
+                      if (val == null) return;
+                      setDialogState(() {
+                        textConfig = val;
+                        textModel = val.selectedModel;
+                        if ((textModel == null || textModel!.isEmpty) &&
+                            val.models.isNotEmpty) {
+                          textModel = val.models.first;
+                        }
+                      });
+                    },
+                    onModelChanged: (val) =>
+                        setDialogState(() => textModel = val),
+                  ),
+                  SizedBox(height: 16.h),
+
+                  // 2. 插图生成配置
+                  Row(
+                    children: [
+                      Checkbox(
+                        value: enableImageGen,
+                        onChanged: isGenerating
+                            ? null
+                            : (v) => setDialogState(
+                                () => enableImageGen = v ?? false),
+                      ),
+                      Text('同时生成插图', style: TextStyle(fontSize: 14.sp)),
+                      Text(' (耗时较长)',
+                          style:
+                              TextStyle(fontSize: 12.sp, color: Colors.grey)),
+                    ],
+                  ),
+                  if (enableImageGen) ...[
+                    buildConfigSection(
+                      title: '插图生成配置 (Image)',
+                      icon: Icons.image_outlined,
+                      selectedConfig: imageConfig,
+                      selectedModel: imageModel,
+                      onConfigChanged: (val) {
+                        if (val == null) return;
+                        setDialogState(() {
+                          imageConfig = val;
+                        });
+                      },
+                      onModelChanged: (val) =>
+                          setDialogState(() => imageModel = val),
+                      isImage: true,
+                    ),
+                    SizedBox(height: 16.h),
+                  ],
+
+                  // 3. 通用设置
+                  const Divider(),
+                  SizedBox(height: 8.h),
+                  const Text('故事设置'),
+                  Slider(
+                    value: count.toDouble(),
+                    min: 1,
+                    max: 3,
+                    divisions: 2,
+                    label: count.toString(),
+                    onChanged: isGenerating
+                        ? null
+                        : (value) =>
+                            setDialogState(() => count = value.toInt()),
+                  ),
+                  Text('$count 个故事'),
+                  SizedBox(height: 12.h),
+                  TextField(
+                    decoration: const InputDecoration(
+                      labelText: '故事主题 (可选)',
+                      hintText: '例如:元宵节、舞龙舞狮',
+                      border: OutlineInputBorder(),
+                    ),
+                    enabled: !isGenerating,
+                    onChanged: (value) => theme = value,
+                  ),
+                  SizedBox(height: 12.h),
+                  TextField(
+                    decoration: const InputDecoration(
+                      labelText: '自定义 Prompt (高级)',
+                      helperText: '注意:将覆盖默认模板(含格式要求),请慎用',
+                      helperMaxLines: 1,
+                      border: OutlineInputBorder(),
+                    ),
+                    maxLines: 2,
+                    enabled: !isGenerating,
+                    style: TextStyle(fontSize: 12.sp),
+                    onChanged: (value) => customPrompt = value,
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
+            actions: [
+              if (!isGenerating)
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('取消'),
+                ),
+              ElevatedButton(
+                onPressed: isGenerating
+                    ? null
+                    : () async {
+                        setDialogState(() => isGenerating = true);
+                        try {
+                          final (success, skip, fail, errors) =
+                              await _aiService.generateAndImportStories(
+                            count: count,
+                            theme: theme.isEmpty ? null : theme,
+                            customPrompt:
+                                customPrompt.isEmpty ? null : customPrompt,
+                            textConfig: textConfig,
+                            textModel: textModel,
+                            imageConfig: enableImageGen ? imageConfig : null,
+                            imageModel: imageModel,
+                          );
+
+                          Navigator.pop(context);
+
+                          // 显示结果
+                          _showGenerationResult(
+                            success: success,
+                            skip: skip,
+                            fail: fail,
+                            errors: errors,
+                            type: '故事',
+                          );
+
+                          setState(() {});
+                        } catch (e) {
+                          setDialogState(() => isGenerating = false);
+                          ToastUtils.showError('生成失败: $e');
+                        }
+                      },
+                child: isGenerating
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('开始生成'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

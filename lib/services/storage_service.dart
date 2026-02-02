@@ -7,6 +7,9 @@ import '../models/product.dart';
 import '../models/baby.dart';
 import '../models/music/music_track.dart';
 import '../models/music/playlist.dart';
+import '../models/new_year_story.dart';
+import '../models/quiz_question.dart';
+import '../models/quiz_config.dart';
 
 class StorageService extends GetxService {
   late Box<UserProfile> userBox;
@@ -31,6 +34,17 @@ class StorageService extends GetxService {
     Hive.registerAdapter(BabyAdapter());
     Hive.registerAdapter(MusicTrackAdapter());
     Hive.registerAdapter(PlaylistAdapter());
+
+    // Quiz and Story Adapters (安全注册，避免重复)
+    if (!Hive.isAdapterRegistered(20)) {
+      Hive.registerAdapter(QuizConfigAdapter());
+    }
+    if (!Hive.isAdapterRegistered(21)) {
+      Hive.registerAdapter(QuizQuestionAdapter());
+    }
+    if (!Hive.isAdapterRegistered(22)) {
+      Hive.registerAdapter(NewYearStoryAdapter());
+    }
 
     userBox = await Hive.openBox<UserProfile>('userBox');
     actionBox = await Hive.openBox<ActionItem>('actionBox');

@@ -10,7 +10,12 @@ import 'controllers/shop_controller.dart';
 import 'controllers/app_mode_controller.dart';
 import 'services/tunehub_service.dart';
 import 'services/music_service.dart';
+import 'services/music_cache_service.dart';
 import 'controllers/music_player_controller.dart';
+import 'services/openai_service.dart';
+import 'services/quiz_service.dart';
+import 'services/story_management_service.dart';
+import 'services/quiz_management_service.dart';
 // import 'package:just_audio_background/just_audio_background.dart';
 
 import 'pages/home_page.dart';
@@ -52,9 +57,37 @@ void main() async {
     Get.put(AppModeController());
     Get.put(TuneHubService());
 
+    // Initialize Quiz and Story Services (with error handling)
+    try {
+      // 先初始化并注册 OpenAIService
+      final openAIService = OpenAIService();
+      Get.put(openAIService); // 必须先 put，QuizService 构造时需要
+      await openAIService.init();
+
+      // QuizService 依赖 OpenAIService，所以必须在其后创建
+      final quizService = QuizService();
+      Get.put(quizService);
+      await quizService.init();
+
+      final storyManagementService = StoryManagementService.instance;
+      await storyManagementService.init();
+
+      final quizManagementService = QuizManagementService.instance;
+      await quizManagementService.init();
+
+      debugPrint('Quiz and Story services initialized');
+    } catch (e, stack) {
+      debugPrint('Quiz/Story services init failed: $e');
+      debugPrint('Stack: $stack');
+    }
+
     // Core Music Engine (Singleton) - Solves "Multiple Player Instance" crash
     // Initialize AudioService for Android 14 Background support
     await Get.put(MusicService(), permanent: true).init();
+
+    // Initialize Music Cache Service
+    final musicCacheService = Get.put(MusicCacheService(), permanent: true);
+    await musicCacheService.initialize();
 
     // Initialize MusicPlayerController as a permanent singleton.
     // This ensures it is always available and persists across navigation,

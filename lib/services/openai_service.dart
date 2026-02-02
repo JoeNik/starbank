@@ -115,6 +115,7 @@ class OpenAIService extends GetxService {
     required String systemPrompt,
     required String userMessage,
     OpenAIConfig? config,
+    String? model,
   }) async {
     final cfg = config ?? currentConfig.value;
     if (cfg == null) {
@@ -136,8 +137,10 @@ class OpenAIService extends GetxService {
 
       // 构建请求体
       Map<String, dynamic> requestBody = {
-        'model':
-            cfg.selectedModel.isNotEmpty ? cfg.selectedModel : 'gpt-3.5-turbo',
+        'model': model ??
+            (cfg.selectedModel.isNotEmpty
+                ? cfg.selectedModel
+                : 'gpt-3.5-turbo'),
         'messages': messages,
         'temperature': 0.7,
         'max_tokens': 2000,
@@ -249,6 +252,7 @@ class OpenAIService extends GetxService {
     String? theme,
     String? customPrompt,
     OpenAIConfig? config,
+    String? model,
   }) async {
     if (count < 1 || count > 3) {
       throw Exception('生成数量必须在 1-3 之间');
@@ -297,6 +301,7 @@ class OpenAIService extends GetxService {
         systemPrompt: systemPrompt,
         userMessage: userPrompt,
         config: config,
+        model: model,
       );
 
       // 提取 JSON 内容(处理可能的 markdown 代码块)
@@ -328,6 +333,7 @@ class OpenAIService extends GetxService {
     String? category,
     String? customPrompt,
     OpenAIConfig? config,
+    String? model,
   }) async {
     if (count < 1 || count > 3) {
       throw Exception('生成数量必须在 1-3 之间');
@@ -366,6 +372,7 @@ class OpenAIService extends GetxService {
         systemPrompt: systemPrompt,
         userMessage: userPrompt,
         config: config,
+        model: model,
       );
 
       // 提取 JSON 内容(处理可能的 markdown 代码块)
@@ -438,6 +445,57 @@ class OpenAIService extends GetxService {
       return true;
     } catch (e) {
       return false;
+    }
+  }
+
+  /// 生成图片
+  /// [prompt] 提示词
+  /// [config] OpenAI 配置
+  /// [model] 可选模型(覆盖配置)
+  Future<String> generateImage({
+    required String prompt,
+    OpenAIConfig? config,
+    String? model,
+  }) async {
+    final cfg = config ?? currentConfig.value;
+    if (cfg == null) {
+      throw Exception('未配置 OpenAI');
+    }
+
+    try {
+      final uri = Uri.parse('${cfg.baseUrl}/v1/images/generations');
+      final modelName = model ??
+          (cfg.selectedModel.isNotEmpty ? cfg.selectedModel : 'dall-e-3');
+
+      final response = await http
+          .post(
+            uri,
+            headers: {
+              'Authorization': 'Bearer ${cfg.apiKey}',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode({
+              'model': modelName,
+              'prompt': prompt,
+              'n': 1,
+              'size': '1024x1024',
+              'quality': 'standard',
+            }),
+          )
+          .timeout(const Duration(seconds: 120));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final imageUrl = data['data'][0]['url'] as String;
+        return imageUrl;
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(
+            error['error']?['message'] ?? '生成图片失败: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('生图 API 调用失败: $e');
+      rethrow;
     }
   }
 }

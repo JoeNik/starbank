@@ -130,37 +130,72 @@ class _QuizAISettingsPageState extends State<QuizAISettingsPage> {
           ),
           SizedBox(height: 16.h),
 
-          // 生图 AI 选择
+          // 生图 AI 配置
           Obx(() {
             final configs = _openAIService.configs;
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // 标题
+                Row(
+                  children: [
+                    Icon(Icons.image, color: AppTheme.primary, size: 18.sp),
+                    SizedBox(width: 6.w),
+                    Text(
+                      '📷 图像生成配置',
+                      style: TextStyle(
+                        fontSize: 15.sp,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textMain,
+                      ),
+                    ),
+                    SizedBox(width: 4.w),
+                    Text(
+                      '*',
+                      style: TextStyle(
+                        fontSize: 15.sp,
+                        color: Colors.red,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 16.h),
+
+                // 选择接口
                 Text(
-                  '生图 AI',
+                  '选择接口',
                   style: TextStyle(
-                    fontSize: 14.sp,
-                    color: Colors.grey[700],
-                    fontWeight: FontWeight.w600,
+                    fontSize: 13.sp,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
                 SizedBox(height: 8.h),
                 DropdownButtonFormField<String>(
                   value: _config.imageGenConfigId,
                   decoration: InputDecoration(
-                    hintText: '请选择生图 AI 配置',
+                    hintText: '请选择接口',
+                    hintStyle: TextStyle(color: Colors.grey[400]),
+                    filled: true,
+                    fillColor: Colors.grey[50],
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12.r),
+                      borderSide: BorderSide(color: Colors.grey[300]!),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12.r),
+                      borderSide: BorderSide(color: Colors.grey[300]!),
                     ),
                     contentPadding: EdgeInsets.symmetric(
-                      horizontal: 12.w,
-                      vertical: 12.h,
+                      horizontal: 16.w,
+                      vertical: 14.h,
                     ),
                   ),
                   items: [
                     const DropdownMenuItem<String>(
                       value: null,
-                      child: Text('未选择'),
+                      child: Text('请选择接口'),
                     ),
                     ...configs.map((config) {
                       return DropdownMenuItem<String>(
@@ -172,46 +207,173 @@ class _QuizAISettingsPageState extends State<QuizAISettingsPage> {
                   onChanged: (value) {
                     setState(() {
                       _config.imageGenConfigId = value;
+                      _config.imageGenModel = null;
                     });
+                  },
+                ),
+
+                SizedBox(height: 16.h),
+
+                // 选择模型
+                Text(
+                  '选择模型',
+                  style: TextStyle(
+                    fontSize: 13.sp,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                SizedBox(height: 8.h),
+                Builder(
+                  builder: (context) {
+                    if (_config.imageGenConfigId == null || configs.isEmpty) {
+                      return DropdownButtonFormField<String>(
+                        value: null,
+                        decoration: InputDecoration(
+                          hintText: '推荐: dall-e-3',
+                          hintStyle: TextStyle(color: Colors.grey[400]),
+                          filled: true,
+                          fillColor: Colors.grey[50],
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12.r),
+                            borderSide: BorderSide(color: Colors.grey[300]!),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12.r),
+                            borderSide: BorderSide(color: Colors.grey[300]!),
+                          ),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 16.w,
+                            vertical: 14.h,
+                          ),
+                        ),
+                        items: const [],
+                        onChanged: null,
+                      );
+                    }
+
+                    final selectedConfig = configs.firstWhere(
+                      (c) => c.id == _config.imageGenConfigId,
+                      orElse: () => configs.first,
+                    );
+
+                    // 获取推荐模型
+                    String recommendedModel = 'dall-e-3';
+                    if (selectedConfig.models.isNotEmpty) {
+                      // 优先推荐包含 dall-e 或 gpt-4 的模型
+                      final dallE = selectedConfig.models.firstWhere(
+                        (m) => m.toLowerCase().contains('dall-e'),
+                        orElse: () => selectedConfig.models.firstWhere(
+                          (m) => m.toLowerCase().contains('gpt-4'),
+                          orElse: () => selectedConfig.models.first,
+                        ),
+                      );
+                      recommendedModel = dallE;
+                    }
+
+                    return DropdownButtonFormField<String>(
+                      value: _config.imageGenModel,
+                      decoration: InputDecoration(
+                        hintText: '推荐: $recommendedModel',
+                        hintStyle: TextStyle(color: Colors.grey[400]),
+                        filled: true,
+                        fillColor: Colors.grey[50],
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12.r),
+                          borderSide: BorderSide(color: Colors.grey[300]!),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12.r),
+                          borderSide: BorderSide(color: Colors.grey[300]!),
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 16.w,
+                          vertical: 14.h,
+                        ),
+                      ),
+                      items: [
+                        DropdownMenuItem<String>(
+                          value: null,
+                          child: Text('推荐: $recommendedModel'),
+                        ),
+                        ...selectedConfig.models.map((model) {
+                          return DropdownMenuItem<String>(
+                            value: model,
+                            child: Text(model),
+                          );
+                        }),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          _config.imageGenModel = value;
+                        });
+                      },
+                    );
                   },
                 ),
               ],
             );
           }),
 
-          SizedBox(height: 16.h),
+          SizedBox(height: 20.h),
 
-          // 问答 AI 选择
+          // 问答 AI 配置
           Obx(() {
             final configs = _openAIService.configs;
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // 标题
+                Row(
+                  children: [
+                    Icon(Icons.chat, color: AppTheme.primary, size: 18.sp),
+                    SizedBox(width: 6.w),
+                    Text(
+                      '💬 对话引导配置',
+                      style: TextStyle(
+                        fontSize: 15.sp,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textMain,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 16.h),
+
+                // 选择接口
                 Text(
-                  '问答 AI',
+                  '选择接口',
                   style: TextStyle(
-                    fontSize: 14.sp,
-                    color: Colors.grey[700],
-                    fontWeight: FontWeight.w600,
+                    fontSize: 13.sp,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
                 SizedBox(height: 8.h),
                 DropdownButtonFormField<String>(
                   value: _config.chatConfigId,
                   decoration: InputDecoration(
-                    hintText: '请选择问答 AI 配置',
+                    hintText: '请选择接口',
+                    hintStyle: TextStyle(color: Colors.grey[400]),
+                    filled: true,
+                    fillColor: Colors.grey[50],
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12.r),
+                      borderSide: BorderSide(color: Colors.grey[300]!),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12.r),
+                      borderSide: BorderSide(color: Colors.grey[300]!),
                     ),
                     contentPadding: EdgeInsets.symmetric(
-                      horizontal: 12.w,
-                      vertical: 12.h,
+                      horizontal: 16.w,
+                      vertical: 14.h,
                     ),
                   ),
                   items: [
                     const DropdownMenuItem<String>(
                       value: null,
-                      child: Text('未选择'),
+                      child: Text('请选择接口'),
                     ),
                     ...configs.map((config) {
                       return DropdownMenuItem<String>(
@@ -223,7 +385,112 @@ class _QuizAISettingsPageState extends State<QuizAISettingsPage> {
                   onChanged: (value) {
                     setState(() {
                       _config.chatConfigId = value;
+                      _config.chatModel = null;
                     });
+                  },
+                ),
+
+                SizedBox(height: 16.h),
+
+                // 选择模型
+                Text(
+                  '选择模型',
+                  style: TextStyle(
+                    fontSize: 13.sp,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                SizedBox(height: 8.h),
+                Builder(
+                  builder: (context) {
+                    if (_config.chatConfigId == null || configs.isEmpty) {
+                      return DropdownButtonFormField<String>(
+                        value: null,
+                        decoration: InputDecoration(
+                          hintText: '可选任意 LLM',
+                          hintStyle: TextStyle(color: Colors.grey[400]),
+                          filled: true,
+                          fillColor: Colors.grey[50],
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12.r),
+                            borderSide: BorderSide(color: Colors.grey[300]!),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12.r),
+                            borderSide: BorderSide(color: Colors.grey[300]!),
+                          ),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 16.w,
+                            vertical: 14.h,
+                          ),
+                        ),
+                        items: const [],
+                        onChanged: null,
+                      );
+                    }
+
+                    final selectedConfig = configs.firstWhere(
+                      (c) => c.id == _config.chatConfigId,
+                      orElse: () => configs.first,
+                    );
+
+                    // 获取推荐模型
+                    String recommendedModel = '可选任意 LLM';
+                    if (selectedConfig.models.isNotEmpty) {
+                      // 优先推荐 gpt-4 或 claude 系列
+                      final gpt4 = selectedConfig.models.firstWhere(
+                        (m) => m.toLowerCase().contains('gpt-4'),
+                        orElse: () => selectedConfig.models.firstWhere(
+                          (m) => m.toLowerCase().contains('claude'),
+                          orElse: () => selectedConfig.models.first,
+                        ),
+                      );
+                      recommendedModel = gpt4;
+                    }
+
+                    return DropdownButtonFormField<String>(
+                      value: _config.chatModel,
+                      decoration: InputDecoration(
+                        hintText: recommendedModel == '可选任意 LLM'
+                            ? recommendedModel
+                            : '推荐: $recommendedModel',
+                        hintStyle: TextStyle(color: Colors.grey[400]),
+                        filled: true,
+                        fillColor: Colors.grey[50],
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12.r),
+                          borderSide: BorderSide(color: Colors.grey[300]!),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12.r),
+                          borderSide: BorderSide(color: Colors.grey[300]!),
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 16.w,
+                          vertical: 14.h,
+                        ),
+                      ),
+                      items: [
+                        DropdownMenuItem<String>(
+                          value: null,
+                          child: Text(recommendedModel == '可选任意 LLM'
+                              ? recommendedModel
+                              : '推荐: $recommendedModel'),
+                        ),
+                        ...selectedConfig.models.map((model) {
+                          return DropdownMenuItem<String>(
+                            value: model,
+                            child: Text(model),
+                          );
+                        }),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          _config.chatModel = value;
+                        });
+                      },
+                    );
                   },
                 ),
               ],

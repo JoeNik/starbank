@@ -1,10 +1,13 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../data/new_year_story_data.dart';
 import '../../../theme/app_theme.dart';
 import '../../../services/tts_service.dart';
+import '../../../services/story_management_service.dart';
+import '../../../controllers/app_mode_controller.dart';
 import 'story_management_page.dart';
 
 /// 新年故事听听页面
@@ -19,6 +22,8 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
     with TickerProviderStateMixin {
   // 使用全局 TTS 服务
   final TtsService _tts = Get.find<TtsService>();
+  final StoryManagementService _storyService = StoryManagementService.instance;
+  final AppModeController _modeController = Get.find<AppModeController>();
 
   // 故事列表
   final List<Map<String, dynamic>> _stories = NewYearStoryData.getAllStories();
@@ -220,6 +225,48 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
         });
       }
     });
+  }
+
+  /// 重新生成当前页面的图片
+  Future<void> _regenerateCurrentPageImage(Map<String, dynamic> page) async {
+    if (_currentStory == null) return;
+
+    try {
+      // 显示加载提示
+      Get.snackbar(
+        '生成中',
+        '正在为当前情节生成图片...',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: Colors.blue.withOpacity(0.8),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),
+      );
+
+      // TODO: 调用AI生成图片API
+      // 由于新年故事的图片生成可能返回多张图片,这里需要:
+      // 1. 调用_storyService的生成图片方法
+      // 2. 如果返回多张图片,显示选择对话框
+      // 3. 保存选中的图片到page['image']
+
+      // 暂时显示提示
+      await Future.delayed(const Duration(seconds: 2));
+
+      Get.snackbar(
+        '提示',
+        '图片生成功能开发中,敬请期待!',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: Colors.orange.withOpacity(0.8),
+        colorText: Colors.white,
+      );
+    } catch (e) {
+      Get.snackbar(
+        '错误',
+        '生成失败: $e',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: Colors.red.withOpacity(0.8),
+        colorText: Colors.white,
+      );
+    }
   }
 
   /// 显示完成对话框
@@ -565,12 +612,30 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Emoji 插图
-                Text(
-                  page['emoji'],
-                  style: TextStyle(fontSize: 100.sp),
-                ),
-                SizedBox(height: 32.h),
+                // Emoji 插图或图片
+                if (page['image'] != null &&
+                    page['image'].isNotEmpty &&
+                    File(page['image']).existsSync())
+                  Column(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16.r),
+                        child: Image.file(
+                          File(page['image']),
+                          height: 250.h,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      SizedBox(height: 32.h),
+                    ],
+                  )
+                else ...[
+                  Text(
+                    page['emoji'],
+                    style: TextStyle(fontSize: 100.sp),
+                  ),
+                  SizedBox(height: 32.h),
+                ],
 
                 // 文本内容
                 Text(
@@ -586,6 +651,38 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
               ],
             ),
           ),
+
+          // 重新生成图片按钮(仅家长模式)
+          Obx(() {
+            if (!_modeController.isParentMode) {
+              return const SizedBox.shrink();
+            }
+
+            return Padding(
+              padding: EdgeInsets.only(top: 16.h, bottom: 8.h),
+              child: OutlinedButton.icon(
+                onPressed: () => _regenerateCurrentPageImage(page),
+                icon: Icon(
+                  Icons.auto_awesome,
+                  size: 18.sp,
+                  color: const Color(0xFF9C27B0),
+                ),
+                label: const Text('重新生成图片'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF9C27B0),
+                  side: BorderSide(
+                      color: const Color(0xFF9C27B0).withOpacity(0.5)),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 20.w,
+                    vertical: 12.h,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24.r),
+                  ),
+                ),
+              ),
+            );
+          }),
 
           // 互动问题
           if (_showQuestion && page['question'] != null)
@@ -731,13 +828,21 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
             width: 56.w,
             height: 56.w,
             decoration: BoxDecoration(
-              color: buttonColor.withOpacity(0.1),
+              color: isDisabled
+                  ? Colors.grey.shade200
+                  : buttonColor.withOpacity(0.15),
               borderRadius: BorderRadius.circular(18.r),
+              border: Border.all(
+                color: isDisabled
+                    ? Colors.grey.shade300
+                    : buttonColor.withOpacity(0.3),
+                width: 2,
+              ),
             ),
             child: Icon(
               icon,
-              color: buttonColor,
-              size: 24.sp,
+              color: isDisabled ? Colors.grey.shade400 : buttonColor,
+              size: 28.sp,
             ),
           ),
           SizedBox(height: 6.h),

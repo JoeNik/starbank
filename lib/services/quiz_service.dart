@@ -16,7 +16,7 @@ class QuizService extends GetxService {
   late Box<QuizConfig> _configBox;
   late Box<QuizQuestion> _questionBox;
 
-  OpenAIService get _openAIService => Get.find<OpenAIService>();
+  final OpenAIService _openAIService = Get.find<OpenAIService>();
 
   // 当前配置
   final Rx<QuizConfig?> config = Rx<QuizConfig?>(null);
@@ -190,7 +190,8 @@ class QuizService extends GetxService {
   }
 
   /// 为单个题目生成图片
-  Future<void> generateImageForQuestion(QuizQuestion question) async {
+  Future<void> generateImageForQuestion(QuizQuestion question,
+      {int imageCount = 3}) async {
     if (!config.value!.enableImageGen) {
       throw Exception('未启用 AI 生成图片功能');
     }
@@ -245,8 +246,12 @@ class QuizService extends GetxService {
 
       debugPrint('生成的图片提示词: $imagePrompt');
 
-      // 调用生图 API
-      final imageUrl = await _generateImage(imagePrompt, imageGenConfig);
+      // 调用生图 API,生成多张图片
+      final imageUrls =
+          await _generateImage(imagePrompt, imageGenConfig, count: imageCount);
+
+      // 如果生成了多张图片,取第一张(后续会添加选择对话框)
+      final imageUrl = imageUrls.first;
 
       // 下载并保存图片
       final imagePath = await _downloadAndSaveImage(imageUrl, question.id);
@@ -313,7 +318,8 @@ class QuizService extends GetxService {
   }
 
   /// 调用生图 API
-  Future<String> _generateImage(String prompt, OpenAIConfig config) async {
+  Future<List<String>> _generateImage(String prompt, OpenAIConfig config,
+      {int count = 1}) async {
     try {
       final uri = Uri.parse('${config.baseUrl}/v1/images/generations');
       final response = await http
@@ -328,7 +334,7 @@ class QuizService extends GetxService {
                   ? config.selectedModel
                   : 'dall-e-3',
               'prompt': prompt,
-              'n': 1,
+              'n': count.clamp(1, 4), // 最多生成4张
               'size': '1024x1024',
               'quality': 'standard',
             }),
@@ -337,8 +343,8 @@ class QuizService extends GetxService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final imageUrl = data['data'][0]['url'] as String;
-        return imageUrl;
+        final images = data['data'] as List;
+        return images.map((img) => img['url'] as String).toList();
       } else {
         final error = jsonDecode(response.body);
         throw Exception(

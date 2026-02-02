@@ -13,6 +13,14 @@ class QuizConfig extends HiveObject {
   @HiveField(1)
   String? chatConfigId;
 
+  /// 生图模型
+  @HiveField(7)
+  String? imageGenModel;
+
+  /// 问答模型
+  @HiveField(8)
+  String? chatModel;
+
   /// 生图提示词模板
   @HiveField(2,
       defaultValue:
@@ -40,6 +48,8 @@ class QuizConfig extends HiveObject {
   QuizConfig({
     this.imageGenConfigId,
     this.chatConfigId,
+    this.imageGenModel,
+    this.chatModel,
     this.imageGenPrompt =
         '请为以下新年知识点生成一张可爱的儿童插画:\n{knowledge}\n\n要求:\n1. 儿童插画风格,色彩明亮温暖,画面可爱有趣\n2. 符合中国传统新年文化,展现节日喜庆氛围\n3. 适合3-8岁儿童观看,内容健康积极\n4. 画面简洁清晰,主题突出,避免复杂细节\n5. 使用卡通风格,圆润可爱的造型\n6. 严格禁止任何暴力、恐怖、成人或不适合儿童的内容',
     this.chatPrompt =
@@ -53,6 +63,8 @@ class QuizConfig extends HiveObject {
   Map<String, dynamic> toJson() => {
         'imageGenConfigId': imageGenConfigId,
         'chatConfigId': chatConfigId,
+        'imageGenModel': imageGenModel,
+        'chatModel': chatModel,
         'imageGenPrompt': imageGenPrompt,
         'chatPrompt': chatPrompt,
         'enableImageGen': enableImageGen,
@@ -64,6 +76,8 @@ class QuizConfig extends HiveObject {
   factory QuizConfig.fromJson(Map<String, dynamic> json) => QuizConfig(
         imageGenConfigId: json['imageGenConfigId'] as String?,
         chatConfigId: json['chatConfigId'] as String?,
+        imageGenModel: json['imageGenModel'] as String?,
+        chatModel: json['chatModel'] as String?,
         imageGenPrompt: json['imageGenPrompt'] as String? ??
             '请为以下新年知识点生成一张可爱的儿童插画:\n{knowledge}\n\n要求:\n1. 儿童插画风格,色彩明亮温暖,画面可爱有趣\n2. 符合中国传统新年文化,展现节日喜庆氛围\n3. 适合3-8岁儿童观看,内容健康积极\n4. 画面简洁清晰,主题突出,避免复杂细节\n5. 使用卡通风格,圆润可爱的造型\n6. 严格禁止任何暴力、恐怖、成人或不适合儿童的内容',
         chatPrompt: json['chatPrompt'] as String? ??
