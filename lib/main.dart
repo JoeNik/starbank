@@ -5,16 +5,11 @@ import 'services/storage_service.dart';
 import 'services/webdav_service.dart';
 import 'services/update_service.dart';
 import 'services/tts_service.dart';
-import 'services/story_management_service.dart';
-import 'services/quiz_management_service.dart';
-import 'services/openai_service.dart';
-import 'services/quiz_service.dart';
 import 'controllers/user_controller.dart';
 import 'controllers/shop_controller.dart';
 import 'controllers/app_mode_controller.dart';
 import 'services/tunehub_service.dart';
 import 'services/music_service.dart';
-import 'services/music_cache_service.dart';
 import 'controllers/music_player_controller.dart';
 // import 'package:just_audio_background/just_audio_background.dart';
 
@@ -49,17 +44,7 @@ void main() async {
     await ttsService.init();
     Get.put(ttsService);
 
-    // 3. Initialize Story and Quiz Management Services
-    final storyManagementService = StoryManagementService.instance;
-    await storyManagementService.init();
-
-    final quizManagementService = QuizManagementService.instance;
-    await quizManagementService.init();
-
-    // 4. Initialize Other Services and Controllers
-    Get.put(OpenAIService());
-    await Get.put(QuizService()).init();
-
+    // 3. Initialize Other Services and Controllers
     Get.put(WebDavService());
     Get.put(UpdateService());
     Get.put(UserController());
@@ -70,10 +55,6 @@ void main() async {
     // Core Music Engine (Singleton) - Solves "Multiple Player Instance" crash
     // Initialize AudioService for Android 14 Background support
     await Get.put(MusicService(), permanent: true).init();
-
-    // Initialize Music Cache Service
-    final musicCacheService = Get.put(MusicCacheService(), permanent: true);
-    await musicCacheService.initialize();
 
     // Initialize MusicPlayerController as a permanent singleton.
     // This ensures it is always available and persists across navigation,

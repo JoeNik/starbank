@@ -4,8 +4,8 @@ import '../services/storage_service.dart';
 import 'user_controller.dart';
 
 class ShopController extends GetxController {
-  StorageService get _storage => Get.find<StorageService>();
-  UserController get _userController => Get.find<UserController>();
+  final StorageService _storage = Get.find<StorageService>();
+  final UserController _userController = Get.find<UserController>();
 
   final RxList<Product> products = <Product>[].obs;
 
