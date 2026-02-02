@@ -43,17 +43,24 @@ void main() async {
 
   // 初始化 Hive
   await Hive.initFlutter();
+  debugPrint('🔧 Hive 初始化完成');
 
   // 立即注册关键适配器,确保在任何服务使用前完成
   // 这样可以避免 HiveError: Cannot write, unknown type
   if (!Hive.isAdapterRegistered(20)) {
     Hive.registerAdapter(QuizConfigAdapter());
     debugPrint('✅ QuizConfigAdapter registered (typeId: 20)');
+  } else {
+    debugPrint('⚠️ QuizConfigAdapter already registered (typeId: 20)');
   }
   if (!Hive.isAdapterRegistered(21)) {
     Hive.registerAdapter(QuizQuestionAdapter());
     debugPrint('✅ QuizQuestionAdapter registered (typeId: 21)');
+  } else {
+    debugPrint('⚠️ QuizQuestionAdapter already registered (typeId: 21)');
   }
+
+  debugPrint('📦 准备初始化 StorageService...');
 
   try {
     // 1. Initialize Storage Service (Essential)

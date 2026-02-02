@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/user_profile.dart';
@@ -25,7 +26,9 @@ class StorageService extends GetxService {
       settingsBox.put(key, value);
 
   Future<StorageService> init() async {
-    await Hive.initFlutter();
+    // Hive.initFlutter() 已在 main.dart 中调用,这里不需要重复初始化
+    // 重复初始化会导致之前注册的适配器失效
+    debugPrint('📦 StorageService.init() 开始...');
 
     Hive.registerAdapter(UserProfileAdapter());
     Hive.registerAdapter(ActionItemAdapter());
@@ -34,16 +37,26 @@ class StorageService extends GetxService {
     Hive.registerAdapter(BabyAdapter());
     Hive.registerAdapter(MusicTrackAdapter());
     Hive.registerAdapter(PlaylistAdapter());
+    debugPrint('✅ 基础适配器注册完成');
 
-    // Quiz and Story Adapters (安全注册，避免重复)
+    // Quiz and Story Adapters (安全注册,避免重复)
     if (!Hive.isAdapterRegistered(20)) {
       Hive.registerAdapter(QuizConfigAdapter());
+      debugPrint('✅ StorageService: QuizConfigAdapter registered');
+    } else {
+      debugPrint('⏭️ StorageService: QuizConfigAdapter 已注册,跳过');
     }
     if (!Hive.isAdapterRegistered(21)) {
       Hive.registerAdapter(QuizQuestionAdapter());
+      debugPrint('✅ StorageService: QuizQuestionAdapter registered');
+    } else {
+      debugPrint('⏭️ StorageService: QuizQuestionAdapter 已注册,跳过');
     }
     if (!Hive.isAdapterRegistered(22)) {
       Hive.registerAdapter(NewYearStoryAdapter());
+      debugPrint('✅ StorageService: NewYearStoryAdapter registered');
+    } else {
+      debugPrint('⏭️ StorageService: NewYearStoryAdapter 已注册,跳过');
     }
 
     userBox = await Hive.openBox<UserProfile>('userBox');
