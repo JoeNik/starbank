@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'services/storage_service.dart';
 import 'services/webdav_service.dart';
 import 'services/update_service.dart';
@@ -16,6 +17,8 @@ import 'services/openai_service.dart';
 import 'services/quiz_service.dart';
 import 'services/story_management_service.dart';
 import 'services/quiz_management_service.dart';
+import 'models/quiz_config.dart';
+import 'models/quiz_question.dart';
 // import 'package:just_audio_background/just_audio_background.dart';
 
 import 'pages/home_page.dart';
@@ -37,6 +40,20 @@ void main() async {
 
   // JustAudioBackground is DISABLED to fix Android 14 Crashes.
   // Do not initialize it.
+
+  // 初始化 Hive
+  await Hive.initFlutter();
+
+  // 立即注册关键适配器,确保在任何服务使用前完成
+  // 这样可以避免 HiveError: Cannot write, unknown type
+  if (!Hive.isAdapterRegistered(20)) {
+    Hive.registerAdapter(QuizConfigAdapter());
+    debugPrint('✅ QuizConfigAdapter registered (typeId: 20)');
+  }
+  if (!Hive.isAdapterRegistered(21)) {
+    Hive.registerAdapter(QuizQuestionAdapter());
+    debugPrint('✅ QuizQuestionAdapter registered (typeId: 21)');
+  }
 
   try {
     // 1. Initialize Storage Service (Essential)

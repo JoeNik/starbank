@@ -450,43 +450,148 @@ class OpenAIService extends GetxService {
       throw Exception('未配置 OpenAI');
     }
 
+    // 根据配置的供应商类型选择不同的图片生成逻辑
+    // 假设 OpenAIConfig 中有一个 providerType 字段，或者根据 baseUrl 判断
+    // 为了兼容性，这里暂时只处理 OpenAI 的逻辑，但结构上为未来扩展留出接口
+    // 实际重构时，可能需要引入一个抽象的 ImageGenerator 接口和不同的实现类
+    // 例如:
+    // if (cfg.providerType == ProviderType.openAI) {
+    //   return _generateImagesWithOpenAI(prompt, n, cfg, model);
+    // } else if (cfg.providerType == ProviderType.stabilityAI) {
+    //   return _generateImagesWithStabilityAI(prompt, n, cfg, model);
+    // } else {
+    //   throw Exception('不支持的图片生成供应商');
+    // }
+
+    // 目前仍沿用 OpenAI 的实现，但将其封装成私有方法，便于未来替换或扩展
+    return _generateImagesWithOpenAI(prompt, n, cfg, model);
+  }
+
+  /// 内部方法: 使用 OpenAI API 生成图片
+  Future<List<String>> _generateImagesWithOpenAI(
+    String prompt,
+    int n,
+    OpenAIConfig cfg,
+    String? model,
+  ) async {
     try {
       final uri = Uri.parse('${cfg.baseUrl}/v1/images/generations');
       final modelName = model ??
           (cfg.selectedModel.isNotEmpty ? cfg.selectedModel : 'dall-e-3');
 
-      final response = await http
-          .post(
-            uri,
-            headers: {
-              'Authorization': 'Bearer ${cfg.apiKey}',
-              'Content-Type': 'application/json',
-            },
-            body: jsonEncode({
-              'model': modelName,
-              'prompt': prompt,
-              'n': n,
-              'size': '1024x1024',
-              'quality': 'standard',
-            }),
-          )
-          .timeout(const Duration(seconds: 120));
+      // DALL-E 3 不支持 n > 1,需要循环调用
+      // DALL-E 2 支持 n 参数
+      final isDallE3 = modelName.toLowerCase().contains('dall-e-3');
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(utf8.decode(response.bodyBytes));
-        final List<dynamic> list = data['data'];
-        return list.map((e) => e['url'] as String).toList();
-      } else {
-        Map<String, dynamic> error;
-        try {
-          error = jsonDecode(utf8.decode(response.bodyBytes));
-        } catch (_) {
-          error = {
-            'error': {'message': 'Response: ${response.body}'}
-          };
+      if (isDallE3 && n > 1) {
+        // DALL-E 3: 循环生成多张图片
+        debugPrint('🎨 DALL-E 3 检测到,将循环生成 $n 张图片');
+        final List<String> allUrls = [];
+
+        for (int i = 0; i < n; i++) {
+          debugPrint('🎨 正在生成第 ${i + 1}/$n 张图片...');
+
+          final response = await http
+              .post(
+                uri,
+                headers: {
+                  'Authorization': 'Bearer ${cfg.apiKey}',
+                  'Content-Type': 'application/json',
+                },
+                body: jsonEncode({
+                  'model': modelName,
+                  'prompt': prompt,
+                  'n': 1,
+                  'size': '1024x1024',
+                }),
+              )
+              .timeout(const Duration(seconds: 120));
+
+          if (response.statusCode == 200) {
+            final data = jsonDecode(utf8.decode(response.bodyBytes));
+            final List<dynamic> list = data['data'];
+
+            // 解析图片,支持 URL 和 base64
+            final imageData = list.first;
+            if (imageData['url'] != null) {
+              allUrls.add(imageData['url'] as String);
+            } else if (imageData['b64_json'] != null) {
+              allUrls.add('data:image/png;base64,${imageData['b64_json']}');
+            } else {
+              throw Exception('图片响应格式错误');
+            }
+
+            // 避免频繁调用 API,添加延迟
+            if (i < n - 1) {
+              await Future.delayed(const Duration(milliseconds: 500));
+            }
+          } else {
+            Map<String, dynamic> error;
+            try {
+              error = jsonDecode(utf8.decode(response.bodyBytes));
+            } catch (_) {
+              error = {
+                'error': {'message': 'Response: ${response.body}'}
+              };
+            }
+            throw Exception(
+                error['error']?['message'] ?? '生成图片失败: ${response.statusCode}');
+          }
         }
-        throw Exception(
-            error['error']?['message'] ?? '生成图片失败: ${response.statusCode}');
+
+        debugPrint('🎨 DALL-E 3 成功生成 ${allUrls.length} 张图片');
+        return allUrls;
+      } else {
+        // DALL-E 2 或单张图片: 直接调用
+        final response = await http
+            .post(
+              uri,
+              headers: {
+                'Authorization': 'Bearer ${cfg.apiKey}',
+                'Content-Type': 'application/json',
+              },
+              body: jsonEncode({
+                'model': modelName,
+                'prompt': prompt,
+                'n': n,
+                'size': '1024x1024',
+              }),
+            )
+            .timeout(const Duration(seconds: 120));
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(utf8.decode(response.bodyBytes));
+          final List<dynamic> list = data['data'];
+
+          // 解析图片数据,支持两种格式:
+          // 1. URL 格式: {"url": "https://..."}
+          // 2. Base64 格式: {"b64_json": "iVBORw0KGgo..."}
+          return list.map((e) {
+            // 优先使用 URL
+            if (e['url'] != null) {
+              return e['url'] as String;
+            }
+            // 如果是 base64,返回 data URI
+            else if (e['b64_json'] != null) {
+              return 'data:image/png;base64,${e['b64_json']}';
+            }
+            // 兜底错误
+            else {
+              throw Exception('图片响应格式错误: 既没有 url 也没有 b64_json');
+            }
+          }).toList();
+        } else {
+          Map<String, dynamic> error;
+          try {
+            error = jsonDecode(utf8.decode(response.bodyBytes));
+          } catch (_) {
+            error = {
+              'error': {'message': 'Response: ${response.body}'}
+            };
+          }
+          throw Exception(
+              error['error']?['message'] ?? '生成图片失败: ${response.statusCode}');
+        }
       }
     } catch (e) {
       debugPrint('生图 API 调用失败: $e');

@@ -471,6 +471,51 @@ class _StoryManagementPageState extends State<StoryManagementPage> {
                     onChanged: (value) => theme = value,
                   ),
                   SizedBox(height: 12.h),
+
+                  // 显示默认 Prompt (可折叠)
+                  ExpansionTile(
+                    title: Text(
+                      '查看默认 Prompt 模板',
+                      style: TextStyle(
+                          fontSize: 13.sp, fontWeight: FontWeight.w500),
+                    ),
+                    subtitle: Text(
+                      '点击展开查看系统默认的故事生成提示词',
+                      style:
+                          TextStyle(fontSize: 11.sp, color: Colors.grey[600]),
+                    ),
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(12.w),
+                        margin: EdgeInsets.symmetric(horizontal: 16.w),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(8.r),
+                        ),
+                        child: Text(
+                          '''请生成 {count} 个适合儿童的中国新年相关故事。
+
+要求:
+1. {theme != null ? '故事主题: {theme}' : '主题可以是春节习俗、传统文化、民间传说等'}
+2. 每个故事包含 5-7 个页面
+3. 每页包含: text(文本内容)、emoji(表情符号)、tts(语音播报文本)
+4. 至少包含 1 个互动问题
+5. 故事要有教育意义,语言简单易懂
+6. 时长控制在 1-2 分钟
+
+注意: 自定义 Prompt 会完全替换此模板''',
+                          style: TextStyle(
+                            fontSize: 11.sp,
+                            fontFamily: 'monospace',
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 8.h),
+                    ],
+                  ),
+
+                  SizedBox(height: 12.h),
                   TextField(
                     decoration: const InputDecoration(
                       labelText: '自定义 Prompt (高级)',

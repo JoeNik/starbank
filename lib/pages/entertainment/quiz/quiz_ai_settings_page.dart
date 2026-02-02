@@ -46,14 +46,26 @@ class _QuizAISettingsPageState extends State<QuizAISettingsPage> {
     _config.chatPrompt = _chatPromptController.text;
 
     await _quizService.updateConfig(_config);
+
     if (mounted) {
-      Get.snackbar(
-        '保存成功',
-        'AI 配置已更新',
-        backgroundColor: Colors.green.withOpacity(0.8),
-        colorText: Colors.white,
-        snackPosition: SnackPosition.TOP,
-        margin: EdgeInsets.all(10.w),
+      // 使用 ScaffoldMessenger 确保提示一定显示
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 8.w),
+              Text('保存成功!AI 配置已更新'),
+            ],
+          ),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.all(16.w),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8.r),
+          ),
+        ),
       );
     }
   }
@@ -818,14 +830,26 @@ class _QuizAISettingsPageState extends State<QuizAISettingsPage> {
               // 立即保存
               _quizService.updateConfig(_config).then((_) {
                 Get.back();
-                Get.snackbar(
-                  '设置成功',
-                  '每日限玩次数已更新',
-                  backgroundColor: Colors.green.withOpacity(0.8),
-                  colorText: Colors.white,
-                  snackPosition: SnackPosition.TOP,
-                  margin: EdgeInsets.all(10.w),
-                );
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Row(
+                        children: [
+                          Icon(Icons.check_circle, color: Colors.white),
+                          SizedBox(width: 8.w),
+                          Text('设置成功!每日限玩次数已更新'),
+                        ],
+                      ),
+                      backgroundColor: Colors.green,
+                      duration: Duration(seconds: 2),
+                      behavior: SnackBarBehavior.floating,
+                      margin: EdgeInsets.all(16.w),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8.r),
+                      ),
+                    ),
+                  );
+                }
               });
             },
             child: const Text('确定'),
