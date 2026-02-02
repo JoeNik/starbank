@@ -3,9 +3,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'dart:convert';
 import '../../../data/new_year_story_data.dart';
 import '../../../theme/app_theme.dart';
 import '../../../services/tts_service.dart';
+import '../../../services/openai_service.dart';
 import '../../../services/story_management_service.dart';
 import '../../../controllers/app_mode_controller.dart';
 import 'story_management_page.dart';
@@ -22,8 +26,9 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
     with TickerProviderStateMixin {
   // 使用全局 TTS 服务
   final TtsService _tts = Get.find<TtsService>();
-  final StoryManagementService _storyService = StoryManagementService.instance;
+  final OpenAIService _openAIService = Get.find<OpenAIService>();
   final AppModeController _modeController = Get.find<AppModeController>();
+  final StoryManagementService _storyService = StoryManagementService.instance;
 
   // 故事列表
   final List<Map<String, dynamic>> _stories = NewYearStoryData.getAllStories();
@@ -134,8 +139,14 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
     // 播放文本
     await _tts.speak(page['tts']);
 
-    // 等待一段时间后翻页
-    _autoPlayTimer = Timer(const Duration(seconds: 2), () {
+    // 根据文本长度估算播放时间(中文约2.5字/秒)
+    final text = page['tts'] as String;
+    final estimatedDuration = (text.length / 2.5 * 1000).toInt();
+    // 额外等待1秒确保播放完成
+    final waitDuration = Duration(milliseconds: estimatedDuration + 1000);
+
+    // 等待TTS播放完成后翻页
+    _autoPlayTimer = Timer(waitDuration, () {
       if (_isPlaying && _currentPageIndex < pages.length - 1) {
         _nextPage();
       } else {
@@ -232,33 +243,91 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
     if (_currentStory == null) return;
 
     try {
-      // 显示加载提示
-      Get.snackbar(
-        '生成中',
-        '正在为当前情节生成图片...',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: Colors.blue.withOpacity(0.8),
-        colorText: Colors.white,
-        duration: const Duration(seconds: 2),
+      // 检查是否配置了OpenAI
+      if (_openAIService.configs.isEmpty) {
+        Get.snackbar(
+          '提示',
+          '请先在故事管理中配置AI生成',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: Colors.orange.withOpacity(0.8),
+          colorText: Colors.white,
+        );
+        return;
+      }
+
+      // 显示加载对话框
+      Get.dialog(
+        const Center(child: CircularProgressIndicator()),
+        barrierDismissible: false,
       );
 
-      // TODO: 调用AI生成图片API
-      // 由于新年故事的图片生成可能返回多张图片,这里需要:
-      // 1. 调用_storyService的生成图片方法
-      // 2. 如果返回多张图片,显示选择对话框
-      // 3. 保存选中的图片到page['image']
+      // 获取第一个可用的配置
+      final config = _openAIService.configs.first;
 
-      // 暂时显示提示
-      await Future.delayed(const Duration(seconds: 2));
+      // 构建提示词
+      final pageText = page['text'] as String;
+      final prompt = '请为以下儿童故事情节生成一张可爱的插画:\n$pageText';
 
+      // 调用AI生成图片提示词
+      final imagePrompt = await _openAIService.chat(
+        systemPrompt:
+            '你是一个专业的儿童插画提示词生成专家。请根据用户提供的内容生成适合 DALL-E 或 Stable Diffusion 的英文提示词。\n\n'
+            '严格要求:\n'
+            '1. 必须使用可爱、卡通、儿童插画风格\n'
+            '2. 色彩明亮温暖,画面简洁清晰\n'
+            '3. 严格禁止任何暴力、恐怖、成人或不适合儿童的内容\n'
+            '4. 使用圆润可爱的造型,避免尖锐或恐怖元素\n'
+            '5. 符合中国传统新年文化,展现节日喜庆氛围\n'
+            '6. 适合3-8岁儿童观看\n\n'
+            '只返回英文提示词本身,不要有其他说明。提示词中应包含: cute, cartoon, children illustration, colorful, warm, simple, Chinese New Year 等关键词。',
+        userMessage: prompt,
+        config: config,
+      );
+
+      debugPrint('生成的图片提示词: $imagePrompt');
+
+      // 调用生图API
+      final imageUrl = await _generateImage(imagePrompt, config);
+
+      // 下载并保存图片
+      final imagePath = await _downloadAndSaveImage(
+        imageUrl,
+        '${_currentStory!['id']}_${_currentPageIndex}',
+      );
+
+      // 更新当前页面的图片路径
+      page['image'] = imagePath;
+
+      // 保存到数据库
+      final storyId = _currentStory!['id'] as String;
+      final story = _storyService.getStoryById(storyId);
+      if (story != null) {
+        // 更新story的pages数据
+        final pages = _currentStory!['pages'] as List;
+        story.pagesJson = jsonEncode(pages);
+        await _storyService.updateStory(story);
+        debugPrint('故事图片已保存到数据库: $imagePath');
+      }
+
+      // 关闭加载对话框
+      if (Get.isDialogOpen ?? false) Get.back();
+
+      // 显示成功提示
       Get.snackbar(
-        '提示',
-        '图片生成功能开发中,敬请期待!',
+        '成功',
+        '图片生成成功并已保存',
         snackPosition: SnackPosition.TOP,
-        backgroundColor: Colors.orange.withOpacity(0.8),
+        backgroundColor: Colors.green.withOpacity(0.8),
         colorText: Colors.white,
       );
+
+      // 刷新界面
+      setState(() {});
     } catch (e) {
+      // 关闭加载对话框
+      if (Get.isDialogOpen ?? false) Get.back();
+
+      // 显示错误提示
       Get.snackbar(
         '错误',
         '生成失败: $e',
@@ -266,6 +335,73 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
         backgroundColor: Colors.red.withOpacity(0.8),
         colorText: Colors.white,
       );
+    }
+  }
+
+  /// 调用生图 API
+  Future<String> _generateImage(String prompt, dynamic config) async {
+    try {
+      final uri = Uri.parse('${config.baseUrl}/v1/images/generations');
+      final response = await http
+          .post(
+            uri,
+            headers: {
+              'Authorization': 'Bearer ${config.apiKey}',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode({
+              'model': config.selectedModel.isNotEmpty
+                  ? config.selectedModel
+                  : 'dall-e-3',
+              'prompt': prompt,
+              'n': 1,
+              'size': '1024x1024',
+              'quality': 'standard',
+            }),
+          )
+          .timeout(const Duration(seconds: 120));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final imageUrl = data['data'][0]['url'] as String;
+        return imageUrl;
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(
+            error['error']?['message'] ?? '生成图片失败: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('生图 API 调用失败: $e');
+      rethrow;
+    }
+  }
+
+  /// 下载并保存图片
+  Future<String> _downloadAndSaveImage(String url, String imageId) async {
+    try {
+      // 获取应用文档目录
+      final appDir = await getApplicationDocumentsDirectory();
+      final imageDir = Directory('${appDir.path}/story_images');
+
+      // 确保目录存在
+      if (!await imageDir.exists()) {
+        await imageDir.create(recursive: true);
+      }
+
+      // 下载图片
+      final response =
+          await http.get(Uri.parse(url)).timeout(const Duration(seconds: 60));
+
+      if (response.statusCode == 200) {
+        final file = File('${imageDir.path}/$imageId.png');
+        await file.writeAsBytes(response.bodyBytes);
+        return file.path;
+      } else {
+        throw Exception('下载图片失败: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('下载图片失败: $e');
+      rethrow;
     }
   }
 

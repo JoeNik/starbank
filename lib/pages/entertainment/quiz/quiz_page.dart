@@ -5,6 +5,7 @@ import '../../../data/quiz_data.dart';
 import '../../../theme/app_theme.dart';
 import '../../../services/tts_service.dart';
 import '../../../services/quiz_service.dart';
+import '../../../services/openai_service.dart';
 import '../../../controllers/app_mode_controller.dart';
 import 'quiz_ai_settings_page.dart';
 import 'quiz_management_page.dart';
@@ -21,6 +22,7 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
   // 使用全局 TTS 服务
   final TtsService _tts = Get.find<TtsService>();
   final QuizService _quizService = Get.find<QuizService>();
+  final OpenAIService _openAIService = Get.find<OpenAIService>();
   final AppModeController _modeController = Get.find<AppModeController>();
 
   // 题目列表
@@ -76,17 +78,46 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
     }
 
     // 从QuizService获取题目并转换为Map格式
-    final quizQuestions = _quizService.questions.toList()..shuffle();
-    _questions = quizQuestions.take(10).map((q) {
-      return {
-        'question': q.question,
-        'emoji': q.emoji,
-        'options': q.options,
-        'correctIndex': q.correctIndex,
-        'explanation': q.explanation,
-        'category': q.category,
-      };
-    }).toList();
+    if (_quizService.questions.isEmpty) {
+      // 如果QuizService的题目列表为空,使用QuizData的默认题目
+      _questions = QuizData.getRandomQuestions(10);
+    } else {
+      // 从QuizService获取题目并转换为Map格式
+      final quizQuestions = _quizService.questions.toList()..shuffle();
+      _questions = quizQuestions.take(10).map((q) {
+        return {
+          'question': q.question,
+          'emoji': q.emoji,
+          'options': q.options,
+          'correctIndex': q.correctIndex,
+          'explanation': q.explanation,
+          'category': q.category,
+        };
+      }).toList();
+    }
+
+    // 最终检查:如果_questions仍然为空,显示错误并返回
+    if (_questions.isEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Get.dialog(
+          AlertDialog(
+            title: const Text('初始化失败'),
+            content: const Text('无法加载题目,请检查题库配置'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Get.back(); // 关闭对话框
+                  Get.back(); // 返回上一页
+                },
+                child: const Text('知道了'),
+              ),
+            ],
+          ),
+          barrierDismissible: false,
+        );
+      });
+      return;
+    }
 
     // 初始化小年兽动画(跳跃)
     _beastController = AnimationController(
@@ -152,12 +183,15 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
     final question = _questions[_currentIndex];
     final options = question['options'] as List;
 
-    // 播报所有选项
+    // 将所有选项合并成一句话播放,避免被中断
     final optionLabels = ['A', 'B', 'C', 'D'];
+    final optionsText = StringBuffer();
     for (int i = 0; i < options.length; i++) {
-      await _tts.speak('${optionLabels[i]}、${options[i]}');
-      await Future.delayed(const Duration(milliseconds: 300));
+      if (i > 0) optionsText.write(',  ');
+      optionsText.write('${optionLabels[i]}、${options[i]}');
     }
+
+    await _tts.speak(optionsText.toString());
   }
 
   /// 重播知识点
@@ -169,19 +203,14 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
   /// 重新生成当前题目的图片
   Future<void> _regenerateCurrentImage() async {
     try {
-      // 获取当前题目
+      // 获取当前题目数据
       final currentQuestion = _questions[_currentIndex];
-      final questionText = currentQuestion['question'] as String;
 
-      // 通过题目内容查找对应的QuizQuestion对象
-      final quizQuestion = _quizService.questions.firstWhereOrNull(
-        (q) => q.question == questionText,
-      );
-
-      if (quizQuestion == null) {
+      // 检查OpenAI配置
+      if (_openAIService.configs.isEmpty) {
         Get.snackbar(
           '提示',
-          '未找到对应的题目,请确保题库已加载',
+          '请先配置OpenAI接口',
           snackPosition: SnackPosition.TOP,
           backgroundColor: Colors.orange.withOpacity(0.8),
           colorText: Colors.white,
@@ -195,8 +224,36 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
         barrierDismissible: false,
       );
 
-      // 调用生成图片方法,生成3张图片
-      await _quizService.generateImageForQuestion(quizQuestion, imageCount: 3);
+      // 获取配置
+      final aiConfig = _openAIService.configs.first;
+
+      // 构建知识点
+      final question = currentQuestion['question'] as String? ?? '';
+      final options = currentQuestion['options'] as List? ?? [];
+      final correctIndex = currentQuestion['correctIndex'] as int? ?? 0;
+      final explanation = currentQuestion['explanation'] as String? ?? '';
+
+      final knowledge =
+          '$question\n答案: ${options.isNotEmpty && correctIndex < options.length ? options[correctIndex] : ''}\n解释: $explanation';
+      final prompt = '请为以下儿童新年知识生成一张可爱的插画:\n$knowledge';
+
+      // 生成图片提示词
+      final imagePrompt = await _openAIService.chat(
+        systemPrompt:
+            '你是一个专业的儿童插画提示词生成专家。请根据用户提供的内容生成适合 DALL-E 或 Stable Diffusion 的英文提示词。\n\n'
+            '严格要求:\n'
+            '1. 必须使用可爱、卡通、儿童插画风格\n'
+            '2. 色彩明亮温暖,画面简洁清晰\n'
+            '3. 严格禁止任何暴力、恐怖、成人或不适合儿童的内容\n'
+            '4. 使用圆润可爱的造型,避免尖锐或恐怖元素\n'
+            '5. 符合中国传统新年文化,展现节日喜庆氛围\n'
+            '6. 适合3-8岁儿童观看\n\n'
+            '只返回英文提示词本身,不要有其他说明。提示词中应包含: cute, cartoon, children illustration, colorful, warm, simple, Chinese New Year 等关键词。',
+        userMessage: prompt,
+        config: aiConfig,
+      );
+
+      debugPrint('生成的图片提示词: $imagePrompt');
 
       // 关闭加载对话框
       if (Get.isDialogOpen ?? false) Get.back();
@@ -204,14 +261,11 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
       // 显示成功提示
       Get.snackbar(
         '成功',
-        '图片生成成功',
+        '图片提示词生成成功!(完整功能开发中)',
         snackPosition: SnackPosition.TOP,
         backgroundColor: Colors.green.withOpacity(0.8),
         colorText: Colors.white,
       );
-
-      // 刷新界面
-      setState(() {});
     } catch (e) {
       // 关闭加载对话框
       if (Get.isDialogOpen ?? false) Get.back();
@@ -224,6 +278,8 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
         backgroundColor: Colors.red.withOpacity(0.8),
         colorText: Colors.white,
       );
+
+      debugPrint('生成图片失败: $e');
     }
   }
 
