@@ -8,7 +8,7 @@ part of 'quiz_question.dart';
 
 class QuizQuestionAdapter extends TypeAdapter<QuizQuestion> {
   @override
-  final int typeId = 21;
+  final int typeId = 31;
 
   @override
   QuizQuestion read(BinaryReader reader) {

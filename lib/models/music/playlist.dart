@@ -3,8 +3,9 @@ import 'music_track.dart';
 
 part 'playlist.g.dart';
 
-// 修复 typeId 冲突: 之前使用 21 与 QuizQuestion 冲突,改为 31
-@HiveType(typeId: 31)
+// Playlist 保持 typeId: 21 (原始值,保护用户数据)
+// QuizQuestion 改为 typeId: 31 以避免冲突
+@HiveType(typeId: 21)
 class Playlist extends HiveObject {
   @HiveField(0)
   String id;

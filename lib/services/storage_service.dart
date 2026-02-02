@@ -40,15 +40,17 @@ class StorageService extends GetxService {
     debugPrint('✅ 基础适配器注册完成');
 
     // Quiz and Story Adapters (安全注册,避免重复)
-    if (!Hive.isAdapterRegistered(20)) {
+    // QuizConfig 和 QuizQuestion 使用 typeId 30/31
+    if (!Hive.isAdapterRegistered(30)) {
       Hive.registerAdapter(QuizConfigAdapter());
-      debugPrint('✅ StorageService: QuizConfigAdapter registered');
+      debugPrint('✅ StorageService: QuizConfigAdapter registered (typeId: 30)');
     } else {
       debugPrint('⏭️ StorageService: QuizConfigAdapter 已注册,跳过');
     }
-    if (!Hive.isAdapterRegistered(21)) {
+    if (!Hive.isAdapterRegistered(31)) {
       Hive.registerAdapter(QuizQuestionAdapter());
-      debugPrint('✅ StorageService: QuizQuestionAdapter registered');
+      debugPrint(
+          '✅ StorageService: QuizQuestionAdapter registered (typeId: 31)');
     } else {
       debugPrint('⏭️ StorageService: QuizQuestionAdapter 已注册,跳过');
     }

@@ -2,8 +2,9 @@ import 'package:hive/hive.dart';
 
 part 'music_track.g.dart';
 
-// 修复 typeId 冲突: 之前使用 20 与 QuizConfig 冲突,改为 30
-@HiveType(typeId: 30)
+// MusicTrack 保持 typeId: 20 (原始值,保护用户数据)
+// QuizConfig 改为 typeId: 30 以避免冲突
+@HiveType(typeId: 20)
 class MusicTrack extends HiveObject {
   @HiveField(0)
   String id;

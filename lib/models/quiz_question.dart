@@ -2,8 +2,9 @@ import 'package:hive/hive.dart';
 
 part 'quiz_question.g.dart';
 
-/// 问答题目模型
-@HiveType(typeId: 21)
+/// 新年问答题目模型
+/// typeId 改为 31 以避免与 Playlist (21) 冲突
+@HiveType(typeId: 31)
 class QuizQuestion extends HiveObject {
   /// 题目 ID
   @HiveField(0)

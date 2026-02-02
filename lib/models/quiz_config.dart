@@ -3,7 +3,8 @@ import 'package:hive/hive.dart';
 part 'quiz_config.g.dart';
 
 /// 新年问答配置模型
-@HiveType(typeId: 20)
+/// typeId 改为 30 以避免与 MusicTrack (20) 冲突
+@HiveType(typeId: 30)
 class QuizConfig extends HiveObject {
   /// 生图 AI 配置 ID
   @HiveField(0)

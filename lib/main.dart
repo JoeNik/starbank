@@ -46,18 +46,18 @@ void main() async {
   debugPrint('🔧 Hive 初始化完成');
 
   // 立即注册关键适配器,确保在任何服务使用前完成
-  // 这样可以避免 HiveError: Cannot write, unknown type
-  if (!Hive.isAdapterRegistered(20)) {
+  // QuizConfig 和 QuizQuestion 使用 typeId 30/31 (避免与音乐模型 20/21 冲突)
+  if (!Hive.isAdapterRegistered(30)) {
     Hive.registerAdapter(QuizConfigAdapter());
-    debugPrint('✅ QuizConfigAdapter registered (typeId: 20)');
+    debugPrint('✅ QuizConfigAdapter registered (typeId: 30)');
   } else {
-    debugPrint('⚠️ QuizConfigAdapter already registered (typeId: 20)');
+    debugPrint('⚠️ QuizConfigAdapter already registered (typeId: 30)');
   }
-  if (!Hive.isAdapterRegistered(21)) {
+  if (!Hive.isAdapterRegistered(31)) {
     Hive.registerAdapter(QuizQuestionAdapter());
-    debugPrint('✅ QuizQuestionAdapter registered (typeId: 21)');
+    debugPrint('✅ QuizQuestionAdapter registered (typeId: 31)');
   } else {
-    debugPrint('⚠️ QuizQuestionAdapter already registered (typeId: 21)');
+    debugPrint('⚠️ QuizQuestionAdapter already registered (typeId: 31)');
   }
 
   debugPrint('📦 准备初始化 StorageService...');
