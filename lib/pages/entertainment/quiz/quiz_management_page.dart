@@ -1184,6 +1184,18 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
                   : () async {
                       setDialogState(() => isGenerating = true);
                       try {
+                        // Save config to QuizConfig
+                        if (selectedConfig != null) {
+                          final currentCfg = _quizService.config.value;
+                          if (currentCfg != null) {
+                            currentCfg.chatConfigId = selectedConfig!.id;
+                            currentCfg.chatModel = selectedModel;
+                            // Note: We don't have separate Image Config in this dialog currently,
+                            // or we assume this is for Text (Questions).
+                            await _quizService.updateConfig(currentCfg);
+                          }
+                        }
+
                         final (success, skip, fail, errors) =
                             await _aiService.generateAndImportQuestions(
                           count: count,

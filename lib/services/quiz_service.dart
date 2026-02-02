@@ -7,7 +7,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
 import '../models/quiz_config.dart';
 import '../models/quiz_question.dart';
-import '../models/openai_config.dart';
 import '../data/quiz_data.dart';
 import 'openai_service.dart';
 
@@ -37,13 +36,9 @@ class QuizService extends GetxService {
   final RxInt todayPlayCount = 0.obs;
 
   Future<QuizService> init() async {
-    // 注册适配器
-    if (!Hive.isAdapterRegistered(20)) {
-      Hive.registerAdapter(QuizConfigAdapter());
-    }
-    if (!Hive.isAdapterRegistered(21)) {
-      Hive.registerAdapter(QuizQuestionAdapter());
-    }
+    // QuizQuestionAdapter and QuizConfigAdapter are registered in StorageService (main.dart ordering ensures StorageService runs first).
+    // Avoiding duplicate registration check here as it might be flaky if hot restart happens.
+    // We rely on StorageService.
 
     _configBox = await Hive.openBox<QuizConfig>('quiz_config');
     _questionBox = await Hive.openBox<QuizQuestion>('quiz_questions');
@@ -247,8 +242,13 @@ class QuizService extends GetxService {
       debugPrint('生成的图片提示词: $imagePrompt');
 
       // 调用生图 API,生成多张图片
-      final imageUrls =
-          await _generateImage(imagePrompt, imageGenConfig, count: imageCount);
+      // User shared OpenAIService.generateImages logic handles 'n' and error parsing.
+      final imageUrls = await _openAIService.generateImages(
+        prompt: imagePrompt,
+        n: imageCount,
+        config: imageGenConfig,
+        model: config.value!.imageGenModel, // Use configured model properly
+      );
 
       // 如果生成了多张图片,取第一张(后续会添加选择对话框)
       final imageUrl = imageUrls.first;
@@ -317,44 +317,7 @@ class QuizService extends GetxService {
     onProgress?.call(total, total, '完成: 成功 $success, 失败 $failed');
   }
 
-  /// 调用生图 API
-  Future<List<String>> _generateImage(String prompt, OpenAIConfig config,
-      {int count = 1}) async {
-    try {
-      final uri = Uri.parse('${config.baseUrl}/v1/images/generations');
-      final response = await http
-          .post(
-            uri,
-            headers: {
-              'Authorization': 'Bearer ${config.apiKey}',
-              'Content-Type': 'application/json',
-            },
-            body: jsonEncode({
-              'model': config.selectedModel.isNotEmpty
-                  ? config.selectedModel
-                  : 'dall-e-3',
-              'prompt': prompt,
-              'n': count.clamp(1, 4), // 最多生成4张
-              'size': '1024x1024',
-              'quality': 'standard',
-            }),
-          )
-          .timeout(const Duration(seconds: 120));
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final images = data['data'] as List;
-        return images.map((img) => img['url'] as String).toList();
-      } else {
-        final error = jsonDecode(response.body);
-        throw Exception(
-            error['error']?['message'] ?? '生成图片失败: ${response.statusCode}');
-      }
-    } catch (e) {
-      debugPrint('生图 API 调用失败: $e');
-      rethrow;
-    }
-  }
+  // _generateImage is removed in favor of _openAIService.generateImages
 
   /// 下载并保存图片
   Future<String> _downloadAndSaveImage(String url, String questionId) async {

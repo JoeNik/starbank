@@ -46,7 +46,16 @@ class _QuizAISettingsPageState extends State<QuizAISettingsPage> {
     _config.chatPrompt = _chatPromptController.text;
 
     await _quizService.updateConfig(_config);
-    ToastUtils.showSuccess('保存成功');
+    if (mounted) {
+      Get.snackbar(
+        '保存成功',
+        'AI 配置已更新',
+        backgroundColor: Colors.green.withOpacity(0.8),
+        colorText: Colors.white,
+        snackPosition: SnackPosition.TOP,
+        margin: EdgeInsets.all(10.w),
+      );
+    }
   }
 
   @override
@@ -806,8 +815,18 @@ class _QuizAISettingsPageState extends State<QuizAISettingsPage> {
               setState(() {
                 _config.dailyPlayLimit = value;
               });
-              Get.back();
-              ToastUtils.showSuccess('设置成功');
+              // 立即保存
+              _quizService.updateConfig(_config).then((_) {
+                Get.back();
+                Get.snackbar(
+                  '设置成功',
+                  '每日限玩次数已更新',
+                  backgroundColor: Colors.green.withOpacity(0.8),
+                  colorText: Colors.white,
+                  snackPosition: SnackPosition.TOP,
+                  margin: EdgeInsets.all(10.w),
+                );
+              });
             },
             child: const Text('确定'),
           ),

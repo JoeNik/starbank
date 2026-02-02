@@ -7,6 +7,8 @@ import '../../../services/story_management_service.dart';
 import '../../../services/ai_generation_service.dart';
 import '../../../services/openai_service.dart';
 import '../../../widgets/toast_utils.dart';
+import '../../../services/quiz_service.dart';
+import '../../../models/quiz_config.dart';
 import 'story_edit_dialog.dart';
 
 /// 故事管理页面
@@ -21,6 +23,8 @@ class _StoryManagementPageState extends State<StoryManagementPage> {
   final StoryManagementService _storyService = StoryManagementService.instance;
   final AIGenerationService _aiService = AIGenerationService();
   final OpenAIService _openAIService = Get.find<OpenAIService>();
+  final QuizService _quizService =
+      Get.find<QuizService>(); // Add QuizService to access AI Settings
 
   // 选中的故事 ID 列表
   final Set<String> _selectedIds = {};
@@ -175,29 +179,44 @@ class _StoryManagementPageState extends State<StoryManagementPage> {
     }
 
     // 初始化状态: Story Config
-    OpenAIConfig? textConfig = _openAIService.currentConfig.value;
-    if (textConfig == null || !configs.any((c) => c.id == textConfig!.id)) {
-      textConfig = configs.first;
-    } else {
-      textConfig = configs.firstWhere((c) => c.id == textConfig!.id,
-          orElse: () => configs.first);
-    }
+    // Use QuizConfig for defaults (mapped as 'Chat' -> Text, 'ImageGen' -> Image)
+    final quizConfig = _quizService.config.value;
 
-    String? textModel =
-        textConfig.selectedModel.isNotEmpty ? textConfig.selectedModel : null;
-    if (textModel == null && textConfig.models.isNotEmpty) {
-      textModel = textConfig.models.first;
+    OpenAIConfig? textConfig;
+    if (quizConfig?.chatConfigId != null) {
+      textConfig =
+          configs.firstWhereOrNull((c) => c.id == quizConfig!.chatConfigId);
+    }
+    // Fallback if not set or not found
+    textConfig ??= _openAIService.currentConfig.value ?? configs.first;
+
+    String? textModel = quizConfig?.chatModel;
+    // Check if model valid for config
+    if (textConfig != null &&
+        (textModel == null || !textConfig.models.contains(textModel))) {
+      textModel = textConfig.models.isNotEmpty ? textConfig.models.first : null;
     }
 
     // 初始化状态: Image Config
-    OpenAIConfig? imageConfig = _openAIService.currentConfig.value;
-    if (imageConfig == null || !configs.any((c) => c.id == imageConfig!.id)) {
-      imageConfig = configs.first;
-    } else {
-      imageConfig = configs.firstWhere((c) => c.id == imageConfig!.id,
-          orElse: () => configs.first);
+    OpenAIConfig? imageConfig;
+    if (quizConfig?.imageGenConfigId != null) {
+      imageConfig =
+          configs.firstWhereOrNull((c) => c.id == quizConfig!.imageGenConfigId);
     }
-    String? imageModel = 'dall-e-3';
+    imageConfig ??= _openAIService.currentConfig.value ?? configs.first;
+
+    String? imageModel = quizConfig?.imageGenModel;
+    if (imageConfig != null &&
+        (imageModel == null || !imageConfig.models.contains(imageModel))) {
+      // Default to dall-e-3 or first
+      try {
+        imageModel = imageConfig.models
+            .firstWhere((m) => m.toLowerCase().contains('dall-e-3'));
+      } catch (_) {
+        imageModel =
+            imageConfig.models.isNotEmpty ? imageConfig.models.first : null;
+      }
+    }
 
     bool enableImageGen = true;
     int count = 1;
@@ -479,6 +498,21 @@ class _StoryManagementPageState extends State<StoryManagementPage> {
                     : () async {
                         setDialogState(() => isGenerating = true);
                         try {
+                          // Save AI Settings to QuizConfig for persistence
+                          final currentQuizConfig = _quizService.config.value;
+                          if (currentQuizConfig != null) {
+                            if (textConfig != null) {
+                              currentQuizConfig.chatConfigId = textConfig!.id;
+                              currentQuizConfig.chatModel = textModel;
+                            }
+                            if (enableImageGen && imageConfig != null) {
+                              currentQuizConfig.imageGenConfigId =
+                                  imageConfig!.id;
+                              currentQuizConfig.imageGenModel = imageModel;
+                            }
+                            await _quizService.updateConfig(currentQuizConfig);
+                          }
+
                           final (success, skip, fail, errors) =
                               await _aiService.generateAndImportStories(
                             count: count,

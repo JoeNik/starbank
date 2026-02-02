@@ -14,6 +14,8 @@ import '../../../services/story_management_service.dart';
 import '../../../controllers/app_mode_controller.dart';
 import 'story_management_page.dart';
 import '../../../models/new_year_story.dart';
+import '../../../models/openai_config.dart';
+import '../../../services/quiz_service.dart';
 
 /// 新年故事听听页面
 class NewYearStoryPage extends StatefulWidget {
@@ -30,6 +32,8 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
   final OpenAIService _openAIService = Get.find<OpenAIService>();
   final AppModeController _modeController = Get.find<AppModeController>();
   final StoryManagementService _storyService = StoryManagementService.instance;
+  final QuizService _quizService =
+      Get.find<QuizService>(); // Added for AI Settings
 
   // 故事列表
   List<Map<String, dynamic>> _stories = [];
@@ -59,10 +63,7 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
   // 是否显示互动问题
   bool _showQuestion = false;
 
-  // TTS 设置
-  final RxDouble _ttsRate = 0.5.obs; // 语速 0.0 - 1.0
-  final RxDouble _ttsPitch = 1.0.obs; // 音调 0.5 - 2.0
-  final RxDouble _ttsVolume = 1.0.obs; // 音量 0.0 - 1.0
+  // TTS 设置 - Removed local state to use TtsService global persistence
 
   @override
   void initState() {
@@ -136,9 +137,6 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
       // 先播放文本
       await _tts.speak(
         page['tts'],
-        rate: _ttsRate.value,
-        pitch: _ttsPitch.value,
-        volume: _ttsVolume.value,
       );
 
       // 播放问题
@@ -146,9 +144,6 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
       await Future.delayed(const Duration(milliseconds: 500)); // 短暂停顿
       await _tts.speak(
         question['text'] as String,
-        rate: _ttsRate.value,
-        pitch: _ttsPitch.value,
-        volume: _ttsVolume.value,
       );
 
       // 显示问题
@@ -162,9 +157,6 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
     // 播放文本
     await _tts.speak(
       page['tts'],
-      rate: _ttsRate.value,
-      pitch: _ttsPitch.value,
-      volume: _ttsVolume.value,
     );
 
     // 根据文本长度和语速估算播放时间
@@ -176,7 +168,7 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
     // 当 rate=0.5时，时间 = 250 / 0.5 = 500ms/字
     final baseCharTimeMs = 250;
     final estimatedDurationMs =
-        (text.length * baseCharTimeMs / _ttsRate.value).toInt();
+        (text.length * baseCharTimeMs / _tts.speechRate.value).toInt();
 
     // 额外等待1.5秒确保播放完成(尾部的停顿)
     final waitDuration = Duration(milliseconds: estimatedDurationMs + 1500);
@@ -257,9 +249,6 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
 
     await _tts.speak(
       feedbackText,
-      rate: _ttsRate.value,
-      pitch: _ttsPitch.value,
-      volume: _ttsVolume.value,
     );
 
     // 根据反馈文本长度计算等待时间
@@ -267,7 +256,7 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
     // 基础系数设为 250ms (在rate=1.0时)
     final baseCharTimeMs = 250;
     final estimatedDurationMs =
-        (feedbackText.length * baseCharTimeMs / _ttsRate.value).toInt();
+        (feedbackText.length * baseCharTimeMs / _tts.speechRate.value).toInt();
 
     // 额外等待1秒
     final waitDuration = Duration(milliseconds: estimatedDurationMs + 1000);
@@ -323,18 +312,41 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
         return;
       }
 
-      // 获取第一个可用的配置
-      final config = _openAIService.configs.first;
+      // 获取 AI 配置 (优先使用 QuizConfig 中的图片生成设置)
+      final quizConfig = _quizService.config.value;
+      OpenAIConfig? config;
 
-      // 显示加载对话框
+      // 1. 尝试使用 QuizConfig 中保存的生图配置
+      if (quizConfig?.imageGenConfigId != null) {
+        config = _openAIService.configs
+            .firstWhereOrNull((c) => c.id == quizConfig!.imageGenConfigId);
+      }
+
+      // 2. 如果没找到或没配置,尝试使用当前选中的全局配置
+      if (config == null) {
+        final currentGlobal = _openAIService.currentConfig.value;
+        if (currentGlobal != null) {
+          config = _openAIService.configs
+              .firstWhereOrNull((c) => c.id == currentGlobal.id);
+        }
+      }
+
+      // 3. 最后的兜底
+      config ??= _openAIService.configs.first;
+
+      final usedModel = quizConfig
+          ?.imageGenModel; // 可能为 null, generateImages 会自动处理(用默认或dall-e-3)
+
+      // 显示加载对话框 (Styled with Get.dialog)
       Get.dialog(
-        const Center(
-          child: Column(
+        AlertDialog(
+          content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text('正在优化提示词...', style: TextStyle(color: Colors.white)),
+              const CircularProgressIndicator(),
+              SizedBox(height: 16.h),
+              const Text('正在优化提示词...',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
             ],
           ),
         ),
@@ -364,15 +376,21 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
       debugPrint('生成的图片提示词: $imagePrompt');
 
       // 更新加载提示
-      if (Get.isDialogOpen ?? false) Get.back();
+      // 更新加载提示
+      if (Get.isDialogOpen ?? false)
+        Get.back(); // Close previous dialog safe check
       Get.dialog(
-        const Center(
-          child: Column(
+        AlertDialog(
+          content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text('正在生成 4 张备选图片...', style: TextStyle(color: Colors.white)),
+              const CircularProgressIndicator(),
+              SizedBox(height: 16.h),
+              const Text('正在生成 4 张备选图片...',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              if (usedModel != null)
+                Text('模型: $usedModel',
+                    style: const TextStyle(fontSize: 10, color: Colors.grey)),
             ],
           ),
         ),
@@ -386,6 +404,7 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
         prompt: imagePrompt,
         n: 4,
         config: config,
+        model: usedModel,
       );
 
       // 关闭加载对话框
@@ -622,9 +641,6 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
 
     _tts.speak(
       '故事讲完啦!你学到新知识了吗?',
-      rate: _ttsRate.value,
-      pitch: _ttsPitch.value,
-      volume: _ttsVolume.value,
     );
   }
 
@@ -1190,9 +1206,9 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
                   ),
                   TextButton(
                     onPressed: () {
-                      _ttsRate.value = 0.5;
-                      _ttsPitch.value = 1.0;
-                      _ttsVolume.value = 1.0;
+                      _tts.setSpeechRate(0.5);
+                      _tts.setPitch(1.0);
+                      _tts.setVolume(1.0);
                     },
                     child: const Text('重置'),
                   ),
@@ -1238,9 +1254,6 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
                             onPressed: () async {
                               await _tts.speak(
                                 '小朋友，新年快乐！这是一个精彩的故事。',
-                                rate: _ttsRate.value,
-                                pitch: _ttsPitch.value,
-                                volume: _ttsVolume.value,
                               );
                             },
                             icon: const Icon(Icons.play_arrow),
@@ -1260,9 +1273,6 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
                             onPressed: () {
                               _tts.speak(
                                 '谜语测试: 什么动物跑得最快?',
-                                rate: _ttsRate.value,
-                                pitch: _ttsPitch.value,
-                                volume: _ttsVolume.value,
                               );
                             },
                             icon: const Icon(Icons.face),
@@ -1287,11 +1297,12 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
               _buildSliderControl(
                 icon: Icons.speed,
                 title: '语速',
-                value: _ttsRate,
+                value: _tts.speechRate,
                 min: 0.0,
                 max: 1.0,
                 label: '1.0 为正常语速',
                 color: Colors.amber,
+                onChanged: (val) => _tts.setSpeechRate(val),
               ),
               SizedBox(height: 16.h),
 
@@ -1299,11 +1310,12 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
               _buildSliderControl(
                 icon: Icons.music_note,
                 title: '音调',
-                value: _ttsPitch,
+                value: _tts.pitch,
                 min: 0.5,
                 max: 2.0,
                 label: '1.0 为正常音调',
                 color: Colors.amber,
+                onChanged: (val) => _tts.setPitch(val),
               ),
               SizedBox(height: 16.h),
 
@@ -1311,11 +1323,12 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
               _buildSliderControl(
                 icon: Icons.volume_up,
                 title: '音量',
-                value: _ttsVolume,
+                value: _tts.volume,
                 min: 0.0,
                 max: 1.0,
                 label: '1.0 为最大音量',
                 color: Colors.amber,
+                onChanged: (val) => _tts.setVolume(val),
               ),
               SizedBox(height: 24.h),
             ],
@@ -1336,6 +1349,7 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
     required double max,
     required String label,
     required Color color,
+    Function(double)? onChanged,
   }) {
     return Container(
       padding: EdgeInsets.all(16.w),
