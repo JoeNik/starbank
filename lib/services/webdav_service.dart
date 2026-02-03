@@ -1,8 +1,9 @@
-import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:webdav_client/webdav_client.dart' as webdav;
 import 'package:hive/hive.dart';
 import 'dart:convert';
+import 'dart:typed_data';
+import 'package:archive/archive.dart';
 import 'storage_service.dart';
 import '../widgets/toast_utils.dart';
 import '../models/user_profile.dart';
@@ -271,12 +272,18 @@ class WebDavService extends GetxService {
       backupData['timestamp'] = DateTime.now().toIso8601String();
 
       final jsonString = jsonEncode(backupData);
+      final jsonBytes = utf8.encode(jsonString);
+
+      // 压缩数据 (GZIP)
+      final compressedBytes = GZipEncoder().encode(jsonBytes);
 
       // Timestamp based filename: yyyyMMddHH
       final now = DateTime.now();
       final timestamp =
           "${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}${now.hour.toString().padLeft(2, '0')}";
-      final remotePath = '/starbank/backup_$timestamp.json';
+
+      // 使用 .json.gz 后缀
+      final remotePath = '/starbank/backup_$timestamp.json.gz';
 
       // Ensure directory exists
       try {
@@ -284,7 +291,7 @@ class WebDavService extends GetxService {
       } catch (_) {}
 
       // upload
-      await _client!.write(remotePath, utf8.encode(jsonString));
+      await _client!.write(remotePath, Uint8List.fromList(compressedBytes));
 
       // 清理旧备份
       await _cleanupOldBackups();
@@ -343,7 +350,16 @@ class WebDavService extends GetxService {
     try {
       _checkAdapters();
       final data = await _client!.read(remotePath);
-      final jsonString = utf8.decode(data);
+
+      String jsonString;
+      if (remotePath.endsWith('.gz')) {
+        // 解压数据
+        final decompressed = GZipDecoder().decodeBytes(data);
+        jsonString = utf8.decode(decompressed);
+      } else {
+        jsonString = utf8.decode(data);
+      }
+
       final Map<String, dynamic> backupData = jsonDecode(jsonString);
 
       // Clear existing data
@@ -708,7 +724,7 @@ class WebDavService extends GetxService {
       final list = await _client!.readDir('/starbank');
       return list
           .map((f) => f.path ?? '')
-          .where((p) => p.endsWith('.json'))
+          .where((p) => p.endsWith('.json') || p.endsWith('.json.gz'))
           .toList();
     } catch (_) {
       return [];
