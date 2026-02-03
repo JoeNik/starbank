@@ -104,11 +104,8 @@ class StoryGameConfig extends HiveObject {
     required this.id,
     this.imageGenerationConfigId = '',
     this.imageGenerationModel = 'dall-e-3',
-    this.imageGenerationPrompt = '''请生成一张适合3-8岁儿童讲故事的插画图片，要求：
-- 儿童绘本风格，色彩明亮温暖
-- 场景可以是：森林冒险、城堡公主、海底世界、太空探险、农场动物等
-- 画面简洁清晰，有明确的主题和角色
-- 风格可爱友好，适合激发儿童想象力''',
+    this.imageGenerationPrompt =
+        'Generate a cute, high-quality children\'s book illustration. Please RANDOMLY select one specific theme from the following options to create a unique scene: 1. Magical Forest adventure with animals 2. Space exploration with cute aliens 3. Underwater mermaid party 4. Dinosaur playground 5. Animal music festival 6. Candy kingdom 7. Flying car city in clouds 8. Tiny insect world. The image must feature adorable characters (animals or kids) interacting funnily. Style: 3D Pixar style or high-quality digital art. Vibrant colors, soft warm lighting, whimsical atmosphere, 8k resolution. Composition should be clear and focused, perfect for a 3-8 year old child to describe what is happening.',
     this.visionConfigId = '',
     this.visionModel = 'gpt-4o',
     this.visionAnalysisPrompt = '''你是一位温柔有趣的故事引导员，正在和3-8岁的小朋友玩"看图讲故事"游戏。
@@ -165,7 +162,12 @@ class StoryGameConfig extends HiveObject {
     this.ttsRate = 0.5,
     this.ttsVolume = 1.0,
     this.ttsPitch = 1.0,
+    this.enableImageGeneration = false,
   });
+
+  /// 是否启用 AI 生成图片
+  @HiveField(20, defaultValue: false)
+  bool enableImageGeneration;
 
   /// 转换为 JSON
   Map<String, dynamic> toJson() => {
@@ -173,6 +175,7 @@ class StoryGameConfig extends HiveObject {
         'imageGenerationConfigId': imageGenerationConfigId,
         'imageGenerationModel': imageGenerationModel,
         'imageGenerationPrompt': imageGenerationPrompt,
+        'enableImageGeneration': enableImageGeneration,
         'visionConfigId': visionConfigId,
         'visionModel': visionModel,
         'visionAnalysisPrompt': visionAnalysisPrompt,
@@ -219,5 +222,6 @@ class StoryGameConfig extends HiveObject {
         ttsRate: (json['ttsRate'] as num?)?.toDouble() ?? 0.5,
         ttsVolume: (json['ttsVolume'] as num?)?.toDouble() ?? 1.0,
         ttsPitch: (json['ttsPitch'] as num?)?.toDouble() ?? 1.0,
+        enableImageGeneration: json['enableImageGeneration'] as bool? ?? false,
       );
 }

@@ -39,13 +39,14 @@ class StoryGameConfigAdapter extends TypeAdapter<StoryGameConfig> {
       ttsRate: fields[17] == null ? 0.5 : fields[17] as double,
       ttsVolume: fields[18] == null ? 1.0 : fields[18] as double,
       ttsPitch: fields[19] == null ? 1.0 : fields[19] as double,
+      enableImageGeneration: fields[20] == null ? false : fields[20] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, StoryGameConfig obj) {
     writer
-      ..writeByte(20)
+      ..writeByte(21)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -85,7 +86,9 @@ class StoryGameConfigAdapter extends TypeAdapter<StoryGameConfig> {
       ..writeByte(18)
       ..write(obj.ttsVolume)
       ..writeByte(19)
-      ..write(obj.ttsPitch);
+      ..write(obj.ttsPitch)
+      ..writeByte(20)
+      ..write(obj.enableImageGeneration);
   }
 
   @override

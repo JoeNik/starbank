@@ -278,6 +278,37 @@ class _StoryGamePageState extends State<StoryGamePage> {
 
   /// 生成图片
   Future<void> _generateImage() async {
+    // 0. 尝试 AI 生成
+    if (_gameConfig!.enableImageGeneration) {
+      try {
+        final imageConfigId = _gameConfig!.imageGenerationConfigId;
+        final OpenAIConfig? imageConfig = _openAIService.configs
+            .firstWhereOrNull((c) => c.id == imageConfigId);
+
+        if (imageConfig != null) {
+          debugPrint('正在尝试 AI 生图...');
+          final imageUrls = await _openAIService.generateImages(
+            prompt: _gameConfig!.imageGenerationPrompt,
+            n: 1,
+            config: imageConfig,
+            model: _gameConfig!.imageGenerationModel,
+          );
+
+          if (imageUrls.isNotEmpty) {
+            final url = imageUrls.first;
+            // 下载并转为 Base64 (如果是 URL)
+            final base64Image = await _downloadAndConvertImage(url);
+            _currentImageUrl = base64Image;
+            setState(() => _isGeneratingImage = false);
+            return;
+          }
+        }
+      } catch (e) {
+        debugPrint('AI 生图失败，降级使用备用图片源: $e');
+        ToastUtils.showError('AI 生图失败，已切换至备用图片');
+      }
+    }
+
     List<String> imagePool = [];
 
     // 1. 尝试从远程API获取图片列表
@@ -322,6 +353,33 @@ class _StoryGamePageState extends State<StoryGamePage> {
     _currentImageUrl = imagePool.first;
 
     setState(() => _isGeneratingImage = false);
+  }
+
+  /// 下载并转换图片为 Base64
+  Future<String> _downloadAndConvertImage(String urlOrData) async {
+    try {
+      if (urlOrData.startsWith('data:image')) {
+        return urlOrData;
+      }
+
+      // 如果是 http 链接，下载并转 base64
+      if (urlOrData.startsWith('http')) {
+        final response = await http
+            .get(Uri.parse(urlOrData))
+            .timeout(const Duration(seconds: 60));
+        if (response.statusCode == 200) {
+          final base64Data = base64Encode(response.bodyBytes);
+          // 简单判断类型，默认 png
+          return 'data:image/png;base64,$base64Data';
+        } else {
+          throw Exception('下载图片失败: ${response.statusCode}');
+        }
+      }
+      return urlOrData;
+    } catch (e) {
+      debugPrint('图片转换失败: $e');
+      rethrow;
+    }
   }
 
   /// 分析图片并开始引导
@@ -2266,10 +2324,25 @@ class _SessionDetailPage extends StatelessWidget {
   }
 }
 
-/// 构建图片组件（支持网络和本地）
+/// 构建图片组件（支持网络、Base64和本地资源）
 Widget buildStoryImage(String url,
     {double? width, double? height, BoxFit? fit, Widget? errorWidget}) {
-  if (url.startsWith('http')) {
+  if (url.startsWith('data:image')) {
+    try {
+      final base64Data = url.split(',')[1];
+      final bytes = base64Decode(base64Data);
+      return Image.memory(
+        bytes,
+        width: width,
+        height: height,
+        fit: fit,
+        errorBuilder: (_, __, ___) =>
+            errorWidget ?? const Icon(Icons.broken_image),
+      );
+    } catch (e) {
+      return errorWidget ?? const Icon(Icons.broken_image);
+    }
+  } else if (url.startsWith('http')) {
     return Image.network(
       url,
       width: width,
@@ -2279,7 +2352,7 @@ Widget buildStoryImage(String url,
           errorWidget ?? const Icon(Icons.broken_image),
     );
   } else {
-    // 简单的本地图片检查，如果文件已存在
+    // 视为本地资源 (Asset)
     return Image.asset(
       url,
       width: width,

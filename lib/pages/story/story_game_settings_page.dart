@@ -179,7 +179,65 @@ class _StoryGameSettingsPageState extends State<StoryGameSettingsPage> {
 
                 SizedBox(height: 24.h),
 
-                // 图像分析配置（必需）
+                // 图像生成配置
+                _buildSectionTitle('🎨 图像生成配置'),
+                _buildConfigCard(
+                  children: [
+                    // 开关
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title:
+                          Text('启用 AI 生图', style: TextStyle(fontSize: 14.sp)),
+                      subtitle: Text(
+                        _config!.enableImageGeneration
+                            ? '开启后，游戏开始时将自动生成插图'
+                            : '已关闭，将使用拍摄/选择的照片',
+                        style: TextStyle(fontSize: 12.sp),
+                      ),
+                      value: _config!.enableImageGeneration,
+                      onChanged: (v) =>
+                          setState(() => _config!.enableImageGeneration = v),
+                    ),
+                    if (_config!.enableImageGeneration) ...[
+                      const Divider(),
+                      SizedBox(height: 12.h),
+                      _buildConfigSelector(
+                        label: '选择接口',
+                        value: _config!.imageGenerationConfigId,
+                        onChanged: (id) {
+                          setState(() {
+                            _config!.imageGenerationConfigId = id ?? '';
+                            // 自动选择第一个模型
+                            final cfg = _openAIService.configs
+                                .firstWhereOrNull((c) => c.id == id);
+                            if (cfg != null && cfg.models.isNotEmpty) {
+                              _config!.imageGenerationModel = cfg.models.first;
+                            }
+                          });
+                        },
+                      ),
+                      SizedBox(height: 12.h),
+                      _buildModelSelector(
+                        label: '选择模型',
+                        hint: '推荐：dall-e-3',
+                        configId: _config!.imageGenerationConfigId,
+                        value: _config!.imageGenerationModel,
+                        onChanged: (model) {
+                          setState(() =>
+                              _config!.imageGenerationModel = model ?? '');
+                        },
+                      ),
+                      SizedBox(height: 12.h),
+                      _buildPromptEditor(
+                        label: '生图提示词',
+                        controller: _imagePromptController,
+                        hint: '描述想要生成的图片风格和内容...',
+                      ),
+                    ],
+                  ],
+                ),
+
+                SizedBox(height: 24.h),
                 _buildSectionTitle('📸 图像分析配置', required: true),
                 _buildConfigCard(
                   children: [
