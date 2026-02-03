@@ -36,9 +36,9 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
   bool _isBatchMode = false;
   final Set<String> _selectedQuestionIds = {};
 
-  // 后台批量生成任务状态
-  bool _isBatchGenerating = false;
-  final RxList<GenerationStep> _batchGenerationSteps = <GenerationStep>[].obs;
+  // 后台批量生成任务状态 (Moved to Service)
+  // bool _isBatchGenerating = false;
+  // final RxList<GenerationStep> _batchGenerationSteps = <GenerationStep>[].obs;
 
   @override
   Widget build(BuildContext context) {
@@ -377,30 +377,32 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
               ),
               const Spacer(),
               // 查看后台生成进度按钮
-              if (_isBatchGenerating)
-                Container(
-                  margin: EdgeInsets.only(right: 8.w),
-                  child: ElevatedButton.icon(
-                    onPressed: _showBatchGenerationProgress,
-                    icon: const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              Obx(() => _aiService.isTaskRunning.value
+                  ? Container(
+                      margin: EdgeInsets.only(right: 8.w),
+                      child: ElevatedButton.icon(
+                        onPressed: _showBatchGenerationProgress,
+                        icon: const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        ),
+                        label: const Text('查看进度'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF9C27B0),
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 12.w,
+                            vertical: 8.h,
+                          ),
+                        ),
                       ),
-                    ),
-                    label: const Text('查看进度'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF9C27B0),
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 12.w,
-                        vertical: 8.h,
-                      ),
-                    ),
-                  ),
-                ),
+                    )
+                  : const SizedBox.shrink()),
               if (!_isBatchMode)
                 TextButton.icon(
                   onPressed: () {
@@ -1112,7 +1114,7 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
       return;
     }
 
-    if (_isBatchGenerating) {
+    if (_aiService.isTaskRunning.value) {
       ToastUtils.showInfo('已有批量生成任务正在进行中');
       _showBatchGenerationProgress();
       return;
@@ -1137,157 +1139,34 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
       return;
     }
 
-    // 准备进度步骤
-    _batchGenerationSteps.clear();
-    _batchGenerationSteps.add(GenerationStep(
-      title: '批量生成图片',
-      description: '准备为 ${selectedQuestions.length} 个题目生成图片...',
-      status: StepStatus.running,
-    ));
-
     // 标记为正在生成
     setState(() {
-      _isBatchGenerating = true;
       _isBatchMode = false; // 退出批量选择模式
       _selectedQuestionIds.clear();
     });
-
-    // 预先设置所有选中的题目状态为 'generating'
-    for (var q in selectedQuestions) {
-      q.imageStatus = 'generating';
-      await q.save();
-    }
-    _quizService.questions.refresh();
 
     // 显示提示并打开进度对话框
     ToastUtils.showSuccess('批量生成任务已启动，可在后台运行');
     _showBatchGenerationProgress();
 
     // 在后台执行生成任务
-    _runBatchGenerationTask(selectedQuestions, quizConfig, imageGenConfig);
-  }
-
-  /// 执行批量生成任务（后台）
-  Future<void> _runBatchGenerationTask(
-    List<dynamic> selectedQuestions,
-    dynamic quizConfig,
-    dynamic imageGenConfig,
-  ) async {
-    int successCount = 0;
-    int failCount = 0;
-    List<String> errors = [];
-
-    try {
-      for (int i = 0; i < selectedQuestions.length; i++) {
-        final question = selectedQuestions[i];
-
-        // 更新进度
-        _batchGenerationSteps[0].update(
-          status: StepStatus.running,
-          description: '[${i + 1}/${selectedQuestions.length}] 正在为题目生成图片...',
-          details: '题目: ${question.question}',
-        );
-
-        try {
-          // 构建知识点
-          final knowledge =
-              '${question.question}\n答案: ${question.options[question.correctIndex]}\n解释: ${question.explanation}';
-          final userPrompt =
-              quizConfig.imageGenPrompt.replaceAll('{knowledge}', knowledge);
-
-          // 生成图片提示词
-          final imagePrompt = await _openAIService.chat(
-            systemPrompt:
-                '你是一个专业的儿童插画提示词生成专家。请根据用户提供的内容生成适合 DALL-E 或 Stable Diffusion 的英文提示词。\n\n'
-                '严格要求:\n'
-                '1. 必须使用可爱、卡通、儿童插画风格\n'
-                '2. 色彩明亮温暖,画面简洁清晰\n'
-                '3. 严格禁止任何暴力、恐怖、成人或不适合儿童的内容\n'
-                '4. 使用圆润可爱的造型,避免尖锐或恐怖元素\n'
-                '5. 符合中国传统新年文化,展现节日喜庆氛围\n'
-                '6. 适合3-8岁儿童观看\n\n'
-                '只返回英文提示词本身,不要有其他说明。提示词中应包含: cute, cartoon, children illustration, colorful, warm, simple, Chinese New Year 等关键词。',
-            userMessage: userPrompt,
-            config: imageGenConfig,
-          );
-
-          // 生成图片
-          final imageUrls = await _openAIService.generateImages(
-            prompt: imagePrompt,
-            n: 1,
-            config: imageGenConfig,
-            model: quizConfig.imageGenModel,
-          );
-
-          if (imageUrls.isNotEmpty) {
-            // 更新题目
-            question.imagePath = imageUrls.first;
-            question.imageStatus = 'success';
-            question.imageError = null;
-            question.updatedAt = DateTime.now();
-            await question.save();
-            successCount++;
-          } else {
-            throw Exception('未能生成图片');
-          }
-        } catch (e) {
-          failCount++;
-          errors.add('题目 "${question.question}" 生成失败: $e');
-          debugPrint('批量生成图片失败: $e');
-
-          // 更新失败状态
-          question.imageStatus = 'failed';
-          question.imageError = e.toString();
-          question.updatedAt = DateTime.now();
-          await question.save();
-        }
-
-        // 每次处理完一个题目都刷新一次列表，保证统计数据和图标实时更新
-        _quizService.questions.refresh();
-
-        // API 调用频率控制
-        if (i < selectedQuestions.length - 1) {
-          await Future.delayed(const Duration(seconds: 2));
-        }
-      }
-
-      // 更新最终状态
-      _batchGenerationSteps[0].setSuccess(
-        description: '批量生成完成',
-      );
-
-      // 添加结果汇总
-      _batchGenerationSteps.add(GenerationStep(
-        title: '生成结果',
-        status: failCount > 0 ? StepStatus.error : StepStatus.success,
-        description: '成功: $successCount, 失败: $failCount',
-        details: errors.join('\n'),
-      ));
-
-      // 刷新列表
-      _quizService.questions.refresh();
-      if (mounted) setState(() {});
-    } catch (e) {
-      _batchGenerationSteps[0].setError('批量生成失败: $e');
-    } finally {
-      // 标记任务完成
-      if (mounted) {
-        setState(() {
-          _isBatchGenerating = false;
-        });
-      }
-    }
+    _aiService.startBatchQuizImageGenerationTask(
+      questions: selectedQuestions,
+      imageGenConfig: imageGenConfig,
+      imageGenModel: quizConfig.imageGenModel,
+      promptTemplate: quizConfig.imageGenPrompt,
+    );
   }
 
   /// 显示批量生成进度对话框
   void _showBatchGenerationProgress() {
-    if (_batchGenerationSteps.isEmpty) {
+    if (_aiService.taskSteps.isEmpty) {
       ToastUtils.showInfo('暂无批量生成任务');
       return;
     }
 
     AIGenerationProgressDialog.show(
-      steps: _batchGenerationSteps,
+      steps: _aiService.taskSteps,
       onClose: () => Get.back(),
     );
   }
@@ -1429,11 +1308,18 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
       }
     }
 
+    // Check running task
+    if (_aiService.isTaskRunning.value) {
+      ToastUtils.showInfo('已有生成任务正在进行中');
+      _showBatchGenerationProgress();
+      return;
+    }
+
+    // Initialize state
+    // ... config initialization code remains same ...
+
     int count = 1;
     String category = '';
-    // String customPrompt = ''; // Removed variable, used controller instead
-    bool isGenerating = false;
-
     TextEditingController promptController = TextEditingController();
     bool isPromptModified = false;
 
@@ -1484,17 +1370,14 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
                   max: 3,
                   divisions: 2,
                   label: count.toString(),
-                  onChanged: isGenerating
-                      ? null
-                      : (value) {
-                          setDialogState(() {
-                            count = value.toInt();
-                            if (!isPromptModified) {
-                              promptController.text =
-                                  getPrompt(count, category);
-                            }
-                          });
-                        },
+                  onChanged: (value) {
+                    setDialogState(() {
+                      count = value.toInt();
+                      if (!isPromptModified) {
+                        promptController.text = getPrompt(count, category);
+                      }
+                    });
+                  },
                 ),
                 Text('$count 道题目'),
                 SizedBox(height: 16.h),
@@ -1516,26 +1399,23 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
                                 overflow: TextOverflow.ellipsis),
                           ))
                       .toList(),
-                  onChanged: isGenerating
-                      ? null
-                      : (val) {
-                          if (val == null) return;
-                          setDialogState(() {
-                            selectedConfig = val;
-                            // Reset model
-                            selectedModel = null;
-                            if (selectedConfig!.models.isNotEmpty) {
-                              // try recommended
-                              try {
-                                selectedModel = selectedConfig!.models
-                                    .firstWhere((m) =>
-                                        m.toLowerCase().contains('gpt-4'));
-                              } catch (_) {
-                                selectedModel = selectedConfig!.models.first;
-                              }
-                            }
-                          });
-                        },
+                  onChanged: (val) {
+                    if (val == null) return;
+                    setDialogState(() {
+                      selectedConfig = val;
+                      // Reset model
+                      selectedModel = null;
+                      if (selectedConfig!.models.isNotEmpty) {
+                        // try recommended
+                        try {
+                          selectedModel = selectedConfig!.models.firstWhere(
+                              (m) => m.toLowerCase().contains('gpt-4'));
+                        } catch (_) {
+                          selectedModel = selectedConfig!.models.first;
+                        }
+                      }
+                    });
+                  },
                   isExpanded: true,
                 ),
                 SizedBox(height: 16.h),
@@ -1557,9 +1437,7 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
                                 overflow: TextOverflow.ellipsis),
                           ))
                       .toList(),
-                  onChanged: isGenerating
-                      ? null
-                      : (val) => setDialogState(() => selectedModel = val),
+                  onChanged: (val) => setDialogState(() => selectedModel = val),
                   isExpanded: true,
                 ),
 
@@ -1570,7 +1448,6 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
                     hintText: '例如:习俗、美食、传说',
                     border: OutlineInputBorder(),
                   ),
-                  enabled: !isGenerating,
                   onChanged: (value) {
                     category = value;
                     if (!isPromptModified) {
@@ -1599,7 +1476,6 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
                     helperText: '如果不填则使用默认模板',
                   ),
                   maxLines: 8,
-                  enabled: !isGenerating,
                   style: TextStyle(fontSize: 12.sp),
                   onChanged: (value) => isPromptModified = true,
                 ),
@@ -1613,153 +1489,50 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
             ),
           ),
           actions: [
-            if (!isGenerating)
-              TextButton(
-                onPressed: () => Get.back(),
-                child: const Text('取消'),
-              ),
+            TextButton(
+              onPressed: () => Get.back(),
+              child: const Text('取消'),
+            ),
             ElevatedButton(
-              onPressed: isGenerating
-                  ? null
-                  : () async {
-                      // 1. 关闭配置对话框
-                      Get.back();
+              onPressed: () async {
+                // 1. 关闭配置对话框
+                Get.back();
 
-                      // 2. 准备进度步骤
-                      final steps = <GenerationStep>[
-                        GenerationStep(
-                          title: '生成题目',
-                          description: '正在连接 AI 生成题目...',
-                          status: StepStatus.running,
-                        ),
-                        GenerationStep(
-                          title: '验证与导入',
-                          description: '等待生成完成...',
-                          status: StepStatus.pending,
-                        ),
-                        GenerationStep(
-                          title: '生成图片',
-                          description: '等待题目导入完成...',
-                          status: StepStatus.pending,
-                        ),
-                      ].obs;
+                try {
+                  // Save config
+                  if (selectedConfig != null) {
+                    final currentCfg = _quizService.config.value;
+                    if (currentCfg != null) {
+                      currentCfg.chatConfigId = selectedConfig!.id;
+                      currentCfg.chatModel = selectedModel;
+                      await _quizService.updateConfig(currentCfg);
+                    }
+                  }
 
-                      // 3. 显示进度对话框
-                      AIGenerationProgressDialog.show(
-                        steps: steps,
-                        onClose: () => Get.back(),
-                      );
+                  // 2. 显示进度对话框 (Prior to starting, or rely on service to update)
+                  // It's better to show it immediately so user knows something is happening.
+                  // Since we are about to call startQuizGenerationTask which clears steps,
+                  // we should call it after start?
+                  // Best flow:
+                  // Call start -> Service init steps -> Show Dialog (which observes service steps)
 
-                      try {
-                        // Save config
-                        if (selectedConfig != null) {
-                          final currentCfg = _quizService.config.value;
-                          if (currentCfg != null) {
-                            currentCfg.chatConfigId = selectedConfig!.id;
-                            currentCfg.chatModel = selectedModel;
-                            await _quizService.updateConfig(currentCfg);
-                          }
-                        }
+                  // 3. Start Task
+                  await _aiService.startQuizGenerationTask(
+                    count: count,
+                    category: category.isEmpty ? null : category,
+                    customPrompt: promptController.text.isEmpty
+                        ? null
+                        : promptController.text,
+                    config: selectedConfig,
+                    model: selectedModel,
+                  );
 
-                        // 4. Generate
-                        final result =
-                            await _aiService.generateAndImportQuestions(
-                          count: count,
-                          category: category.isEmpty ? null : category,
-                          customPrompt: promptController.text.isEmpty
-                              ? null
-                              : promptController.text,
-                          config: selectedConfig,
-                          model: selectedModel,
-                          onProgress: (step, message,
-                              {Map<String, dynamic>? details}) {
-                            switch (step) {
-                              case 'text':
-                                steps[0].setRunning(description: message);
-                                break;
-                              case 'text_done':
-                                steps[0].setSuccess(
-                                    description: message,
-                                    details: details?['raw']?.toString());
-                                steps[1].setRunning(description: '准备导入...');
-                                break;
-                              case 'import':
-                                steps[1].setRunning(description: message);
-                                break;
-                              case 'import_done':
-                                steps[1].setSuccess(description: message);
-                                break;
-                              case 'image_start':
-                                steps[2].setRunning(
-                                    description:
-                                        '开始生成图片 (共 ${details?['total']} 个题目)...');
-                                break;
-                              case 'image_progress':
-                                final current = details?['current'] ?? 0;
-                                final total = details?['total'] ?? 0;
-                                final question = details?['question'] ?? '';
-                                steps[2].update(
-                                    status: StepStatus.running,
-                                    description:
-                                        '[$current/$total] 正在为题目生成图片...',
-                                    details: '题目: $question');
-                                break;
-                              case 'image_item_success':
-                                // 可以选择更新details，但不改变状态
-                                break;
-                              case 'image_item_fail':
-                                // 记录失败但继续
-                                final currentDetails = steps[2].details.value;
-                                final error = details?['error'] ?? '';
-                                steps[2].update(
-                                    details: '$currentDetails\n失败: $error');
-                                break;
-                              case 'image_done':
-                                final imageSuccess = details?['success'] ?? 0;
-                                final imageFail = details?['fail'] ?? 0;
-                                steps[2].setSuccess(
-                                    description:
-                                        '图片生成完成 (成功: $imageSuccess, 失败: $imageFail)');
-                                break;
-                              case 'image_skip':
-                                steps[2].update(
-                                    status: StepStatus.success,
-                                    description: message);
-                                break;
-                              case 'done':
-                                // 流程结束，不需要额外操作
-                                break;
-                              case 'error':
-                                final current = steps.firstWhere(
-                                    (s) => s.status.value == StepStatus.running,
-                                    orElse: () => steps.last);
-                                current.setError(message);
-                                break;
-                            }
-                          },
-                        );
-
-                        // 5. Add result summary step
-                        final (success, skip, fail, errors) = result;
-                        steps.add(GenerationStep(
-                            title: '生成结果',
-                            status: fail > 0
-                                ? StepStatus.error
-                                : StepStatus.success,
-                            description:
-                                '题目生成: 成功 $success, 跳过 $skip, 失败 $fail',
-                            details: errors.join('\n')));
-
-                        // Refresh
-                        _quizService.questions.refresh();
-                        setState(() {});
-                      } catch (e) {
-                        steps.add(GenerationStep(
-                            title: '异常',
-                            status: StepStatus.error,
-                            error: e.toString()));
-                      }
-                    },
+                  // 4. Show Progress
+                  _showBatchGenerationProgress();
+                } catch (e) {
+                  ToastUtils.showError('启动任务失败: $e');
+                }
+              },
               child: const Text('开始生成'),
             ),
           ],

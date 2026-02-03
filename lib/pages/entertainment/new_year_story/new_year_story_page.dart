@@ -441,7 +441,7 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
             children: [
               const CircularProgressIndicator(),
               SizedBox(height: 16.h),
-              const Text('正在生成 4 张备选图片...',
+              const Text('正在生成备选图片...',
                   style: TextStyle(fontWeight: FontWeight.bold)),
               if (usedModel != null)
                 Text('模型: $usedModel',
