@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
 import '../models/quiz_config.dart';
 import '../models/quiz_question.dart';
+import '../models/openai_config.dart';
 import '../data/quiz_data.dart';
 import 'openai_service.dart';
 
@@ -380,26 +381,50 @@ class QuizService extends GetxService {
       // 构建提示词
       final knowledge =
           '${question.question}\n答案: ${question.options[question.correctIndex]}\n解释: ${question.explanation}';
-      final prompt =
+
+      final rawPrompt =
           config.value!.imageGenPrompt.replaceAll('{knowledge}', knowledge);
 
-      // 调用 AI 生成图片提示词
-      final imagePrompt = await _openAIService.chat(
-        systemPrompt:
-            '你是一个专业的儿童插画提示词生成专家。请根据用户提供的内容生成适合 DALL-E 或 Stable Diffusion 的英文提示词。\n\n'
-            '严格要求:\n'
-            '1. 必须使用可爱、卡通、儿童插画风格\n'
-            '2. 色彩明亮温暖,画面简洁清晰\n'
-            '3. 严格禁止任何暴力、恐怖、成人或不适合儿童的内容\n'
-            '4. 使用圆润可爱的造型,避免尖锐或恐怖元素\n'
-            '5. 符合中国传统新年文化,展现节日喜庆氛围\n'
-            '6. 适合3-8岁儿童观看\n\n'
-            '只返回英文提示词本身,不要有其他说明。提示词中应包含: cute, cartoon, children illustration, colorful, warm, simple, Chinese New Year 等关键词。',
-        userMessage: prompt,
-        config: imageGenConfig,
-      );
+      // 尝试获取用于生成提示词的 Chat 配置
+      // 优先使用专门配置的 Chat AI，如果没有则使用全局默认，最后才尝试使用生图配置
+      OpenAIConfig? chatConfig;
+      if (config.value!.chatConfigId != null) {
+        chatConfig = _openAIService.configs
+            .firstWhereOrNull((c) => c.id == config.value!.chatConfigId);
+      }
+      chatConfig ??= _openAIService.currentConfig.value;
+      chatConfig ??= imageGenConfig; // 最后的兜底
 
-      debugPrint('生成的图片提示词: $imagePrompt');
+      debugPrint('使用配置[${chatConfig?.name}]优化生图提示词...');
+
+      // 调用 AI 生成图片提示词
+      String imagePrompt;
+      try {
+        imagePrompt = await _openAIService.chat(
+          systemPrompt:
+              '你是一个专业的儿童插画提示词生成专家。请根据用户提供的内容生成适合 DALL-E 或 Stable Diffusion 的英文提示词。\n\n'
+              '严格要求:\n'
+              '1. 必须使用可爱、卡通、儿童插画风格\n'
+              '2. 色彩明亮温暖,画面简洁清晰\n'
+              '3. 严格禁止任何暴力、恐怖、成人或不适合儿童的内容\n'
+              '4. 使用圆润可爱的造型,避免尖锐或恐怖元素\n'
+              '5. 符合中国传统新年文化,展现节日喜庆氛围\n'
+              '6. 适合3-8岁儿童观看\n\n'
+              '只返回英文提示词本身,不要有其他说明。提示词中应包含: cute, cartoon, children illustration, colorful, warm, simple, Chinese New Year 等关键词。',
+          userMessage: rawPrompt,
+          config: chatConfig,
+        );
+      } catch (e) {
+        debugPrint('提示词优化失败，使用原始提示词: $e');
+        // 如果优化失败，使用原始提示词并追加风格
+        imagePrompt = rawPrompt;
+        if (!imagePrompt.toLowerCase().contains('style:')) {
+          imagePrompt +=
+              '\n\nStyle: Cute, cartoon, children illustration, colorful, warm, flat vector art, simple background, Chinese New Year theme.';
+        }
+      }
+
+      debugPrint('最终生图提示词: $imagePrompt');
 
       // 调用生图 API,生成多张图片
       final imageUrls = await _openAIService.generateImages(

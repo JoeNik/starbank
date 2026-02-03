@@ -154,27 +154,63 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
       return;
     }
 
-    // 播放文本
+    // 计算理论播放时长 (提前计算)
+    final text = page['tts'] as String;
+
+    // 1. 基础单字时长 (标准语速约 250ms)
+    const baseCharMs = 260;
+
+    // 2. 标点符号额外时长
+    final punctuationCount = RegExp(r'[，。！？；：、,.!?;:]').allMatches(text).length;
+    const punctuationMs = 400;
+
+    // 3. 语速系数
+    double rate = _tts.speechRate.value;
+    if (rate <= 0.1) rate = 0.5;
+
+    // 估算的总朗读时间 (ms)
+    final estimatedDurationMs =
+        ((text.length * baseCharMs + punctuationCount * punctuationMs) / rate)
+            .toInt();
+
+    // 4. 最小播放保障 (2秒)
+    final minDurationMs = 2000;
+
+    // 记录开始时间
+    final startTime = DateTime.now();
+
+    // 播放文本 (尝试等待播放完成)
     await _tts.speak(
       page['tts'],
     );
 
-    // 根据文本长度和语速估算播放时间
-    final text = page['tts'] as String;
+    // 计算实际已消耗时间
+    final elapsedMs = DateTime.now().difference(startTime).inMilliseconds;
 
-    // 计算公式: (字数 * 单字耗时) / 语速
-    // 正常语速(0.5)下，每个字约需400-500ms(含停顿)
-    // 基础系数设为 250ms (在rate=1.0时)
-    // 当 rate=0.5时，时间 = 250 / 0.5 = 500ms/字
-    final baseCharTimeMs = 250;
-    final estimatedDurationMs =
-        (text.length * baseCharTimeMs / _tts.speechRate.value).toInt();
+    // 计算剩余需要等待的时间
+    // 逻辑:
+    // - 如果 await 生效(阻塞)，elapsedMs 会接近 estimatedDurationMs，剩余等待只需缓冲时间。
+    // - 如果 await 不生效(非阻塞)，elapsedMs 很小，剩余等待需要补足 estimatedDurationMs。
 
-    // 额外等待1.5秒确保播放完成(尾部的停顿)
-    final waitDuration = Duration(milliseconds: estimatedDurationMs + 1500);
+    int waitMs = 0;
+    // 目标总时长 = 估算时长(或最小保障) + 缓冲时间(1秒)
+    final targetTotalMs = (estimatedDurationMs < minDurationMs
+            ? minDurationMs
+            : estimatedDurationMs) +
+        1000;
 
-    // 等待TTS播放完成后翻页
-    _autoPlayTimer = Timer(waitDuration, () {
+    if (elapsedMs < targetTotalMs) {
+      waitMs = targetTotalMs - elapsedMs;
+    } else {
+      // 如果实际播放时间已经超出了预期(例如语速极慢)，只给一个最小缓冲翻页
+      waitMs = 500;
+    }
+
+    debugPrint(
+        'TTS翻页逻辑: 字数${text.length} 估算${estimatedDurationMs}ms 实际耗时${elapsedMs}ms -> 额外等待${waitMs}ms');
+
+    // 启动翻页定时器
+    _autoPlayTimer = Timer(Duration(milliseconds: waitMs), () {
       if (_isPlaying && _currentPageIndex < pages.length - 1) {
         _nextPage();
       } else {
