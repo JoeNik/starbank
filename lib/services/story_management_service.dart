@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:hive/hive.dart';
+import 'package:path_provider/path_provider.dart';
 import '../models/new_year_story.dart';
 import '../data/new_year_story_data.dart';
 
@@ -144,6 +146,117 @@ class StoryManagementService {
   Future<void> resetToBuiltIn() async {
     await _box?.clear();
     await _importBuiltInStories();
+  }
+
+  /// 备份所有故事(包含图片转Base64)
+  Future<List<Map<String, dynamic>>> backupStories() async {
+    final stories = getAllStories();
+    final List<Map<String, dynamic>> list = [];
+
+    for (var story in stories) {
+      final json = story.toJson();
+
+      // 处理 pages 中的图片
+      try {
+        final List<dynamic> pagesRaw = jsonDecode(story.pagesJson);
+        final List<Map<String, dynamic>> pages =
+            pagesRaw.map((e) => e as Map<String, dynamic>).toList();
+        bool hasChanges = false;
+
+        for (var page in pages) {
+          final imagePath = page['image'] as String?;
+          if (imagePath != null && imagePath.isNotEmpty) {
+            // 如果已是 data:image 直接保留
+            if (imagePath.startsWith('data:image')) {
+              continue;
+            }
+
+            // 尝试读取文件转 Base64
+            try {
+              final file = File(imagePath);
+              if (await file.exists()) {
+                final bytes = await file.readAsBytes();
+                final base64 = base64Encode(bytes);
+                page['image'] = 'data:image/png;base64,$base64';
+                hasChanges = true;
+              } else {
+                // 文件不存在，可能是 web 或者 broken path
+                // 如果是 http 链接，在 web 端也许可以直接用，但备份最好转 base64
+                // 这里简单处理：文件不存在就不动
+              }
+            } catch (e) {
+              print('备份故事图片失败: $e');
+            }
+          }
+        }
+
+        if (hasChanges) {
+          json['pages'] = jsonEncode(pages);
+        }
+      } catch (e) {
+        print('处理故事图片备份失败: $e');
+      }
+
+      list.add(json);
+    }
+    return list;
+  }
+
+  /// 恢复故事数据(包含 Base64 转图片文件)
+  Future<void> restoreStories(List<dynamic> data) async {
+    final appDir = await getApplicationDocumentsDirectory();
+    final imagesDir = Directory('${appDir.path}/story_images');
+    if (!await imagesDir.exists()) {
+      await imagesDir.create(recursive: true);
+    }
+
+    int imported = 0;
+    for (var item in data) {
+      if (item is Map<String, dynamic>) {
+        try {
+          // 还原 pages 中的图片
+          if (item['pages'] is String) {
+            final List<dynamic> pagesDecoded = jsonDecode(item['pages']);
+            final List<Map<String, dynamic>> pages =
+                pagesDecoded.map((e) => e as Map<String, dynamic>).toList();
+            bool hasChanges = false;
+
+            for (int i = 0; i < pages.length; i++) {
+              final page = pages[i];
+              final imagePath = page['image'] as String?;
+
+              if (imagePath != null && imagePath.startsWith('data:image')) {
+                try {
+                  final base64Data = imagePath.split(',')[1];
+                  final bytes = base64Decode(base64Data);
+                  // 重新生成文件名
+                  final fileName = '${item['title']}_${item['id']}_$i.png'
+                      .replaceAll(
+                          RegExp(r'[<>:"/\\|?*]'), '_'); // Sanitize filename
+                  final file = File('${imagesDir.path}/$fileName');
+                  await file.writeAsBytes(bytes);
+                  page['image'] = file.path;
+                  hasChanges = true;
+                } catch (e) {
+                  print('恢复故事图片失败: $e');
+                }
+              }
+            }
+
+            if (hasChanges) {
+              item['pages'] = jsonEncode(pages);
+            }
+          }
+
+          final story = NewYearStory.fromJson(item);
+          await addStory(story);
+          imported++;
+        } catch (e) {
+          print('恢复单个故事失败: $e');
+        }
+      }
+    }
+    print('已恢复 $imported 个故事');
   }
 
   /// 获取故事数量

@@ -1,8 +1,5 @@
 import 'dart:convert';
-import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
 import '../models/new_year_story.dart';
 import '../models/quiz_question.dart';
@@ -382,56 +379,26 @@ class AIGenerationService {
     return (totalSuccess, totalSkip, totalFail, allErrors);
   }
 
-  /// 下载并保存图片
+  /// 下载并转换为Base64 (保存到数据库)
   Future<String> _downloadAndSaveImage(
       String urlOrDataUri, String fileNamePrefix) async {
     try {
-      if (kIsWeb) {
-        // Web 环境: 不保存文件,直接返回 Data URI
-        if (urlOrDataUri.startsWith('data:image')) {
-          return urlOrDataUri;
-        } else {
-          // 下载并转换为 Base64
-          final response = await http.get(Uri.parse(urlOrDataUri));
-          if (response.statusCode == 200) {
-            final base64String = base64Encode(response.bodyBytes);
-            return 'data:image/png;base64,$base64String';
-          }
-          throw Exception('下载图片失败: ${response.statusCode}');
-        }
-      }
-
-      final appDir = await getApplicationDocumentsDirectory();
-      final imagesDir = Directory('${appDir.path}/story_images');
-      if (!await imagesDir.exists()) {
-        await imagesDir.create(recursive: true);
-      }
-
-      final fileName =
-          '${fileNamePrefix}_${DateTime.now().millisecondsSinceEpoch}.png';
-      final file = File('${imagesDir.path}/$fileName');
-
-      // 判断是 URL 还是 base64 data URI
+      // Base64 格式直接返回
       if (urlOrDataUri.startsWith('data:image')) {
-        // Base64 格式: data:image/png;base64,iVBORw0KGgo...
-        print('📥 检测到base64图片数据，直接保存');
-        final base64Data = urlOrDataUri.split(',')[1];
-        final bytes = base64Decode(base64Data);
-        await file.writeAsBytes(bytes);
-        return file.path;
-      } else {
-        // URL 格式: 下载图片
-        print('📥 从URL下载图片: $urlOrDataUri');
-        final response = await http.get(Uri.parse(urlOrDataUri));
-        if (response.statusCode != 200) {
-          throw Exception('下载图片失败: ${response.statusCode}');
-        }
-
-        await file.writeAsBytes(response.bodyBytes);
-        return file.path;
+        return urlOrDataUri;
       }
+
+      // URL 格式: 下载并转 Base64
+      print('📥 从URL下载图片并转Base64: $urlOrDataUri');
+      final response = await http.get(Uri.parse(urlOrDataUri));
+      if (response.statusCode != 200) {
+        throw Exception('下载图片失败: ${response.statusCode}');
+      }
+
+      final base64String = base64Encode(response.bodyBytes);
+      return 'data:image/png;base64,$base64String';
     } catch (e) {
-      print('下载保存图片失败: $e');
+      print('下载转变图片失败: $e');
       rethrow;
     }
   }

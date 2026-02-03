@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:http/http.dart' as http;
-import 'package:path_provider/path_provider.dart';
 import 'dart:convert';
 import '../../../data/new_year_story_data.dart';
 import '../../../theme/app_theme.dart';
@@ -670,52 +669,30 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
   }
 
   /// 下载并保存图片
+  /// 下载并转换为Base64 (保存到数据库)
   Future<String> _downloadAndSaveImage(
       String urlOrDataUri, String imageId) async {
     try {
-      // Web平台不支持path_provider的getApplicationDocumentsDirectory和dart:io的文件操作
-      // 直接返回原数据(Base64或URL)用于展示
-      if (kIsWeb) {
-        debugPrint(
-            'Web environment: Skipping file save, using original source');
+      // 如果已是 Base64，直接返回
+      if (urlOrDataUri.startsWith('data:image')) {
         return urlOrDataUri;
       }
 
-      // 获取应用文档目录
-      final appDir = await getApplicationDocumentsDirectory();
-      final imageDir = Directory('${appDir.path}/story_images');
+      // 下载并转换为 Base64
+      debugPrint('📥 从URL下载图片并转Base64: $urlOrDataUri');
+      final response = await http
+          .get(Uri.parse(urlOrDataUri))
+          .timeout(const Duration(seconds: 60));
 
-      // 确保目录存在
-      if (!await imageDir.exists()) {
-        await imageDir.create(recursive: true);
-      }
-
-      final file = File('${imageDir.path}/$imageId.png');
-
-      // 判断是 URL 还是 base64 data URI
-      if (urlOrDataUri.startsWith('data:image')) {
-        // Base64 格式: data:image/png;base64,iVBORw0KGgo...
-        debugPrint('📥 检测到base64图片数据，直接保存');
-        final base64Data = urlOrDataUri.split(',')[1];
-        final bytes = base64Decode(base64Data);
-        await file.writeAsBytes(bytes);
-        return file.path;
+      if (response.statusCode == 200) {
+        final base64String = base64Encode(response.bodyBytes);
+        // 假设是 PNG
+        return 'data:image/png;base64,$base64String';
       } else {
-        // URL 格式: 下载图片
-        debugPrint('📥 从URL下载图片: $urlOrDataUri');
-        final response = await http
-            .get(Uri.parse(urlOrDataUri))
-            .timeout(const Duration(seconds: 60));
-
-        if (response.statusCode == 200) {
-          await file.writeAsBytes(response.bodyBytes);
-          return file.path;
-        } else {
-          throw Exception('下载图片失败: ${response.statusCode}');
-        }
+        throw Exception('下载图片失败: ${response.statusCode}');
       }
     } catch (e) {
-      debugPrint('保存图片失败: $e');
+      debugPrint('转换图片失败: $e');
       rethrow;
     }
   }
@@ -805,8 +782,10 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
           IconButton(
             icon: const Icon(Icons.settings),
             tooltip: '故事管理',
-            onPressed: () {
-              Get.to(() => const StoryManagementPage());
+            onPressed: () async {
+              await Get.to(() => const StoryManagementPage());
+              // 从管理页面返回后刷新数据
+              _loadStories();
             },
           ),
         ],

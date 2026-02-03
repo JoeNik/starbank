@@ -229,8 +229,8 @@ class QuizService extends GetxService {
     }
   }
 
-  /// 导出题库
-  Future<String> exportQuestions() async {
+  /// 备份所有题目(包含图片转Base64)
+  Future<List<Map<String, dynamic>>> backupQuestions() async {
     final List<Map<String, dynamic>> list = [];
 
     for (var q in questions) {
@@ -269,7 +269,67 @@ class QuizService extends GetxService {
       }
       list.add(json);
     }
+    return list;
+  }
+
+  /// 导出题库(JSON字符串)
+  Future<String> exportQuestions() async {
+    final list = await backupQuestions();
     return jsonEncode(list);
+  }
+
+  /// 恢复题目数据(List)
+  Future<void> restoreQuestions(List<dynamic> list) async {
+    int imported = 0;
+
+    for (var item in list) {
+      if (item is Map<String, dynamic>) {
+        QuizQuestion question;
+
+        // 尝试从新格式解析
+        if (item.containsKey('id')) {
+          question = QuizQuestion.fromJson(item);
+        } else {
+          // 从旧格式解析
+          question = QuizQuestion.fromLegacyMap(item);
+        }
+
+        // 处理图片导入: 如果是非Web环境且是Base64图片,转存为本地文件
+        if (!kIsWeb &&
+            question.imagePath != null &&
+            question.imagePath!.startsWith('data:image')) {
+          try {
+            final base64Data = question.imagePath!.split(',')[1];
+            final bytes = base64Decode(base64Data);
+            // 确保存储目录存在
+            if (!await _imageDir.exists()) {
+              await _imageDir.create(recursive: true);
+            }
+            final file = File('${_imageDir.path}/${question.id}.png');
+            await file.writeAsBytes(bytes);
+            question.imagePath = file.path;
+            debugPrint('已将导入的Base64图片转存为本地文件: ${file.path}');
+          } catch (e) {
+            debugPrint('转存Base64图片失败: $e');
+            // 失败则保留Base64原样
+          }
+        }
+
+        await _questionBox.put(question.id, question);
+
+        // 如果列表中已有该ID，更新它；否则添加
+        final index = questions.indexWhere((q) => q.id == question.id);
+        if (index != -1) {
+          questions[index] = question;
+        } else {
+          questions.add(question);
+        }
+
+        imported++;
+      }
+    }
+    questions.refresh();
+    debugPrint('已恢复 $imported 道题目');
   }
 
   /// 清空题库
@@ -424,55 +484,29 @@ class QuizService extends GetxService {
 
   // _generateImage is removed in favor of _openAIService.generateImages
 
-  /// 下载并保存图片
+  /// 下载并转换为Base64 (保存到数据库)
   Future<String> _downloadAndSaveImage(
       String urlOrDataUri, String questionId) async {
     try {
-      if (kIsWeb) {
-        // Web 环境: 尝试将 URL 转为 Base64 以便持久化存储
-        if (urlOrDataUri.startsWith('data:image')) {
-          return urlOrDataUri;
-        } else {
-          try {
-            final response = await http
-                .get(Uri.parse(urlOrDataUri))
-                .timeout(const Duration(seconds: 60));
-            if (response.statusCode == 200) {
-              final base64String = base64Encode(response.bodyBytes);
-              // 假设是 PNG
-              return 'data:image/png;base64,$base64String';
-            }
-          } catch (e) {
-            debugPrint('Web端图片转Base64失败: $e');
-          }
-          return urlOrDataUri;
-        }
+      // 如果已是 Base64，直接返回
+      if (urlOrDataUri.startsWith('data:image')) {
+        return urlOrDataUri;
       }
 
-      final file = File('${_imageDir.path}/$questionId.png');
+      // 下载并转换为 Base64
+      final response = await http
+          .get(Uri.parse(urlOrDataUri))
+          .timeout(const Duration(seconds: 60));
 
-      // 判断是 URL 还是 base64 data URI
-      if (urlOrDataUri.startsWith('data:image')) {
-        // Base64 格式
-        final base64Data = urlOrDataUri.split(',')[1];
-        final bytes = base64Decode(base64Data);
-        await file.writeAsBytes(bytes);
-        return file.path;
+      if (response.statusCode == 200) {
+        final base64String = base64Encode(response.bodyBytes);
+        // 假设是 PNG，通用头
+        return 'data:image/png;base64,$base64String';
       } else {
-        // URL 格式: 下载图片
-        final response = await http
-            .get(Uri.parse(urlOrDataUri))
-            .timeout(const Duration(seconds: 60));
-
-        if (response.statusCode == 200) {
-          await file.writeAsBytes(response.bodyBytes);
-          return file.path;
-        } else {
-          throw Exception('下载图片失败: ${response.statusCode}');
-        }
+        throw Exception('下载图片失败: ${response.statusCode}');
       }
     } catch (e) {
-      debugPrint('保存图片失败: $e');
+      debugPrint('转换图片失败: $e');
       rethrow;
     }
   }

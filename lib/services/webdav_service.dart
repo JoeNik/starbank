@@ -19,6 +19,9 @@ import '../models/story_session.dart';
 import '../models/music/playlist.dart';
 import '../models/music/music_track.dart';
 import '../models/story_game_config.dart';
+import '../services/story_management_service.dart';
+import '../services/quiz_service.dart';
+import '../models/quiz_config.dart';
 
 /// WebDAV备份服务
 class WebDavService extends GetxService {
@@ -243,6 +246,27 @@ class WebDavService extends GetxService {
           backupData['passwordHash'] = modeController.passwordHash;
         }
       } catch (_) {}
+
+      // 备份新年故事 (NewYearStory)
+      try {
+        final storyService = StoryManagementService.instance;
+        backupData['newYearStories'] = await storyService.backupStories();
+      } catch (e) {
+        print('备份新年故事失败: $e');
+      }
+
+      // 备份新年问答 (Quiz)
+      try {
+        if (Get.isRegistered<QuizService>()) {
+          final quizService = Get.find<QuizService>();
+          backupData['quizQuestions'] = await quizService.backupQuestions();
+          if (quizService.config.value != null) {
+            backupData['quizConfig'] = quizService.config.value!.toJson();
+          }
+        }
+      } catch (e) {
+        print('备份新年问答失败: $e');
+      }
 
       backupData['timestamp'] = DateTime.now().toIso8601String();
 
@@ -614,6 +638,60 @@ class WebDavService extends GetxService {
           final modeController = Get.find<AppModeController>();
           await modeController.restorePasswordHash(backupData['passwordHash']);
         } catch (_) {}
+      }
+
+      // 恢复新年故事
+      if (backupData['newYearStories'] != null) {
+        try {
+          // 先清空旧数据? 根据需求"完美融合"，通常全量恢复会覆盖。
+          // StoryManagementService 没有 clearAll 方法?
+          // 检查: StoryManagementService 有 deleteStories(all ids) 或 resetToBuiltIn
+          // 这里可以先尝试直接 restore，因为 restore 会 add/overwrite
+          // 为了避免残留旧数据，建议先清空。
+          // 检查 StoryManagementService.resetToBuiltIn();
+          // 但那是重置为内置。
+          // 最好是保留用户现有的，还是覆盖? 备份/恢复通常是覆盖或合并.
+          // 现有 WebDavService 逻辑是 clear then add.
+          // StoryManagementService 有 deleteStory.
+          // 我需要一个 clearAllStories 方法。
+          // 暂时先调用 deleteStories(allIds).
+          final storyService = StoryManagementService.instance;
+          final allIds = storyService.getAllStories().map((s) => s.id).toList();
+          await storyService.deleteStories(allIds);
+
+          await storyService.restoreStories(backupData['newYearStories']);
+        } catch (e) {
+          print('恢复新年故事失败: $e');
+        }
+      }
+
+      // 恢复新年问答
+      if (backupData['quizQuestions'] != null ||
+          backupData['quizConfig'] != null) {
+        try {
+          if (Get.isRegistered<QuizService>()) {
+            final quizService = Get.find<QuizService>();
+
+            // 恢复配置
+            if (backupData['quizConfig'] != null) {
+              try {
+                final config = QuizConfig.fromJson(
+                    Map<String, dynamic>.from(backupData['quizConfig']));
+                await quizService.updateConfig(config);
+              } catch (e) {
+                print('恢复新年问答配置失败: $e');
+              }
+            }
+
+            // 恢复题目
+            if (backupData['quizQuestions'] != null) {
+              await quizService.clearQuestions();
+              await quizService.restoreQuestions(backupData['quizQuestions']);
+            }
+          }
+        } catch (e) {
+          print('恢复新年问答失败: $e');
+        }
       }
 
       ToastUtils.showSuccess('数据已恢复，请重启应用以生效');
