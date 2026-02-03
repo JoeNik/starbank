@@ -500,7 +500,15 @@ class QuizService extends GetxService {
   Future<int> getImageCacheSize() async {
     int totalSize = 0;
 
-    if (kIsWeb) return 0;
+    if (kIsWeb) {
+      // Web 环境: 计算 Hive 中存储的 Base64 图片大小
+      for (var q in questions) {
+        if (q.imagePath != null && q.imagePath!.startsWith('data:image')) {
+          totalSize += q.imagePath!.length;
+        }
+      }
+      return totalSize;
+    }
 
     if (await _imageDir.exists()) {
       final files = await _imageDir.list().toList();

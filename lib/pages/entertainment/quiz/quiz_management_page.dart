@@ -32,6 +32,14 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
   final QuizManagementService _quizManagementService =
       QuizManagementService.instance;
 
+  // 批量选择状态
+  bool _isBatchMode = false;
+  final Set<String> _selectedQuestionIds = {};
+
+  // 后台批量生成任务状态
+  bool _isBatchGenerating = false;
+  final RxList<GenerationStep> _batchGenerationSteps = <GenerationStep>[].obs;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -356,14 +364,115 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '📝 题目列表',
-            style: TextStyle(
-              fontSize: 16.sp,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.textMain,
-            ),
+          // 标题和批量操作按钮
+          Row(
+            children: [
+              Text(
+                '📝 题目列表',
+                style: TextStyle(
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textMain,
+                ),
+              ),
+              const Spacer(),
+              // 查看后台生成进度按钮
+              if (_isBatchGenerating)
+                Container(
+                  margin: EdgeInsets.only(right: 8.w),
+                  child: ElevatedButton.icon(
+                    onPressed: _showBatchGenerationProgress,
+                    icon: const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    ),
+                    label: const Text('查看进度'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF9C27B0),
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12.w,
+                        vertical: 8.h,
+                      ),
+                    ),
+                  ),
+                ),
+              if (!_isBatchMode)
+                TextButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _isBatchMode = true;
+                      _selectedQuestionIds.clear();
+                    });
+                  },
+                  icon: const Icon(Icons.checklist, size: 18),
+                  label: const Text('批量操作'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppTheme.primary,
+                  ),
+                ),
+            ],
           ),
+
+          // 批量操作工具栏
+          if (_isBatchMode) ...[
+            SizedBox(height: 8.h),
+            Container(
+              padding: EdgeInsets.all(12.w),
+              decoration: BoxDecoration(
+                color: AppTheme.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8.r),
+              ),
+              child: Row(
+                children: [
+                  Text(
+                    '已选择 ${_selectedQuestionIds.length} 个题目',
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w500,
+                      color: AppTheme.primary,
+                    ),
+                  ),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _selectedQuestionIds.clear();
+                        _selectedQuestionIds.addAll(
+                          _quizService.questions.map((q) => q.id),
+                        );
+                      });
+                    },
+                    child: const Text('全选'),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _selectedQuestionIds.clear();
+                      });
+                    },
+                    child: const Text('取消选择'),
+                  ),
+                  const Spacer(), // Optimize space: use spacer to push close button to far right
+                  IconButton(
+                    onPressed: () {
+                      setState(() {
+                        _isBatchMode = false;
+                        _selectedQuestionIds.clear();
+                      });
+                    },
+                    icon: const Icon(Icons.close),
+                    tooltip: '退出批量模式',
+                  ),
+                ],
+              ),
+            ),
+          ],
+
           SizedBox(height: 12.h),
           Obx(() {
             if (_quizService.questions.isEmpty) {
@@ -397,16 +506,41 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
   }
 
   Widget _buildQuestionItem(question) {
+    final isSelected = _selectedQuestionIds.contains(question.id);
+
     return Container(
       margin: EdgeInsets.only(bottom: 12.h),
       padding: EdgeInsets.all(12.w),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
+        color: isSelected
+            ? AppTheme.primary.withOpacity(0.1)
+            : Colors.grey.shade50,
         borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(
+          color: isSelected ? AppTheme.primary : Colors.grey.shade200,
+          width: isSelected ? 2 : 1,
+        ),
       ),
       child: Row(
         children: [
+          // 批量选择复选框
+          if (_isBatchMode) ...[
+            Checkbox(
+              value: isSelected,
+              onChanged: (value) {
+                setState(() {
+                  if (value == true) {
+                    _selectedQuestionIds.add(question.id);
+                  } else {
+                    _selectedQuestionIds.remove(question.id);
+                  }
+                });
+              },
+              activeColor: AppTheme.primary,
+            ),
+            SizedBox(width: 8.w),
+          ],
+
           // 图片状态
           Container(
             width: 48.w,
@@ -812,10 +946,25 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
       return;
     }
 
+    if (!_isBatchMode) {
+      setState(() {
+        _isBatchMode = true;
+        _selectedQuestionIds.clear();
+      });
+      ToastUtils.showInfo('已进入批量模式，请勾选需要生成图片的题目，再次点击按钮开始生成');
+      return;
+    }
+
+    if (_selectedQuestionIds.isEmpty) {
+      ToastUtils.showWarning('请先选择至少一个题目');
+      return;
+    }
+
+    // 确认对话框
     Get.dialog(
       AlertDialog(
-        title: const Text('批量生成图片'),
-        content: const Text('将为所有未生成图片的题目生成配图,可能需要较长时间,是否继续?'),
+        title: const Text('确认生成'),
+        content: Text('将为选中的 ${_selectedQuestionIds.length} 个题目生成图片，是否继续?'),
         actions: [
           TextButton(
             onPressed: () => Get.back(),
@@ -824,7 +973,8 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
           ElevatedButton(
             onPressed: () async {
               Get.back();
-              _showBatchGenerateProgress();
+              // 调用现有的选中生成逻辑
+              _batchGenerateImagesForSelected();
             },
             child: const Text('开始生成'),
           ),
@@ -833,73 +983,313 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
     );
   }
 
-  /// 显示批量生成进度
-  void _showBatchGenerateProgress() {
-    final RxString status = '准备中...'.obs;
-    final RxInt current = 0.obs;
-    final RxInt total = 0.obs;
-
-    Get.dialog(
-      WillPopScope(
-        onWillPop: () async => false,
-        child: AlertDialog(
-          title: const Text('正在生成图片'),
-          content: Obx(() => Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  LinearProgressIndicator(
-                    value: total.value > 0 ? current.value / total.value : 0,
-                  ),
-                  SizedBox(height: 16.h),
-                  Text('${current.value}/${total.value}'),
-                  SizedBox(height: 8.h),
-                  Text(
-                    status.value,
-                    style: TextStyle(fontSize: 12.sp, color: Colors.grey),
-                  ),
-                ],
-              )),
-        ),
-      ),
-      barrierDismissible: false,
-    );
-
-    _quizService.batchGenerateImages(
-      onProgress: (c, t, s) {
-        current.value = c;
-        total.value = t;
-        status.value = s;
-
-        if (c >= t) {
-          Future.delayed(const Duration(seconds: 1), () {
-            Get.back();
-            ToastUtils.showSuccess('批量生成完成');
-          });
-        }
-      },
-    );
-  }
-
   /// 为单个题目生成图片
   Future<void> _generateImageForQuestion(question) async {
-    if (!_quizService.config.value!.enableImageGen) {
-      ToastUtils.showWarning('请先在 AI 设置中启用图片生成功能');
-      return;
-    }
-
     try {
+      // 检查OpenAI配置
+      if (_openAIService.configs.isEmpty) {
+        ToastUtils.showWarning('请先配置OpenAI接口');
+        return;
+      }
+
+      // 获取配置（优先使用QuizConfig中的图片生成配置）
+      final quizConfig = _quizService.config.value;
+      if (quizConfig == null || !quizConfig.enableImageGen) {
+        ToastUtils.showWarning('未启用图片生成功能');
+        return;
+      }
+
+      final imageGenConfig = _openAIService.configs
+          .firstWhereOrNull((c) => c.id == quizConfig.imageGenConfigId);
+      if (imageGenConfig == null) {
+        ToastUtils.showWarning('未配置生图AI');
+        return;
+      }
+
+      // 显示加载对话框
       Get.dialog(
-        const Center(child: CircularProgressIndicator()),
+        AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              SizedBox(height: 16.h),
+              const Text("正在生成图片提示词...", style: TextStyle(fontSize: 16)),
+              SizedBox(height: 8.h),
+              Text(
+                "生成过程可能需要 1-2 分钟，请耐心等待",
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
         barrierDismissible: false,
       );
 
-      await _quizService.generateImageForQuestion(question);
-      Get.back();
-      ToastUtils.showSuccess('图片生成成功');
-    } catch (e) {
+      // 构建知识点
+      final knowledge =
+          '${question.question}\n答案: ${question.options[question.correctIndex]}\n解释: ${question.explanation}';
+      final userPrompt =
+          quizConfig.imageGenPrompt.replaceAll('{knowledge}', knowledge);
+
+      // 生成图片提示词
+      final imagePrompt = await _openAIService.chat(
+        systemPrompt:
+            '你是一个专业的儿童插画提示词生成专家。请根据用户提供的内容生成适合 DALL-E 或 Stable Diffusion 的英文提示词。\n\n'
+            '严格要求:\n'
+            '1. 必须使用可爱、卡通、儿童插画风格\n'
+            '2. 色彩明亮温暖,画面简洁清晰\n'
+            '3. 严格禁止任何暴力、恐怖、成人或不适合儿童的内容\n'
+            '4. 使用圆润可爱的造型,避免尖锐或恐怖元素\n'
+            '5. 符合中国传统新年文化,展现节日喜庆氛围\n'
+            '6. 适合3-8岁儿童观看\n\n'
+            '只返回英文提示词本身,不要有其他说明。提示词中应包含: cute, cartoon, children illustration, colorful, warm, simple, Chinese New Year 等关键词。',
+        userMessage: userPrompt,
+        config: imageGenConfig,
+      );
+
+      debugPrint('生成的图片提示词: $imagePrompt');
+
+      // 更新对话框提示
       if (Get.isDialogOpen ?? false) Get.back();
+      Get.dialog(
+        AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              SizedBox(height: 16.h),
+              const Text("正在生成图片...", style: TextStyle(fontSize: 16)),
+            ],
+          ),
+        ),
+        barrierDismissible: false,
+      );
+
+      // 直接调用生图API
+      final imageUrls = await _openAIService.generateImages(
+        prompt: imagePrompt,
+        n: 1,
+        config: imageGenConfig,
+        model: quizConfig.imageGenModel,
+      );
+
+      if (imageUrls.isEmpty) {
+        throw Exception('未能生成图片');
+      }
+
+      // 更新题目对象
+      question.imagePath = imageUrls.first;
+      question.imageStatus = 'success';
+      question.imageError = null;
+      question.updatedAt = DateTime.now();
+      await question.save();
+      _quizService.questions.refresh();
+
+      // 关闭加载对话框
+      if (Get.isDialogOpen ?? false) Get.back();
+
+      // 刷新界面
+      setState(() {});
+
+      ToastUtils.showSuccess('图片生成成功!');
+    } catch (e) {
+      // 关闭加载对话框
+      if (Get.isDialogOpen ?? false) Get.back();
+
+      // 显示错误提示
       ToastUtils.showError('生成失败: $e');
+
+      debugPrint('生成图片失败: $e');
     }
+  }
+
+  /// 批量为选中的题目生成图片（后台执行）
+  Future<void> _batchGenerateImagesForSelected() async {
+    if (_selectedQuestionIds.isEmpty) {
+      ToastUtils.showWarning('请先选择题目');
+      return;
+    }
+
+    if (_isBatchGenerating) {
+      ToastUtils.showInfo('已有批量生成任务正在进行中');
+      _showBatchGenerationProgress();
+      return;
+    }
+
+    // 获取选中的题目对象
+    final selectedQuestions = _quizService.questions
+        .where((q) => _selectedQuestionIds.contains(q.id))
+        .toList();
+
+    // 检查配置
+    final quizConfig = _quizService.config.value;
+    if (quizConfig == null || !quizConfig.enableImageGen) {
+      ToastUtils.showWarning('未启用图片生成功能');
+      return;
+    }
+
+    final imageGenConfig = _openAIService.configs
+        .firstWhereOrNull((c) => c.id == quizConfig.imageGenConfigId);
+    if (imageGenConfig == null) {
+      ToastUtils.showWarning('未配置生图AI');
+      return;
+    }
+
+    // 准备进度步骤
+    _batchGenerationSteps.clear();
+    _batchGenerationSteps.add(GenerationStep(
+      title: '批量生成图片',
+      description: '准备为 ${selectedQuestions.length} 个题目生成图片...',
+      status: StepStatus.running,
+    ));
+
+    // 标记为正在生成
+    setState(() {
+      _isBatchGenerating = true;
+      _isBatchMode = false; // 退出批量选择模式
+      _selectedQuestionIds.clear();
+    });
+
+    // 预先设置所有选中的题目状态为 'generating'
+    for (var q in selectedQuestions) {
+      q.imageStatus = 'generating';
+      await q.save();
+    }
+    _quizService.questions.refresh();
+
+    // 显示提示并打开进度对话框
+    ToastUtils.showSuccess('批量生成任务已启动，可在后台运行');
+    _showBatchGenerationProgress();
+
+    // 在后台执行生成任务
+    _runBatchGenerationTask(selectedQuestions, quizConfig, imageGenConfig);
+  }
+
+  /// 执行批量生成任务（后台）
+  Future<void> _runBatchGenerationTask(
+    List<dynamic> selectedQuestions,
+    dynamic quizConfig,
+    dynamic imageGenConfig,
+  ) async {
+    int successCount = 0;
+    int failCount = 0;
+    List<String> errors = [];
+
+    try {
+      for (int i = 0; i < selectedQuestions.length; i++) {
+        final question = selectedQuestions[i];
+
+        // 更新进度
+        _batchGenerationSteps[0].update(
+          status: StepStatus.running,
+          description: '[${i + 1}/${selectedQuestions.length}] 正在为题目生成图片...',
+          details: '题目: ${question.question}',
+        );
+
+        try {
+          // 构建知识点
+          final knowledge =
+              '${question.question}\n答案: ${question.options[question.correctIndex]}\n解释: ${question.explanation}';
+          final userPrompt =
+              quizConfig.imageGenPrompt.replaceAll('{knowledge}', knowledge);
+
+          // 生成图片提示词
+          final imagePrompt = await _openAIService.chat(
+            systemPrompt:
+                '你是一个专业的儿童插画提示词生成专家。请根据用户提供的内容生成适合 DALL-E 或 Stable Diffusion 的英文提示词。\n\n'
+                '严格要求:\n'
+                '1. 必须使用可爱、卡通、儿童插画风格\n'
+                '2. 色彩明亮温暖,画面简洁清晰\n'
+                '3. 严格禁止任何暴力、恐怖、成人或不适合儿童的内容\n'
+                '4. 使用圆润可爱的造型,避免尖锐或恐怖元素\n'
+                '5. 符合中国传统新年文化,展现节日喜庆氛围\n'
+                '6. 适合3-8岁儿童观看\n\n'
+                '只返回英文提示词本身,不要有其他说明。提示词中应包含: cute, cartoon, children illustration, colorful, warm, simple, Chinese New Year 等关键词。',
+            userMessage: userPrompt,
+            config: imageGenConfig,
+          );
+
+          // 生成图片
+          final imageUrls = await _openAIService.generateImages(
+            prompt: imagePrompt,
+            n: 1,
+            config: imageGenConfig,
+            model: quizConfig.imageGenModel,
+          );
+
+          if (imageUrls.isNotEmpty) {
+            // 更新题目
+            question.imagePath = imageUrls.first;
+            question.imageStatus = 'success';
+            question.imageError = null;
+            question.updatedAt = DateTime.now();
+            await question.save();
+            successCount++;
+          } else {
+            throw Exception('未能生成图片');
+          }
+        } catch (e) {
+          failCount++;
+          errors.add('题目 "${question.question}" 生成失败: $e');
+          debugPrint('批量生成图片失败: $e');
+
+          // 更新失败状态
+          question.imageStatus = 'failed';
+          question.imageError = e.toString();
+          question.updatedAt = DateTime.now();
+          await question.save();
+        }
+
+        // 每次处理完一个题目都刷新一次列表，保证统计数据和图标实时更新
+        _quizService.questions.refresh();
+
+        // API 调用频率控制
+        if (i < selectedQuestions.length - 1) {
+          await Future.delayed(const Duration(seconds: 2));
+        }
+      }
+
+      // 更新最终状态
+      _batchGenerationSteps[0].setSuccess(
+        description: '批量生成完成',
+      );
+
+      // 添加结果汇总
+      _batchGenerationSteps.add(GenerationStep(
+        title: '生成结果',
+        status: failCount > 0 ? StepStatus.error : StepStatus.success,
+        description: '成功: $successCount, 失败: $failCount',
+        details: errors.join('\n'),
+      ));
+
+      // 刷新列表
+      _quizService.questions.refresh();
+      if (mounted) setState(() {});
+    } catch (e) {
+      _batchGenerationSteps[0].setError('批量生成失败: $e');
+    } finally {
+      // 标记任务完成
+      if (mounted) {
+        setState(() {
+          _isBatchGenerating = false;
+        });
+      }
+    }
+  }
+
+  /// 显示批量生成进度对话框
+  void _showBatchGenerationProgress() {
+    if (_batchGenerationSteps.isEmpty) {
+      ToastUtils.showInfo('暂无批量生成任务');
+      return;
+    }
+
+    AIGenerationProgressDialog.show(
+      steps: _batchGenerationSteps,
+      onClose: () => Get.back(),
+    );
   }
 
   /// 删除题目图片
@@ -1247,6 +1637,11 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
                           description: '等待生成完成...',
                           status: StepStatus.pending,
                         ),
+                        GenerationStep(
+                          title: '生成图片',
+                          description: '等待题目导入完成...',
+                          status: StepStatus.pending,
+                        ),
                       ].obs;
 
                       // 3. 显示进度对话框
@@ -1291,8 +1686,48 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
                               case 'import':
                                 steps[1].setRunning(description: message);
                                 break;
+                              case 'import_done':
+                                steps[1].setSuccess(description: message);
+                                break;
+                              case 'image_start':
+                                steps[2].setRunning(
+                                    description:
+                                        '开始生成图片 (共 ${details?['total']} 个题目)...');
+                                break;
+                              case 'image_progress':
+                                final current = details?['current'] ?? 0;
+                                final total = details?['total'] ?? 0;
+                                final question = details?['question'] ?? '';
+                                steps[2].update(
+                                    status: StepStatus.running,
+                                    description:
+                                        '[$current/$total] 正在为题目生成图片...',
+                                    details: '题目: $question');
+                                break;
+                              case 'image_item_success':
+                                // 可以选择更新details，但不改变状态
+                                break;
+                              case 'image_item_fail':
+                                // 记录失败但继续
+                                final currentDetails = steps[2].details.value;
+                                final error = details?['error'] ?? '';
+                                steps[2].update(
+                                    details: '$currentDetails\n失败: $error');
+                                break;
+                              case 'image_done':
+                                final imageSuccess = details?['success'] ?? 0;
+                                final imageFail = details?['fail'] ?? 0;
+                                steps[2].setSuccess(
+                                    description:
+                                        '图片生成完成 (成功: $imageSuccess, 失败: $imageFail)');
+                                break;
+                              case 'image_skip':
+                                steps[2].update(
+                                    status: StepStatus.success,
+                                    description: message);
+                                break;
                               case 'done':
-                                steps[1].setSuccess(description: '流程结束');
+                                // 流程结束，不需要额外操作
                                 break;
                               case 'error':
                                 final current = steps.firstWhere(
@@ -1311,10 +1746,12 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
                             status: fail > 0
                                 ? StepStatus.error
                                 : StepStatus.success,
-                            description: '成功: $success, 跳过: $skip, 失败: $fail',
+                            description:
+                                '题目生成: 成功 $success, 跳过 $skip, 失败 $fail',
                             details: errors.join('\n')));
 
                         // Refresh
+                        _quizService.questions.refresh();
                         setState(() {});
                       } catch (e) {
                         steps.add(GenerationStep(

@@ -101,7 +101,7 @@ class MusicCacheService extends GetxService {
   Directory? _cacheDir;
   final Map<String, CacheMetadata> _cacheIndex = {};
   bool _isInitialized = false;
-  final RxBool cacheEnabled = false.obs; // 缓存开关,默认关闭
+  final RxBool cacheEnabled = true.obs; // 缓存开关,默认开启以便测试
   String? _customCacheDir; // 自定义缓存目录
 
   bool get isInitialized => _isInitialized;
@@ -174,8 +174,11 @@ class MusicCacheService extends GetxService {
   }
 
   /// 生成缓存键（基于歌曲ID和平台）
+  /// 统一转为小写并去除空格，防止因格式差异导致匹配失败
   String _generateCacheKey(String trackId, String platform) {
-    return '${platform}_$trackId';
+    final cleanPlatform = platform.trim().toLowerCase();
+    final cleanId = trackId.trim();
+    return '${cleanPlatform}_$cleanId';
   }
 
   /// 获取缓存文件路径
@@ -232,6 +235,7 @@ class MusicCacheService extends GetxService {
     final cacheKey = _generateCacheKey(track.id, track.platform);
 
     if (!_cacheIndex.containsKey(cacheKey)) {
+      debugPrint('ℹ️ [MusicCacheService] 索引未命中: $cacheKey');
       return null;
     }
 
@@ -274,6 +278,7 @@ class MusicCacheService extends GetxService {
 
       // 创建临时文件
       final tempDir = await getTemporaryDirectory();
+      // 使用带扩展名的文件名，方便播放器识别
       final tempFilePath =
           '${tempDir.path}/temp_${cacheKey}_${DateTime.now().millisecondsSinceEpoch}.mp3';
       final tempFile = File(tempFilePath);
@@ -430,8 +435,8 @@ class MusicCacheService extends GetxService {
   /// 加载缓存设置
   Future<void> _loadSettings() async {
     // TODO: 从 StorageService 或 SharedPreferences 加载设置
-    // 暂时使用默认值
-    cacheEnabled.value = false;
+    // 暂时使用 True 以便调试
+    cacheEnabled.value = true;
     _customCacheDir = null;
   }
 

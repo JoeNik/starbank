@@ -218,6 +218,20 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
         return;
       }
 
+      // 获取配置（优先使用QuizConfig中的图片生成配置）
+      final quizConfig = _quizService.config.value;
+      if (quizConfig == null || !quizConfig.enableImageGen) {
+        ToastUtils.showWarning('未启用图片生成功能');
+        return;
+      }
+
+      final imageGenConfig = _openAIService.configs
+          .firstWhereOrNull((c) => c.id == quizConfig.imageGenConfigId);
+      if (imageGenConfig == null) {
+        ToastUtils.showWarning('未配置生图AI');
+        return;
+      }
+
       // 显示加载对话框
       Get.dialog(
         AlertDialog(
@@ -226,7 +240,7 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
             children: [
               const CircularProgressIndicator(),
               SizedBox(height: 16.h),
-              const Text("正在请求 AI 绘图...", style: TextStyle(fontSize: 16)),
+              const Text("正在生成图片提示词...", style: TextStyle(fontSize: 16)),
               SizedBox(height: 8.h),
               Text(
                 "生成过程可能需要 1-2 分钟，请耐心等待",
@@ -239,9 +253,6 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
         barrierDismissible: false,
       );
 
-      // 获取配置
-      final aiConfig = _openAIService.configs.first;
-
       // 构建知识点
       final question = currentQuestion['question'] as String? ?? '';
       final options = currentQuestion['options'] as List? ?? [];
@@ -250,7 +261,8 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
 
       final knowledge =
           '$question\n答案: ${options.isNotEmpty && correctIndex < options.length ? options[correctIndex] : ''}\n解释: $explanation';
-      final prompt = '请为以下儿童新年知识生成一张可爱的插画:\n$knowledge';
+      final userPrompt =
+          quizConfig.imageGenPrompt.replaceAll('{knowledge}', knowledge);
 
       // 生成图片提示词
       final imagePrompt = await _openAIService.chat(
@@ -264,26 +276,58 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
             '5. 符合中国传统新年文化,展现节日喜庆氛围\n'
             '6. 适合3-8岁儿童观看\n\n'
             '只返回英文提示词本身,不要有其他说明。提示词中应包含: cute, cartoon, children illustration, colorful, warm, simple, Chinese New Year 等关键词。',
-        userMessage: prompt,
-        config: aiConfig,
+        userMessage: userPrompt,
+        config: imageGenConfig,
       );
 
       debugPrint('生成的图片提示词: $imagePrompt');
 
-      // 注意：此处不要关闭对话框，等待图片生成完成
+      // 更新对话框提示
+      if (Get.isDialogOpen ?? false) Get.back();
+      Get.dialog(
+        AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              SizedBox(height: 16.h),
+              const Text("正在生成图片...", style: TextStyle(fontSize: 16)),
+            ],
+          ),
+        ),
+        barrierDismissible: false,
+      );
 
-      // 调用 QuizService 生成图片
-      // 首先找到对应的 QuizQuestion 对象
+      // 直接调用生图API
+      final imageUrls = await _openAIService.generateImages(
+        prompt: imagePrompt,
+        n: 1,
+        config: imageGenConfig,
+        model: quizConfig.imageGenModel,
+      );
+
+      if (imageUrls.isEmpty) {
+        throw Exception('未能生成图片');
+      }
+
+      // 找到对应的 QuizQuestion 对象并更新
       final questionId = currentQuestion['id'] as String?;
       if (questionId != null) {
         final quizQuestion =
             _quizService.questions.firstWhereOrNull((q) => q.id == questionId);
 
         if (quizQuestion != null) {
-          await _quizService.generateImageForQuestion(quizQuestion,
-              imageCount: 1);
+          // 使用QuizService的内部方法保存图片
+          // 由于_downloadAndSaveImage是私有的，我们需要手动处理
+          // 这里直接使用返回的URL/Base64（Web环境已适配）
+          quizQuestion.imagePath = imageUrls.first;
+          quizQuestion.imageStatus = 'success';
+          quizQuestion.imageError = null;
+          quizQuestion.updatedAt = DateTime.now();
+          await quizQuestion.save();
+          _quizService.questions.refresh();
 
-          // 关闭加载对话框 (移动到此处)
+          // 关闭加载对话框
           if (Get.isDialogOpen ?? false) Get.back();
 
           // 更新当前界面显示的图片路径
@@ -525,9 +569,9 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
         child: Column(
           children: [
             // 小年兽
-            _buildBeast(),
+            // _buildBeast(),
 
-            SizedBox(height: 20.h),
+            // SizedBox(height: 20.h),
 
             // 主内容区域
             Expanded(
@@ -623,6 +667,67 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
     );
   }
 
+  /// 构建图片组件
+  Widget _buildImageWidget(String path,
+      {String? emoji, BoxFit fit = BoxFit.cover}) {
+    Widget errorWidget = Center(
+      child: emoji != null
+          ? Text(emoji, style: TextStyle(fontSize: 64.sp))
+          : const Icon(Icons.error, color: Colors.grey),
+    );
+
+    try {
+      if (kIsWeb) {
+        if (path.startsWith('data:image')) {
+          final base64Data = path.split(',')[1];
+          final bytes = base64Decode(base64Data);
+          return Image.memory(
+            bytes,
+            fit: fit,
+            errorBuilder: (_, __, ___) => errorWidget,
+          );
+        } else {
+          return Image.network(
+            path,
+            fit: fit,
+            errorBuilder: (_, __, ___) => errorWidget,
+          );
+        }
+      }
+      return Image.file(
+        File(path),
+        fit: fit,
+        errorBuilder: (_, __, ___) => errorWidget,
+      );
+    } catch (e) {
+      return errorWidget;
+    }
+  }
+
+  /// 查看大图
+  void _showFullScreenImage(BuildContext context, String imageSource) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            iconTheme: const IconThemeData(color: Colors.white),
+            elevation: 0,
+          ),
+          extendBodyBehindAppBar: true,
+          body: Center(
+            child: InteractiveViewer(
+              minScale: 0.5,
+              maxScale: 4.0,
+              child: _buildImageWidget(imageSource, fit: BoxFit.contain),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   /// 题目卡片
   Widget _buildQuestionCard(Map<String, dynamic> question) {
     return Container(
@@ -644,47 +749,22 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
           // Emoji 图标 或 图片
           if (question['imagePath'] != null)
             Container(
-              height: 180.h,
               width: double.infinity,
               margin: EdgeInsets.only(bottom: 16.h),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16.r),
-                child: Builder(builder: (context) {
-                  final path = question['imagePath'] as String;
-                  if (kIsWeb) {
-                    if (path.startsWith('data:image')) {
-                      try {
-                        final base64Data = path.split(',')[1];
-                        final bytes = base64Decode(base64Data);
-                        return Image.memory(
-                          bytes,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Center(
-                            child: Text(question['emoji'],
-                                style: TextStyle(fontSize: 64.sp)),
-                          ),
-                        );
-                      } catch (_) {}
-                    } else {
-                      return Image.network(
-                        path,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Center(
-                          child: Text(question['emoji'],
-                              style: TextStyle(fontSize: 64.sp)),
-                        ),
-                      );
-                    }
-                  }
-                  return Image.file(
-                    File(path),
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Center(
-                      child: Text(question['emoji'],
-                          style: TextStyle(fontSize: 64.sp)),
+                child: GestureDetector(
+                  onTap: () => _showFullScreenImage(
+                      context, question['imagePath'] as String),
+                  child: AspectRatio(
+                    aspectRatio: 1.0,
+                    child: _buildImageWidget(
+                      question['imagePath'] as String,
+                      emoji: question['emoji'],
+                      fit: BoxFit.cover,
                     ),
-                  );
-                }),
+                  ),
+                ),
               ),
             )
           else

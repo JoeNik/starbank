@@ -10,11 +10,13 @@ import '../services/tunehub_service.dart';
 import '../services/storage_service.dart';
 
 import '../services/music_service.dart';
+import '../services/music_cache_service.dart';
 
 class MusicPlayerController extends GetxController {
   final TuneHubService _tuneHubService = Get.find<TuneHubService>();
   final StorageService _storage = Get.find<StorageService>();
   final MusicService _musicService = Get.find<MusicService>();
+  late final MusicCacheService _cacheService;
 
   // Use the singleton player from MusicService
   AudioPlayer? get audioPlayer => _musicService.player;
@@ -39,6 +41,7 @@ class MusicPlayerController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    _cacheService = Get.find<MusicCacheService>();
     _loadFavorites();
 
     // 异步初始化播放器监听，防止因 Service 未就绪导致的阻塞或 Crash
@@ -161,6 +164,22 @@ class MusicPlayerController extends GetxController {
     debugPrint(
         'Attempting to play: ${track.title} (${track.platform}) - ${track.id}');
 
+    // 1. 优先检查缓存
+    if (_cacheService.isInitialized && _cacheService.cacheEnabled.value) {
+      debugPrint(
+          '🔍 [MusicPlayerController] 正在检查缓存: Platform=${track.platform}, ID=${track.id}');
+      final cachedPath = await _cacheService.getCachedFilePath(track);
+      if (cachedPath != null) {
+        debugPrint('✅ [MusicPlayerController] 缓存命中! 路径: $cachedPath');
+        await _playFromCache(track, cachedPath);
+        return;
+      } else {
+        debugPrint('⚠️ [MusicPlayerController] 缓存未命中');
+      }
+    } else {
+      debugPrint('ℹ️ [MusicPlayerController] 缓存服务未启用或未初始化');
+    }
+
     // 始终尝试刷新 URL，因为它通常具有时效性
     try {
       final res = await _tuneHubService.parseTrack(track.platform, track.id);
@@ -267,6 +286,20 @@ class MusicPlayerController extends GetxController {
       }
 
       await player.play();
+
+      // 4. 自动缓存歌曲
+      if (_cacheService.isInitialized && _cacheService.cacheEnabled.value) {
+        debugPrint('💾 [MusicPlayerController] 准备自动缓存: ${track.title}');
+        _cacheService.cacheSong(track, playUrl).then((success) {
+          if (success) {
+            debugPrint('✅ [MusicPlayerController] 自动缓存成功');
+          } else {
+            debugPrint('❌ [MusicPlayerController] 自动缓存失败');
+          }
+        }).catchError((e) {
+          debugPrint('❌ [MusicPlayerController] 自动缓存异常: $e');
+        });
+      }
     } on PlayerException catch (e) {
       debugPrint("Error code: ${e.code}");
       debugPrint("Error message: ${e.message}");
@@ -427,6 +460,67 @@ class MusicPlayerController extends GetxController {
     // _musicService handles lifecycle if needed.
     _sleepTimer?.cancel();
     super.onClose();
+  }
+
+  /// 从缓存播放音乐
+  Future<void> _playFromCache(MusicTrack track, String cachedFilePath) async {
+    try {
+      // Lazy Init & Ensure Singleton Check
+      final player = await _ensurePlayer();
+      if (player == null) {
+        final errorMsg = _musicService.initErrorMessage.value;
+        Get.snackbar('初始化失败', '音频服务无法启动: $errorMsg',
+            backgroundColor: Colors.redAccent,
+            colorText: Colors.white,
+            duration: const Duration(seconds: 5));
+        return;
+      }
+
+      await player.stop();
+
+      // Update MediaItem for Notification & Background Service
+      final mediaItem = MediaItem(
+        id: track.id,
+        title: track.title,
+        artist: track.artist ?? '',
+        album: track.album ?? '',
+        artUri: track.coverUrl != null && track.coverUrl!.isNotEmpty
+            ? Uri.parse(track.coverUrl!)
+            : null,
+      );
+      _musicService.audioHandler?.updateMediaItem(mediaItem);
+
+      // 从缓存文件播放
+      debugPrint('🎵 加载本地缓存文件: $cachedFilePath');
+      await player.setAudioSource(AudioSource.file(
+        cachedFilePath,
+        tag: mediaItem,
+      ));
+
+      final index = playlist
+          .indexWhere((t) => t.id == track.id && t.platform == track.platform);
+      if (index == -1) {
+        playlist.add(track);
+        currentIndex.value = playlist.length - 1;
+      } else {
+        currentIndex.value = index;
+        playlist[index] = track;
+      }
+
+      await player.play();
+    } on PlayerException catch (e) {
+      debugPrint("Error code: ${e.code}");
+      debugPrint("Error message: ${e.message}");
+      Get.snackbar('播放失败', '音频错误: ${e.message}',
+          backgroundColor: Colors.redAccent, colorText: Colors.white);
+    } catch (e, stackTrace) {
+      debugPrint('Cache play failed: $e');
+      debugPrintStack(stackTrace: stackTrace);
+      Get.snackbar('播放失败', '缓存播放错误: ${e.toString()}',
+          backgroundColor: Colors.redAccent,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 5));
+    }
   }
 
   Map<String, String> _getHeaders(MusicTrack track) {

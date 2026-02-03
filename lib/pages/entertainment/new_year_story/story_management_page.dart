@@ -1,7 +1,12 @@
+import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:http/http.dart' as http;
 import '../../../models/new_year_story.dart';
 import '../../../models/openai_config.dart';
 import '../../../services/story_management_service.dart';
@@ -9,7 +14,7 @@ import '../../../services/ai_generation_service.dart';
 import '../../../services/openai_service.dart';
 import '../../../widgets/toast_utils.dart';
 import '../../../services/quiz_service.dart';
-import '../../../models/quiz_config.dart';
+
 import 'story_edit_dialog.dart';
 import '../../../widgets/ai_generation_progress_dialog.dart';
 
@@ -36,6 +41,10 @@ class _StoryManagementPageState extends State<StoryManagementPage> {
 
   // 是否正在加载
   bool _isLoading = false;
+
+  // 后台批量生成任务状态
+  bool _isBatchGenerating = false;
+  final RxList<GenerationStep> _batchGenerationSteps = <GenerationStep>[].obs;
 
   @override
   void initState() {
@@ -231,14 +240,16 @@ class _StoryManagementPageState extends State<StoryManagementPage> {
 
     // 获取默认 Prompt 的函数
     String getDefaultPrompt(int c, String t) {
-      return '''请生成 $c 个适合儿童的中国新年相关故事。
+      return '''请生成 $c 个关于中国传统春节习俗及其由来的科普故事，适合儿童阅读。
+
+重点：不要生成虚构的童话故事，而是要以生动有趣的方式讲解真实的民俗知识（如：为什么过年要吃饺子？春联的由来？压岁钱的寓意？）。
 
 要求:
-1. ${t.isNotEmpty ? '故事主题: $t' : '主题可以是春节习俗、传统文化、民间传说等'}
+1. ${t.isNotEmpty ? '故事主题: $t' : '主题必须围绕春节传统习俗的由来、传说或具体礼仪（例如：年兽的传说、贴福字的由来、拜年的礼仪、元宵节的习俗等）'}
 2. 每个故事包含 5-7 个页面
-3. 每页包含: text(文本内容)、emoji(表情符号)、tts(语音播报文本)
-4. 至少包含 1 个互动问题,问题包含: text(问题)、options(3个选项数组)、correctIndex(正确答案索引0-2)
-5. 故事要有教育意义,语言简单易懂
+3. 每页包含: text(展示文本，简练有趣)、emoji(相关表情)、tts(口语化播报，语气亲切，适合讲给孩子听)
+4. 至少包含 1 个互动问题，考察孩子对刚才科普知识的理解，问题包含: text(问题)、options(3个选项数组)、correctIndex(正确答案索引0-2)
+5. 内容必须准确、有教育意义，弘扬传统文化
 6. 时长控制在 1-2 分钟
 
 返回格式(JSON数组):
@@ -538,14 +549,16 @@ class _StoryManagementPageState extends State<StoryManagementPage> {
                           borderRadius: BorderRadius.circular(8.r),
                         ),
                         child: Text(
-                          '''请生成 {count} 个适合儿童的中国新年相关故事。
+                          '''请生成 {count} 个关于中国传统春节习俗及其由来的科普故事，适合儿童阅读。
+
+重点：不要生成虚构的童话故事，而是要以生动有趣的方式讲解真实的民俗知识（如：为什么过年要吃饺子？春联的由来？压岁钱的寓意？）。
 
 要求:
-1. {theme != null ? '故事主题: {theme}' : '主题可以是春节习俗、传统文化、民间传说等'}
+1. {theme != null ? '故事主题: {theme}' : '主题必须围绕春节传统习俗的由来、传说或具体礼仪（例如：年兽的传说、贴福字的由来、拜年的礼仪、元宵节的习俗等）'}
 2. 每个故事包含 5-7 个页面
-3. 每页包含: text(文本内容)、emoji(表情符号)、tts(语音播报文本)
-4. 至少包含 1 个互动问题
-5. 故事要有教育意义,语言简单易懂
+3. 每页包含: text(展示文本，简练有趣)、emoji(相关表情)、tts(口语化播报，语气亲切，适合讲给孩子听)
+4. 至少包含 1 个互动问题，考察孩子对刚才科普知识的理解
+5. 内容必须准确、有教育意义，弘扬传统文化
 6. 时长控制在 1-2 分钟
 
 注意: 自定义 Prompt 会完全替换此模板''',
@@ -608,8 +621,16 @@ class _StoryManagementPageState extends State<StoryManagementPage> {
                         // 1. 关闭配置对话框
                         Navigator.pop(context);
 
-                        // 2. 准备进度步骤
-                        final steps = <GenerationStep>[
+                        // 2. 检查是否有任务正在运行
+                        if (_isBatchGenerating) {
+                          ToastUtils.showInfo('已有生成任务正在进行中');
+                          _showBatchGenerationProgress();
+                          return;
+                        }
+
+                        // 3. 准备进度步骤
+                        _batchGenerationSteps.clear();
+                        _batchGenerationSteps.addAll([
                           GenerationStep(
                             title: '生成故事文本',
                             description: '正在连接 AI 生成故事内容...',
@@ -626,13 +647,16 @@ class _StoryManagementPageState extends State<StoryManagementPage> {
                             description: '等待生成完成...',
                             status: StepStatus.pending,
                           ),
-                        ].obs;
+                        ]);
 
-                        // 3. 显示进度对话框
-                        AIGenerationProgressDialog.show(
-                          steps: steps,
-                          onClose: () => Get.back(),
-                        );
+                        // 4. 更新状态
+                        setState(() {
+                          _isBatchGenerating = true;
+                        });
+
+                        // 5. 显示提示
+                        ToastUtils.showSuccess('AI 故事生成任务已在后台启动');
+                        _showBatchGenerationProgress();
 
                         try {
                           // 保存配置
@@ -650,9 +674,8 @@ class _StoryManagementPageState extends State<StoryManagementPage> {
                             await _quizService.updateConfig(currentQuizConfig);
                           }
 
-                          // 4. 开始生成
-                          final result =
-                              await _aiService.generateAndImportStories(
+                          // 6. 开始生成任务
+                          _runStoryGenerationTask(
                             count: count,
                             theme: theme.isEmpty ? null : theme,
                             customPrompt:
@@ -661,88 +684,13 @@ class _StoryManagementPageState extends State<StoryManagementPage> {
                             textModel: textModel,
                             imageConfig: enableImageGen ? imageConfig : null,
                             imageModel: imageModel,
-                            onProgress: (step, message,
-                                {Map<String, dynamic>? details}) {
-                              switch (step) {
-                                case 'text':
-                                  steps[0].setRunning(description: message);
-                                  break;
-                                case 'text_done':
-                                  steps[0].setSuccess(
-                                    description: message,
-                                    details: details?['raw']?.toString(),
-                                  );
-                                  // 如果有图片生成，开启第二步
-                                  if (enableImageGen && steps.length > 2) {
-                                    steps[1]
-                                        .setRunning(description: '准备生成插图...');
-                                  } else {
-                                    // 否则直接跳到最后一步
-                                    steps.last
-                                        .setRunning(description: '正在保存数据...');
-                                  }
-                                  break;
-                                case 'image':
-                                  if (enableImageGen && steps.length > 2) {
-                                    steps[1].setRunning(description: message);
-                                  }
-                                  break;
-                                case 'image_download':
-                                  if (enableImageGen && steps.length > 2) {
-                                    steps[1].setRunning(description: message);
-                                  }
-                                  break;
-                                case 'import':
-                                  // 如果有图片步，先完成它
-                                  if (enableImageGen && steps.length > 2) {
-                                    steps[1].setSuccess(description: '插图生成完成');
-                                  }
-                                  steps.last.setRunning(description: message);
-                                  break;
-                                case 'done':
-                                  steps.last.setSuccess(description: '流程结束');
-                                  break;
-                                case 'error':
-                                  // 找到当前正在运行的步骤报错
-                                  final currentStep = steps.firstWhere(
-                                    (s) => s.status.value == StepStatus.running,
-                                    orElse: () => steps.last,
-                                  );
-                                  currentStep.setError(message);
-                                  break;
-                              }
-                            },
+                            enableImageGen: enableImageGen,
                           );
-
-                          // 5. 添加结果汇总
-                          final (success, skip, fail, errors) = result;
-                          final summary =
-                              '生成完成\n成功: $success\n跳过: $skip\n失败: $fail';
-
-                          if (fail > 0 || errors.isNotEmpty) {
-                            steps.add(GenerationStep(
-                              title: '生成结果',
-                              status: StepStatus
-                                  .error, // Partial error implies warning/error
-                              description: summary,
-                              details: errors.join('\n'),
-                            ));
-                          } else {
-                            steps.add(GenerationStep(
-                              title: '生成结果',
-                              status: StepStatus.success,
-                              description: summary,
-                            ));
-                          }
-
-                          // 刷新列表
-                          setState(() {});
                         } catch (e) {
-                          steps.add(GenerationStep(
-                            title: '发生异常',
-                            status: StepStatus.error,
-                            error: e.toString(),
-                          ));
+                          ToastUtils.showError('启动任务失败: $e');
+                          setState(() {
+                            _isBatchGenerating = false;
+                          });
                         }
                       },
                 child: const Text('开始生成'),
@@ -754,6 +702,392 @@ class _StoryManagementPageState extends State<StoryManagementPage> {
     );
   }
 
+  /// 显示批量生成进度对话框
+  void _showBatchGenerationProgress() {
+    if (_batchGenerationSteps.isEmpty) {
+      ToastUtils.showInfo('暂无生成任务');
+      return;
+    }
+
+    AIGenerationProgressDialog.show(
+      steps: _batchGenerationSteps,
+      onClose: () => Get.back(),
+    );
+  }
+
+  /// 批量为选中的故事生成图片
+  Future<void> _batchGenerateImagesForSelected() async {
+    if (_selectedIds.isEmpty) {
+      ToastUtils.showWarning('请先选择故事');
+      return;
+    }
+
+    if (_isBatchGenerating) {
+      ToastUtils.showInfo('已有生成任务正在进行中');
+      _showBatchGenerationProgress();
+      return;
+    }
+
+    final selectedStories = _storyService
+        .getAllStories()
+        .where((s) => _selectedIds.contains(s.id))
+        .toList();
+
+    _startGenerationTask(selectedStories);
+  }
+
+  /// 为单个故事重新生成图片
+  Future<void> _regenerateImagesForStory(NewYearStory story) async {
+    if (_isBatchGenerating) {
+      ToastUtils.showInfo('已有生成任务正在进行中');
+      _showBatchGenerationProgress();
+      return;
+    }
+
+    _startGenerationTask([story]);
+  }
+
+  /// 启动生成任务
+  Future<void> _startGenerationTask(List<NewYearStory> stories) async {
+    // 检查配置
+    final quizConfig = _quizService.config.value;
+    if (quizConfig == null) {
+      ToastUtils.showWarning('请先配置 AI 设置');
+      return;
+    }
+
+    final imageGenConfigId = quizConfig.imageGenConfigId;
+    OpenAIConfig? imageGenConfig;
+    if (imageGenConfigId != null) {
+      imageGenConfig = _openAIService.configs
+          .firstWhereOrNull((c) => c.id == imageGenConfigId);
+    }
+
+    // 如果没有配置专用生图AI，尝试使用当前默认配置
+    imageGenConfig ??= _openAIService.currentConfig.value;
+
+    if (imageGenConfig == null) {
+      ToastUtils.showWarning('未配置生图AI，请在设置中配置');
+      return;
+    }
+
+    // 退出选择模式以便显示进度按钮
+    setState(() {
+      _isBatchGenerating = true;
+      _isSelectionMode = false;
+      _selectedIds.clear();
+    });
+
+    // 初始化进度
+    _batchGenerationSteps.clear();
+    _batchGenerationSteps.add(GenerationStep(
+      title: '生成插图',
+      description: '准备为 ${stories.length} 个故事生成插图...',
+      status: StepStatus.running,
+    ));
+
+    ToastUtils.showSuccess('生成任务已启动，可在后台运行');
+    _showBatchGenerationProgress();
+
+    _runBatchGenerationTask(stories, imageGenConfig, quizConfig.imageGenModel);
+  }
+
+  /// 执行批量生成任务
+  Future<void> _runBatchGenerationTask(
+    List<NewYearStory> stories,
+    OpenAIConfig config,
+    String? model,
+  ) async {
+    int successCount = 0;
+    int failCount = 0;
+    List<String> errors = [];
+
+    try {
+      int currentStoryIndex = 0;
+      for (final story in stories) {
+        currentStoryIndex++;
+
+        // 解析页面数据
+        List<Map<String, dynamic>> pages = [];
+        try {
+          final dynamic decoded = jsonDecode(story.pagesJson);
+          if (decoded is List) {
+            pages = decoded.map((e) => e as Map<String, dynamic>).toList();
+          }
+        } catch (e) {
+          errors.add('故事 "${story.title}" 数据解析失败: $e');
+          failCount++;
+          continue;
+        }
+
+        int totalImages = pages.length;
+        if (totalImages == 0) {
+          errors.add('故事 "${story.title}" 没有页面');
+          failCount++;
+          continue;
+        }
+
+        for (int i = 0; i < pages.length; i++) {
+          final page = pages[i];
+          final text = page['text'] as String? ?? '';
+
+          _batchGenerationSteps[0].update(
+            status: StepStatus.running,
+            description:
+                '[$currentStoryIndex/${stories.length}] 正在生成 "${story.title}"\n'
+                '进度: ${i + 1}/$totalImages 页',
+            details: '场景: $text',
+          );
+
+          try {
+            // 生成提示词
+            final imagePrompt =
+                'Children book illustration, Chinese New Year theme. '
+                'Scene: $text. '
+                'Style: Cute, colorful, warm, flat vector art, simple background, suited for kids.';
+
+            // 调用 API
+            final imageUrl = await _openAIService.generateImage(
+              prompt: imagePrompt,
+              config: config,
+              model: model,
+            );
+
+            // 保存图片
+            final imagePath = await _saveImage(imageUrl,
+                '${story.title}_${DateTime.now().millisecondsSinceEpoch}_$i');
+
+            // 更新页面数据
+            page['image'] = imagePath;
+          } catch (e) {
+            errors.add('故事 "${story.title}" 第 ${i + 1} 页生成失败: $e');
+            // 继续下一页
+          }
+
+          // 频率控制
+          if (i < pages.length - 1) {
+            await Future.delayed(const Duration(seconds: 1));
+          }
+        }
+
+        // 保存故事更新
+        story.pagesJson = jsonEncode(pages);
+        story.updatedAt = DateTime.now();
+        await story.save();
+
+        successCount++;
+
+        // 刷新 UI
+        if (mounted) setState(() {});
+
+        // 故事间延迟
+        if (currentStoryIndex < stories.length) {
+          await Future.delayed(const Duration(seconds: 1));
+        }
+      }
+
+      _batchGenerationSteps[0].setSuccess(description: '生成任务完成');
+      _batchGenerationSteps.add(GenerationStep(
+        title: '生成结果',
+        status: failCount > 0 ? StepStatus.error : StepStatus.success,
+        description: '成功: $successCount, 失败: $failCount',
+        details: errors.join('\n'),
+      ));
+    } catch (e) {
+      _batchGenerationSteps[0].setError('任务异常中止: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isBatchGenerating = false;
+        });
+      }
+    }
+  }
+
+  /// 保存图片
+  Future<String> _saveImage(String urlOrDataUri, String fileNamePrefix) async {
+    try {
+      if (kIsWeb) {
+        // Web 环境: 不保存文件,直接返回 Data URI
+        if (urlOrDataUri.startsWith('data:image')) {
+          return urlOrDataUri;
+        } else {
+          // 下载并转换为 Base64
+          final response = await http.get(Uri.parse(urlOrDataUri));
+          if (response.statusCode == 200) {
+            final base64String = base64Encode(response.bodyBytes);
+            return 'data:image/png;base64,$base64String';
+          }
+          throw Exception('下载图片失败: ${response.statusCode}');
+        }
+      }
+
+      final appDir = await getApplicationDocumentsDirectory();
+      final imagesDir = Directory('${appDir.path}/story_images');
+      if (!await imagesDir.exists()) {
+        await imagesDir.create(recursive: true);
+      }
+
+      final fileName =
+          '${fileNamePrefix}.png'; // fileNamePrefix already has simple unique part
+      final file = File('${imagesDir.path}/$fileName');
+
+      // 判断是 URL 还是 base64 data URI
+      if (urlOrDataUri.startsWith('data:image')) {
+        // Base64 格式
+        final base64Data = urlOrDataUri.split(',')[1];
+        final bytes = base64Decode(base64Data);
+        await file.writeAsBytes(bytes);
+        return file.path;
+      } else {
+        // URL 格式: 下载图片
+        final response = await http.get(Uri.parse(urlOrDataUri));
+        if (response.statusCode != 200) {
+          throw Exception('下载图片失败: ${response.statusCode}');
+        }
+
+        await file.writeAsBytes(response.bodyBytes);
+        return file.path;
+      }
+    } catch (e) {
+      debugPrint('下载保存图片失败: $e');
+      rethrow;
+    }
+  }
+
+  /// 执行故事生成任务（后台）
+  Future<void> _runStoryGenerationTask({
+    required int count,
+    String? theme,
+    String? customPrompt,
+    OpenAIConfig? textConfig,
+    String? textModel,
+    OpenAIConfig? imageConfig,
+    String? imageModel,
+    required bool enableImageGen,
+  }) async {
+    try {
+      final result = await _aiService.generateAndImportStories(
+        count: count,
+        theme: theme,
+        customPrompt: customPrompt,
+        textConfig: textConfig,
+        textModel: textModel,
+        imageConfig: imageConfig,
+        imageModel: imageModel,
+        onProgress: (step, message, {Map<String, dynamic>? details}) {
+          if (_batchGenerationSteps.isEmpty) return;
+
+          switch (step) {
+            case 'text':
+              _batchGenerationSteps[0].setRunning(description: message);
+              break;
+            case 'text_done':
+              // 尝试解析生成的内容并展示
+              String contentPreview = details?['raw']?.toString() ?? '';
+              try {
+                final raw = details?['raw'];
+                if (raw != null) {
+                  final List<dynamic> list = jsonDecode(raw.toString());
+                  final buffer = StringBuffer();
+                  for (var i = 0; i < list.length; i++) {
+                    final story = list[i];
+                    buffer.writeln('${i + 1}. ${story['title']}');
+                    buffer.writeln(
+                        '   时长: ${story['duration']} | 页数: ${(story['pages'] as List).length}');
+                    // Extract first page text as preview
+                    final pages = story['pages'] as List;
+                    if (pages.isNotEmpty) {
+                      buffer.writeln('   简介: ${pages[0]['text']}...');
+                    }
+                    buffer.writeln('');
+                  }
+                  contentPreview = buffer.toString();
+                }
+              } catch (e) {
+                // Keep raw if parse error
+              }
+
+              _batchGenerationSteps[0].setSuccess(
+                  description: '故事文本生成完成 (${details?['count']}个)',
+                  details: contentPreview);
+
+              // 如果有图片生成，开启第二步
+              if (enableImageGen && _batchGenerationSteps.length > 2) {
+                _batchGenerationSteps[1].setRunning(description: '准备生成插图...');
+              } else {
+                // 否则直接跳到最后一步
+                _batchGenerationSteps.last.setRunning(description: '正在保存数据...');
+              }
+              break;
+            case 'image':
+              if (enableImageGen && _batchGenerationSteps.length > 2) {
+                _batchGenerationSteps[1].setRunning(description: message);
+              }
+              break;
+            case 'image_download':
+              if (enableImageGen && _batchGenerationSteps.length > 2) {
+                _batchGenerationSteps[1].setRunning(description: message);
+              }
+              break;
+            case 'import':
+              // 如果有图片步，先完成它
+              if (enableImageGen && _batchGenerationSteps.length > 2) {
+                _batchGenerationSteps[1].setSuccess(description: '插图生成完成');
+              }
+              _batchGenerationSteps.last.setRunning(description: message);
+              break;
+            case 'done':
+              _batchGenerationSteps.last.setSuccess(description: '流程结束');
+              break;
+            case 'error':
+              // 找到当前正在运行的步骤报错
+              final currentStep = _batchGenerationSteps.firstWhere(
+                (s) => s.status.value == StepStatus.running,
+                orElse: () => _batchGenerationSteps.last,
+              );
+              currentStep.setError(message);
+              break;
+          }
+        },
+      );
+
+      // 添加结果汇总
+      final (success, skip, fail, errors) = result;
+      final summary = '生成完成\n成功: $success\n跳过: $skip\n失败: $fail';
+
+      if (fail > 0 || errors.isNotEmpty) {
+        _batchGenerationSteps.add(GenerationStep(
+          title: '生成结果',
+          status: StepStatus.error,
+          description: summary,
+          details: errors.join('\n'),
+        ));
+      } else {
+        _batchGenerationSteps.add(GenerationStep(
+          title: '生成结果',
+          status: StepStatus.success,
+          description: summary,
+        ));
+      }
+
+      // 刷新列表
+      if (mounted) setState(() {});
+    } catch (e) {
+      _batchGenerationSteps.add(GenerationStep(
+        title: '发生异常',
+        status: StepStatus.error,
+        error: e.toString(),
+      ));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isBatchGenerating = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final stories = _storyService.getAllStories();
@@ -762,7 +1096,24 @@ class _StoryManagementPageState extends State<StoryManagementPage> {
       appBar: AppBar(
         title: const Text('故事管理'),
         actions: [
+          // 正在后台生成时显示进度入口
+          if (_isBatchGenerating)
+            TextButton.icon(
+              onPressed: _showBatchGenerationProgress,
+              icon: SizedBox(
+                width: 14.w,
+                height: 14.w,
+                child: const CircularProgressIndicator(strokeWidth: 2),
+              ),
+              label: const Text('进度'),
+            ),
+
           if (_isSelectionMode) ...[
+            TextButton.icon(
+              onPressed: _batchGenerateImagesForSelected,
+              icon: const Icon(Icons.image_outlined),
+              label: const Text('生成插图'),
+            ),
             TextButton.icon(
               onPressed: _toggleSelectAll,
               icon: Icon(
@@ -850,9 +1201,22 @@ class _StoryManagementPageState extends State<StoryManagementPage> {
                         _editStory(story);
                       } else if (value == 'delete') {
                         _deleteStory(story);
+                      } else if (value == 'regenerate') {
+                        _regenerateImagesForStory(story);
                       }
                     },
                     itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'regenerate',
+                        child: Row(
+                          children: [
+                            Icon(Icons.image, size: 20, color: Colors.blue),
+                            SizedBox(width: 8),
+                            Text('重新生成图片',
+                                style: TextStyle(color: Colors.blue)),
+                          ],
+                        ),
+                      ),
                       const PopupMenuItem(
                         value: 'edit',
                         child: Row(

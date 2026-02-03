@@ -278,6 +278,25 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
     });
   }
 
+  /// 播放问题和选项TTS
+  Future<void> _playQuestionTts(Map<String, dynamic> question) async {
+    if (_tts.isSpeaking.value) {
+      await _tts.stop();
+      return;
+    }
+
+    final text = question['text'] as String;
+    final options = question['options'] as List;
+    final sb = StringBuffer();
+    sb.write(text);
+    sb.write("。"); // Pause
+    for (var opt in options) {
+      sb.write(" $opt。");
+    }
+
+    await _tts.speak(sb.toString());
+  }
+
   /// 加载故事列表
   Future<void> _loadStories() async {
     await _storyService.init();
@@ -567,7 +586,7 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
   }
 
   /// 构建图片Widget，支持URL、Base64和本地文件
-  Widget _buildImageWidget(String imageSource) {
+  Widget _buildImageWidget(String imageSource, {BoxFit fit = BoxFit.cover}) {
     // 判断图片来源类型
     if (imageSource.startsWith('data:image')) {
       // Base64格式
@@ -576,7 +595,7 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
         final bytes = base64Decode(base64Data);
         return Image.memory(
           bytes,
-          fit: BoxFit.cover,
+          fit: fit,
           errorBuilder: (ctx, error, stack) {
             return const Center(
               child: Icon(Icons.error, color: Colors.red),
@@ -594,7 +613,7 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
       // URL格式
       return Image.network(
         imageSource,
-        fit: BoxFit.cover,
+        fit: fit,
         loadingBuilder: (ctx, child, loadingProgress) {
           if (loadingProgress == null) return child;
           return Center(
@@ -616,7 +635,7 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
       // 本地文件路径
       return Image.file(
         File(imageSource),
-        fit: BoxFit.cover,
+        fit: fit,
         errorBuilder: (ctx, error, stack) {
           return const Center(
             child: Icon(Icons.error, color: Colors.red),
@@ -624,6 +643,30 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
         },
       );
     }
+  }
+
+  /// 查看大图
+  void _showFullScreenImage(BuildContext context, String imageSource) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            iconTheme: const IconThemeData(color: Colors.white),
+            elevation: 0,
+          ),
+          extendBodyBehindAppBar: true,
+          body: Center(
+            child: InteractiveViewer(
+              minScale: 0.5,
+              maxScale: 4.0,
+              child: _buildImageWidget(imageSource, fit: BoxFit.contain),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   /// 下载并保存图片
@@ -1048,10 +1091,14 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(16.r),
-                        child: SizedBox(
-                          height: 250.h,
-                          width: double.infinity,
-                          child: _buildImageWidget(imagePath!),
+                        child: GestureDetector(
+                          onTap: () =>
+                              _showFullScreenImage(context, imagePath!),
+                          child: AspectRatio(
+                            aspectRatio: 1.0, // 使用 1:1 比例显示，避免裁剪过多
+                            child: _buildImageWidget(imagePath!,
+                                fit: BoxFit.cover),
+                          ),
                         ),
                       ),
                       SizedBox(height: 32.h),
@@ -1143,14 +1190,28 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
               children: [
                 Icon(Icons.help_outline, color: Colors.blue, size: 24.sp),
                 SizedBox(width: 8.w),
-                Text(
-                  question['text'],
-                  style: TextStyle(
-                    fontSize: 16.sp,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blue.shade900,
+                Expanded(
+                  child: Text(
+                    question['text'],
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue.shade900,
+                    ),
                   ),
                 ),
+                Obx(() => IconButton(
+                      onPressed: () => _playQuestionTts(question),
+                      icon: Icon(
+                        _tts.isSpeaking.value &&
+                                _currentStory != null // 简单判断，或者需要更精确的状
+                            ? Icons.pause_circle_filled
+                            : Icons.volume_up,
+                        color: Colors.blue,
+                        size: 24.sp,
+                      ),
+                      tooltip: '朗读题目',
+                    )),
               ],
             ),
             SizedBox(height: 16.h),

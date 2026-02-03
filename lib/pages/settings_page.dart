@@ -6,6 +6,7 @@ import '../controllers/app_mode_controller.dart';
 import '../services/update_service.dart';
 import 'webdav_settings_page.dart';
 import 'openai_settings_page.dart';
+import 'music_cache_settings_page.dart';
 
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -213,6 +214,15 @@ class SettingsPage extends StatelessWidget {
                               ? () => Get.to(() => const OpenAISettingsPage())
                               : null,
                         )),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.library_music,
+                          color: Colors.pinkAccent),
+                      title: const Text("管理音乐缓存"),
+                      subtitle: const Text("查看占用空间并清理缓存"),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () => Get.to(() => const MusicCacheSettingsPage()),
+                    ),
                   ],
                 ),
               ),

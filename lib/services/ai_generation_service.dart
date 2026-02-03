@@ -158,6 +158,7 @@ class AIGenerationService {
     int skipCount = 0;
     int failCount = 0;
     List<String> errors = [];
+    List<QuizQuestion> importedQuestions = [];
 
     try {
       // 1. 调用 AI 生成题目
@@ -199,10 +200,81 @@ class AIGenerationService {
           // 转换并保存
           final quizQuestion = QuizQuestion.fromJson(questionMap);
           await _quizService.addQuestion(quizQuestion);
+          importedQuestions.add(quizQuestion);
           successCount++;
         } catch (e) {
           errors.add('导入题目失败: $e');
           failCount++;
+        }
+      }
+
+      onProgress?.call('import_done', '题目导入完成');
+
+      // 3. 为导入的题目生成图片
+      if (importedQuestions.isNotEmpty) {
+        onProgress?.call('image_start', '开始生成图片...', details: {
+          'total': importedQuestions.length,
+        });
+
+        final quizConfig = _quizService.config.value;
+        if (quizConfig != null && quizConfig.enableImageGen) {
+          final imageGenConfig = _openAIService.configs
+              .firstWhereOrNull((c) => c.id == quizConfig.imageGenConfigId);
+
+          if (imageGenConfig != null) {
+            int imageSuccess = 0;
+            int imageFail = 0;
+
+            for (int i = 0; i < importedQuestions.length; i++) {
+              final question = importedQuestions[i];
+
+              onProgress?.call('image_progress',
+                  '正在为题目 ${i + 1}/${importedQuestions.length} 生成图片...',
+                  details: {
+                    'current': i + 1,
+                    'total': importedQuestions.length,
+                    'question': question.question,
+                  });
+
+              try {
+                // 尝试生成图片
+                await _quizService.generateImageForQuestion(question,
+                    imageCount: 1);
+                imageSuccess++;
+
+                onProgress?.call(
+                    'image_item_success', '题目 "${question.question}" 图片生成成功',
+                    details: {
+                      'questionId': question.id,
+                    });
+              } catch (e) {
+                imageFail++;
+                // 图片生成失败，使用 emoji 替代（已在 QuizQuestion 中有默认 emoji）
+                errors.add('题目 "${question.question}" 图片生成失败: $e，将使用 emoji 替代');
+
+                onProgress?.call('image_item_fail',
+                    '题目 "${question.question}" 图片生成失败，使用 emoji',
+                    details: {
+                      'questionId': question.id,
+                      'error': e.toString(),
+                    });
+              }
+
+              // API 调用频率控制
+              if (i < importedQuestions.length - 1) {
+                await Future.delayed(const Duration(seconds: 2));
+              }
+            }
+
+            onProgress?.call('image_done', '图片生成完成', details: {
+              'success': imageSuccess,
+              'fail': imageFail,
+            });
+          } else {
+            onProgress?.call('image_skip', '未配置生图AI，跳过图片生成');
+          }
+        } else {
+          onProgress?.call('image_skip', '未启用图片生成功能');
         }
       }
 
