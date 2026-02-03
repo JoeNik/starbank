@@ -677,29 +677,34 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
     );
 
     try {
-      if (kIsWeb) {
-        if (path.startsWith('data:image')) {
-          final base64Data = path.split(',')[1];
-          final bytes = base64Decode(base64Data);
-          return Image.memory(
-            bytes,
-            fit: fit,
-            errorBuilder: (_, __, ___) => errorWidget,
-          );
-        } else {
-          return Image.network(
-            path,
-            fit: fit,
-            errorBuilder: (_, __, ___) => errorWidget,
-          );
-        }
+      // 1. Base64 格式 (Web 或 Android/iOS 保存的 Base64 字符串)
+      if (path.startsWith('data:image')) {
+        final base64Data = path.split(',')[1];
+        final bytes = base64Decode(base64Data);
+        return Image.memory(
+          bytes,
+          fit: fit,
+          errorBuilder: (_, __, ___) => errorWidget,
+        );
       }
-      return Image.file(
-        File(path),
-        fit: fit,
-        errorBuilder: (_, __, ___) => errorWidget,
-      );
+      // 2. 网络图片
+      else if (path.startsWith('http://') || path.startsWith('https://')) {
+        return Image.network(
+          path,
+          fit: fit,
+          errorBuilder: (_, __, ___) => errorWidget,
+        );
+      }
+      // 3. 本地文件 (旧数据或特定导入)
+      else {
+        return Image.file(
+          File(path),
+          fit: fit,
+          errorBuilder: (_, __, ___) => errorWidget,
+        );
+      }
     } catch (e) {
+      debugPrint('图片加载失败: $path, error: $e');
       return errorWidget;
     }
   }
