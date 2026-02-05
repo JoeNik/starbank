@@ -11,6 +11,8 @@ import '../../../theme/app_theme.dart';
 import '../../../services/tts_service.dart';
 import '../../../services/openai_service.dart';
 import '../../../services/story_management_service.dart';
+import '../../../services/ai_generation_service.dart';
+import '../../../widgets/ai_generation_progress_dialog.dart';
 import '../../../controllers/app_mode_controller.dart';
 import 'story_management_page.dart';
 import '../../../models/new_year_story.dart';
@@ -34,6 +36,7 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
   final StoryManagementService _storyService = StoryManagementService.instance;
   final QuizService _quizService =
       Get.find<QuizService>(); // Added for AI Settings
+  final AIGenerationService _aiService = Get.find<AIGenerationService>();
 
   // 故事列表
   List<Map<String, dynamic>> _stories = [];
@@ -86,6 +89,13 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
     _beastAnimation = Tween<double>(begin: -5, end: 5).animate(
       CurvedAnimation(parent: _beastController, curve: Curves.easeInOut),
     );
+
+    // 监听 AI 任务状态，任务结束时刷新当前故事
+    ever(_aiService.isTaskRunning, (running) {
+      if (!running && _currentStory != null) {
+        _reloadCurrentStory();
+      }
+    });
   }
 
   @override
@@ -347,6 +357,26 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
       setState(() {
         _stories = stories;
       });
+    }
+  }
+
+  /// 重新加载当前故事
+  Future<void> _reloadCurrentStory() async {
+    if (_currentStory == null) return;
+
+    // 重新加载所有故事，以获取最新状态
+    await _loadStories();
+
+    // 找到当前故事的新版本
+    final storyId = _currentStory!['id'];
+    final newVersion = _stories.firstWhereOrNull((s) => s['id'] == storyId);
+
+    if (newVersion != null) {
+      if (mounted) {
+        setState(() {
+          _currentStory = newVersion;
+        });
+      }
     }
   }
 
@@ -1146,6 +1176,52 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
                     ],
                   )
                 else ...[
+                  // 检查是否正在生成图片
+                  Obx(() {
+                    if (!_aiService.isTaskRunning.value) {
+                      return const SizedBox.shrink();
+                    }
+
+                    // 检查是否正在为当前故事生成
+                    final currentTitle = _currentStory!['title'];
+                    final runningStep = _aiService.taskSteps.firstWhereOrNull(
+                        (step) =>
+                            step.status.value == StepStatus.running &&
+                            (step.description.value.contains(currentTitle) ||
+                                step.details.value.contains(currentTitle)));
+
+                    if (runningStep != null) {
+                      return Container(
+                        padding: EdgeInsets.symmetric(horizontal: 16.w),
+                        child: Column(
+                          children: [
+                            const CircularProgressIndicator(strokeWidth: 2),
+                            SizedBox(height: 12.h),
+                            Text(
+                              'AI 正在绘制插图...',
+                              style: TextStyle(
+                                fontSize: 14.sp,
+                                color: Colors.purple.shade300,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            SizedBox(height: 4.h),
+                            Text(
+                              runningStep.description.value,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 10.sp,
+                                color: Colors.grey.shade400,
+                              ),
+                            ),
+                            SizedBox(height: 16.h),
+                          ],
+                        ),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  }),
+
                   Text(
                     page['emoji'],
                     style: TextStyle(fontSize: 100.sp),

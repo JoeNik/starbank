@@ -2,6 +2,7 @@ import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:audio_session/audio_session.dart';
 
 Future<AudioHandler> initAudioService() async {
   return await AudioService.init(
@@ -11,6 +12,7 @@ Future<AudioHandler> initAudioService() async {
       androidNotificationChannelName: 'StarBank Music Player',
       androidNotificationOngoing: true,
       androidStopForegroundOnPause: true,
+      androidNotificationIcon: 'mipmap/ic_launcher',
       notificationColor:
           Color(0xFFB27D), // 对应 pubspec.yaml 里的 adaptive_icon_background
     ),
@@ -30,6 +32,10 @@ class MusicHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   }
 
   Future<void> _init() async {
+    // 0. 配置 AudioSession (这对通知栏显示和音频焦点至关重要)
+    final session = await AudioSession.instance;
+    await session.configure(const AudioSessionConfiguration.music());
+
     // 1. 将 JustAudio 的播放事件转换为 AudioService 的 PlaybackState
     _player.playbackEventStream.listen(_broadcastState);
 

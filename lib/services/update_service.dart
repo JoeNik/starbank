@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
+import 'package:hive/hive.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../widgets/toast_utils.dart';
 
@@ -75,7 +76,7 @@ class ReleaseInfo {
   }
 }
 
-/// 更新检查服务
+/// UpdateService
 class UpdateService extends GetxService {
   // GitHub 仓库信息
   static const String owner = 'JoeNik';
@@ -84,11 +85,26 @@ class UpdateService extends GetxService {
   final RxBool isChecking = false.obs;
   final Rx<ReleaseInfo?> latestRelease = Rx<ReleaseInfo?>(null);
 
+  // Settings box
+  Box? _settingsBox;
+
+  @override
+  void onInit() {
+    super.onInit();
+    _initBox();
+  }
+
+  Future<void> _initBox() async {
+    _settingsBox = await Hive.openBox('update_settings');
+  }
+
   /// 检查更新
   Future<bool> checkForUpdate({bool showNoUpdateMessage = false}) async {
     isChecking.value = true;
 
     try {
+      if (_settingsBox == null) await _initBox(); // Ensure box is open
+
       final packageInfo = await PackageInfo.fromPlatform();
       final currentVersion = packageInfo.version;
 
@@ -104,6 +120,15 @@ class UpdateService extends GetxService {
 
         // 比较版本号
         if (_isNewerVersion(release.version, currentVersion)) {
+          // Check if ignored
+          final ignoredVersion = _settingsBox?.get('ignored_version');
+
+          // 如果是自动检查（!showNoUpdateMessage）且该版本已被忽略，则不提示
+          if (!showNoUpdateMessage && ignoredVersion == release.version) {
+            debugPrint('Version ${release.version} is ignored.');
+            return false;
+          }
+
           _showUpdateDialog(release, currentVersion);
           return true;
         } else if (showNoUpdateMessage) {
@@ -222,6 +247,18 @@ class UpdateService extends GetxService {
           ],
         ),
         actions: [
+          // Row for secondary actions to save vertical space if possible,
+          // but Wrap is safer for overflow.
+          // Or just standard actions list which flows.
+          TextButton(
+            onPressed: () async {
+              Get.back();
+              if (_settingsBox == null) await _initBox();
+              await _settingsBox?.put('ignored_version', release.version);
+              ToastUtils.showInfo('此版本将不再自动提醒');
+            },
+            child: Text('不再提醒', style: TextStyle(color: Colors.grey.shade600)),
+          ),
           TextButton(
             onPressed: () => Get.back(),
             child: const Text('稍后再说'),
@@ -237,6 +274,7 @@ class UpdateService extends GetxService {
             child: const Text('立即更新'),
           ),
         ],
+        actionsAlignment: MainAxisAlignment.end, // Default
       ),
       barrierDismissible: false,
     );

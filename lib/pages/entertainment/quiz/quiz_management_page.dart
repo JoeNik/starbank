@@ -377,23 +377,29 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
               ),
               const Spacer(),
               // 查看后台生成进度按钮
-              Obx(() => _aiService.isTaskRunning.value
+              // 查看后台生成进度按钮
+              Obx(() => _aiService.taskSteps.isNotEmpty
                   ? Container(
                       margin: EdgeInsets.only(right: 8.w),
                       child: ElevatedButton.icon(
                         onPressed: _showBatchGenerationProgress,
-                        icon: const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        ),
-                        label: const Text('查看进度'),
+                        icon: _aiService.isTaskRunning.value
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white),
+                                ),
+                              )
+                            : const Icon(Icons.history, size: 16),
+                        label: Text(
+                            _aiService.isTaskRunning.value ? '查看进度' : '上次任务'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF9C27B0),
+                          backgroundColor: _aiService.isTaskRunning.value
+                              ? const Color(0xFF9C27B0)
+                              : Colors.blueGrey,
                           foregroundColor: Colors.white,
                           padding: EdgeInsets.symmetric(
                             horizontal: 12.w,
@@ -996,112 +1002,34 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
 
   /// 为单个题目生成图片
   Future<void> _generateImageForQuestion(question) async {
+    // 显示加载对话框
+    Get.dialog(
+      AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(),
+            SizedBox(height: 16.h),
+            const Text("正在生成图片...", style: TextStyle(fontSize: 16)),
+            SizedBox(height: 8.h),
+            Text(
+              "生成过程可能需要 1-2 分钟，请耐心等待",
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+      barrierDismissible: false,
+    );
+
     try {
-      // 检查OpenAI配置
-      if (_openAIService.configs.isEmpty) {
-        ToastUtils.showWarning('请先配置OpenAI接口');
-        return;
-      }
-
-      // 获取配置（优先使用QuizConfig中的图片生成配置）
-      final quizConfig = _quizService.config.value;
-      if (quizConfig == null || !quizConfig.enableImageGen) {
-        ToastUtils.showWarning('未启用图片生成功能');
-        return;
-      }
-
-      final imageGenConfig = _openAIService.configs
-          .firstWhereOrNull((c) => c.id == quizConfig.imageGenConfigId);
-      if (imageGenConfig == null) {
-        ToastUtils.showWarning('未配置生图AI');
-        return;
-      }
-
-      // 显示加载对话框
-      Get.dialog(
-        AlertDialog(
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(),
-              SizedBox(height: 16.h),
-              const Text("正在生成图片提示词...", style: TextStyle(fontSize: 16)),
-              SizedBox(height: 8.h),
-              Text(
-                "生成过程可能需要 1-2 分钟，请耐心等待",
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-        barrierDismissible: false,
-      );
-
-      // 构建知识点
-      final knowledge =
-          '${question.question}\n答案: ${question.options[question.correctIndex]}\n解释: ${question.explanation}';
-      final userPrompt =
-          quizConfig.imageGenPrompt.replaceAll('{knowledge}', knowledge);
-
-      // 生成图片提示词
-      final imagePrompt = await _openAIService.chat(
-        systemPrompt:
-            '你是一个专业的儿童插画提示词生成专家。请根据用户提供的内容生成适合 DALL-E 或 Stable Diffusion 的英文提示词。\n\n'
-            '严格要求:\n'
-            '1. 必须使用可爱、卡通、儿童插画风格\n'
-            '2. 色彩明亮温暖,画面简洁清晰\n'
-            '3. 严格禁止任何暴力、恐怖、成人或不适合儿童的内容\n'
-            '4. 使用圆润可爱的造型,避免尖锐或恐怖元素\n'
-            '5. 符合中国传统新年文化,展现节日喜庆氛围\n'
-            '6. 适合3-8岁儿童观看\n\n'
-            '只返回英文提示词本身,不要有其他说明。提示词中应包含: cute, cartoon, children illustration, colorful, warm, simple, Chinese New Year 等关键词。',
-        userMessage: userPrompt,
-        config: imageGenConfig,
-      );
-
-      debugPrint('生成的图片提示词: $imagePrompt');
-
-      // 更新对话框提示
-      if (Get.isDialogOpen ?? false) Get.back();
-      Get.dialog(
-        AlertDialog(
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(),
-              SizedBox(height: 16.h),
-              const Text("正在生成图片...", style: TextStyle(fontSize: 16)),
-            ],
-          ),
-        ),
-        barrierDismissible: false,
-      );
-
-      // 直接调用生图API
-      final imageUrls = await _openAIService.generateImages(
-        prompt: imagePrompt,
-        n: 1,
-        config: imageGenConfig,
-        model: quizConfig.imageGenModel,
-      );
-
-      if (imageUrls.isEmpty) {
-        throw Exception('未能生成图片');
-      }
-
-      // 更新题目对象
-      question.imagePath = imageUrls.first;
-      question.imageStatus = 'success';
-      question.imageError = null;
-      question.updatedAt = DateTime.now();
-      await question.save();
-      _quizService.questions.refresh();
+      await _quizService.generateImageForQuestion(question, imageCount: 1);
 
       // 关闭加载对话框
       if (Get.isDialogOpen ?? false) Get.back();
 
-      // 刷新界面
+      // 刷新界面 (虽然 Service 会刷新，但在某些情况下显式 setState 更好)
       setState(() {});
 
       ToastUtils.showSuccess('图片生成成功!');
@@ -1109,10 +1037,7 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
       // 关闭加载对话框
       if (Get.isDialogOpen ?? false) Get.back();
 
-      // 显示错误提示
       ToastUtils.showError('生成失败: $e');
-
-      debugPrint('生成图片失败: $e');
     }
   }
 

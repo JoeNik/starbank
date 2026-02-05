@@ -797,15 +797,18 @@ class _StoryManagementPageState extends State<StoryManagementPage> {
           title: const Text('故事管理'),
           actions: [
             // 正在后台生成时显示进度入口
-            if (isRunning)
+            // 正在后台生成或有历史记录时显示入口
+            if (isRunning || _aiService.taskSteps.isNotEmpty)
               TextButton.icon(
                 onPressed: _showBatchGenerationProgress,
-                icon: SizedBox(
-                  width: 14.w,
-                  height: 14.w,
-                  child: const CircularProgressIndicator(strokeWidth: 2),
-                ),
-                label: const Text('进度'),
+                icon: isRunning
+                    ? SizedBox(
+                        width: 14.w,
+                        height: 14.w,
+                        child: const CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.history, size: 16),
+                label: Text(isRunning ? '进度' : '日志'),
               ),
 
             if (_isSelectionMode) ...[
