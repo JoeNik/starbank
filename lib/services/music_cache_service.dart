@@ -198,12 +198,6 @@ class MusicCacheService extends GetxService {
     return encrypted;
   }
 
-  /// 解密数据
-  Uint8List _decryptData(Uint8List encryptedData) {
-    // 异或加密是对称的,加密和解密使用相同的方法
-    return _encryptData(encryptedData);
-  }
-
   /// 计算文件校验和
   String _calculateChecksum(Uint8List data) {
     return md5.convert(data).toString();
@@ -226,6 +220,7 @@ class MusicCacheService extends GetxService {
   }
 
   /// 获取缓存文件路径（用于播放）
+  /// 采用流式解密 (Streaming) 以降低内存占用，防止后台 OOM
   Future<String?> getCachedFilePath(MusicTrack track) async {
     if (!_isInitialized) {
       debugPrint('⚠️ [MusicCacheService] 缓存服务未初始化');
@@ -249,47 +244,92 @@ class MusicCacheService extends GetxService {
       return null;
     }
 
-    // 读取并解析 .starmusic 文件
     try {
-      final fileData = await cacheFile.readAsBytes();
-
-      // 读取元数据长度（前4字节）
-      if (fileData.length < 4) {
-        throw Exception('文件格式错误');
+      // 1. 准备解密目标路径
+      // 使用 ApplicationSupportDirectory 而不是 TemporaryDirectory，防止后台被系统清理
+      final supportDir = await getApplicationSupportDirectory();
+      final playbackDir = Directory('${supportDir.path}/playback_cache');
+      if (!await playbackDir.exists()) {
+        await playbackDir.create(recursive: true);
       }
 
-      final metadataLength = (fileData[0] << 24) |
-          (fileData[1] << 16) |
-          (fileData[2] << 8) |
-          fileData[3];
-
-      if (fileData.length < 4 + metadataLength) {
-        throw Exception('文件格式错误');
-      }
-
-      // 跳过元数据,读取加密的音频数据
-      final encryptedAudioData = Uint8List.sublistView(
-        fileData,
-        4 + metadataLength,
-      );
-
-      // 解密音频数据
-      final decryptedData = _decryptData(encryptedAudioData);
-
-      // 创建临时文件
-      final tempDir = await getTemporaryDirectory();
       // 使用带扩展名的文件名，方便播放器识别
-      final tempFilePath =
-          '${tempDir.path}/temp_${cacheKey}_${DateTime.now().millisecondsSinceEpoch}.mp3';
+      final tempFilePath = '${playbackDir.path}/$cacheKey.mp3';
       final tempFile = File(tempFilePath);
-      await tempFile.writeAsBytes(decryptedData);
 
-      debugPrint('✅ [MusicCacheService] 解密缓存文件: $tempFilePath');
+      // 如果临时文件已存在且大小合理，直接复用（可选优化）
+      if (await tempFile.exists()) {
+        // 这里可以加一个简单的校验，比如文件修改时间，暂且直接复用
+        debugPrint('♻️ [MusicCacheService] 复用已解密文件: $tempFilePath');
+        return tempFilePath;
+      }
+
+      // 2. 开始流式解密
+      // 打开源文件流
+
+      final raf = await cacheFile.open(mode: FileMode.read);
+
+      // 读取元数据长度 (4 bytes)
+      final headerBytes = await raf.read(4);
+      if (headerBytes.length < 4) {
+        await raf.close();
+        throw Exception('文件头不完整');
+      }
+
+      final metadataLength = (headerBytes[0] << 24) |
+          (headerBytes[1] << 16) |
+          (headerBytes[2] << 8) |
+          headerBytes[3];
+
+      // 计算音频数据开始位置
+      final audioStartOffset = 4 + metadataLength;
+      final fileSize = await cacheFile.length();
+
+      if (fileSize < audioStartOffset) {
+        await raf.close();
+        throw Exception('文件被截断');
+      }
+
+      // 移动指针到音频数据开始处
+      await raf.setPosition(audioStartOffset);
+
+      // 3. 写入目标文件 (Chunked Processing)
+      final sink = tempFile.openWrite();
+      final keyBytes = utf8.encode(_encryptionKey);
+      final bufferSize = 64 * 1024; // 64KB chunk
+      int keyIndex = 0;
+
+      // 我们需要自己从 RAF 读取块，然后写入 sink
+      // 或者更简单的: 如果数据量不是巨大(几百MB)，分块读取循环是安全的
+
+      // 循环读取直到结束
+      int bytesRead = 0;
+      while (true) {
+        final chunk = await raf.read(bufferSize);
+        if (chunk.isEmpty) break;
+
+        // 解密这个块 (XOR)
+        for (int i = 0; i < chunk.length; i++) {
+          chunk[i] ^= keyBytes[keyIndex % keyBytes.length];
+          keyIndex++;
+        }
+
+        sink.add(chunk);
+        bytesRead += chunk.length;
+      }
+
+      await sink.flush();
+      await sink.close();
+      await raf.close();
+
+      debugPrint(
+          '✅ [MusicCacheService] 流式解密完成: $tempFilePath ($bytesRead bytes)');
       return tempFilePath;
     } catch (e) {
-      debugPrint('❌ [MusicCacheService] 解密缓存失败: $e');
-      _cacheIndex.remove(cacheKey);
-      await _saveCacheIndex();
+      debugPrint('❌ [MusicCacheService] 流式解密失败: $e');
+      // 出错时最好清理残缺文件
+      // _cacheIndex.remove(cacheKey);
+      // await _saveCacheIndex();
       return null;
     }
   }

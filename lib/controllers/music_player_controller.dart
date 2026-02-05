@@ -49,9 +49,9 @@ class MusicPlayerController extends GetxController {
   }
 
   void _initControllerAsync() async {
-    // 尝试等待 Service 初始化
+    // 1. 等待 AudioPlayer (可能来自 Handler 或 Fallback)
     int retries = 0;
-    while (audioPlayer == null && retries < 5) {
+    while (audioPlayer == null && retries < 10) {
       await Future.delayed(const Duration(milliseconds: 500));
       retries++;
     }
@@ -59,8 +59,41 @@ class MusicPlayerController extends GetxController {
     if (audioPlayer != null) {
       _setupPlayerListeners();
     } else {
-      // 如果超时，尝试调用 ensurePlayer 强行拉起
       _ensurePlayer();
+    }
+
+    // 2. 专门等待 AudioHandler 以绑定通知栏回调 (因为 fallback player 时 Handler 可能还没好)
+    int handlerRetries = 0;
+    while (_musicService.audioHandler == null && handlerRetries < 20) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      handlerRetries++;
+    }
+
+    if (_musicService.audioHandler != null) {
+      _bindHandlerCallbacks();
+    } else {
+      debugPrint('⚠️ [MusicPlayerController] AudioHandler 初始化超时，通知栏控制可能不可用');
+    }
+  }
+
+  void _bindHandlerCallbacks() {
+    try {
+      if (_musicService.audioHandler != null) {
+        _musicService.audioHandler!.onSkipToNext = () {
+          debugPrint('🔔 [Notification] 下一首');
+          playNext();
+        };
+        _musicService.audioHandler!.onSkipToPrevious = () {
+          debugPrint('🔔 [Notification] 上一首');
+          playPrevious();
+        };
+        // 绑定暂停/播放/停止，虽然 JustAudio 自动处理了，但有时需要显式覆盖?
+        // 不，MusicHandler 转发了 play/pause 到 player，player 状态变化会自动更新 UI。
+        // 所以只需要处理上一首/下一首这两个逻辑操作。
+        debugPrint('✅ [MusicPlayerController] 通知栏回调绑定成功');
+      }
+    } catch (e) {
+      debugPrint('❌ [MusicPlayerController] 绑定通知栏回调失败: $e');
     }
   }
 
@@ -119,21 +152,7 @@ class MusicPlayerController extends GetxController {
 
     // We bind Listeners to the Singleton Player
 
-    // Bind AudioHandler callbacks for Lock Screen / Notification controls
-    try {
-      if (_musicService.audioHandler != null) {
-        _musicService.audioHandler!.onSkipToNext = () {
-          debugPrint('Notification: Skip to Next');
-          playNext();
-        };
-        _musicService.audioHandler!.onSkipToPrevious = () {
-          debugPrint('Notification: Skip to Previous');
-          playPrevious();
-        };
-      }
-    } catch (e) {
-      debugPrint('Error binding AudioHandler callbacks: $e');
-    }
+    // AudioHandler callbacks are now bound in _bindHandlerCallbacks()
 
     audioPlayer!.playerStateStream.listen((state) {
       isPlaying.value = state.playing;
@@ -168,13 +187,23 @@ class MusicPlayerController extends GetxController {
     if (_cacheService.isInitialized && _cacheService.cacheEnabled.value) {
       debugPrint(
           '🔍 [MusicPlayerController] 正在检查缓存: Platform=${track.platform}, ID=${track.id}');
-      final cachedPath = await _cacheService.getCachedFilePath(track);
-      if (cachedPath != null) {
-        debugPrint('✅ [MusicPlayerController] 缓存命中! 路径: $cachedPath');
-        await _playFromCache(track, cachedPath);
-        return;
-      } else {
-        debugPrint('⚠️ [MusicPlayerController] 缓存未命中');
+      try {
+        final cachedPath = await _cacheService.getCachedFilePath(track);
+        if (cachedPath != null) {
+          debugPrint('✅ [MusicPlayerController] 缓存命中! 尝试播放: $cachedPath');
+          final success = await _playFromCache(track, cachedPath);
+          if (success) {
+            debugPrint('✅ [MusicPlayerController] 缓存播放成功');
+            return;
+          } else {
+            debugPrint('⚠️ [MusicPlayerController] 缓存播放失败，自动降级为在线播放');
+          }
+        } else {
+          debugPrint('⚠️ [MusicPlayerController] 缓存未命中');
+        }
+      } catch (e) {
+        debugPrint('❌ [MusicPlayerController] 缓存检查异常: $e');
+        // 异常也继续在线播放
       }
     } else {
       debugPrint('ℹ️ [MusicPlayerController] 缓存服务未启用或未初始化');
@@ -463,17 +492,13 @@ class MusicPlayerController extends GetxController {
   }
 
   /// 从缓存播放音乐
-  Future<void> _playFromCache(MusicTrack track, String cachedFilePath) async {
+  Future<bool> _playFromCache(MusicTrack track, String cachedFilePath) async {
     try {
       // Lazy Init & Ensure Singleton Check
       final player = await _ensurePlayer();
       if (player == null) {
-        final errorMsg = _musicService.initErrorMessage.value;
-        Get.snackbar('初始化失败', '音频服务无法启动: $errorMsg',
-            backgroundColor: Colors.redAccent,
-            colorText: Colors.white,
-            duration: const Duration(seconds: 5));
-        return;
+        debugPrint('❌ [MusicPlayerController] 音频服务初始化失败');
+        return false;
       }
 
       await player.stop();
@@ -508,18 +533,12 @@ class MusicPlayerController extends GetxController {
       }
 
       await player.play();
-    } on PlayerException catch (e) {
-      debugPrint("Error code: ${e.code}");
-      debugPrint("Error message: ${e.message}");
-      Get.snackbar('播放失败', '音频错误: ${e.message}',
-          backgroundColor: Colors.redAccent, colorText: Colors.white);
-    } catch (e, stackTrace) {
-      debugPrint('Cache play failed: $e');
-      debugPrintStack(stackTrace: stackTrace);
-      Get.snackbar('播放失败', '缓存播放错误: ${e.toString()}',
-          backgroundColor: Colors.redAccent,
-          colorText: Colors.white,
-          duration: const Duration(seconds: 5));
+      return true;
+    } catch (e) {
+      debugPrint('❌ [MusicPlayerController] 缓存播放异常: $e');
+      // debugPrintStack(stackTrace: stackTrace); // 减少日志刷屏，仅调试用
+      // 不要弹窗，返回 false 让上层降级
+      return false;
     }
   }
 
