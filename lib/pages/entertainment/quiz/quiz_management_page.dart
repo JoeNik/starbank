@@ -558,44 +558,53 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
                       child: Builder(
                         builder: (context) {
                           final path = question.imagePath!;
-                          if (kIsWeb) {
-                            if (path.startsWith('data:image')) {
-                              try {
-                                final base64Data = path.split(',')[1];
-                                final bytes = base64Decode(base64Data);
-                                return Image.memory(
-                                  bytes,
-                                  width: 48.w,
-                                  height: 48.w,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Icon(
-                                      Icons.broken_image,
-                                      color: Colors.grey,
-                                      size: 24.sp),
-                                );
-                              } catch (e) {
-                                return Icon(Icons.broken_image,
-                                    color: Colors.grey, size: 24.sp);
-                              }
-                            } else {
-                              return Image.network(
-                                path,
+
+                          // 1. 优先检查 Base64 图片 (支持所有平台)
+                          if (path.startsWith('data:image')) {
+                            try {
+                              final base64Data = path.split(',')[1];
+                              final bytes = base64Decode(base64Data);
+                              return Image.memory(
+                                bytes,
                                 width: 48.w,
                                 height: 48.w,
                                 fit: BoxFit.cover,
+                                // 添加 Key 以强制在数据变化时刷新
+                                key: ValueKey(path.hashCode),
                                 errorBuilder: (_, __, ___) => Icon(
                                     Icons.broken_image,
                                     color: Colors.grey,
                                     size: 24.sp),
                               );
+                            } catch (e) {
+                              return Icon(Icons.broken_image,
+                                  color: Colors.grey, size: 24.sp);
                             }
                           }
-                          // Mobile/Desktop
+
+                          // 2. Web 网络图片
+                          if (kIsWeb) {
+                            return Image.network(
+                              path,
+                              width: 48.w,
+                              height: 48.w,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Icon(
+                                  Icons.broken_image,
+                                  color: Colors.grey,
+                                  size: 24.sp),
+                            );
+                          }
+
+                          // 3. 本地文件图片
                           return Image.file(
                             File(path),
                             width: 48.w,
                             height: 48.w,
                             fit: BoxFit.cover,
+                            // 添加 Key 以处理同名文件刷新问题
+                            key: ValueKey(
+                                '${path}_${question.updatedAt?.millisecondsSinceEpoch}'),
                             errorBuilder: (context, error, stackTrace) {
                               return Icon(Icons.broken_image,
                                   color: Colors.grey, size: 24.sp);
