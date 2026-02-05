@@ -23,7 +23,7 @@ class StoryManagementPage extends StatefulWidget {
 
 class _StoryManagementPageState extends State<StoryManagementPage> {
   final StoryManagementService _storyService = StoryManagementService.instance;
-  final AIGenerationService _aiService = AIGenerationService();
+  final AIGenerationService _aiService = Get.find<AIGenerationService>();
   final OpenAIService _openAIService = Get.find<OpenAIService>();
   final QuizService _quizService =
       Get.find<QuizService>(); // Add QuizService to access AI Settings
@@ -603,6 +603,25 @@ class _StoryManagementPageState extends State<StoryManagementPage> {
               ),
             ),
             actions: [
+              TextButton(
+                onPressed: () async {
+                  // 保存配置
+                  final currentQuizConfig = _quizService.config.value;
+                  if (currentQuizConfig != null) {
+                    if (textConfig != null) {
+                      currentQuizConfig.chatConfigId = textConfig!.id;
+                      currentQuizConfig.chatModel = textModel;
+                    }
+                    if (enableImageGen && imageConfig != null) {
+                      currentQuizConfig.imageGenConfigId = imageConfig!.id;
+                      currentQuizConfig.imageGenModel = imageModel;
+                    }
+                    await _quizService.updateConfig(currentQuizConfig);
+                    ToastUtils.showSuccess('设置已保存');
+                  }
+                },
+                child: const Text('保存配置'),
+              ),
               TextButton(
                 onPressed: () => Navigator.pop(context),
                 child: const Text('取消'),

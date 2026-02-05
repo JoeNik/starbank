@@ -17,6 +17,7 @@ import 'services/openai_service.dart';
 import 'services/quiz_service.dart';
 import 'services/story_management_service.dart';
 import 'services/quiz_management_service.dart';
+import 'services/ai_generation_service.dart';
 import 'models/quiz_config.dart';
 import 'models/quiz_question.dart';
 // import 'package:just_audio_background/just_audio_background.dart';
@@ -98,6 +99,9 @@ void main() async {
 
       final quizManagementService = QuizManagementService.instance;
       await quizManagementService.init();
+
+      // Initialize AI Generation Service (Singleton)
+      Get.put(AIGenerationService());
 
       debugPrint('Quiz and Story services initialized');
     } catch (e, stack) {

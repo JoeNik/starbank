@@ -802,32 +802,58 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFFF8E1),
-      appBar: AppBar(
-        title: const Text('新年故事听听'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          // 语音设置按钮
-          IconButton(
-            icon: const Icon(Icons.volume_up),
-            tooltip: '语音设置',
-            onPressed: _showTtsSettings,
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings),
-            tooltip: '故事管理',
-            onPressed: () async {
-              await Get.to(() => const StoryManagementPage());
-              // 从管理页面返回后刷新数据
-              _loadStories();
-            },
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: _currentStory == null ? _buildStoryList() : _buildStoryReader(),
+    print('Current story: $_currentStory'); // Debug info
+    return PopScope(
+      canPop: _currentStory == null,
+      onPopInvoked: (didPop) async {
+        if (didPop) return;
+        if (_currentStory != null) {
+          _stopPlaying();
+          setState(() {
+            _currentStory = null;
+          });
+        }
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFFFF8E1),
+        appBar: AppBar(
+          title:
+              Text(_currentStory != null ? _currentStory!['title'] : '新年故事听听'),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: _currentStory != null
+              ? IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () {
+                    _stopPlaying();
+                    setState(() {
+                      _currentStory = null;
+                    });
+                  },
+                )
+              : null, // Default back button
+          actions: [
+            // 语音设置按钮
+            IconButton(
+              icon: const Icon(Icons.volume_up),
+              tooltip: '语音设置',
+              onPressed: _showTtsSettings,
+            ),
+            IconButton(
+              icon: const Icon(Icons.settings),
+              tooltip: '故事管理',
+              onPressed: () async {
+                await Get.to(() => const StoryManagementPage());
+                // 从管理页面返回后刷新数据
+                _loadStories();
+              },
+            ),
+          ],
+        ),
+        body: SafeArea(
+          child:
+              _currentStory == null ? _buildStoryList() : _buildStoryReader(),
+        ),
       ),
     );
   }

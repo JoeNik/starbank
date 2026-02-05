@@ -12,6 +12,8 @@ import '../../../widgets/toast_utils.dart';
 import '../../../services/openai_service.dart';
 import '../../../controllers/app_mode_controller.dart';
 import 'quiz_ai_settings_page.dart';
+import 'package:http/http.dart' as http;
+import '../../../models/quiz_question.dart';
 import 'quiz_management_page.dart';
 
 /// 小年兽问答页面
@@ -211,6 +213,7 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
     try {
       // 获取当前题目数据
       final currentQuestion = _questions[_currentIndex];
+      final questionId = currentQuestion['id'] as String?;
 
       // 检查OpenAI配置
       if (_openAIService.configs.isEmpty) {
@@ -254,13 +257,13 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
       );
 
       // 构建知识点
-      final question = currentQuestion['question'] as String? ?? '';
+      final questionText = currentQuestion['question'] as String? ?? '';
       final options = currentQuestion['options'] as List? ?? [];
       final correctIndex = currentQuestion['correctIndex'] as int? ?? 0;
       final explanation = currentQuestion['explanation'] as String? ?? '';
 
       final knowledge =
-          '$question\n答案: ${options.isNotEmpty && correctIndex < options.length ? options[correctIndex] : ''}\n解释: $explanation';
+          '$questionText\n答案: ${options.isNotEmpty && correctIndex < options.length ? options[correctIndex] : ''}\n解释: $explanation';
       final userPrompt =
           quizConfig.imageGenPrompt.replaceAll('{knowledge}', knowledge);
 
@@ -310,39 +313,70 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
         throw Exception('未能生成图片');
       }
 
-      // 找到对应的 QuizQuestion 对象并更新
-      final questionId = currentQuestion['id'] as String?;
-      if (questionId != null) {
-        final quizQuestion =
-            _quizService.questions.firstWhereOrNull((q) => q.id == questionId);
+      final rawImageUrl = imageUrls.first;
+      String savedImagePath = rawImageUrl;
 
-        if (quizQuestion != null) {
-          // 使用QuizService的内部方法保存图片
-          // 由于_downloadAndSaveImage是私有的，我们需要手动处理
-          // 这里直接使用返回的URL/Base64（Web环境已适配）
-          quizQuestion.imagePath = imageUrls.first;
-          quizQuestion.imageStatus = 'success';
-          quizQuestion.imageError = null;
-          quizQuestion.updatedAt = DateTime.now();
-          await quizQuestion.save();
-          _quizService.questions.refresh();
-
-          // 关闭加载对话框
-          if (Get.isDialogOpen ?? false) Get.back();
-
-          // 更新当前界面显示的图片路径
-          setState(() {
-            currentQuestion['imagePath'] = quizQuestion.imagePath;
-          });
-
-          ToastUtils.showSuccess('图片生成成功!');
-          return;
+      // 如果返回的是 URL，下载并转换为 Base64 以防止过期
+      if (!rawImageUrl.startsWith('data:image')) {
+        try {
+          final response = await http
+              .get(Uri.parse(rawImageUrl))
+              .timeout(const Duration(seconds: 60));
+          if (response.statusCode == 200) {
+            final base64String = base64Encode(response.bodyBytes);
+            savedImagePath = 'data:image/png;base64,$base64String';
+          }
+        } catch (e) {
+          debugPrint('图片转存失败，将使用原始URL: $e');
         }
       }
 
-      // 未找到对象，关闭对话框并报错
+      // 查找或创建 QuizQuestion 对象
+      // 如果是默认题目（不在数据库中），则新建并加入数据库
+      QuizQuestion? quizQuestion;
+      if (questionId != null) {
+        quizQuestion =
+            _quizService.questions.firstWhereOrNull((q) => q.id == questionId);
+      }
+
+      if (quizQuestion == null) {
+        // 创建新题目对象
+        final newId =
+            questionId ?? DateTime.now().millisecondsSinceEpoch.toString();
+        quizQuestion = QuizQuestion(
+          id: newId,
+          question: questionText,
+          emoji: currentQuestion['emoji'] ?? '🧧',
+          options: List<String>.from(options.map((e) => e.toString())),
+          correctIndex: correctIndex,
+          explanation: explanation,
+          category: currentQuestion['category'] ?? '默认',
+          createdAt: DateTime.now(),
+        );
+        // 添加到服务（保存到 Hive）
+        await _quizService.addQuestion(quizQuestion);
+
+        // 更新当前 map 的 ID，以免下次再次创建
+        currentQuestion['id'] = newId;
+      }
+
+      // 更新题目图片
+      quizQuestion.imagePath = savedImagePath;
+      quizQuestion.imageStatus = 'success';
+      quizQuestion.imageError = null;
+      quizQuestion.updatedAt = DateTime.now();
+      await quizQuestion.save();
+      _quizService.questions.refresh();
+
+      // 关闭加载对话框
       if (Get.isDialogOpen ?? false) Get.back();
-      throw Exception('未找到对应的题目对象');
+
+      // 更新当前界面显示的图片路径
+      setState(() {
+        currentQuestion['imagePath'] = quizQuestion!.imagePath;
+      });
+
+      ToastUtils.showSuccess('图片生成成功!');
     } catch (e) {
       // 关闭加载对话框
       if (Get.isDialogOpen ?? false) Get.back();

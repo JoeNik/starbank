@@ -27,7 +27,7 @@ class QuizManagementPage extends StatefulWidget {
 
 class _QuizManagementPageState extends State<QuizManagementPage> {
   final QuizService _quizService = Get.find<QuizService>();
-  final AIGenerationService _aiService = AIGenerationService();
+  final AIGenerationService _aiService = Get.find<AIGenerationService>();
   final OpenAIService _openAIService = Get.find<OpenAIService>();
   final QuizManagementService _quizManagementService =
       QuizManagementService.instance;

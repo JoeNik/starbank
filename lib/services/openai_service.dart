@@ -741,7 +741,8 @@ class OpenAIService extends GetxService {
       if (streamedResponse.statusCode != 200) {
         final errorBody = await streamedResponse.stream.bytesToString();
         debugPrint('❌ 错误响应体: $errorBody');
-        throw Exception('流式图片生成失败: HTTP ${streamedResponse.statusCode}');
+        throw Exception(
+            '流式图片生成失败: HTTP ${streamedResponse.statusCode}\n$errorBody');
       }
 
       // 解析流式响应
