@@ -4,6 +4,7 @@ import 'package:hive/hive.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:archive/archive.dart';
+import 'package:flutter/foundation.dart';
 import 'storage_service.dart';
 import '../widgets/toast_utils.dart';
 import '../models/user_profile.dart';
@@ -430,30 +431,50 @@ class WebDavService extends GetxService {
 
       // 恢复便便记录
       if (backupData['poopRecords'] != null) {
+        int successCount = 0;
+        int failCount = 0;
+        String? lastError;
+
         try {
-          // 确保使用正确的泛型打开 Box，以便 Hive 知道它存储的是 PoopRecord
-          // 注意：如果之前已经用 dynamic 打开过，这里复用实例可能还是 dynamic 泛型，
-          // 但 put 进去的对象必须是 PoopRecord 类型
           final poopBox = await Hive.openBox<PoopRecord>('poop_records');
           await poopBox.clear();
-          for (var item in (backupData['poopRecords'] as List)) {
+
+          final list = backupData['poopRecords'] as List;
+          debugPrint('Found ${list.length} poop records to restore');
+
+          for (var item in list) {
             try {
               if (item is Map) {
                 final map = Map<String, dynamic>.from(item);
-                // Ensure ID is string
-                if (map['id'] != null) map['id'] = map['id'].toString();
-                if (map['babyId'] != null)
-                  map['babyId'] = map['babyId'].toString();
+
+                // 健壮性处理：确保非空及类型转换
+                if (map['id'] == null)
+                  map['id'] = DateTime.now().millisecondsSinceEpoch.toString();
+                if (map['babyId'] == null) map['babyId'] = 'default_baby';
+
+                // 强制转 String
+                map['id'] = map['id'].toString();
+                map['babyId'] = map['babyId'].toString();
 
                 final record = PoopRecord.fromJson(map);
                 await poopBox.put(record.id, record);
+                successCount++;
               }
             } catch (e) {
-              print('恢复单个便便记录失败: $e');
+              failCount++;
+              lastError = e.toString();
+              debugPrint('恢复单个便便记录失败: $e');
             }
           }
+
+          if (failCount > 0) {
+            ToastUtils.showWarning('便便记录恢复：成功 $successCount 条，失败 $failCount 条');
+            debugPrint('Last restore error: $lastError');
+          } else if (successCount > 0) {
+            debugPrint('成功恢复 $successCount 条便便记录');
+          }
         } catch (e) {
-          print('恢复便便记录失败: $e');
+          debugPrint('恢复便便记录失败: $e');
           ToastUtils.showWarning('便便记录恢复失败: $e');
         }
       }
