@@ -161,11 +161,84 @@ class QuizService extends GetxService {
       final index = questions.indexWhere((q) => q.id == question.id);
       questions[index] = question;
     }
+    questions.refresh();
+  }
+
+  /// 更新题目
+  Future<void> updateQuestion(QuizQuestion question) async {
+    question.updatedAt = DateTime.now();
+    await _questionBox.put(question.id, question);
+    final index = questions.indexWhere((q) => q.id == question.id);
+    if (index != -1) {
+      questions[index] = question;
+      questions.refresh();
+    }
+  }
+
+  /// 删除题目
+  Future<void> deleteQuestion(String id) async {
+    await _questionBox.delete(id);
+    questions.removeWhere((q) => q.id == id);
+  }
+
+  /// 批量删除题目
+  Future<void> deleteQuestions(List<String> ids) async {
+    await _questionBox.deleteAll(ids);
+    questions.removeWhere((q) => ids.contains(q.id));
   }
 
   /// 检查题目是否重复
-  bool isDuplicate(String questionText) {
-    return questions.any((q) => q.question == questionText);
+  /// 采用更智能的匹配方案：规范化文本 + 字符相似度检查
+  bool isDuplicate(String questionText, {String? excludeId}) {
+    final newNormalized = _normalizeText(questionText);
+    if (newNormalized.isEmpty) return false;
+
+    for (var q in questions) {
+      if (q.id == excludeId) continue;
+
+      final existingNormalized = _normalizeText(q.question);
+
+      // 1. 规范化后完全匹配
+      if (newNormalized == existingNormalized) return true;
+
+      // 2. 相似度匹配 (阈值设为 0.85)
+      // 处理类似 "过年为什么要贴春联？" 和 "过年贴春联的原因是什么？" 的情况
+      if (_calculateSimilarity(newNormalized, existingNormalized) > 0.85) {
+        debugPrint('检测到疑似重复题目: \n新题: $questionText \n旧题: ${q.question}');
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// 文本规范化：移除标点符号、特殊字符、空格，并转为小写
+  String _normalizeText(String text) {
+    return text
+        .replaceAll(RegExp(r'[^\u4e00-\u9fa5a-zA-Z0-9]'), '')
+        .toLowerCase()
+        .trim();
+  }
+
+  /// 计算两个文本的相似度 (综合 Jaccard 相似度和重叠系数)
+  double _calculateSimilarity(String s1, String s2) {
+    if (s1.isEmpty || s2.isEmpty) return 0.0;
+
+    // 使用字符集合计算重叠度
+    final set1 = s1.split('').toSet();
+    final set2 = s2.split('').toSet();
+
+    final intersection = set1.intersection(set2).length;
+    if (intersection == 0) return 0.0;
+
+    // Jaccard 相似度: 交集 / 并集
+    final jaccard = intersection / set1.union(set2).length;
+
+    // 重叠系数: 交集 / 较短字符串的长度 (对包含关系识别更好)
+    final overlap =
+        intersection / (set1.length < set2.length ? set1.length : set2.length);
+
+    // 取两者中的较大值。如果一个题目是另一个题目的子集，或者两者用词高度接近，都会判定为相似
+    return jaccard > overlap ? jaccard : overlap;
   }
 
   /// 导入题库(JSON 格式)

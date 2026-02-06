@@ -8,7 +8,6 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import '../../../models/openai_config.dart';
 import '../../../services/quiz_service.dart';
-import '../../../services/quiz_management_service.dart';
 import '../../../services/ai_generation_service.dart';
 import '../../../services/openai_service.dart';
 import '../../../theme/app_theme.dart';
@@ -29,8 +28,6 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
   final QuizService _quizService = Get.find<QuizService>();
   final AIGenerationService _aiService = Get.find<AIGenerationService>();
   final OpenAIService _openAIService = Get.find<OpenAIService>();
-  final QuizManagementService _quizManagementService =
-      QuizManagementService.instance;
 
   // 批量选择状态
   bool _isBatchMode = false;
@@ -1170,7 +1167,7 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
             onPressed: () async {
               Get.back();
               try {
-                await _quizManagementService.deleteQuestion(question.id);
+                await _quizService.deleteQuestion(question.id);
                 ToastUtils.showSuccess('删除成功');
               } catch (e) {
                 ToastUtils.showError('删除失败: $e');

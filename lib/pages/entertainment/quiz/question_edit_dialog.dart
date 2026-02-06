@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart';
 import '../../../models/quiz_question.dart';
-import '../../../services/quiz_management_service.dart';
+import '../../../services/quiz_service.dart';
 import '../../../widgets/toast_utils.dart';
 
 /// 题目编辑对话框
@@ -15,7 +16,7 @@ class QuestionEditDialog extends StatefulWidget {
 }
 
 class _QuestionEditDialogState extends State<QuestionEditDialog> {
-  final QuizManagementService _quizService = QuizManagementService.instance;
+  final QuizService _quizService = Get.find<QuizService>();
 
   late TextEditingController _questionController;
   late TextEditingController _emojiController;

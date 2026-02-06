@@ -16,7 +16,6 @@ import 'controllers/music_player_controller.dart';
 import 'services/openai_service.dart';
 import 'services/quiz_service.dart';
 import 'services/story_management_service.dart';
-import 'services/quiz_management_service.dart';
 import 'services/ai_generation_service.dart';
 import 'models/quiz_config.dart';
 import 'models/quiz_question.dart';
@@ -96,9 +95,6 @@ void main() async {
 
       final storyManagementService = StoryManagementService.instance;
       await storyManagementService.init();
-
-      final quizManagementService = QuizManagementService.instance;
-      await quizManagementService.init();
 
       // Initialize AI Generation Service (Singleton)
       Get.put(AIGenerationService());

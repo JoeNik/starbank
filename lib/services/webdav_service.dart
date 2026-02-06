@@ -110,21 +110,31 @@ class WebDavService extends GetxService {
 
       // 备份便便记录
       try {
-        final poopBox = await Hive.openBox<dynamic>('poop_records');
-        backupData['poopRecords'] = poopBox.values
-            .map((e) {
-              try {
-                if (e is Map) return e;
-                return (e as dynamic).toJson();
-              } catch (e) {
-                print('Skipping invalid poop record: $e');
-                return null;
-              }
-            })
-            .where((e) => e != null)
-            .toList();
+        if (!Hive.isAdapterRegistered(11)) {
+          Hive.registerAdapter(PoopRecordAdapter());
+        }
+        final poopBox = await Hive.openBox<PoopRecord>('poop_records');
+        final recordCount = poopBox.length;
+        debugPrint('Backup: Found $recordCount poop records');
+
+        if (recordCount > 0) {
+          List<Map<String, dynamic>> serialized = [];
+          for (var record in poopBox.values) {
+            try {
+              serialized.add(record.toJson());
+            } catch (e) {
+              debugPrint('Backup skip invalid record: $e');
+            }
+          }
+          backupData['poopRecords'] = serialized;
+          debugPrint(
+              'Backup: Successfully serialized ${serialized.length} records');
+        } else {
+          backupData['poopRecords'] = [];
+        }
       } catch (e) {
-        print('备份便便记录失败: $e');
+        debugPrint('备份便便记录失败: $e');
+        ToastUtils.showError('备份便便记录失败: $e');
       }
 
       // 备份 AI 聊天记录
@@ -429,6 +439,16 @@ class WebDavService extends GetxService {
         }
       }
 
+      // 核心数据持久化
+      await Future.wait([
+        _storage.userBox.flush(),
+        _storage.actionBox.flush(),
+        _storage.logBox.flush(),
+        _storage.productBox.flush(),
+        _storage.babyBox.flush(),
+      ]);
+      debugPrint('核心数据已恢复并刷新到磁盘');
+
       // 恢复便便记录
       if (backupData['poopRecords'] != null) {
         int successCount = 0;
@@ -456,6 +476,14 @@ class WebDavService extends GetxService {
                 map['id'] = map['id'].toString();
                 map['babyId'] = map['babyId'].toString();
 
+                // 兼容性处理：防止 type/color 被错误存储为 String
+                if (map['type'] is String) {
+                  map['type'] = int.tryParse(map['type']) ?? 0;
+                }
+                if (map['color'] is String) {
+                  map['color'] = int.tryParse(map['color']) ?? 0;
+                }
+
                 final record = PoopRecord.fromJson(map);
                 await poopBox.put(record.id, record);
                 successCount++;
@@ -467,11 +495,18 @@ class WebDavService extends GetxService {
             }
           }
 
+          // 关键修复：确保数据被持久化到磁盘
+          await poopBox.flush();
+          debugPrint('便便记录已刷新到磁盘');
+
           if (failCount > 0) {
             ToastUtils.showWarning('便便记录恢复：成功 $successCount 条，失败 $failCount 条');
             debugPrint('Last restore error: $lastError');
           } else if (successCount > 0) {
             debugPrint('成功恢复 $successCount 条便便记录');
+            ToastUtils.showSuccess('成功恢复 $successCount 条便便记录');
+          } else {
+            debugPrint('无便便记录可恢复');
           }
         } catch (e) {
           debugPrint('恢复便便记录失败: $e');
@@ -499,6 +534,8 @@ class WebDavService extends GetxService {
               print('恢复单个 AI 聊天记录失败: $e');
             }
           }
+          // 确保数据持久化
+          await chatBox.flush();
         } catch (e) {
           print('恢复 AI 聊天记录失败: $e');
           ToastUtils.showWarning('AI 聊天记录恢复失败: $e');
@@ -519,6 +556,8 @@ class WebDavService extends GetxService {
               await openaiBox.put(config.id, config);
             }
           }
+          // 确保数据持久化
+          await openaiBox.flush();
         } catch (e) {
           print('恢复 OpenAI 配置失败: $e');
           ToastUtils.showWarning('OpenAI 配置恢复失败: $e');
@@ -541,6 +580,7 @@ class WebDavService extends GetxService {
           for (var entry in settings.entries) {
             await appSettingsBox.put(entry.key, entry.value);
           }
+          await appSettingsBox.flush();
         } catch (e) {
           print('恢复应用设置失败: $e');
         }
@@ -554,6 +594,7 @@ class WebDavService extends GetxService {
           for (var entry in settings.entries) {
             await ttsSettingsBox.put(entry.key, entry.value);
           }
+          await ttsSettingsBox.flush();
         } catch (e) {
           print('恢复 TTS 设置失败: $e');
         }
@@ -567,6 +608,7 @@ class WebDavService extends GetxService {
           for (var entry in settings.entries) {
             await poopAiSettingsBox.put(entry.key, entry.value);
           }
+          await poopAiSettingsBox.flush();
         } catch (e) {
           print('恢复便便 AI 设置失败: $e');
         }
@@ -581,6 +623,7 @@ class WebDavService extends GetxService {
           for (var entry in config.entries) {
             await storyConfigBox.put(entry.key, entry.value);
           }
+          await storyConfigBox.flush();
         } catch (e) {
           print('恢复故事游戏配置失败: $e');
         }
@@ -603,6 +646,8 @@ class WebDavService extends GetxService {
               print('恢复单个故事会话失败: $e');
             }
           }
+          // 确保数据持久化
+          await storySessionBox.flush();
         } catch (e) {
           print('恢复故事游戏会话失败: $e');
         }
@@ -616,6 +661,7 @@ class WebDavService extends GetxService {
           for (var item in (backupData['customRiddles'] as List)) {
             await riddleBox.add(item);
           }
+          await riddleBox.flush();
         } catch (e) {
           print('恢复自定义脑筋急转弯失败: $e');
         }
@@ -642,6 +688,8 @@ class WebDavService extends GetxService {
               await playlistBox.put(pl.id, pl);
             }
           }
+          // 确保数据持久化
+          await playlistBox.flush();
         } catch (e) {
           print('恢复音乐数据失败: $e');
         }
@@ -670,6 +718,7 @@ class WebDavService extends GetxService {
             await settingsBox.put('webdav_pwd', currentWebDavPwd);
           }
 
+          await settingsBox.flush();
           // Reload config related if needed
           _loadConfig();
         } catch (e) {
@@ -686,6 +735,7 @@ class WebDavService extends GetxService {
           for (var entry in config.entries) {
             await tuneHubBox.put(entry.key, entry.value);
           }
+          await tuneHubBox.flush();
         } catch (e) {
           print('恢复 TuneHub 设置失败: $e');
         }
@@ -700,6 +750,7 @@ class WebDavService extends GetxService {
           for (var entry in settings.entries) {
             await playerSettingsBox.put(entry.key, entry.value);
           }
+          await playerSettingsBox.flush();
         } catch (e) {
           print('恢复播放器设置失败: $e');
         }
@@ -783,7 +834,15 @@ class WebDavService extends GetxService {
           .map((f) => f.path ?? '')
           .where((p) => p.endsWith('.json') || p.endsWith('.json.gz'))
           .toList();
-    } catch (_) {
+    } catch (e) {
+      debugPrint('WebDAV list error: $e');
+      // 只在明确是连接错误时提示，避免文件夹不存在时频繁报错
+      if (e.toString().contains('XmlHttpRequest') ||
+          e.toString().contains('CORS')) {
+        ToastUtils.showError('WebDAV连接失败(可能是CORS问题): $e');
+      } else {
+        debugPrint('List backups failed (maybe dir not exists): $e');
+      }
       return [];
     }
   }
