@@ -749,7 +749,11 @@ class _StoryGamePageState extends State<StoryGamePage> {
       _aiError = null;
     });
 
-    await _getAIResponse();
+    if (_messages.isEmpty) {
+      await _analyzeImageAndStart();
+    } else {
+      await _getAIResponse();
+    }
   }
 
   /// 统一处理 AI 动作（引导、对话或总结）
@@ -889,8 +893,16 @@ class _StoryGamePageState extends State<StoryGamePage> {
           .map((m) => '${m['role'] == 'ai' ? 'AI' : '小朋友'}: ${m['content']}')
           .join('\n');
 
+      // 动态增强评价提示词，避免分数过于固定
+      String systemPrompt = _gameConfig!.evaluationPrompt;
+      // 如果提示词中没有包含特定的差异化指令，则追加（避免重复添加）
+      if (!systemPrompt.contains('区分度')) {
+        systemPrompt +=
+            '\n\n重要：请根据小朋友回答的长度、逻辑性和互动轮数给出有区分度的分数（如83、87、94、96等），不要总是给出88或92分。如果故事很短或非常简单，分数应适当降低（如70-80）；如果故事很精彩，可以给高分（95+）。';
+      }
+
       final messagesForAPI = [
-        {'role': 'system', 'content': _gameConfig!.evaluationPrompt},
+        {'role': 'system', 'content': systemPrompt},
         {'role': 'user', 'content': '以下是故事对话记录：\n\n$storyContent'},
       ];
 
@@ -905,6 +917,7 @@ class _StoryGamePageState extends State<StoryGamePage> {
           'model': chatModel,
           'messages': messagesForAPI,
           'max_tokens': 300,
+          'temperature': 0.85, // 增加随机性以避免分数固定
         }),
       );
 
@@ -1209,7 +1222,7 @@ class _StoryGamePageState extends State<StoryGamePage> {
     return Column(
       children: [
         // 图片区域 (支持折叠)
-        if (_currentImageUrl.isNotEmpty)
+        if (_currentImageUrl.isNotEmpty || _isGeneratingImage)
           AnimatedContainer(
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeInOut,
@@ -1230,24 +1243,28 @@ class _StoryGamePageState extends State<StoryGamePage> {
             child: Stack(
               children: [
                 // 背景高斯模糊
-                Positioned.fill(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16.r),
-                    child: ImageFiltered(
-                      imageFilter: ui.ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                      child: Opacity(
-                        opacity: 0.6,
-                        child: buildStoryImage(
-                          _currentImageUrl,
-                          fit: BoxFit.cover,
+                if (_currentImageUrl.isNotEmpty)
+                  Positioned.fill(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16.r),
+                      child: ImageFiltered(
+                        imageFilter:
+                            ui.ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                        child: Opacity(
+                          opacity: 0.6,
+                          child: buildStoryImage(
+                            _currentImageUrl,
+                            fit: BoxFit.cover,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
                 // 图片主体
                 InkWell(
-                  onTap: () => _showFullImage(_currentImageUrl),
+                  onTap: _currentImageUrl.isNotEmpty
+                      ? () => _showFullImage(_currentImageUrl)
+                      : null,
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16.r),
                     child: _isGeneratingImage
@@ -1649,7 +1666,11 @@ class _StoryGamePageState extends State<StoryGamePage> {
           // 这一步不需要手动设 _isAIResponding，因为 _getAIResponse 会设
         });
 
-        await _getAIResponse();
+        if (_messages.isEmpty) {
+          await _analyzeImageAndStart();
+        } else {
+          await _getAIResponse();
+        }
       },
     );
   }

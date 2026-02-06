@@ -9,11 +9,12 @@ Future<AudioHandler> initAudioService() async {
     builder: () => MusicHandler(),
     config: const AudioServiceConfig(
       androidNotificationChannelId:
-          'com.starbank.app.channel.audio.v2', // Change ID to reset config
+          'com.starbank.app.channel.audio.v3', // Update ID to refresh config
       androidNotificationChannelName: 'StarBank Music Player',
       androidNotificationOngoing: true,
       androidStopForegroundOnPause: true,
-      androidNotificationIcon: 'mipmap/ic_launcher',
+      androidNotificationIcon:
+          'ic_launcher_foreground', // Use drawable resource
       notificationColor:
           Color(0xFFB27D), // 对应 pubspec.yaml 里的 adaptive_icon_background
     ),

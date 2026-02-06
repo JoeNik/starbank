@@ -247,9 +247,6 @@ class UpdateService extends GetxService {
           ],
         ),
         actions: [
-          // Row for secondary actions to save vertical space if possible,
-          // but Wrap is safer for overflow.
-          // Or just standard actions list which flows.
           TextButton(
             onPressed: () async {
               Get.back();
@@ -259,22 +256,33 @@ class UpdateService extends GetxService {
             },
             child: Text('不再提醒', style: TextStyle(color: Colors.grey.shade600)),
           ),
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('稍后再说'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Get.back();
-              _downloadUpdate(release);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-            ),
-            child: const Text('立即更新'),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextButton(
+                onPressed: () => Get.back(),
+                child: const Text('稍后再说'),
+              ),
+              SizedBox(width: 8.w),
+              ElevatedButton(
+                onPressed: () {
+                  Get.back();
+                  _downloadUpdate(release);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  elevation: 0,
+                ),
+                child: const Text(
+                  '立即更新',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
           ),
         ],
-        actionsAlignment: MainAxisAlignment.end, // Default
+        actionsAlignment: MainAxisAlignment.spaceBetween,
+        actionsPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
       ),
       barrierDismissible: false,
     );

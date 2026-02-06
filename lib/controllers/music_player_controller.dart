@@ -154,10 +154,19 @@ class MusicPlayerController extends GetxController {
 
     // AudioHandler callbacks are now bound in _bindHandlerCallbacks()
 
+    // 局部变量防止重复触发
+    bool isManuallySkipping = false;
+
     audioPlayer!.playerStateStream.listen((state) {
       isPlaying.value = state.playing;
       if (state.processingState == ProcessingState.completed) {
         playNext();
+        isManuallySkipping = false;
+      }
+      // 当重新开始缓冲或空闲时，重置标志位
+      if (state.processingState == ProcessingState.buffering ||
+          state.processingState == ProcessingState.idle) {
+        isManuallySkipping = false;
       }
     });
 
@@ -168,6 +177,19 @@ class MusicPlayerController extends GetxController {
         if (index != -1 && index != currentLyricIndex.value) {
           currentLyricIndex.value = index;
         }
+      }
+
+      // [BugFix] 手动检测结束：如果剩余时间 < 500ms 且正在播放，主动切歌
+      // 解决部分音频文件在最后几帧卡住不触发 completed 的问题
+      final d = duration.value;
+      if (!isManuallySkipping &&
+          d.inSeconds > 5 &&
+          audioPlayer!.playing &&
+          (d - p).inMilliseconds < 500 &&
+          audioPlayer!.processingState != ProcessingState.completed) {
+        isManuallySkipping = true;
+        debugPrint('⚡ [MusicPlayerController] 接近尾声，主动切下一首');
+        playNext();
       }
     });
 

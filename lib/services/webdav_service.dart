@@ -110,10 +110,18 @@ class WebDavService extends GetxService {
       // 备份便便记录
       try {
         final poopBox = await Hive.openBox<dynamic>('poop_records');
-        backupData['poopRecords'] = poopBox.values.map((e) {
-          if (e is Map) return e;
-          return (e as dynamic).toJson();
-        }).toList();
+        backupData['poopRecords'] = poopBox.values
+            .map((e) {
+              try {
+                if (e is Map) return e;
+                return (e as dynamic).toJson();
+              } catch (e) {
+                print('Skipping invalid poop record: $e');
+                return null;
+              }
+            })
+            .where((e) => e != null)
+            .toList();
       } catch (e) {
         print('备份便便记录失败: $e');
       }
@@ -121,10 +129,18 @@ class WebDavService extends GetxService {
       // 备份 AI 聊天记录
       try {
         final chatBox = await Hive.openBox<dynamic>('ai_chats');
-        backupData['aiChats'] = chatBox.values.map((e) {
-          if (e is Map) return e;
-          return (e as dynamic).toJson();
-        }).toList();
+        backupData['aiChats'] = chatBox.values
+            .map((e) {
+              try {
+                if (e is Map) return e;
+                return (e as dynamic).toJson();
+              } catch (e) {
+                print('Skipping invalid AI chat: $e');
+                return null;
+              }
+            })
+            .where((e) => e != null)
+            .toList();
       } catch (e) {
         print('备份 AI 聊天记录失败: $e');
       }
@@ -175,10 +191,18 @@ class WebDavService extends GetxService {
       // 备份故事游戏会话记录
       try {
         final storySessionBox = await Hive.openBox<dynamic>('story_sessions');
-        backupData['storySessions'] = storySessionBox.values.map((e) {
-          if (e is Map) return e;
-          return (e as dynamic).toJson();
-        }).toList();
+        backupData['storySessions'] = storySessionBox.values
+            .map((e) {
+              try {
+                if (e is Map) return e;
+                return (e as dynamic).toJson();
+              } catch (e) {
+                print('Skipping invalid story session: $e');
+                return null;
+              }
+            })
+            .where((e) => e != null)
+            .toList();
       } catch (e) {
         print('备份故事游戏会话失败: $e');
       }
@@ -413,15 +437,19 @@ class WebDavService extends GetxService {
           final poopBox = await Hive.openBox<PoopRecord>('poop_records');
           await poopBox.clear();
           for (var item in (backupData['poopRecords'] as List)) {
-            if (item is Map) {
-              final map = Map<String, dynamic>.from(item);
-              // Ensure ID is string
-              if (map['id'] != null) map['id'] = map['id'].toString();
-              if (map['babyId'] != null)
-                map['babyId'] = map['babyId'].toString();
+            try {
+              if (item is Map) {
+                final map = Map<String, dynamic>.from(item);
+                // Ensure ID is string
+                if (map['id'] != null) map['id'] = map['id'].toString();
+                if (map['babyId'] != null)
+                  map['babyId'] = map['babyId'].toString();
 
-              final record = PoopRecord.fromJson(map);
-              await poopBox.put(record.id, record);
+                final record = PoopRecord.fromJson(map);
+                await poopBox.put(record.id, record);
+              }
+            } catch (e) {
+              print('恢复单个便便记录失败: $e');
             }
           }
         } catch (e) {
@@ -436,14 +464,18 @@ class WebDavService extends GetxService {
           final chatBox = await Hive.openBox<AIChat>('ai_chats');
           await chatBox.clear();
           for (var item in (backupData['aiChats'] as List)) {
-            if (item is Map) {
-              final map = Map<String, dynamic>.from(item);
-              if (map['id'] != null) map['id'] = map['id'].toString();
-              if (map['babyId'] != null)
-                map['babyId'] = map['babyId'].toString();
+            try {
+              if (item is Map) {
+                final map = Map<String, dynamic>.from(item);
+                if (map['id'] != null) map['id'] = map['id'].toString();
+                if (map['babyId'] != null)
+                  map['babyId'] = map['babyId'].toString();
 
-              final chat = AIChat.fromJson(map);
-              await chatBox.put(chat.id, chat);
+                final chat = AIChat.fromJson(map);
+                await chatBox.put(chat.id, chat);
+              }
+            } catch (e) {
+              print('恢复单个 AI 聊天记录失败: $e');
             }
           }
         } catch (e) {
@@ -540,10 +572,14 @@ class WebDavService extends GetxService {
               await Hive.openBox<StorySession>('story_sessions');
           await storySessionBox.clear();
           for (var item in (backupData['storySessions'] as List)) {
-            if (item is Map) {
-              final session =
-                  StorySession.fromJson(Map<String, dynamic>.from(item));
-              await storySessionBox.put(session.id, session);
+            try {
+              if (item is Map) {
+                final session =
+                    StorySession.fromJson(Map<String, dynamic>.from(item));
+                await storySessionBox.put(session.id, session);
+              }
+            } catch (e) {
+              print('恢复单个故事会话失败: $e');
             }
           }
         } catch (e) {

@@ -58,11 +58,6 @@ jobs:
           # 开始写入 Markdown 文件
           echo "## 🌟 Star Bank v$VERSION" > release_body.md
           echo "" >> release_body.md
-          echo "### 📅 构建信息" >> release_body.md
-          echo "- **版本**: $VERSION" >> release_body.md
-          echo "- **构建时间**: $TIMESTAMP" >> release_body.md
-          echo "- **从版本**: $PREV_TAG_DISPLAY" >> release_body.md
-          echo "" >> release_body.md
           
           echo "### 📝 更新内容" >> release_body.md
           if [ -z "$PREV_TAG" ]; then
@@ -74,9 +69,6 @@ jobs:
           fi
           
           echo "" >> release_body.md
-          echo "" >> release_body.md
-          echo "### 📥 下载说明" >> release_body.md
-          echo "请下载 \`star-bank-$VERSION.apk\` 文件并安装。" >> release_body.md
           
           # 打印内容以供检查
           cat release_body.md
