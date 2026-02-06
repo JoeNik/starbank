@@ -7,16 +7,17 @@ import 'package:audio_session/audio_session.dart';
 Future<AudioHandler> initAudioService() async {
   return await AudioService.init(
     builder: () => MusicHandler(),
-    config: const AudioServiceConfig(
+    config: AudioServiceConfig(
       androidNotificationChannelId:
-          'com.starbank.app.channel.audio.v3', // Update ID to refresh config
-      androidNotificationChannelName: 'StarBank Music Player',
+          'com.starbank.app.channel.audio.v4', // New ID to force fresh settings
+      androidNotificationChannelName: 'StarBank 音乐播放器',
+      androidNotificationChannelDescription: '提供后台播放和通知栏控制',
       androidNotificationOngoing: true,
-      androidStopForegroundOnPause: true,
-      androidNotificationIcon:
-          'ic_launcher_foreground', // Use drawable resource
-      notificationColor:
-          Color(0xFFB27D), // 对应 pubspec.yaml 里的 adaptive_icon_background
+      androidStopForegroundOnPause: false, // 非常重要：暂停时不移除通知栏，防止被系统杀死
+      androidNotificationClickStartsActivity: true,
+      androidResumeOnClick: true,
+      androidNotificationIcon: 'mipmap/ic_launcher', // 使用标准应用图标
+      notificationColor: Color(0xFFFFB27D),
     ),
   );
 }
@@ -46,7 +47,15 @@ class MusicHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       _broadcastState(_player.playbackEvent);
     });
 
-    // 3. 初始广播，确保通知栏能显示
+    // 3. 初始广播，确保通知栏能立即占位
+    // 注意：系统通知栏通常需要 MediaItem 有数据（标题、封面等）才会显示
+    mediaItem.add(const MediaItem(
+      id: 'initial_placeholder',
+      title: 'StarBankMusic',
+      artist: '准备就绪',
+      album: 'StarBank',
+    ));
+
     playbackState.add(playbackState.value.copyWith(
       controls: [MediaControl.play],
       processingState: AudioProcessingState.idle,
@@ -56,7 +65,7 @@ class MusicHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         MediaAction.seekForward,
         MediaAction.seekBackward,
       },
-      androidCompactActionIndices: const [0], // Show play button
+      androidCompactActionIndices: const [0],
     ));
 
     // 4. 处理播放完毕自动下一曲等逻辑通常由 Controller 或 Queue 处理

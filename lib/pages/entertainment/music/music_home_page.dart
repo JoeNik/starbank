@@ -22,7 +22,18 @@ class _MusicHomePageState extends State<MusicHomePage> {
 
   final RxList<MusicTrack> _searchResults = <MusicTrack>[].obs;
   final RxBool _isSearching = false.obs;
+  final RxBool _isMoreLoading = false.obs; // 是否正在加载更多
   final RxString _selectedPlatform = 'kuwo'.obs;
+  final ScrollController _scrollController = ScrollController();
+  int _currentPage = 1; // 当前页码
+
+  // 折叠状态
+  final RxBool _isFavExpanded = true.obs;
+  final RxBool _isHistoryExpanded = false.obs;
+
+  // 分页展示限制（初始显示数量）
+  final RxInt _favLimit = 10.obs;
+  final RxInt _historyLimit = 10.obs;
 
   final Map<String, String> _platforms = {
     'kuwo': '酷我音乐',
@@ -30,20 +41,62 @@ class _MusicHomePageState extends State<MusicHomePage> {
     'qq': 'QQ音乐',
   };
 
-  void _doSearch() async {
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent - 200.h &&
+        !_isSearching.value &&
+        !_isMoreLoading.value &&
+        _searchResults.isNotEmpty) {
+      _doSearch(loadMore: true);
+    }
+  }
+
+  void _doSearch({bool loadMore = false}) async {
     if (_searchController.text.isEmpty) return;
-    FocusScope.of(context).unfocus();
-    _isSearching.value = true;
-    _searchResults.clear();
+
+    if (!loadMore) {
+      FocusScope.of(context).unfocus();
+      _isSearching.value = true;
+      _searchResults.clear();
+      _currentPage = 1;
+    } else {
+      _isMoreLoading.value = true;
+      _currentPage++;
+    }
 
     try {
       final results = await _tuneHubService.searchMusic(_searchController.text,
-          platform: _selectedPlatform.value);
-      _searchResults.assignAll(results);
+          platform: _selectedPlatform.value, page: _currentPage);
+
+      if (loadMore) {
+        if (results.isEmpty) {
+          ToastUtils.showInfo('已经到底啦');
+          _currentPage--; // 恢复页码
+        } else {
+          _searchResults.addAll(results);
+        }
+      } else {
+        _searchResults.assignAll(results);
+      }
     } catch (e) {
       ToastUtils.showError('搜索失败: $e');
+      if (loadMore) _currentPage--;
     } finally {
       _isSearching.value = false;
+      _isMoreLoading.value = false;
     }
   }
 
@@ -159,103 +212,68 @@ class _MusicHomePageState extends State<MusicHomePage> {
                   return const Center(child: CircularProgressIndicator());
                 }
                 if (_searchResults.isEmpty) {
-                  if (_controller.favorites.isNotEmpty) {
-                    return ListView(
-                      padding: EdgeInsets.symmetric(horizontal: 16.w),
-                      children: [
-                        Padding(
-                          padding: EdgeInsets.symmetric(vertical: 10.h),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.favorite,
-                                  color: Colors.redAccent),
-                              SizedBox(width: 8.w),
-                              Text('我的收藏',
-                                  style: TextStyle(
-                                      fontSize: 18.sp,
-                                      fontWeight: FontWeight.bold)),
-                              const Spacer(),
-                              TextButton(
-                                onPressed: _controller.playFavorites,
-                                child: const Text('播放全部'),
-                              )
-                            ],
-                          ),
-                        ),
-                        ..._controller.favorites.map((track) {
-                          // Defensive Image Loading
-                          Widget imageWidget;
-                          if (track.coverUrl != null &&
-                              track.coverUrl!.isNotEmpty) {
-                            imageWidget = Image.network(
-                              track.coverUrl!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (ctx, err, stack) => const Icon(
-                                  Icons.music_note,
-                                  color: Colors.grey),
-                            );
-                          } else {
-                            imageWidget = const Icon(Icons.music_note,
-                                color: Colors.grey);
-                          }
+                  return ListView(
+                    padding: EdgeInsets.symmetric(horizontal: 16.w),
+                    children: [
+                      // 我的收藏
+                      _buildCollapsibleSection(
+                        title: '我的收藏',
+                        icon: Icons.favorite,
+                        iconColor: Colors.redAccent,
+                        isExpanded: _isFavExpanded,
+                        tracks: _controller.favorites,
+                        limit: _favLimit,
+                        onPlayAll: _controller.playFavorites,
+                      ),
 
-                          return ListTile(
-                            leading: Container(
-                              width: 50.w,
-                              height: 50.w,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8.r),
-                                color: Colors.grey[200],
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(8.r),
-                                child: imageWidget,
-                              ),
-                            ),
-                            title: Text(track.title),
-                            subtitle: Text(track.artist),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
+                      SizedBox(height: 10.h),
+
+                      // 播放记录
+                      _buildCollapsibleSection(
+                        title: '播放记录',
+                        icon: Icons.history,
+                        iconColor: Colors.blueAccent,
+                        isExpanded: _isHistoryExpanded,
+                        tracks: _controller.history,
+                        limit: _historyLimit,
+                      ),
+
+                      if (_controller.favorites.isEmpty &&
+                          _controller.history.isEmpty)
+                        Padding(
+                          padding: EdgeInsets.only(top: 100.h),
+                          child: Center(
+                            child: Column(
                               children: [
-                                IconButton(
-                                  icon: const Icon(Icons.favorite,
-                                      color: Colors.redAccent),
-                                  onPressed: () =>
-                                      _controller.toggleFavorite(track),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.play_circle_fill,
-                                      color: AppTheme.primary),
-                                  onPressed: () {
-                                    _controller.playTrack(track);
-                                    Get.to(() => const MusicPlayerPage());
-                                  },
-                                ),
+                                Icon(Icons.music_note,
+                                    size: 60.sp, color: Colors.black26),
+                                SizedBox(height: 10.h),
+                                Text('快去搜歌吧~',
+                                    style: TextStyle(
+                                        color: Colors.black45,
+                                        fontSize: 16.sp)),
                               ],
                             ),
-                          );
-                        }).toList(),
-                      ],
-                    );
-                  }
-
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.music_note,
-                            size: 60.sp, color: Colors.black26),
-                        SizedBox(height: 10.h),
-                        Text('收藏夹空空如也，快去搜歌吧~',
-                            style: TextStyle(
-                                color: Colors.black45, fontSize: 16.sp)),
-                      ],
-                    ),
+                          ),
+                        ),
+                      SizedBox(height: 20.h),
+                    ],
                   );
                 }
                 return ListView.builder(
-                  itemCount: _searchResults.length,
+                  controller: _scrollController,
+                  itemCount:
+                      _searchResults.length + (_isMoreLoading.value ? 1 : 0),
                   itemBuilder: (context, index) {
+                    if (index == _searchResults.length) {
+                      return Padding(
+                        padding: EdgeInsets.symmetric(vertical: 20.h),
+                        child: const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      );
+                    }
+
                     final track = _searchResults[index];
                     return ListTile(
                       leading: Container(
@@ -299,6 +317,7 @@ class _MusicHomePageState extends State<MusicHomePage> {
                             icon: const Icon(Icons.play_circle_fill,
                                 color: AppTheme.primary),
                             onPressed: () {
+                              // 只添加当前歌曲到播放列表 (临时添加，不保存)
                               _controller.playTrack(track);
                               Get.to(() => const MusicPlayerPage());
                             },
@@ -396,6 +415,107 @@ class _MusicHomePageState extends State<MusicHomePage> {
             }),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildCollapsibleSection({
+    required String title,
+    required IconData icon,
+    required Color iconColor,
+    required RxBool isExpanded,
+    required List<MusicTrack> tracks,
+    required RxInt limit,
+    VoidCallback? onPlayAll,
+  }) {
+    return Obx(() {
+      if (tracks.isEmpty) return const SizedBox.shrink();
+
+      final displayedTracks = tracks.take(limit.value).toList();
+      final hasMore = tracks.length > limit.value;
+
+      return Column(
+        children: [
+          ListTile(
+            onTap: () => isExpanded.toggle(),
+            leading: Icon(icon, color: iconColor),
+            title: Text(title,
+                style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold)),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (onPlayAll != null)
+                  TextButton(onPressed: onPlayAll, child: const Text('播放全部')),
+                Icon(isExpanded.value ? Icons.expand_less : Icons.expand_more),
+              ],
+            ),
+          ),
+          if (isExpanded.value) ...[
+            ...displayedTracks.map((track) => _buildTrackTile(track, tracks)),
+            if (hasMore)
+              TextButton(
+                onPressed: () => limit.value += 10,
+                child: Text('查看更多 (${tracks.length - limit.value})'),
+              ),
+          ],
+        ],
+      );
+    });
+  }
+
+  Widget _buildTrackTile(MusicTrack track, List<MusicTrack> sourceList) {
+    return ListTile(
+      leading: Container(
+        width: 40.w,
+        height: 40.w,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8.r),
+          color: Colors.grey[200],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8.r),
+          child: (track.coverUrl != null && track.coverUrl!.isNotEmpty)
+              ? Image.network(
+                  track.coverUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (ctx, err, stack) =>
+                      const Icon(Icons.music_note, color: Colors.grey),
+                )
+              : const Icon(Icons.music_note, color: Colors.grey),
+        ),
+      ),
+      title: Text(track.title,
+          style: TextStyle(fontSize: 14.sp),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis),
+      subtitle: Text(track.artist,
+          style: TextStyle(fontSize: 12.sp),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Obx(() => IconButton(
+                icon: Icon(
+                  _controller.isFavorite(track)
+                      ? Icons.favorite
+                      : Icons.favorite_border,
+                  color: _controller.isFavorite(track)
+                      ? Colors.redAccent
+                      : Colors.grey,
+                  size: 20.sp,
+                ),
+                onPressed: () => _controller.toggleFavorite(track),
+              )),
+          IconButton(
+            icon: const Icon(Icons.play_circle_fill, color: AppTheme.primary),
+            onPressed: () {
+              // 从本地列表播放时，加载整个源列表
+              _controller.playWithList(sourceList, track);
+              Get.to(() => const MusicPlayerPage());
+            },
+          ),
+        ],
       ),
     );
   }

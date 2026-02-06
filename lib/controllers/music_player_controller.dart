@@ -23,6 +23,7 @@ class MusicPlayerController extends GetxController {
 
   final RxList<MusicTrack> playlist = <MusicTrack>[].obs;
   final RxList<MusicTrack> favorites = <MusicTrack>[].obs;
+  final RxList<MusicTrack> history = <MusicTrack>[].obs;
   final RxInt currentIndex = 0.obs;
   final RxBool isPlaying = false.obs;
   // isInitialized effectively reflects if the Service has a player, which is always true now
@@ -43,6 +44,7 @@ class MusicPlayerController extends GetxController {
     super.onInit();
     _cacheService = Get.find<MusicCacheService>();
     _loadFavorites();
+    _loadHistory();
 
     // 异步初始化播放器监听，防止因 Service 未就绪导致的阻塞或 Crash
     _initControllerAsync();
@@ -105,6 +107,13 @@ class MusicPlayerController extends GetxController {
     }
   }
 
+  void _loadHistory() {
+    final historyData = _storage.playlistBox.get('history');
+    if (historyData != null) {
+      history.assignAll(historyData.tracks);
+    }
+  }
+
   void toggleFavorite(MusicTrack track) {
     if (isFavorite(track)) {
       favorites.removeWhere((element) => element.id == track.id);
@@ -128,13 +137,41 @@ class MusicPlayerController extends GetxController {
     _storage.playlistBox.put('favorites', pl);
   }
 
+  void _saveHistory() {
+    final pl = Playlist(
+      id: 'history',
+      name: '播放记录',
+      tracks: history.toList(),
+      createdAt: DateTime.now(),
+    );
+    _storage.playlistBox.put('history', pl);
+  }
+
+  void addToHistory(MusicTrack track) {
+    // 去重并置顶（最近播放）
+    history
+        .removeWhere((t) => t.id == track.id && t.platform == track.platform);
+    history.insert(0, track);
+    // 限制记录数量
+    if (history.length > 50) {
+      history.removeLast();
+    }
+    _saveHistory();
+  }
+
   void playFavorites() {
     if (favorites.isEmpty) {
       Get.snackbar('提示', '收藏夹是空的哦');
       return;
     }
-    playlist.assignAll(favorites);
-    playTrack(favorites.first);
+    playWithList(favorites, favorites.first);
+  }
+
+  /// 带着播放列表一起播放，常用于从搜索列表或收藏列表中点选一首歌
+  void playWithList(List<MusicTrack> list, MusicTrack track) {
+    if (list.isEmpty) return;
+    playlist.assignAll(list);
+    playTrack(track);
   }
 
   // Ensure Player is Initialized & Listeners Attached
@@ -160,6 +197,10 @@ class MusicPlayerController extends GetxController {
     audioPlayer!.playerStateStream.listen((state) {
       isPlaying.value = state.playing;
       if (state.processingState == ProcessingState.completed) {
+        // 播放完成后添加记录
+        if (playlist.isNotEmpty && currentIndex.value < playlist.length) {
+          addToHistory(playlist[currentIndex.value]);
+        }
         playNext();
         isManuallySkipping = false;
       }
@@ -189,6 +230,10 @@ class MusicPlayerController extends GetxController {
           audioPlayer!.processingState != ProcessingState.completed) {
         isManuallySkipping = true;
         debugPrint('⚡ [MusicPlayerController] 接近尾声，主动切下一首');
+        // 记录历史
+        if (playlist.isNotEmpty && currentIndex.value < playlist.length) {
+          addToHistory(playlist[currentIndex.value]);
+        }
         playNext();
       }
     });
