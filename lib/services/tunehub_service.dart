@@ -121,8 +121,21 @@ class TuneHubService extends GetxService {
     try {
       final processedParams = config.params
           .map((k, v) => MapEntry(k, _deepReplace(v, context).toString()));
-      final finalUrl = _deepReplace(config.url, context).toString();
-      final uri = Uri.parse(finalUrl).replace(queryParameters: processedParams);
+      var finalUrl = _deepReplace(config.url, context).toString();
+
+      // Fix: 对 URL 进行编码，防止中文路径导致 Uri.parse 失败
+      finalUrl = Uri.encodeFull(finalUrl);
+
+      final baseUri = Uri.parse(finalUrl);
+
+      // Fix: 合并参数！而不是直接覆盖。
+      // Uri.replace(queryParameters: ...) 会丢弃原有的 query parameters。
+      // 我们需要把 config.url 里自带的参数保留下来。
+      final Map<String, dynamic> mergedParams =
+          Map.from(baseUri.queryParameters);
+      mergedParams.addAll(processedParams);
+
+      final uri = baseUri.replace(queryParameters: mergedParams);
 
       final Map<String, String> headers = {};
       if (config.headers != null) {
@@ -148,6 +161,8 @@ class TuneHubService extends GetxService {
         }
       }
 
+      // 详细日志
+      debugPrint('TH Method: ${config.method}');
       debugPrint('TH Request: $uri');
 
       http.Response response;
@@ -263,6 +278,11 @@ class TuneHubService extends GetxService {
       return tracks;
     } catch (e) {
       debugPrint('TuneHub Search Error: $e');
+      if (e.toString().contains('ClientException') ||
+          e.toString().contains('XMLHttpRequest')) {
+        debugPrint(
+            '⚠️ [TuneHub] 检测到 Web 端跨域错误 (CORS)。直接访问第三方 HTTP 接口 (如 kuwo) 在浏览器中通常被禁止。请使用 Android/iOS 模拟器或真机调试，或配置 TuneHub 代理。');
+      }
       return [];
     }
   }

@@ -279,6 +279,7 @@ class _StoryGamePageState extends State<StoryGamePage> {
   /// 生成图片
   Future<void> _generateImage() async {
     // 0. 尝试 AI 生成
+    // 0. 尝试 AI 生成
     if (_gameConfig!.enableImageGeneration) {
       try {
         final imageConfigId = _gameConfig!.imageGenerationConfigId;
@@ -286,9 +287,47 @@ class _StoryGamePageState extends State<StoryGamePage> {
             .firstWhereOrNull((c) => c.id == imageConfigId);
 
         if (imageConfig != null) {
-          debugPrint('正在尝试 AI 生图...');
+          debugPrint(
+              '配置检查: enableImageGeneration=true, configId=$imageConfigId');
+
+          // 1. 优化提示词
+          String imagePrompt = _gameConfig!.imageGenerationPrompt;
+
+          // 尝试获取 Chat 配置用于优化提示词
+          OpenAIConfig? chatConfig;
+          if (_gameConfig!.chatConfigId.isNotEmpty) {
+            chatConfig = _openAIService.configs
+                .firstWhereOrNull((c) => c.id == _gameConfig!.chatConfigId);
+          }
+          chatConfig ??= _openAIService.currentConfig.value; // Fallback
+
+          if (chatConfig != null) {
+            debugPrint('正在优化生图提示词...');
+            try {
+              imagePrompt = await _openAIService.chat(
+                systemPrompt:
+                    '你是一个专业的儿童插画提示词生成专家。请根据用户提供的内容生成适合 DALL-E 或 Stable Diffusion 的英文提示词。\n\n'
+                    '严格要求:\n'
+                    '1. 必须使用可爱、卡通、儿童插画风格\n'
+                    '2. 色彩明亮温暖,画面简洁清晰\n'
+                    '3. 严格禁止任何暴力、恐怖、成人或不适合儿童的内容\n'
+                    '4. 使用圆润可爱的造型,避免尖锐或恐怖元素\n'
+                    '5. 适合3-8岁儿童观看\n\n'
+                    '只返回英文提示词本身,不要有其他说明。提示词中应包含: cute, cartoon, children illustration, colorful, warm, simple 等关键词。',
+                userMessage: _gameConfig!.imageGenerationPrompt,
+                config: chatConfig,
+              );
+              debugPrint('优化后的提示词: $imagePrompt');
+            } catch (e) {
+              debugPrint('提示词优化失败，使用原始提示词: $e');
+            }
+          }
+
+          // 2. 调用生图 API
+          debugPrint(
+              '正在尝试 AI 生图 (Model: ${_gameConfig!.imageGenerationModel})...');
           final imageUrls = await _openAIService.generateImages(
-            prompt: _gameConfig!.imageGenerationPrompt,
+            prompt: imagePrompt,
             n: 1,
             config: imageConfig,
             model: _gameConfig!.imageGenerationModel,
@@ -302,10 +341,13 @@ class _StoryGamePageState extends State<StoryGamePage> {
             setState(() => _isGeneratingImage = false);
             return;
           }
+        } else {
+          debugPrint('未找到生图配置 (ID: $imageConfigId)');
+          ToastUtils.showWarning('未找到生图配置，请检查设置');
         }
       } catch (e) {
         debugPrint('AI 生图失败，降级使用备用图片源: $e');
-        ToastUtils.showError('AI 生图失败，已切换至备用图片');
+        ToastUtils.showError('AI 生图失败: $e');
       }
     }
 
@@ -1209,7 +1251,31 @@ class _StoryGamePageState extends State<StoryGamePage> {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16.r),
                     child: _isGeneratingImage
-                        ? const Center(child: CircularProgressIndicator())
+                        ? Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const CircularProgressIndicator(),
+                                SizedBox(height: 16.h),
+                                Text(
+                                  'AI 正在生成图片...',
+                                  style: TextStyle(
+                                    color: AppTheme.primary,
+                                    fontSize: 14.sp,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                SizedBox(height: 8.h),
+                                Text(
+                                  '请耐心等待...',
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 12.sp,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
                         : Hero(
                             tag: 'story_image',
                             child: SizedBox(

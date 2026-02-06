@@ -361,27 +361,10 @@ class AIGenerationService extends GetxService {
 
           if (imageUrls.isNotEmpty) {
             // 3. 保存并下载 (如果返回的是 URL)
-            // Note: _openAIService.generateImage returns ONE string.
-            // generateImages returns List<String>.
-            // Also need to check if we should download and save to DB/Local.
-            // Story game used _downloadAndSaveImage to standard Base64.
-            // QuizManagementPage used imageUrls.first directly.
-            // BUT QuizManagementPage `_buildQuestionItem` logic (lines 560+) handles base64 and network.
-            // To be consistent and offline-able/stable, we should probably download if it's a URL,
-            // but QuizManagementPage implementation seemed to just save the URL if it wasn't base64.
-            // Wait, looking at lines 1224 in QuizManagementPage:
-            // question.imagePath = imageUrls.first;
-            // It saves whatever is returned.
+            final imagePath = await _downloadAndSaveImage(
+                imageUrls.first, 'quiz_${question.id}');
 
-            // However, to unify behavior and ensure images persist, converting to Base64 is safer if the URL is temporary (like DALL-E URLs).
-            // But let's stick to what QuizManagementPage did to avoid breaking changes if it expects URLs.
-            // QuizManagementPage logic:
-            // final imageUrls = await _openAIService.generateImages(...)
-            // question.imagePath = imageUrls.first;
-
-            // I will do the same here.
-
-            question.imagePath = imageUrls.first;
+            question.imagePath = imagePath;
             question.imageStatus = 'success';
             question.imageError = null;
             question.updatedAt = DateTime.now();

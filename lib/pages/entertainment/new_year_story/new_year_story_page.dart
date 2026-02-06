@@ -1116,6 +1116,54 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
     );
   }
 
+  Widget _buildGenerationProgress() {
+    return Obx(() {
+      if (!_aiService.isTaskRunning.value) {
+        return const SizedBox.shrink();
+      }
+
+      final currentTitle = _currentStory?['title'];
+      if (currentTitle == null) return const SizedBox.shrink();
+
+      final runningStep = _aiService.taskSteps.firstWhereOrNull((step) =>
+          step.status.value == StepStatus.running &&
+          (step.description.value.contains(currentTitle) ||
+              step.details.value.contains(currentTitle)));
+
+      if (runningStep != null) {
+        return Container(
+          padding: EdgeInsets.symmetric(horizontal: 16.w),
+          margin: EdgeInsets.only(bottom: 16.h),
+          child: Column(
+            children: [
+              const CircularProgressIndicator(strokeWidth: 2),
+              SizedBox(height: 12.h),
+              Text(
+                'AI 正在绘制插图...',
+                style: TextStyle(
+                  fontSize: 14.sp,
+                  color: Colors.purple.shade300,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: 4.h),
+              Text(
+                runningStep.description.value,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 10.sp,
+                  color: Colors.grey.shade400,
+                ),
+              ),
+              SizedBox(height: 16.h),
+            ],
+          ),
+        );
+      }
+      return const SizedBox.shrink();
+    });
+  }
+
   /// 故事页面
   Widget _buildStoryPage(Map<String, dynamic> page) {
     final imagePath = page['image'] as String?;
@@ -1155,6 +1203,7 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                _buildGenerationProgress(),
                 // Emoji 插图或图片
                 // Emoji 插图或图片
                 if (showImage)
@@ -1176,51 +1225,7 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
                     ],
                   )
                 else ...[
-                  // 检查是否正在生成图片
-                  Obx(() {
-                    if (!_aiService.isTaskRunning.value) {
-                      return const SizedBox.shrink();
-                    }
-
-                    // 检查是否正在为当前故事生成
-                    final currentTitle = _currentStory!['title'];
-                    final runningStep = _aiService.taskSteps.firstWhereOrNull(
-                        (step) =>
-                            step.status.value == StepStatus.running &&
-                            (step.description.value.contains(currentTitle) ||
-                                step.details.value.contains(currentTitle)));
-
-                    if (runningStep != null) {
-                      return Container(
-                        padding: EdgeInsets.symmetric(horizontal: 16.w),
-                        child: Column(
-                          children: [
-                            const CircularProgressIndicator(strokeWidth: 2),
-                            SizedBox(height: 12.h),
-                            Text(
-                              'AI 正在绘制插图...',
-                              style: TextStyle(
-                                fontSize: 14.sp,
-                                color: Colors.purple.shade300,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            SizedBox(height: 4.h),
-                            Text(
-                              runningStep.description.value,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 10.sp,
-                                color: Colors.grey.shade400,
-                              ),
-                            ),
-                            SizedBox(height: 16.h),
-                          ],
-                        ),
-                      );
-                    }
-                    return const SizedBox.shrink();
-                  }),
+                  // Obx removed from here
 
                   Text(
                     page['emoji'],

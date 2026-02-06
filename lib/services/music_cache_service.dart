@@ -116,6 +116,13 @@ class MusicCacheService extends GetxService {
       return;
     }
 
+    if (kIsWeb) {
+      debugPrint('⚠️ [MusicCacheService] Web 环境不支持文件系统缓存，已自动禁用');
+      cacheEnabled.value = false;
+      _isInitialized = true;
+      return;
+    }
+
     try {
       debugPrint('💾 [MusicCacheService] 开始初始化缓存服务...');
 

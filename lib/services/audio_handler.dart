@@ -8,7 +8,8 @@ Future<AudioHandler> initAudioService() async {
   return await AudioService.init(
     builder: () => MusicHandler(),
     config: const AudioServiceConfig(
-      androidNotificationChannelId: 'com.starbank.app.channel.audio',
+      androidNotificationChannelId:
+          'com.starbank.app.channel.audio.v2', // Change ID to reset config
       androidNotificationChannelName: 'StarBank Music Player',
       androidNotificationOngoing: true,
       androidStopForegroundOnPause: true,
@@ -44,7 +45,20 @@ class MusicHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       _broadcastState(_player.playbackEvent);
     });
 
-    // 3. 处理播放完毕自动下一曲等逻辑通常由 Controller 或 Queue 处理
+    // 3. 初始广播，确保通知栏能显示
+    playbackState.add(playbackState.value.copyWith(
+      controls: [MediaControl.play],
+      processingState: AudioProcessingState.idle,
+      playing: false,
+      systemActions: const {
+        MediaAction.seek,
+        MediaAction.seekForward,
+        MediaAction.seekBackward,
+      },
+      androidCompactActionIndices: const [0], // Show play button
+    ));
+
+    // 4. 处理播放完毕自动下一曲等逻辑通常由 Controller 或 Queue 处理
     // 这里主要负责状态同步
   }
 
