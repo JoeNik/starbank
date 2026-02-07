@@ -53,6 +53,9 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
   // 故事列表滚动控制器 - 用于记忆滚动位置
   late ScrollController _storyListScrollController;
 
+  // 保存的滚动位置
+  double _savedScrollPosition = 0.0;
+
   // 是否正在播放
   bool _isPlaying = false;
 
@@ -115,12 +118,33 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
 
   /// 选择故事
   void _selectStory(Map<String, dynamic> story) {
+    // 保存当前滚动位置
+    if (_storyListScrollController.hasClients) {
+      _savedScrollPosition = _storyListScrollController.offset;
+      debugPrint('📍 [StoryList] 保存滚动位置: $_savedScrollPosition');
+    }
+
     setState(() {
       _currentStory = story;
       _currentPageIndex = 0;
       _showQuestion = false;
     });
     _pageController.jumpToPage(0);
+  }
+
+  /// 恢复滚动位置
+  void _restoreScrollPosition() {
+    // 使用 WidgetsBinding.instance.addPostFrameCallback 确保在widget构建完成后再滚动
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_storyListScrollController.hasClients && _savedScrollPosition > 0) {
+        debugPrint('📍 [StoryList] 恢复滚动位置: $_savedScrollPosition');
+        _storyListScrollController.animateTo(
+          _savedScrollPosition,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   /// 开始播放故事
@@ -847,6 +871,8 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
           setState(() {
             _currentStory = null;
           });
+          // 返回列表后恢复滚动位置
+          _restoreScrollPosition();
         }
       },
       child: Scaffold(
@@ -864,6 +890,8 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
                     setState(() {
                       _currentStory = null;
                     });
+                    // 返回列表后恢复滚动位置
+                    _restoreScrollPosition();
                   },
                 )
               : null, // Default back button

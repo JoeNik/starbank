@@ -187,25 +187,29 @@ class MusicPlayerController extends GetxController {
   void _setupPlayerListeners() {
     if (audioPlayer == null) return;
 
+    // 用于防止重复触发播放完成
+    bool _hasCompletedCurrent = false;
+
     // 1. 监听播放状态变化
     audioPlayer!.playerStateStream.listen((state) {
       isPlaying.value = state.playing;
 
       // 处理播放完成
       if (state.processingState == ProcessingState.completed) {
-        debugPrint('🎵 [PlayerState] 播放完成，准备切换下一首');
-        // 记录历史
-        if (playlist.isNotEmpty && currentIndex.value < playlist.length) {
-          addToHistory(playlist[currentIndex.value]);
+        if (!_hasCompletedCurrent) {
+          _hasCompletedCurrent = true;
+          debugPrint('🎵 [PlayerState] 播放完成（completed），准备切换下一首');
+          _handleTrackComplete();
         }
-        // 延迟一小段时间再切换，确保状态稳定
-        Future.delayed(const Duration(milliseconds: 100), () {
-          playNext();
-        });
+      }
+
+      // 当开始播放新歌曲时，重置标志
+      if (state.processingState == ProcessingState.ready && state.playing) {
+        _hasCompletedCurrent = false;
       }
     });
 
-    // 2. 监听播放位置
+    // 2. 监听播放位置（备用检测）
     audioPlayer!.positionStream.listen((p) {
       position.value = p;
 
@@ -215,6 +219,17 @@ class MusicPlayerController extends GetxController {
         if (index != -1 && index != currentLyricIndex.value) {
           currentLyricIndex.value = index;
         }
+      }
+
+      // 备用检测：当位置接近时长时，主动检测播放完成
+      final d = duration.value;
+      if (!_hasCompletedCurrent &&
+          d.inSeconds > 5 &&
+          audioPlayer!.playing &&
+          p >= d - const Duration(milliseconds: 500)) {
+        _hasCompletedCurrent = true;
+        debugPrint('🎵 [Position] 检测到播放接近尾声，主动切换下一首');
+        _handleTrackComplete();
       }
     });
 
@@ -243,6 +258,18 @@ class MusicPlayerController extends GetxController {
           debugPrint('🎵 [Duration] 更新时长: ${d.inSeconds}秒');
         }
       }
+    });
+  }
+
+  // 处理播放完成
+  void _handleTrackComplete() {
+    // 记录历史
+    if (playlist.isNotEmpty && currentIndex.value < playlist.length) {
+      addToHistory(playlist[currentIndex.value]);
+    }
+    // 延迟一小段时间再切换，确保状态稳定
+    Future.delayed(const Duration(milliseconds: 200), () {
+      playNext();
     });
   }
 

@@ -90,6 +90,10 @@ class _MusicHomePageState extends State<MusicHomePage> {
         }
       } else {
         _searchResults.assignAll(results);
+        // 首次搜索无结果时提示
+        if (results.isEmpty) {
+          ToastUtils.showInfo('未找到相关歌曲，请尝试其他关键词或平台');
+        }
       }
     } catch (e) {
       ToastUtils.showError('搜索失败: $e');
@@ -211,57 +215,8 @@ class _MusicHomePageState extends State<MusicHomePage> {
                 if (_isSearching.value) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                if (_searchResults.isEmpty) {
-                  return ListView(
-                    padding: EdgeInsets.symmetric(horizontal: 16.w),
-                    children: [
-                      // 我的收藏
-                      _buildCollapsibleSection(
-                        title: '我的收藏',
-                        icon: Icons.favorite,
-                        iconColor: Colors.redAccent,
-                        isExpanded: _isFavExpanded,
-                        tracks: _controller.favorites,
-                        limit: _favLimit,
-                        onPlayAll: _controller.playFavorites,
-                      ),
 
-                      SizedBox(height: 10.h),
-
-                      // 播放记录
-                      _buildCollapsibleSection(
-                        title: '播放记录',
-                        icon: Icons.history,
-                        iconColor: Colors.blueAccent,
-                        isExpanded: _isHistoryExpanded,
-                        tracks: _controller.history,
-                        limit: _historyLimit,
-                      ),
-
-                      if (_controller.favorites.isEmpty &&
-                          _controller.history.isEmpty)
-                        Padding(
-                          padding: EdgeInsets.only(top: 100.h),
-                          child: Center(
-                            child: Column(
-                              children: [
-                                Icon(Icons.music_note,
-                                    size: 60.sp, color: Colors.black26),
-                                SizedBox(height: 10.h),
-                                Text('快去搜歌吧~',
-                                    style: TextStyle(
-                                        color: Colors.black45,
-                                        fontSize: 16.sp)),
-                              ],
-                            ),
-                          ),
-                        ),
-                      SizedBox(height: 20.h),
-                    ],
-                  );
-                }
-
-                // 搜索结果为空时显示调试信息
+                // 优先检查：搜索结果为空且有搜索关键词时显示调试信息
                 if (_searchResults.isEmpty &&
                     _searchController.text.isNotEmpty) {
                   return Center(
@@ -321,6 +276,57 @@ class _MusicHomePageState extends State<MusicHomePage> {
                         ],
                       ),
                     ),
+                  );
+                }
+
+                // 未搜索时显示收藏和历史
+                if (_searchResults.isEmpty) {
+                  return ListView(
+                    padding: EdgeInsets.symmetric(horizontal: 16.w),
+                    children: [
+                      // 我的收藏
+                      _buildCollapsibleSection(
+                        title: '我的收藏',
+                        icon: Icons.favorite,
+                        iconColor: Colors.redAccent,
+                        isExpanded: _isFavExpanded,
+                        tracks: _controller.favorites,
+                        limit: _favLimit,
+                        onPlayAll: _controller.playFavorites,
+                      ),
+
+                      SizedBox(height: 10.h),
+
+                      // 播放记录
+                      _buildCollapsibleSection(
+                        title: '播放记录',
+                        icon: Icons.history,
+                        iconColor: Colors.blueAccent,
+                        isExpanded: _isHistoryExpanded,
+                        tracks: _controller.history,
+                        limit: _historyLimit,
+                      ),
+
+                      if (_controller.favorites.isEmpty &&
+                          _controller.history.isEmpty)
+                        Padding(
+                          padding: EdgeInsets.only(top: 100.h),
+                          child: Center(
+                            child: Column(
+                              children: [
+                                Icon(Icons.music_note,
+                                    size: 60.sp, color: Colors.black26),
+                                SizedBox(height: 10.h),
+                                Text('快去搜歌吧~',
+                                    style: TextStyle(
+                                        color: Colors.black45,
+                                        fontSize: 16.sp)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      SizedBox(height: 20.h),
+                    ],
                   );
                 }
 
