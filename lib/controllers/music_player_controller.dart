@@ -30,6 +30,10 @@ class MusicPlayerController extends GetxController {
   final RxBool isInitialized = true.obs;
   bool _isPlayerSetup = false;
 
+  // === 并发控制 ===
+  // 当前播放任务ID,用于取消旧的播放请求
+  int _currentPlayTaskId = 0;
+
   // Progress
   final Rx<Duration> position = Duration.zero.obs;
   final Rx<Duration> duration = Duration.zero.obs;
@@ -268,43 +272,77 @@ class MusicPlayerController extends GetxController {
   }
 
   Future<void> playTrack(MusicTrack track, {int? targetIndex}) async {
-    debugPrint('🎵 [PlayTrack] 准备播放: ${track.title} (${track.platform})');
+    // === 并发控制: 生成新的任务ID,旧任务会自动失效 ===
+    final int taskId = ++_currentPlayTaskId;
+    debugPrint(
+        '🎵 [PlayTrack #$taskId] 开始: ${track.title} (${track.platform})');
+
+    // 辅助函数: 检查当前任务是否仍然有效
+    bool isTaskValid() => taskId == _currentPlayTaskId;
 
     // 1. 预处理：获取播放链接
     String? playUrl;
+    bool fromCache = false;
 
     // 优先尝试缓存
+    debugPrint(
+        '📦 [Cache #$taskId] 检查缓存状态: initialized=${_cacheService.isInitialized}, enabled=${_cacheService.cacheEnabled.value}');
+
     if (_cacheService.isInitialized && _cacheService.cacheEnabled.value) {
-      final cachedPath = await _cacheService.getCachedFilePath(track);
-      if (cachedPath != null) {
-        debugPrint('✅ [PlayTrack] 命缓存: $cachedPath');
-        playUrl = 'file://$cachedPath';
+      // 先快速检查是否有缓存(不进行解密)
+      final hasCached = _cacheService.isCached(track);
+      debugPrint(
+          '📦 [Cache #$taskId] 缓存索引检查: ${hasCached ? "命中" : "未命中"} (${track.id}@${track.platform})');
+
+      if (hasCached) {
+        final cachedPath = await _cacheService.getCachedFilePath(track);
+        if (!isTaskValid()) {
+          debugPrint('🔄 [PlayTrack #$taskId] 任务已取消(缓存解密后)');
+          return;
+        }
+        if (cachedPath != null) {
+          debugPrint('✅ [PlayTrack #$taskId] 从缓存播放: $cachedPath');
+          playUrl = 'file://$cachedPath';
+          fromCache = true;
+        } else {
+          debugPrint('⚠️ [PlayTrack #$taskId] 缓存解密失败,将使用在线链接');
+        }
       }
     }
 
-    // 若无缓存或缓存加载失败，解析在线链接
-    if (playUrl == null) {
+    // 若无缓存,解析在线链接
+    if (playUrl == null && !fromCache) {
+      debugPrint('🌐 [PlayTrack #$taskId] 开始解析在线链接...');
       try {
         final res = await _tuneHubService.parseTrack(track.platform, track.id);
+        if (!isTaskValid()) {
+          debugPrint('🔄 [PlayTrack #$taskId] 任务已取消(URL解析后)');
+          return;
+        }
         if (res.containsKey('url') && res['url'] != null) {
           playUrl = res['url'];
-          track.url = playUrl; // 同步给 track 对象
+          track.url = playUrl;
 
           // 更新歌曲附加信息
           if (res['cover'] != null) track.coverUrl = res['cover'];
           if (res['lyrics'] != null) track.lyricContent = res['lyrics'];
           _parseLyrics(track.lyricContent);
+          debugPrint('🌐 [PlayTrack #$taskId] 在线链接解析成功');
         }
       } catch (e) {
-        debugPrint('❌ [PlayTrack] 链接解析异常: $e');
+        debugPrint('❌ [PlayTrack #$taskId] 链接解析异常: $e');
       }
     }
 
+    // 检查URL是否有效
     if (playUrl == null || playUrl.isEmpty) {
-      Get.snackbar('播放提示', '无法获取该歌曲的播放地址，自动尝试下一首',
-          backgroundColor: Colors.orangeAccent, colorText: Colors.white);
-      // 如果是自动播放触发的失败，尝试跳到下一首
-      Future.delayed(const Duration(seconds: 1), () => playNext(isAuto: true));
+      debugPrint('⚠️ [PlayTrack #$taskId] 无法获取播放地址');
+      if (isTaskValid()) {
+        // 静默跳下一首,不打扰用户
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (isTaskValid()) playNext(isAuto: true);
+        });
+      }
       return;
     }
 
@@ -313,12 +351,28 @@ class MusicPlayerController extends GetxController {
       playUrl = playUrl.replaceFirst('http://', 'https://');
     }
 
+    // 2. 播放音频
     try {
       final player = await _ensurePlayer();
-      if (player == null) return;
+      if (player == null || !isTaskValid()) {
+        debugPrint('🔄 [PlayTrack #$taskId] 任务已取消(获取播放器后)');
+        return;
+      }
 
-      // 重要：在设置新源之前停止当前播放
-      await player.stop();
+      // 重置播放器状态 (忽略任何中断异常)
+      try {
+        await player.stop();
+      } catch (_) {}
+
+      // 重置进度显示
+      position.value = Duration.zero;
+      duration.value = Duration.zero;
+
+      // 再次检查任务有效性
+      if (!isTaskValid()) {
+        debugPrint('🔄 [PlayTrack #$taskId] 任务已取消(停止后)');
+        return;
+      }
 
       // 更新系统媒体信息
       final mediaItem = MediaItem(
@@ -340,6 +394,15 @@ class MusicPlayerController extends GetxController {
         tag: mediaItem,
       ));
 
+      // 最后一次检查
+      if (!isTaskValid()) {
+        debugPrint('🔄 [PlayTrack #$taskId] 任务已取消(设置源后)');
+        try {
+          await player.stop();
+        } catch (_) {}
+        return;
+      }
+
       // 更新控制器索引
       if (targetIndex != null &&
           targetIndex >= 0 &&
@@ -359,19 +422,26 @@ class MusicPlayerController extends GetxController {
       // 开始播放
       await player.play();
       addToHistory(track);
+      debugPrint(
+          '✅ [PlayTrack #$taskId] 播放成功: ${track.title} ${fromCache ? "(缓存)" : "(在线)"}');
 
-      // 异步触发缓存
-      if (playUrl.startsWith('http')) {
+      // 只有在线播放时才触发缓存 (缓存播放不需要重复缓存)
+      if (!fromCache && playUrl.startsWith('http')) {
         _cacheService.cacheSong(track, playUrl).catchError((e) {
           debugPrint('Cache error: $e');
           return false;
         });
       }
     } catch (e) {
-      debugPrint('❌ [PlayTrack] 播放过程中出错: $e');
-      Get.snackbar('播放失败', '无法播放此歌曲: $e');
-      // 出错也尝试下一首
-      Future.delayed(const Duration(seconds: 2), () => playNext(isAuto: true));
+      // 只记录日志,不弹窗打扰用户
+      debugPrint('❌ [PlayTrack #$taskId] 播放失败: $e');
+
+      // 如果不是被新任务取消的,尝试下一首
+      if (isTaskValid() && !e.toString().contains('interrupted')) {
+        Future.delayed(const Duration(seconds: 1), () {
+          if (isTaskValid()) playNext(isAuto: true);
+        });
+      }
     }
   }
 
