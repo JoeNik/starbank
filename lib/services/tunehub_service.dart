@@ -12,6 +12,10 @@ class TuneHubService extends GetxService {
   final RxString baseUrl = ''.obs;
   final RxString apiKey = ''.obs;
 
+  // 用于存储最后一次搜索的调试信息
+  String _lastSearchDebugInfo = '';
+  String get lastSearchDebugInfo => _lastSearchDebugInfo;
+
   @override
   void onInit() {
     super.onInit();
@@ -219,6 +223,11 @@ class TuneHubService extends GetxService {
       debugPrint('✅ [TuneHub] $platform search 返回数据类型: ${raw.runtimeType}');
       if (raw is Map) {
         debugPrint('   返回的 Map keys: ${raw.keys.toList()}');
+        // 将关键信息保存到全局变量，供 UI 显示
+        _lastSearchDebugInfo =
+            '平台: $platform\n返回类型: Map\nKeys: ${raw.keys.toList()}';
+      } else {
+        _lastSearchDebugInfo = '平台: $platform\n返回类型: ${raw.runtimeType}';
       }
 
       List<MusicTrack> tracks = [];
@@ -255,6 +264,19 @@ class TuneHubService extends GetxService {
               }
             }
           }
+          // 检查其他可能的 QQ 音乐格式
+          if (list == null) {
+            // 尝试 data.list 直接格式
+            if (raw['data'] is Map && raw['data']['list'] is List) {
+              list = raw['data']['list'];
+              debugPrint('🎵 [QQ音乐] 从 data.list 直接找到歌曲列表');
+            }
+            // 尝试顶层 list
+            else if (raw['list'] is List) {
+              list = raw['list'];
+              debugPrint('🎵 [QQ音乐] 从顶层 list 找到歌曲列表');
+            }
+          }
         }
 
         // 如果还没找到，执行通用扫描
@@ -282,7 +304,13 @@ class TuneHubService extends GetxService {
 
       if (list == null) {
         debugPrint('❌ [TuneHub] $platform 未能从响应中提取歌曲列表');
-        debugPrint('   完整响应: ${jsonEncode(raw)}');
+        final jsonStr = jsonEncode(raw);
+        final preview =
+            jsonStr.length > 500 ? jsonStr.substring(0, 500) + '...' : jsonStr;
+        debugPrint('   响应预览: $preview');
+
+        // 保存详细错误信息
+        _lastSearchDebugInfo = '平台: $platform\n错误: 未找到歌曲列表\n响应预览: $preview';
         return [];
       }
 

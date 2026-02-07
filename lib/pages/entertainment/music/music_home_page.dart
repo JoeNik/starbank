@@ -260,6 +260,70 @@ class _MusicHomePageState extends State<MusicHomePage> {
                     ],
                   );
                 }
+
+                // 搜索结果为空时显示调试信息
+                if (_searchResults.isEmpty &&
+                    _searchController.text.isNotEmpty) {
+                  return Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(20.w),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.search_off,
+                              size: 60.sp, color: Colors.grey),
+                          SizedBox(height: 16.h),
+                          Text(
+                            '未找到搜索结果',
+                            style: TextStyle(
+                                fontSize: 18.sp, color: Colors.black87),
+                          ),
+                          SizedBox(height: 8.h),
+                          Text(
+                            '关键词: "${_searchController.text}"',
+                            style:
+                                TextStyle(fontSize: 14.sp, color: Colors.grey),
+                          ),
+                          SizedBox(height: 20.h),
+                          ElevatedButton.icon(
+                            onPressed: () {
+                              final tuneHub = Get.find<TuneHubService>();
+                              Get.dialog(
+                                AlertDialog(
+                                  title: const Text('搜索调试信息'),
+                                  content: SingleChildScrollView(
+                                    child: SelectableText(
+                                      tuneHub.lastSearchDebugInfo.isEmpty
+                                          ? '暂无调试信息'
+                                          : tuneHub.lastSearchDebugInfo,
+                                      style: TextStyle(
+                                        fontSize: 12.sp,
+                                        fontFamily: 'monospace',
+                                      ),
+                                    ),
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Get.back(),
+                                      child: const Text('关闭'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.bug_report),
+                            label: const Text('查看调试信息'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orange,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
                 return ListView.builder(
                   controller: _scrollController,
                   itemCount:

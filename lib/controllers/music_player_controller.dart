@@ -187,60 +187,63 @@ class MusicPlayerController extends GetxController {
   void _setupPlayerListeners() {
     if (audioPlayer == null) return;
 
-    // We bind Listeners to the Singleton Player
-
-    // AudioHandler callbacks are now bound in _bindHandlerCallbacks()
-
-    // 局部变量防止重复触发
-    bool isManuallySkipping = false;
-
+    // 1. 监听播放状态变化
     audioPlayer!.playerStateStream.listen((state) {
       isPlaying.value = state.playing;
+
+      // 处理播放完成
       if (state.processingState == ProcessingState.completed) {
-        // 播放完成后添加记录
+        debugPrint('🎵 [PlayerState] 播放完成，准备切换下一首');
+        // 记录历史
         if (playlist.isNotEmpty && currentIndex.value < playlist.length) {
           addToHistory(playlist[currentIndex.value]);
         }
-        playNext();
-        isManuallySkipping = false;
-      }
-      // 当重新开始缓冲或空闲时，重置标志位
-      if (state.processingState == ProcessingState.buffering ||
-          state.processingState == ProcessingState.idle) {
-        isManuallySkipping = false;
+        // 延迟一小段时间再切换，确保状态稳定
+        Future.delayed(const Duration(milliseconds: 100), () {
+          playNext();
+        });
       }
     });
 
+    // 2. 监听播放位置
     audioPlayer!.positionStream.listen((p) {
       position.value = p;
+
+      // 更新歌词
       if (lyrics.isNotEmpty) {
         final index = lyrics.lastIndexWhere((l) => l.startTime <= p);
         if (index != -1 && index != currentLyricIndex.value) {
           currentLyricIndex.value = index;
         }
       }
+    });
 
-      // [BugFix] 手动检测结束：如果剩余时间 < 500ms 且正在播放，主动切歌
-      // 解决部分音频文件在最后几帧卡住不触发 completed 的问题
-      final d = duration.value;
-      if (!isManuallySkipping &&
-          d.inSeconds > 5 &&
-          audioPlayer!.playing &&
-          (d - p).inMilliseconds < 500 &&
-          audioPlayer!.processingState != ProcessingState.completed) {
-        isManuallySkipping = true;
-        debugPrint('⚡ [MusicPlayerController] 接近尾声，主动切下一首');
-        // 记录历史
-        if (playlist.isNotEmpty && currentIndex.value < playlist.length) {
-          addToHistory(playlist[currentIndex.value]);
-        }
-        playNext();
+    // 3. 监听时长变化
+    audioPlayer!.durationStream.listen((d) {
+      if (d != null) {
+        duration.value = d;
+        debugPrint('🎵 [Duration] 歌曲时长: ${d.inSeconds}秒');
       }
     });
 
-    audioPlayer!.durationStream
-        .listen((d) => duration.value = d ?? Duration.zero);
-    audioPlayer!.bufferedPositionStream.listen((b) => buffered.value = b);
+    // 4. 监听缓冲位置
+    audioPlayer!.bufferedPositionStream.listen((b) {
+      buffered.value = b;
+    });
+
+    // 5. 监听处理状态（用于调试）
+    audioPlayer!.processingStateStream.listen((state) {
+      debugPrint('🎵 [ProcessingState] $state');
+
+      // 当状态变为 ready 时，确保时长已正确设置
+      if (state == ProcessingState.ready) {
+        final d = audioPlayer!.duration;
+        if (d != null && d != duration.value) {
+          duration.value = d;
+          debugPrint('🎵 [Duration] 更新时长: ${d.inSeconds}秒');
+        }
+      }
+    });
   }
 
   Future<void> playTrack(MusicTrack track, {int? targetIndex}) async {
