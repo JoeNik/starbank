@@ -33,6 +33,8 @@ class MusicPlayerController extends GetxController {
   // === 并发控制 ===
   // 当前播放任务ID,用于取消旧的播放请求
   int _currentPlayTaskId = 0;
+  // 是否正在切歌过渡中,防止 stop() 触发的 completed 状态误触自动切歌
+  bool _isTransitioning = false;
 
   // Progress
   final Rx<Duration> position = Duration.zero.obs;
@@ -191,18 +193,15 @@ class MusicPlayerController extends GetxController {
   void _setupPlayerListeners() {
     if (audioPlayer == null) return;
 
-    // 用于处理过渡状态的变量
-    bool _isTransitioning = false;
-
     // 1. 监听播放状态变化
     audioPlayer!.playerStateStream.listen((state) {
       isPlaying.value = state.playing;
 
-      // 处理播放完成逻辑
+      // 处理播放完成逻辑 (只有真正播放完成才触发,手动切歌时 _isTransitioning 已被设为 true)
       if (state.processingState == ProcessingState.completed &&
           !_isTransitioning) {
         _isTransitioning = true;
-        debugPrint('🎵 [PlayerState] 播放完成，处理后续动作 (模式: ${playMode.value})');
+        debugPrint('🎵 [PlayerState] 歌曲自然播放完成，自动切歌 (模式: ${playMode.value})');
 
         // 记录历史
         if (playlist.isNotEmpty && currentIndex.value < playlist.length) {
@@ -214,12 +213,14 @@ class MusicPlayerController extends GetxController {
           debugPrint('🎵 [PlayerState] 单曲循环模式，重新播放当前歌曲');
           audioPlayer!.seek(Duration.zero);
           audioPlayer!.play();
-          _isTransitioning = false;
+          // 单曲循环不需要重置 _isTransitioning,因为 seek+play 会触发 ready 状态
         } else {
           // 延迟执行切换，给 UI 和状态一点缓冲时间
+          // 注意: 不要在这里重置 _isTransitioning!
+          // 因为 playNext 调用的 playTrack 是异步的,此时可能还没开始播放
+          // _isTransitioning 会在新歌曲开始播放时(ready && playing)自动重置
           Future.delayed(const Duration(milliseconds: 300), () {
             playNext(isAuto: true);
-            _isTransitioning = false;
           });
         }
       }
@@ -359,6 +360,9 @@ class MusicPlayerController extends GetxController {
         return;
       }
 
+      // 标记为过渡状态,防止 stop() 触发的 completed 状态误触自动切歌
+      _isTransitioning = true;
+
       // 重置播放器状态 (忽略任何中断异常)
       try {
         await player.stop();
@@ -371,6 +375,7 @@ class MusicPlayerController extends GetxController {
       // 再次检查任务有效性
       if (!isTaskValid()) {
         debugPrint('🔄 [PlayTrack #$taskId] 任务已取消(停止后)');
+        _isTransitioning = false;
         return;
       }
 
@@ -435,6 +440,9 @@ class MusicPlayerController extends GetxController {
     } catch (e) {
       // 只记录日志,不弹窗打扰用户
       debugPrint('❌ [PlayTrack #$taskId] 播放失败: $e');
+
+      // 重置过渡状态
+      _isTransitioning = false;
 
       // 如果不是被新任务取消的,尝试下一首
       if (isTaskValid() && !e.toString().contains('interrupted')) {
