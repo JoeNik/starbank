@@ -36,9 +36,16 @@ class ShopController extends GetxController {
     _loadProducts();
   }
 
-  void deleteProduct(int index) {
-    _storage.productBox.deleteAt(index);
-    products.removeAt(index);
+  /// 更新商品信息
+  void updateProduct(Product product) {
+    product.save(); // Hive 对象直接保存
+    products.refresh(); // 刷新 UI
+  }
+
+  /// 删除商品
+  void deleteProduct(Product product) {
+    product.delete(); // 从 Hive 中删除
+    _loadProducts(); // 重新加载列表
   }
 
   bool canAfford(Product product) {

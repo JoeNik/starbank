@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../controllers/music_player_controller.dart';
+import '../../../controllers/app_mode_controller.dart';
 import '../../../services/tunehub_service.dart';
 import '../../../theme/app_theme.dart';
 import '../../../models/music/music_track.dart';
@@ -17,6 +18,7 @@ class MusicHomePage extends StatefulWidget {
 
 class _MusicHomePageState extends State<MusicHomePage> {
   final MusicPlayerController _controller = Get.find<MusicPlayerController>();
+  final AppModeController _modeController = Get.find<AppModeController>();
   final TuneHubService _tuneHubService = Get.find<TuneHubService>();
   final TextEditingController _searchController = TextEditingController();
 
@@ -598,22 +600,30 @@ class _MusicHomePageState extends State<MusicHomePage> {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Obx(() => IconButton(
-                icon: Icon(
-                  _controller.isFavorite(track)
-                      ? Icons.favorite
-                      : Icons.favorite_border,
-                  color: _controller.isFavorite(track)
-                      ? Colors.redAccent
-                      : Colors.grey,
-                  size: 20.sp,
-                ),
-                onPressed: () => _controller.toggleFavorite(track),
-              )),
+          Obx(() {
+            final isChildMode = _modeController.isChildMode;
+            final isFav = _controller.isFavorite(track);
+
+            return IconButton(
+              icon: Icon(
+                isFav ? Icons.favorite : Icons.favorite_border,
+                color: isChildMode
+                    ? Colors.grey[300] // 儿童模式下变灰
+                    : (isFav ? Colors.redAccent : Colors.grey),
+                size: 20.sp,
+              ),
+              onPressed: isChildMode
+                  ? () {
+                      // 儿童模式下点击提示
+                      ToastUtils.showInfo('儿童模式下无法修改收藏,请切换到家长模式');
+                    }
+                  : () => _controller.toggleFavorite(track),
+            );
+          }),
           IconButton(
             icon: const Icon(Icons.play_circle_fill, color: AppTheme.primary),
             onPressed: () {
-              // 从本地列表播放时，加载整个源列表
+              // 播放功能在儿童模式下也可用
               _controller.playWithList(sourceList, track);
               Get.to(() => const MusicPlayerPage());
             },
