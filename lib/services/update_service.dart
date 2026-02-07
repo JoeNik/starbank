@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
@@ -323,17 +322,6 @@ class UpdateService extends GetxService {
               },
             ),
 
-            // 镜像下载 (ghproxy)
-            ListTile(
-              leading: const Icon(Icons.speed, color: Colors.green),
-              title: const Text('镜像加速下载'),
-              subtitle: const Text('使用 ghproxy 加速（推荐国内用户）'),
-              onTap: () {
-                Navigator.of(ctx).pop();
-                _startInAppDownload(release, useMirror: true);
-              },
-            ),
-
             // 浏览器下载
             ListTile(
               leading: const Icon(Icons.open_in_browser, color: Colors.orange),
@@ -342,28 +330,21 @@ class UpdateService extends GetxService {
               onTap: () async {
                 Navigator.of(ctx).pop();
                 try {
+                  // 使用镜像加速链接
                   final mirrorUrl =
                       'https://ghproxy.com/${release.downloadUrl}';
                   final uri = Uri.parse(mirrorUrl);
-                  if (await canLaunchUrl(uri)) {
-                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  // 强制使用外部浏览器打开
+                  final launched = await launchUrl(
+                    uri,
+                    mode: LaunchMode.externalApplication,
+                  );
+                  if (!launched) {
+                    ToastUtils.showError('无法打开浏览器');
                   }
                 } catch (e) {
                   ToastUtils.showError('无法打开浏览器: $e');
                 }
-              },
-            ),
-
-            // 复制链接
-            ListTile(
-              leading: const Icon(Icons.copy, color: Colors.grey),
-              title: const Text('复制下载链接'),
-              subtitle: const Text('手动下载'),
-              onTap: () async {
-                Navigator.of(ctx).pop();
-                await Clipboard.setData(
-                    ClipboardData(text: release.downloadUrl));
-                ToastUtils.showSuccess('下载链接已复制到剪贴板');
               },
             ),
 
