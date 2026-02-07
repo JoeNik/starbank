@@ -495,10 +495,36 @@ class _MusicHomePageState extends State<MusicHomePage> {
           style: TextStyle(fontSize: 14.sp),
           maxLines: 1,
           overflow: TextOverflow.ellipsis),
-      subtitle: Text(track.artist,
-          style: TextStyle(fontSize: 12.sp),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis),
+      subtitle: Row(
+        children: [
+          // 音乐来源标识
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
+            decoration: BoxDecoration(
+              color: _getPlatformColor(track.platform),
+              borderRadius: BorderRadius.circular(3.r),
+            ),
+            child: Text(
+              _getPlatformName(track.platform),
+              style: TextStyle(
+                fontSize: 9.sp,
+                color: Colors.white,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          SizedBox(width: 6.w),
+          // 歌手名称
+          Expanded(
+            child: Text(
+              track.artist,
+              style: TextStyle(fontSize: 12.sp, color: Colors.grey[600]),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -525,5 +551,25 @@ class _MusicHomePageState extends State<MusicHomePage> {
         ],
       ),
     );
+  }
+
+  // 获取平台显示名称
+  String _getPlatformName(String platform) {
+    const platformNames = {
+      'kuwo': '酷我',
+      'netease': '网易',
+      'qq': 'QQ',
+    };
+    return platformNames[platform] ?? platform.toUpperCase();
+  }
+
+  // 获取平台主题色
+  Color _getPlatformColor(String platform) {
+    const platformColors = {
+      'kuwo': Color(0xFFFF6B35), // 橙红色
+      'netease': Color(0xFFD43C33), // 网易云红
+      'qq': Color(0xFF31C27C), // QQ音乐绿
+    };
+    return platformColors[platform] ?? Colors.grey;
   }
 }

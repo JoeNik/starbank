@@ -206,8 +206,20 @@ class TuneHubService extends GetxService {
 
     try {
       final method = await _getMethod(platform, 'search');
+      debugPrint('🔍 [TuneHub] 获取到 $platform 的 search method');
+      debugPrint('   URL: ${method.url}');
+      debugPrint('   Params: ${method.params}');
+
       final raw = await _executeMethod(method, vars);
-      if (raw == null) return [];
+      if (raw == null) {
+        debugPrint('❌ [TuneHub] $platform search 返回 null');
+        return [];
+      }
+
+      debugPrint('✅ [TuneHub] $platform search 返回数据类型: ${raw.runtimeType}');
+      if (raw is Map) {
+        debugPrint('   返回的 Map keys: ${raw.keys.toList()}');
+      }
 
       List<MusicTrack> tracks = [];
       dynamic list;
@@ -217,7 +229,36 @@ class TuneHubService extends GetxService {
           list = raw['abslist'];
         else if (raw['result'] is Map && raw['result']['songs'] != null)
           list = raw['result']['songs'];
-        else {
+        // QQ 音乐特殊处理
+        if (platform == 'qq') {
+          // QQ 音乐可能的数据结构:
+          // { data: { song: { list: [...] } } }
+          // { req_1: { data: { song: { list: [...] } } } }
+          if (raw['data'] is Map) {
+            final data = raw['data'] as Map;
+            if (data['song'] is Map && data['song']['list'] is List) {
+              list = data['song']['list'];
+              debugPrint('🎵 [QQ音乐] 从 data.song.list 找到歌曲列表');
+            } else if (data['list'] is List) {
+              list = data['list'];
+              debugPrint('🎵 [QQ音乐] 从 data.list 找到歌曲列表');
+            }
+          }
+          // 检查 req_1 格式
+          if (list == null && raw['req_1'] is Map) {
+            final req1 = raw['req_1'] as Map;
+            if (req1['data'] is Map) {
+              final data = req1['data'] as Map;
+              if (data['song'] is Map && data['song']['list'] is List) {
+                list = data['song']['list'];
+                debugPrint('🎵 [QQ音乐] 从 req_1.data.song.list 找到歌曲列表');
+              }
+            }
+          }
+        }
+
+        // 如果还没找到，执行通用扫描
+        if (list == null) {
           void scan(dynamic obj) {
             if (list != null) return;
             if (obj is Map) {
@@ -239,9 +280,20 @@ class TuneHubService extends GetxService {
         }
       }
 
+      if (list == null) {
+        debugPrint('❌ [TuneHub] $platform 未能从响应中提取歌曲列表');
+        debugPrint('   完整响应: ${jsonEncode(raw)}');
+        return [];
+      }
+
       if (list is List) {
+        debugPrint('✅ [TuneHub] $platform 找到 ${list.length} 首歌曲');
+
         for (var item in list) {
-          final id = (item['id'] ??
+          // QQ 音乐的 ID 字段可能是 songmid 或 mid
+          final id = (item['songmid'] ??
+                  item['mid'] ??
+                  item['id'] ??
                   item['rid'] ??
                   item['mid'] ??
                   item['songId'] ??
@@ -250,27 +302,51 @@ class TuneHubService extends GetxService {
                   '')
               .toString();
           if (id.isEmpty) continue;
-          String? cover = item['hts_MVPIC'] ??
+
+          // QQ 音乐封面图片处理
+          String? cover;
+          if (platform == 'qq') {
+            // QQ 音乐封面可能在 albummid 中，需要拼接 URL
+            final albummid = item['albummid'] ?? item['album_mid'];
+            if (albummid != null && albummid.toString().isNotEmpty) {
+              cover =
+                  'https://y.gtimg.cn/music/photo_new/T002R300x300M000$albummid.jpg';
+            }
+          }
+
+          // 通用封面处理
+          cover ??= item['hts_MVPIC'] ??
               item['pic'] ??
               item['img'] ??
               item['picUrl'] ??
+              item['albumPic'] ??
               item['web_albumpic_short'] ??
               (item['album'] is Map ? item['album']['picUrl'] : null);
           if (cover != null && cover.startsWith('//')) cover = 'https:$cover';
 
+          // 歌名处理
+          final title = (item['songname'] ??
+                  item['name'] ??
+                  item['title'] ??
+                  item['SONGNAME'] ??
+                  '未知歌曲')
+              .toString();
+
+          // 专辑处理
+          String? album;
+          if (platform == 'qq') {
+            album = item['albumname'] ?? item['albumName'];
+          }
+          album ??= (item['album'] is Map
+              ? item['album']['name']
+              : (item['album'] ?? item['ALBUM'] ?? ''));
+
           tracks.add(MusicTrack(
             id: id,
-            title: (item['name'] ??
-                    item['title'] ??
-                    item['SONGNAME'] ??
-                    item['songname'] ??
-                    '未知歌曲')
-                .toString(),
+            title: title,
             artist: _parseArtist(item),
             coverUrl: cover,
-            album: item['album'] is Map
-                ? item['album']['name']
-                : (item['album'] ?? item['ALBUM'] ?? ''),
+            album: album,
             platform: platform,
           ));
         }
@@ -288,15 +364,18 @@ class TuneHubService extends GetxService {
   }
 
   String _parseArtist(dynamic item) {
-    var singer = item['artist'] ??
-        item['singer'] ??
+    // QQ 音乐的歌手信息可能在 singer 数组中
+    var singer = item['singer'] ??
+        item['artist'] ??
         item['ARTIST'] ??
         item['SINGER'] ??
         item['ar'] ??
         item['artists'];
+
     if (singer is List && singer.isNotEmpty) {
       return singer
-          .map((e) => e is Map ? (e['name'] ?? '') : e.toString())
+          .map((e) => e is Map ? (e['name'] ?? e['title'] ?? '') : e.toString())
+          .where((s) => s.isNotEmpty)
           .join('/');
     }
     if (singer is Map) return (singer['name'] ?? '').toString();

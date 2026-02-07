@@ -243,7 +243,7 @@ class MusicPlayerController extends GetxController {
     audioPlayer!.bufferedPositionStream.listen((b) => buffered.value = b);
   }
 
-  Future<void> playTrack(MusicTrack track) async {
+  Future<void> playTrack(MusicTrack track, {int? targetIndex}) async {
     // 强制重置当前尝试播放的 URL，确保逻辑新鲜
     String? currentUrl = track.url;
 
@@ -371,14 +371,26 @@ class MusicPlayerController extends GetxController {
         ));
       }
 
-      final index = playlist
-          .indexWhere((t) => t.id == track.id && t.platform == track.platform);
-      if (index == -1) {
-        playlist.add(track);
-        currentIndex.value = playlist.length - 1;
+      // 更新播放列表索引
+      // 如果调用方已经指定了目标索引（如 playNext/playPrevious），直接使用
+      if (targetIndex != null &&
+          targetIndex >= 0 &&
+          targetIndex < playlist.length) {
+        currentIndex.value = targetIndex;
+        playlist[targetIndex] = track;
+        debugPrint('✅ [PlayTrack] 使用指定索引: $targetIndex, 歌曲: ${track.title}');
       } else {
-        currentIndex.value = index;
-        playlist[index] = track;
+        final index = playlist.indexWhere(
+            (t) => t.id == track.id && t.platform == track.platform);
+        if (index == -1) {
+          playlist.add(track);
+          currentIndex.value = playlist.length - 1;
+          debugPrint('✅ [PlayTrack] 添加新歌曲，索引: ${currentIndex.value}');
+        } else {
+          currentIndex.value = index;
+          playlist[index] = track;
+          debugPrint('✅ [PlayTrack] 找到已有歌曲，索引: $index');
+        }
       }
 
       await player.play();
@@ -474,7 +486,8 @@ class MusicPlayerController extends GetxController {
       }
     }
 
-    playTrack(playlist[nextIndex]);
+    debugPrint('🎵 [PlayNext] 当前索引: ${currentIndex.value}, 下一首索引: $nextIndex');
+    playTrack(playlist[nextIndex], targetIndex: nextIndex);
   }
 
   void playPrevious() {
@@ -492,7 +505,9 @@ class MusicPlayerController extends GetxController {
         prevIndex = playlist.length - 1;
       }
     }
-    playTrack(playlist[prevIndex]);
+    debugPrint(
+        '🎵 [PlayPrevious] 当前索引: ${currentIndex.value}, 上一首索引: $prevIndex');
+    playTrack(playlist[prevIndex], targetIndex: prevIndex);
   }
 
   void togglePlay() {

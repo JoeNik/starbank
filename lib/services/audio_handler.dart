@@ -48,16 +48,18 @@ class MusicHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     });
 
     // 3. 初始广播，确保通知栏能立即占位
-    // 注意：系统通知栏通常需要 MediaItem 有数据（标题、封面等）才会显示
+    // 参考 Harmonoid: 使用简洁的初始 MediaItem
     mediaItem.add(const MediaItem(
-      id: 'initial_placeholder',
-      title: 'StarBankMusic',
-      artist: '准备就绪',
-      album: 'StarBank',
+      id: '__INIT__',
+      title: 'StarBank',
+      artist: '',
     ));
 
-    playbackState.add(playbackState.value.copyWith(
-      controls: [MediaControl.play],
+    // 初始状态：显示播放按钮
+    playbackState.add(PlaybackState(
+      controls: [
+        MediaControl.play,
+      ],
       processingState: AudioProcessingState.idle,
       playing: false,
       systemActions: const {
@@ -73,35 +75,39 @@ class MusicHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   }
 
   /// 广播状态给系统（通知栏/锁屏界面）
+  /// 参考 Harmonoid 的实现优化
   void _broadcastState(PlaybackEvent event) {
     final playing = _player.playing;
-    final queueIndex = event.currentIndex;
+    final processingState = _player.processingState;
 
-    playbackState.add(playbackState.value.copyWith(
-      controls: [
-        MediaControl.skipToPrevious,
-        if (playing) MediaControl.pause else MediaControl.play,
-        MediaControl.stop,
-        MediaControl.skipToNext,
-      ],
+    // 根据播放状态动态调整控制按钮
+    final controls = <MediaControl>[
+      MediaControl.skipToPrevious,
+      if (playing) MediaControl.pause else MediaControl.play,
+      MediaControl.skipToNext,
+    ];
+
+    playbackState.add(PlaybackState(
+      controls: controls,
       systemActions: const {
         MediaAction.seek,
         MediaAction.seekForward,
         MediaAction.seekBackward,
       },
-      androidCompactActionIndices: const [0, 1, 3],
+      // Compact actions: 上一首(0), 播放/暂停(1), 下一首(2)
+      androidCompactActionIndices: const [0, 1, 2],
       processingState: const {
         ProcessingState.idle: AudioProcessingState.idle,
         ProcessingState.loading: AudioProcessingState.loading,
         ProcessingState.buffering: AudioProcessingState.buffering,
         ProcessingState.ready: AudioProcessingState.ready,
         ProcessingState.completed: AudioProcessingState.completed,
-      }[_player.processingState]!,
+      }[processingState]!,
       playing: playing,
       updatePosition: _player.position,
       bufferedPosition: _player.bufferedPosition,
       speed: _player.speed,
-      queueIndex: queueIndex,
+      queueIndex: event.currentIndex,
     ));
   }
 

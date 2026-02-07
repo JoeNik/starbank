@@ -48,3 +48,6 @@ app.*.map.json
 temp_*.txt
 temp_*.log
 *.txt
+.gemini/音乐播放器通知栏优化总结.md
+.gemini/QQ音乐搜索优化总结.md
+.gemini/播放切换Bug修复指南.md
