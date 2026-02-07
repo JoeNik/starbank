@@ -50,6 +50,9 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
   // 页面控制器
   late PageController _pageController;
 
+  // 故事列表滚动控制器 - 用于记忆滚动位置
+  late ScrollController _storyListScrollController;
+
   // 是否正在播放
   bool _isPlaying = false;
 
@@ -73,6 +76,7 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
     super.initState();
     _loadStories();
     _pageController = PageController();
+    _storyListScrollController = ScrollController(); // 初始化故事列表滚动控制器
 
     // 初始化翻页动画
     _pageFlipController = AnimationController(
@@ -103,6 +107,7 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
     _tts.stop();
     _autoPlayTimer?.cancel();
     _pageController.dispose();
+    _storyListScrollController.dispose(); // 释放故事列表滚动控制器
     _pageFlipController.dispose();
     _beastController.dispose();
     super.dispose();
@@ -891,6 +896,7 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
   /// 故事列表
   Widget _buildStoryList() {
     return SingleChildScrollView(
+      controller: _storyListScrollController, // 添加滚动控制器
       physics: const BouncingScrollPhysics(),
       padding: EdgeInsets.all(20.w),
       child: Column(

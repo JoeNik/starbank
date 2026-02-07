@@ -429,8 +429,7 @@ class _MusicHomePageState extends State<MusicHomePage> {
     VoidCallback? onPlayAll,
   }) {
     return Obx(() {
-      if (tracks.isEmpty) return const SizedBox.shrink();
-
+      // 总是显示 Header，除非是真的完全没数据且不是搜索结果页
       final displayedTracks = tracks.take(limit.value).toList();
       final hasMore = tracks.length > limit.value;
 
@@ -444,19 +443,27 @@ class _MusicHomePageState extends State<MusicHomePage> {
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (onPlayAll != null)
+                if (onPlayAll != null && tracks.isNotEmpty)
                   TextButton(onPressed: onPlayAll, child: const Text('播放全部')),
                 Icon(isExpanded.value ? Icons.expand_less : Icons.expand_more),
               ],
             ),
           ),
           if (isExpanded.value) ...[
-            ...displayedTracks.map((track) => _buildTrackTile(track, tracks)),
-            if (hasMore)
-              TextButton(
-                onPressed: () => limit.value += 10,
-                child: Text('查看更多 (${tracks.length - limit.value})'),
-              ),
+            if (tracks.isEmpty)
+              Padding(
+                padding: EdgeInsets.symmetric(vertical: 10.h),
+                child: Text('暂无数据',
+                    style: TextStyle(color: Colors.grey, fontSize: 12.sp)),
+              )
+            else ...[
+              ...displayedTracks.map((track) => _buildTrackTile(track, tracks)),
+              if (hasMore)
+                TextButton(
+                  onPressed: () => limit.value += 10,
+                  child: Text('查看更多 (${tracks.length - limit.value})'),
+                ),
+            ],
           ],
         ],
       );

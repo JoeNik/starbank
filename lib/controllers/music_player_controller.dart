@@ -382,6 +382,8 @@ class MusicPlayerController extends GetxController {
       }
 
       await player.play();
+      // 播放成功立即记入历史
+      addToHistory(track);
 
       // 4. 自动缓存歌曲
       if (_cacheService.isInitialized && _cacheService.cacheEnabled.value) {
@@ -600,6 +602,8 @@ class MusicPlayerController extends GetxController {
       }
 
       await player.play();
+      // 播放成功立即记入历史
+      addToHistory(track);
       return true;
     } catch (e) {
       debugPrint('❌ [MusicPlayerController] 缓存播放异常: $e');
