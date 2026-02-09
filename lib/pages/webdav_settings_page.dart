@@ -18,8 +18,9 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
   final userController = TextEditingController();
   final pwdController = TextEditingController();
 
-  final RxList<String> backupFiles = <String>[].obs; // 所有备份文件
-  final RxList<String> displayBackups = <String>[].obs; // 当前显示的备份文件
+  final RxList<BackupFileInfo> backupFiles = <BackupFileInfo>[].obs; // 所有备份文件
+  final RxList<BackupFileInfo> displayBackups =
+      <BackupFileInfo>[].obs; // 当前显示的备份文件
   final int _pageSize = 10; // 每页显示数量
 
   final RxBool isLoading = false.obs;
@@ -59,7 +60,7 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
     isConnected.value = false;
 
     try {
-      final files = await webDavService.listBackups();
+      final files = await webDavService.listBackupsDetailed();
       backupFiles.assignAll(files.reversed.toList());
 
       // 初始化显示列表
@@ -77,7 +78,7 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
   Future<void> _loadBackups() async {
     isLoading.value = true;
     try {
-      final files = await webDavService.listBackups();
+      final files = await webDavService.listBackupsDetailed();
       backupFiles.assignAll(files.reversed.toList());
 
       // 重置分页
@@ -446,19 +447,19 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
                             ),
                           );
                         }
-                        final filename = displayBackups[index];
+                        final fileInfo = displayBackups[index];
                         return ListTile(
                           leading: const Icon(
                             Icons.restore_page,
                             color: Colors.orange,
                           ),
-                          title: Text(filename),
-                          subtitle: const Text("点击恢复此版本"),
+                          title: Text(fileInfo.filename),
+                          subtitle: Text('大小: ${fileInfo.formattedSize}'),
                           trailing: IconButton(
                             icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () => _confirmDelete(filename),
+                            onPressed: () => _confirmDelete(fileInfo.path),
                           ),
-                          onTap: () => _confirmRestore(filename),
+                          onTap: () => _confirmRestore(fileInfo.path),
                         );
                       },
                     ),

@@ -25,6 +25,26 @@ import '../services/story_management_service.dart';
 import '../services/quiz_service.dart';
 import '../models/quiz_config.dart';
 
+/// 备份文件信息
+class BackupFileInfo {
+  final String path; // 完整路径（用于操作）
+  final String filename; // 文件名（用于显示）
+  final int size; // 文件大小（字节）
+
+  BackupFileInfo({
+    required this.path,
+    required this.filename,
+    required this.size,
+  });
+
+  /// 格式化文件大小显示
+  String get formattedSize {
+    if (size < 1024) return '$size B';
+    if (size < 1024 * 1024) return '${(size / 1024).toStringAsFixed(1)} KB';
+    return '${(size / 1024 / 1024).toStringAsFixed(2)} MB';
+  }
+}
+
 /// WebDAV备份服务
 class WebDavService extends GetxService {
   webdav.Client? _client;
@@ -826,17 +846,23 @@ class WebDavService extends GetxService {
     }
   }
 
-  Future<List<String>> listBackups() async {
+  /// 获取备份文件列表（包含详细信息）
+  Future<List<BackupFileInfo>> listBackupsDetailed() async {
     if (_client == null) return [];
     try {
       final list = await _client!.readDir('/starbank');
       return list
-          .map((f) => f.path ?? '')
-          .where((p) => p.endsWith('.json') || p.endsWith('.json.gz'))
+          .where((f) =>
+              (f.path ?? '').endsWith('.json') ||
+              (f.path ?? '').endsWith('.json.gz'))
+          .map((f) => BackupFileInfo(
+                path: f.path ?? '',
+                filename: _extractFilename(f.path ?? ''),
+                size: f.size ?? 0,
+              ))
           .toList();
     } catch (e) {
       debugPrint('WebDAV list error: $e');
-      // 只在明确是连接错误时提示，避免文件夹不存在时频繁报错
       if (e.toString().contains('XmlHttpRequest') ||
           e.toString().contains('CORS')) {
         ToastUtils.showError('WebDAV连接失败(可能是CORS问题): $e');
@@ -845,6 +871,19 @@ class WebDavService extends GetxService {
       }
       return [];
     }
+  }
+
+  /// 旧版兼容方法（仅返回路径列表）
+  Future<List<String>> listBackups() async {
+    final detailed = await listBackupsDetailed();
+    return detailed.map((f) => f.path).toList();
+  }
+
+  /// 从路径中提取文件名
+  String _extractFilename(String path) {
+    if (path.isEmpty) return '';
+    final parts = path.split('/');
+    return parts.isNotEmpty ? parts.last : path;
   }
 
   /// 删除指定的备份文件

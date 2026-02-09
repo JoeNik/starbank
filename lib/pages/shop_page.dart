@@ -279,63 +279,64 @@ class ShopPage extends StatelessWidget {
                           ),
                   ),
                 ),
-                // 编辑和删除按钮 - 仅在非儿童模式下显示
-                if (!modeController.isChildMode)
-                  Positioned(
-                    top: 14.h,
-                    right: 14.w,
-                    child: Row(
-                      children: [
-                        // 编辑按钮
-                        GestureDetector(
-                          onTap: () =>
-                              _showEditProductDialog(controller, product),
-                          child: Container(
-                            padding: EdgeInsets.all(6.w),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.9),
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 4,
+                // 编辑和删除按钮 - 使用 Obx 包裹以响应模式变化
+                Obx(() => !modeController.isChildMode
+                    ? Positioned(
+                        top: 14.h,
+                        right: 14.w,
+                        child: Row(
+                          children: [
+                            // 编辑按钮
+                            GestureDetector(
+                              onTap: () =>
+                                  _showEditProductDialog(controller, product),
+                              child: Container(
+                                padding: EdgeInsets.all(6.w),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.9),
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.1),
+                                      blurRadius: 4,
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                            child: Icon(
-                              Icons.edit,
-                              size: 16.sp,
-                              color: AppTheme.primary,
-                            ),
-                          ),
-                        ),
-                        SizedBox(width: 6.w),
-                        // 删除按钮
-                        GestureDetector(
-                          onTap: () =>
-                              _confirmDeleteProduct(controller, product),
-                          child: Container(
-                            padding: EdgeInsets.all(6.w),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.9),
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 4,
+                                child: Icon(
+                                  Icons.edit,
+                                  size: 16.sp,
+                                  color: AppTheme.primary,
                                 ),
-                              ],
+                              ),
                             ),
-                            child: Icon(
-                              Icons.delete_outline,
-                              size: 16.sp,
-                              color: Colors.red,
+                            SizedBox(width: 6.w),
+                            // 删除按钮
+                            GestureDetector(
+                              onTap: () =>
+                                  _confirmDeleteProduct(controller, product),
+                              child: Container(
+                                padding: EdgeInsets.all(6.w),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.9),
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.1),
+                                      blurRadius: 4,
+                                    ),
+                                  ],
+                                ),
+                                child: Icon(
+                                  Icons.delete_outline,
+                                  size: 16.sp,
+                                  color: Colors.red,
+                                ),
+                              ),
                             ),
-                          ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
+                      )
+                    : const SizedBox.shrink()),
               ],
             ),
           ),
@@ -414,38 +415,38 @@ class ShopPage extends StatelessWidget {
               ],
             ),
           ),
-          // 兑换按钮
-          Padding(
-            padding: EdgeInsets.fromLTRB(10.w, 4.h, 10.w, 10.h),
-            child: SizedBox(
-              height: 32.h,
-              child: ElevatedButton(
-                // 只有在非儿童模式且进度达到100%时才可点击
-                onPressed: isDone && !modeController.isChildMode
-                    ? () {
-                        controller.redeemProduct(index);
-                      }
-                    : null,
-                style: ElevatedButton.styleFrom(
-                  padding: EdgeInsets.zero,
-                  backgroundColor: isDone && !modeController.isChildMode
-                      ? Colors.green
-                      : Colors.grey.shade200,
-                  foregroundColor: Colors.white,
-                  disabledBackgroundColor: Colors.grey.shade100,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10.r),
+          // 兑换按钮 - 使用 Obx 包裹以响应模式变化
+          Obx(() => Padding(
+                padding: EdgeInsets.fromLTRB(10.w, 4.h, 10.w, 10.h),
+                child: SizedBox(
+                  height: 32.h,
+                  child: ElevatedButton(
+                    // 只有在非儿童模式且进度达到100%时才可点击
+                    onPressed: isDone && !modeController.isChildMode
+                        ? () {
+                            controller.redeemProduct(index);
+                          }
+                        : null,
+                    style: ElevatedButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      backgroundColor: isDone && !modeController.isChildMode
+                          ? Colors.green
+                          : Colors.grey.shade200,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: Colors.grey.shade100,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10.r),
+                      ),
+                    ),
+                    child: Text(
+                      modeController.isChildMode
+                          ? "仅供查看"
+                          : (isDone ? "立刻兑换" : "努力中..."),
+                      style: TextStyle(fontSize: 12.sp),
+                    ),
                   ),
                 ),
-                child: Text(
-                  modeController.isChildMode
-                      ? "仅供查看"
-                      : (isDone ? "立刻兑换" : "努力中..."),
-                  style: TextStyle(fontSize: 12.sp),
-                ),
-              ),
-            ),
-          ),
+              )),
         ],
       ),
     );
