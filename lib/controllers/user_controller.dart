@@ -232,6 +232,7 @@ class UserController extends GetxController {
 
   /// 检查并计算利息
   /// 使用 'interest' 类型标记利息记录，按日期判断是否已产生收益
+  /// 支持补算多天未打开 APP 期间的利息
   void _checkInterest() {
     if (currentBaby.value == null) return;
     final baby = currentBaby.value!;
@@ -242,37 +243,69 @@ class UserController extends GetxController {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
-    // 检查今天是否已经产生过利息
-    final hasInterestToday = _storage.logBox.values.any((log) =>
-        log.babyId == baby.id &&
-        log.type == 'interest' &&
-        log.timestamp.year == today.year &&
-        log.timestamp.month == today.month &&
-        log.timestamp.day == today.day);
+    // 查找该宝宝最近一次利息记录的日期
+    DateTime? lastInterestDate;
+    final interestLogs = _storage.logBox.values
+        .where((log) => log.babyId == baby.id && log.type == 'interest')
+        .toList();
 
-    if (hasInterestToday) return; // 今天已产生利息，不重复计算
-
-    // 计算昨天的利息（每日结算一次）
-    final rate = currentInterestRate.value;
-    // 日利率 = 年化利率 / 365
-    final dailyRate = rate / 365.0;
-    final interest = baby.piggyBankBalance * dailyRate;
-
-    if (interest > 0.001) {
-      // 利息计入零花钱
-      baby.pocketMoneyBalance += interest;
-      baby.save();
-
-      // 使用 'interest' 类型记录利息
-      final log = Log(
-        timestamp: DateTime.now(),
-        description: '存钱罐利息收益',
-        changeAmount: interest,
-        type: 'interest', // 专门的利息类型
-        babyId: baby.id,
+    if (interestLogs.isNotEmpty) {
+      // 按时间排序，取最新的一条
+      interestLogs.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      final latest = interestLogs.first;
+      lastInterestDate = DateTime(
+        latest.timestamp.year,
+        latest.timestamp.month,
+        latest.timestamp.day,
       );
-      _storage.logBox.add(log);
-      logs.insert(0, log);
+    }
+
+    // 如果今天已经有利息记录，不重复计算
+    if (lastInterestDate != null &&
+        lastInterestDate.year == today.year &&
+        lastInterestDate.month == today.month &&
+        lastInterestDate.day == today.day) {
+      return;
+    }
+
+    // 计算需要补算的天数
+    // 起始日期：上次利息记录的下一天；如果没有历史记录，则只算今天（1天）
+    final startDate = lastInterestDate != null
+        ? lastInterestDate.add(const Duration(days: 1))
+        : today;
+
+    // 从 startDate 到 today（包含 today），计算每一天的利息
+    final rate = currentInterestRate.value;
+    final dailyRate = rate / 365.0; // 日利率 = 年化利率 / 365
+    double totalInterest = 0;
+
+    // 用当前余额统一计算（简化处理，避免复杂的逐日余额追溯）
+    DateTime currentDate = startDate;
+    while (!currentDate.isAfter(today)) {
+      final interest = baby.piggyBankBalance * dailyRate;
+
+      if (interest > 0.001) {
+        totalInterest += interest;
+
+        // 为每一天创建独立的利息记录，时间戳使用对应日期
+        final log = Log(
+          timestamp: currentDate,
+          description: '存钱罐利息收益',
+          changeAmount: interest,
+          type: 'interest', // 专门的利息类型
+          babyId: baby.id,
+        );
+        _storage.logBox.add(log);
+        logs.insert(0, log);
+      }
+
+      currentDate = currentDate.add(const Duration(days: 1));
+    }
+
+    // 一次性将累计利息计入零花钱
+    if (totalInterest > 0.001) {
+      baby.pocketMoneyBalance += totalInterest;
+      baby.save();
 
       if (currentBaby.value?.id == baby.id) {
         currentBaby.refresh();
