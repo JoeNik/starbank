@@ -10,7 +10,7 @@ import '../../../widgets/toast_utils.dart';
 import 'hanzi_library_page.dart';
 import 'hanzi_learning_settings_page.dart';
 
-/// 汉字巩固学习主页面
+/// 星海识字主页面
 /// 包含：AI内容展示、TTS整句朗读（卡拉OK高亮）、单字点读（含拼音）
 class HanziLearningPage extends StatefulWidget {
   const HanziLearningPage({super.key});
@@ -115,7 +115,7 @@ class _HanziLearningPageState extends State<HanziLearningPage>
             Text('🎓', style: TextStyle(fontSize: 60.sp)),
             SizedBox(height: 16.h),
             Text(
-              '欢迎来到汉字学习！',
+              '欢迎来到星海识字！',
               style: TextStyle(
                 fontSize: 20.sp,
                 fontWeight: FontWeight.bold,
@@ -446,7 +446,7 @@ class _HanziLearningPageState extends State<HanziLearningPage>
             Text('📝', style: TextStyle(fontSize: 22.sp)),
             SizedBox(width: 8.w),
             const Text(
-              '汉字巩固学习',
+              '星海识字',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
           ],
@@ -505,7 +505,7 @@ class _HanziLearningPageState extends State<HanziLearningPage>
           ),
           SizedBox(height: 20.h),
           Text(
-            '汉字巩固学习',
+            '星海识字',
             style: TextStyle(
               fontSize: 28.sp,
               fontWeight: FontWeight.bold,

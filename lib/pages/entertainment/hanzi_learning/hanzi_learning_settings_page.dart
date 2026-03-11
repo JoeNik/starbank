@@ -11,7 +11,7 @@ import '../../../widgets/toast_utils.dart';
 import '../../openai_settings_page.dart';
 import 'hanzi_library_page.dart';
 
-/// 汉字学习设置页面
+/// 星海识字设置页面
 /// 参考 StoryGameSettingsPage 的交互风格保持体验一致
 class HanziLearningSettingsPage extends StatefulWidget {
   const HanziLearningSettingsPage({super.key});
@@ -98,7 +98,7 @@ class _HanziLearningSettingsPageState extends State<HanziLearningSettingsPage> {
 
       return Scaffold(
         appBar: AppBar(
-          title: const Text('汉字学习设置'),
+          title: const Text('星海识字设置'),
           actions: [
             if (!isChildMode)
               IconButton(
@@ -153,7 +153,7 @@ class _HanziLearningSettingsPageState extends State<HanziLearningSettingsPage> {
                       SizedBox(width: 8.w),
                       Expanded(
                         child: Text(
-                          '配置AI模型来生成趣味汉字学习内容',
+                          '配置AI模型来生成趣味星海识字内容',
                           style: TextStyle(
                               fontSize: 13.sp, color: Colors.blue.shade700),
                         ),
