@@ -50,6 +50,11 @@ class _HanziLearningPageState extends State<HanziLearningPage>
   /// 当前被点击的字的索引
   int _tappedCharIndex = -1;
 
+  /// 点击波纹动画控制器
+  AnimationController? _rippleController;
+  Animation<double>? _rippleAnimation;
+  Animation<double>? _rippleOpacity;
+
   /// 漂浮动画控制器
   late AnimationController _floatController;
   late Animation<double> _floatAnimation;
@@ -77,6 +82,18 @@ class _HanziLearningPageState extends State<HanziLearningPage>
       CurvedAnimation(parent: _bounceController!, curve: Curves.elasticOut),
     );
 
+    // 初始化波纹动画
+    _rippleController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+    _rippleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _rippleController!, curve: Curves.easeOut),
+    );
+    _rippleOpacity = Tween<double>(begin: 0.6, end: 0.0).animate(
+      CurvedAnimation(parent: _rippleController!, curve: Curves.easeOut),
+    );
+
     // 检查首次启动
     _checkFirstLaunch();
   }
@@ -87,6 +104,7 @@ class _HanziLearningPageState extends State<HanziLearningPage>
     _tts.onProgressCallback = null; // 清理进度回调
     _floatController.dispose();
     _bounceController?.dispose();
+    _rippleController?.dispose();
     _tts.stop();
     super.dispose();
   }
@@ -425,8 +443,9 @@ class _HanziLearningPageState extends State<HanziLearningPage>
 
     setState(() => _tappedCharIndex = index);
     _bounceController?.forward(from: 0);
+    _rippleController?.forward(from: 0);
 
-    Future.delayed(const Duration(milliseconds: 400), () {
+    Future.delayed(const Duration(milliseconds: 500), () {
       if (mounted) {
         setState(() => _tappedCharIndex = -1);
       }
@@ -649,9 +668,103 @@ class _HanziLearningPageState extends State<HanziLearningPage>
                       ),
               ),
             ),
+
+          // 历史记录按钮
+          if (knownCount > 0) _buildLastRecordButton(),
         ],
       ),
     );
+  }
+
+  /// 构建“上次记录”按钮
+  Widget _buildLastRecordButton() {
+    final record = _service.getLastRecord();
+    if (record == null) return const SizedBox.shrink();
+
+    final text = record['text'] as String? ?? '';
+    if (text.isEmpty) return const SizedBox.shrink();
+
+    // 解析时间
+    final timestamp = record['timestamp'] as String?;
+    String timeLabel = '';
+    if (timestamp != null) {
+      try {
+        final dt = DateTime.parse(timestamp);
+        timeLabel = '· ${dt.month}月${dt.day}日 ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+      } catch (_) {}
+    }
+
+    // 截取预览（最多20字）
+    final preview = text.length > 20 ? '${text.substring(0, 20)}...' : text;
+
+    return Padding(
+      padding: EdgeInsets.only(top: 16.h),
+      child: GestureDetector(
+        onTap: _loadLastRecord,
+        child: Container(
+          width: double.infinity,
+          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+          decoration: BoxDecoration(
+            color: const Color(0xFF7C4DFF).withOpacity(0.08),
+            borderRadius: BorderRadius.circular(16.r),
+            border: Border.all(
+              color: const Color(0xFF7C4DFF).withOpacity(0.25),
+            ),
+          ),
+          child: Row(
+            children: [
+              Text('📖', style: TextStyle(fontSize: 24.sp)),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '上次记录 $timeLabel',
+                      style: TextStyle(
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF7C4DFF),
+                      ),
+                    ),
+                    SizedBox(height: 4.h),
+                    Text(
+                      preview,
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        color: Colors.grey[600],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.play_circle_outline,
+                color: const Color(0xFF7C4DFF),
+                size: 28.sp,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 加载上次记录并直接进入游戏界面
+  void _loadLastRecord() {
+    final text = _service.loadLastRecord();
+    if (text != null && text.isNotEmpty) {
+      setState(() {
+        _displayText = text;
+        _characters = text.split('');
+        _highlightIndex = -1;
+      });
+      ToastUtils.showSuccess('已加载上次记录 📖');
+    } else {
+      ToastUtils.showWarning('没有可恢复的记录');
+    }
   }
 
   /// 游戏主界面
@@ -897,8 +1010,8 @@ class _HanziLearningPageState extends State<HanziLearningPage>
             ),
           );
 
-          // 添加弹跳动画
-          if (isTapped && _bounceAnimation != null) {
+          // 添加弹跳 + 水波纹动画
+          if (isTapped && _bounceAnimation != null && _rippleAnimation != null) {
             charWidget = AnimatedBuilder(
               animation: _bounceAnimation!,
               builder: (context, child) {
@@ -907,7 +1020,31 @@ class _HanziLearningPageState extends State<HanziLearningPage>
                   child: child,
                 );
               },
-              child: charWidget,
+              child: Stack(
+                alignment: Alignment.center,
+                clipBehavior: Clip.none,
+                children: [
+                  charWidget,
+                  // 水波纹扩散层
+                  Positioned.fill(
+                    child: AnimatedBuilder(
+                      animation: _rippleAnimation!,
+                      builder: (context, _) {
+                        final rippleColor = isNewChar
+                            ? Colors.orange.shade400
+                            : const Color(0xFF7C4DFF);
+                        return CustomPaint(
+                          painter: _RipplePainter(
+                            progress: _rippleAnimation!.value,
+                            opacity: _rippleOpacity!.value,
+                            color: rippleColor,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
             );
           }
 
@@ -1268,5 +1405,49 @@ class _HanziLearningPageState extends State<HanziLearningPage>
         ],
       ),
     );
+  }
+}
+
+/// 水波纹涟漪自定义画笔
+/// 在被点击的汉字上层绘制一个从中心向外扩散的圆环，不断增加半径、同时透明度渐隐
+class _RipplePainter extends CustomPainter {
+  final double progress; // 0.0 ~ 1.0 动画进度
+  final double opacity;  // 0.6 ~ 0.0 透明度
+  final Color color;     // 涟漪颜色
+
+  _RipplePainter({
+    required this.progress,
+    required this.opacity,
+    required this.color,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (opacity <= 0) return;
+
+    final center = Offset(size.width / 2, size.height / 2);
+    final maxRadius = size.width * 0.9;
+
+    // 绘制外圈涟漪
+    final paint = Paint()
+      ..color = color.withOpacity(opacity)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+    canvas.drawCircle(center, maxRadius * progress, paint);
+
+    // 绘制内圈（稍微延迟的第二圈涟漪）
+    if (progress > 0.2) {
+      final innerProgress = (progress - 0.2) / 0.8;
+      final innerPaint = Paint()
+        ..color = color.withOpacity(opacity * 0.5)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5;
+      canvas.drawCircle(center, maxRadius * 0.6 * innerProgress, innerPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_RipplePainter oldDelegate) {
+    return oldDelegate.progress != progress || oldDelegate.opacity != opacity;
   }
 }

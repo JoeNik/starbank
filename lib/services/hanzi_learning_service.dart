@@ -207,6 +207,9 @@ class HanziLearningService extends GetxService {
       generatedText.value = response.trim();
       debugPrint('✅ AI生成完成: ${generatedText.value}');
 
+      // 自动保存为历史记录（最近一次）
+      await _saveLastRecord(generatedText.value);
+
       return generatedText.value;
     } catch (e) {
       debugPrint('❌ AI生成失败: $e');
@@ -254,6 +257,49 @@ class HanziLearningService extends GetxService {
   /// 判断一个字符是否在系统白名单中
   bool isWhitelistChar(String char) {
     return HanziData.systemWhitelistChars.contains(char);
+  }
+
+  // ========== 历史记录（仅保留最近一次） ==========
+
+  /// 保存最近一次生成的记录
+  Future<void> _saveLastRecord(String text) async {
+    try {
+      await _configBox.put('last_record', {
+        'text': text,
+        'knownChars': currentKnownChars.toList(),
+        'newChars': currentNewChars.toList(),
+        'timestamp': DateTime.now().toIso8601String(),
+      });
+      debugPrint('💾 已保存最近一次学习记录');
+    } catch (e) {
+      debugPrint('保存历史记录失败: $e');
+    }
+  }
+
+  /// 读取最近一次的记录（返回 null 表示无记录）
+  Map<String, dynamic>? getLastRecord() {
+    final raw = _configBox.get('last_record');
+    if (raw == null) return null;
+    return Map<String, dynamic>.from(raw as Map);
+  }
+
+  /// 从历史记录恢复状态（已知字列表、新字列表），返回文本
+  String? loadLastRecord() {
+    final record = getLastRecord();
+    if (record == null) return null;
+
+    final text = record['text'] as String? ?? '';
+    if (text.isEmpty) return null;
+
+    // 恢复当前字列表状态
+    final known = (record['knownChars'] as List?)?.cast<String>() ?? [];
+    final newC = (record['newChars'] as List?)?.cast<String>() ?? [];
+    currentKnownChars.assignAll(known);
+    currentNewChars.assignAll(newC);
+    generatedText.value = text;
+
+    debugPrint('📖 已恢复上次记录: ${text.length}字, 已知${known.length}个, 新字${newC.length}个');
+    return text;
   }
 
   /// 更新AI配置
