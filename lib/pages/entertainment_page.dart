@@ -7,6 +7,7 @@ import 'story/story_game_page.dart';
 import 'entertainment/music/music_home_page.dart';
 import 'entertainment/quiz/quiz_page.dart';
 import 'entertainment/new_year_story/new_year_story_page.dart';
+import 'entertainment/hanzi_learning/hanzi_learning_page.dart';
 
 /// 娱乐模块入口页面
 class EntertainmentPage extends StatelessWidget {
@@ -158,16 +159,15 @@ class EntertainmentPage extends StatelessWidget {
                 childAspectRatio: 0.9,
                 children: [
                   _buildFeatureCard(
-                    emoji: '🔢',
-                    title: '数学乐园',
-                    subtitle: '敬请期待',
-                    color: Colors.grey.shade300,
-                    isComingSoon: true,
-                    onTap: () {},
+                    emoji: '🔤',
+                    title: '星海识字',
+                    subtitle: 'AI趣味识字',
+                    color: const Color(0xFF7C4DFF),
+                    onTap: () => Get.to(() => const HanziLearningPage()),
                   ),
                   _buildFeatureCard(
-                    emoji: '🔤',
-                    title: '识字天地',
+                    emoji: '🔢',
+                    title: '数学乐园',
                     subtitle: '敬请期待',
                     color: Colors.grey.shade300,
                     isComingSoon: true,

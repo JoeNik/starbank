@@ -20,6 +20,10 @@ class TtsService extends GetxService {
 
   // 状态
   final RxBool isSpeaking = false.obs;
+
+  /// 朗读进度回调（参数为当前朗读到的文本起始位置 offset）
+  /// 外部（如卡拉OK高亮）可设置此回调来跟踪实际朗读位置
+  void Function(int start, int end)? onProgressCallback;
   final RxBool isInitialized = false.obs;
 
   /// 初始化服务
@@ -71,15 +75,28 @@ class TtsService extends GetxService {
 
     // 监听播放状态
     _flutterTts.setStartHandler(() => isSpeaking.value = true);
-    _flutterTts.setCompletionHandler(() => isSpeaking.value = false);
-    _flutterTts.setCancelHandler(() => isSpeaking.value = false);
+    _flutterTts.setCompletionHandler(() {
+      isSpeaking.value = false;
+      onProgressCallback = null; // 播放结束后清除回调
+    });
+    _flutterTts.setCancelHandler(() {
+      isSpeaking.value = false;
+      onProgressCallback = null;
+    });
     _flutterTts.setErrorHandler((msg) {
       isSpeaking.value = false;
+      onProgressCallback = null;
       debugPrint('TTS Error: $msg');
       // 尝试重置
       if (msg.toString().contains('not bound')) {
         _resetTts();
       }
+    });
+
+    // 朗读进度回调 - 追踪当前朗读到文本的哪个位置
+    _flutterTts.setProgressHandler(
+        (String text, int start, int end, String word) {
+      onProgressCallback?.call(start, end);
     });
 
     isInitialized.value = true;

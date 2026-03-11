@@ -1,0 +1,7220 @@
+[
+  {
+    "id": "L1_001",
+    "character": "人",
+    "pinyin": "rén",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_002",
+    "character": "口",
+    "pinyin": "kǒu",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_003",
+    "character": "大",
+    "pinyin": "dà",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_004",
+    "character": "中",
+    "pinyin": "zhōng",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_005",
+    "character": "小",
+    "pinyin": "xiǎo",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_006",
+    "character": "哭",
+    "pinyin": "kū",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_007",
+    "character": "笑",
+    "pinyin": "xiào",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_008",
+    "character": "一",
+    "pinyin": "yī",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_009",
+    "character": "上",
+    "pinyin": "shàng",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_010",
+    "character": "下",
+    "pinyin": "xià",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_011",
+    "character": "爸",
+    "pinyin": "bà",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_012",
+    "character": "妈",
+    "pinyin": "mā",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_013",
+    "character": "天",
+    "pinyin": "tiān",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_014",
+    "character": "太",
+    "pinyin": "tài",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_015",
+    "character": "月",
+    "pinyin": "yuè",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_016",
+    "character": "二",
+    "pinyin": "èr",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_017",
+    "character": "地",
+    "pinyin": "dì",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_018",
+    "character": "阳",
+    "pinyin": "yáng",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_019",
+    "character": "亮",
+    "pinyin": "liàng",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_020",
+    "character": "星",
+    "pinyin": "xīng",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_021",
+    "character": "云",
+    "pinyin": "yún",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_022",
+    "character": "火",
+    "pinyin": "huǒ",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_023",
+    "character": "水",
+    "pinyin": "shuǐ",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_024",
+    "character": "三",
+    "pinyin": "sān",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_025",
+    "character": "土",
+    "pinyin": "tǔ",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_026",
+    "character": "山",
+    "pinyin": "shān",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_027",
+    "character": "石",
+    "pinyin": "shí",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_028",
+    "character": "木",
+    "pinyin": "mù",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_029",
+    "character": "我",
+    "pinyin": "wǒ",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_030",
+    "character": "好",
+    "pinyin": "hǎo",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_031",
+    "character": "有",
+    "pinyin": "yǒu",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_032",
+    "character": "田",
+    "pinyin": "tián",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_033",
+    "character": "牛",
+    "pinyin": "niú",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_034",
+    "character": "羊",
+    "pinyin": "yáng",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_035",
+    "character": "聪",
+    "pinyin": "cōng",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_036",
+    "character": "耳",
+    "pinyin": "ěr",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_037",
+    "character": "目",
+    "pinyin": "mù",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_038",
+    "character": "心",
+    "pinyin": "xīn",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_039",
+    "character": "和",
+    "pinyin": "hé",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_040",
+    "character": "四",
+    "pinyin": "sì",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_041",
+    "character": "明",
+    "pinyin": "míng",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_042",
+    "character": "头",
+    "pinyin": "tóu",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_043",
+    "character": "眉",
+    "pinyin": "méi",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_044",
+    "character": "鼻",
+    "pinyin": "bí",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_045",
+    "character": "手",
+    "pinyin": "shǒu",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_046",
+    "character": "花",
+    "pinyin": "huā",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_047",
+    "character": "树",
+    "pinyin": "shù",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_048",
+    "character": "五",
+    "pinyin": "wǔ",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_049",
+    "character": "草",
+    "pinyin": "cǎo",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_050",
+    "character": "叶",
+    "pinyin": "yè",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_051",
+    "character": "日",
+    "pinyin": "rì",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_052",
+    "character": "风",
+    "pinyin": "fēng",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_053",
+    "character": "雨",
+    "pinyin": "yǔ",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_054",
+    "character": "的",
+    "pinyin": "de",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_055",
+    "character": "孩",
+    "pinyin": "hái",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_056",
+    "character": "六",
+    "pinyin": "liù",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_057",
+    "character": "白",
+    "pinyin": "bái",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_058",
+    "character": "红",
+    "pinyin": "hóng",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_059",
+    "character": "是",
+    "pinyin": "shì",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_060",
+    "character": "家",
+    "pinyin": "jiā",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_061",
+    "character": "多",
+    "pinyin": "duō",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_062",
+    "character": "唱",
+    "pinyin": "chàng",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_063",
+    "character": "子",
+    "pinyin": "zi",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_064",
+    "character": "七",
+    "pinyin": "qī",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_065",
+    "character": "爱",
+    "pinyin": "ài",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_066",
+    "character": "爷",
+    "pinyin": "yé",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_067",
+    "character": "奶",
+    "pinyin": "nǎi",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_068",
+    "character": "少",
+    "pinyin": "shǎo",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_069",
+    "character": "歌",
+    "pinyin": "gē",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_070",
+    "character": "不",
+    "pinyin": "bù",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_071",
+    "character": "朋",
+    "pinyin": "péng",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_072",
+    "character": "八",
+    "pinyin": "bā",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_073",
+    "character": "宝",
+    "pinyin": "bǎo",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_074",
+    "character": "在",
+    "pinyin": "zài",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_075",
+    "character": "学",
+    "pinyin": "xué",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_076",
+    "character": "书",
+    "pinyin": "shū",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_077",
+    "character": "游",
+    "pinyin": "yóu",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_078",
+    "character": "友",
+    "pinyin": "yǒu",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_079",
+    "character": "儿",
+    "pinyin": "ér",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_080",
+    "character": "九",
+    "pinyin": "jiǔ",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_081",
+    "character": "贝",
+    "pinyin": "bèi",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_082",
+    "character": "生",
+    "pinyin": "shēng",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_083",
+    "character": "习",
+    "pinyin": "xí",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_084",
+    "character": "看",
+    "pinyin": "kàn",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_085",
+    "character": "戏",
+    "pinyin": "xì",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_086",
+    "character": "字",
+    "pinyin": "zì",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_087",
+    "character": "气",
+    "pinyin": "qì",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L1_088",
+    "character": "十",
+    "pinyin": "shí",
+    "book_level": 1,
+    "stage_name": "启蒙期（万物初识）",
+    "recommended_age": "3-4岁",
+    "is_unlocked_default": true
+  },
+  {
+    "id": "L2_001",
+    "character": "会",
+    "pinyin": "huì",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_002",
+    "character": "见",
+    "pinyin": "jiàn",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_003",
+    "character": "早",
+    "pinyin": "zǎo",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_004",
+    "character": "雪",
+    "pinyin": "xuě",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_005",
+    "character": "鸡",
+    "pinyin": "jī",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_006",
+    "character": "绿",
+    "pinyin": "lǜ",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_007",
+    "character": "黄",
+    "pinyin": "huáng",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_008",
+    "character": "青",
+    "pinyin": "qīng",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_009",
+    "character": "鱼",
+    "pinyin": "yú",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_010",
+    "character": "做",
+    "pinyin": "zuò",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_011",
+    "character": "飞",
+    "pinyin": "fēi",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_012",
+    "character": "跑",
+    "pinyin": "pǎo",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_013",
+    "character": "要",
+    "pinyin": "yào",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_014",
+    "character": "吃",
+    "pinyin": "chī",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_015",
+    "character": "鸟",
+    "pinyin": "niǎo",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_016",
+    "character": "他",
+    "pinyin": "tā",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_017",
+    "character": "们",
+    "pinyin": "men",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_018",
+    "character": "春",
+    "pinyin": "chūn",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_019",
+    "character": "夏",
+    "pinyin": "xià",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_020",
+    "character": "秋",
+    "pinyin": "qiū",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_021",
+    "character": "冬",
+    "pinyin": "dōng",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_022",
+    "character": "季",
+    "pinyin": "jì",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_023",
+    "character": "都",
+    "pinyin": "dōu",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_024",
+    "character": "个",
+    "pinyin": "gè",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_025",
+    "character": "狗",
+    "pinyin": "gǒu",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_026",
+    "character": "猫",
+    "pinyin": "māo",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_027",
+    "character": "蓝",
+    "pinyin": "lán",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_028",
+    "character": "落",
+    "pinyin": "luò",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_029",
+    "character": "真",
+    "pinyin": "zhēn",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_030",
+    "character": "开",
+    "pinyin": "kāi",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_031",
+    "character": "说",
+    "pinyin": "shuō",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_032",
+    "character": "也",
+    "pinyin": "yě",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_033",
+    "character": "马",
+    "pinyin": "mǎ",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_034",
+    "character": "米",
+    "pinyin": "mǐ",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_035",
+    "character": "哥",
+    "pinyin": "gē",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_036",
+    "character": "姐",
+    "pinyin": "jiě",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_037",
+    "character": "来",
+    "pinyin": "lái",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_038",
+    "character": "黑",
+    "pinyin": "hēi",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_039",
+    "character": "去",
+    "pinyin": "qù",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_040",
+    "character": "出",
+    "pinyin": "chū",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_041",
+    "character": "跳",
+    "pinyin": "tiào",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_042",
+    "character": "着",
+    "pinyin": "zhe",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_043",
+    "character": "了",
+    "pinyin": "le",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_044",
+    "character": "你",
+    "pinyin": "nǐ",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_045",
+    "character": "又",
+    "pinyin": "yòu",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_046",
+    "character": "弟",
+    "pinyin": "dì",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_047",
+    "character": "妹",
+    "pinyin": "mèi",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_048",
+    "character": "东",
+    "pinyin": "dōng",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_049",
+    "character": "就",
+    "pinyin": "jiù",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_050",
+    "character": "还",
+    "pinyin": "hái",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_051",
+    "character": "快",
+    "pinyin": "kuài",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_052",
+    "character": "得",
+    "pinyin": "dé",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_053",
+    "character": "西",
+    "pinyin": "xī",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_054",
+    "character": "乐",
+    "pinyin": "lè",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_055",
+    "character": "到",
+    "pinyin": "dào",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_056",
+    "character": "起",
+    "pinyin": "qǐ",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_057",
+    "character": "玩",
+    "pinyin": "wán",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_058",
+    "character": "捉",
+    "pinyin": "zhuō",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_059",
+    "character": "迷",
+    "pinyin": "mí",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_060",
+    "character": "球",
+    "pinyin": "qiú",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_061",
+    "character": "很",
+    "pinyin": "hěn",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_062",
+    "character": "高",
+    "pinyin": "gāo",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_063",
+    "character": "鸭",
+    "pinyin": "yā",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_064",
+    "character": "哈",
+    "pinyin": "hā",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_065",
+    "character": "方",
+    "pinyin": "fāng",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_066",
+    "character": "爬",
+    "pinyin": "pá",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_067",
+    "character": "藏",
+    "pinyin": "cáng",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_068",
+    "character": "兴",
+    "pinyin": "xīng",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_069",
+    "character": "向",
+    "pinyin": "xiàng",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_070",
+    "character": "对",
+    "pinyin": "duì",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_071",
+    "character": "能",
+    "pinyin": "néng",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_072",
+    "character": "叫",
+    "pinyin": "jiào",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_073",
+    "character": "变",
+    "pinyin": "biàn",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_074",
+    "character": "问",
+    "pinyin": "wèn",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_075",
+    "character": "成",
+    "pinyin": "chéng",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_076",
+    "character": "再",
+    "pinyin": "zài",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_077",
+    "character": "急",
+    "pinyin": "jí",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_078",
+    "character": "教",
+    "pinyin": "jiào",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_079",
+    "character": "门",
+    "pinyin": "mén",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_080",
+    "character": "只",
+    "pinyin": "zhǐ",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_081",
+    "character": "回",
+    "pinyin": "huí",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_082",
+    "character": "公",
+    "pinyin": "gōng",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_083",
+    "character": "打",
+    "pinyin": "dǎ",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_084",
+    "character": "兔",
+    "pinyin": "tù",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_085",
+    "character": "请",
+    "pinyin": "qǐng",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_086",
+    "character": "过",
+    "pinyin": "guò",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_087",
+    "character": "吗",
+    "pinyin": "ma",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L2_088",
+    "character": "泳",
+    "pinyin": "yǒng",
+    "book_level": 2,
+    "stage_name": "探索期（动作与方位）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_001",
+    "character": "虫",
+    "pinyin": "chóng",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_002",
+    "character": "把",
+    "pinyin": "bǎ",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_003",
+    "character": "驮",
+    "pinyin": "tuó",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_004",
+    "character": "鹅",
+    "pinyin": "é",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_005",
+    "character": "河",
+    "pinyin": "hé",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_006",
+    "character": "礼",
+    "pinyin": "lǐ",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_007",
+    "character": "背",
+    "pinyin": "bèi",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_008",
+    "character": "拿",
+    "pinyin": "ná",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_009",
+    "character": "里",
+    "pinyin": "lǐ",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_010",
+    "character": "后",
+    "pinyin": "hòu",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_011",
+    "character": "谢",
+    "pinyin": "xiè",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_012",
+    "character": "边",
+    "pinyin": "biān",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_013",
+    "character": "貌",
+    "pinyin": "mào",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_014",
+    "character": "班",
+    "pinyin": "bān",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_015",
+    "character": "幼",
+    "pinyin": "yòu",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_016",
+    "character": "园",
+    "pinyin": "yuán",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_017",
+    "character": "照",
+    "pinyin": "zhào",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_018",
+    "character": "婆",
+    "pinyin": "pó",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_019",
+    "character": "甜",
+    "pinyin": "tián",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_020",
+    "character": "梦",
+    "pinyin": "mèng",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_021",
+    "character": "老",
+    "pinyin": "lǎo",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_022",
+    "character": "盒",
+    "pinyin": "hé",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_023",
+    "character": "尺",
+    "pinyin": "chǐ",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_024",
+    "character": "刀",
+    "pinyin": "dāo",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_025",
+    "character": "时",
+    "pinyin": "shí",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_026",
+    "character": "正",
+    "pinyin": "zhèng",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_027",
+    "character": "文",
+    "pinyin": "wén",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_028",
+    "character": "具",
+    "pinyin": "jù",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_029",
+    "character": "笔",
+    "pinyin": "bǐ",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_030",
+    "character": "画",
+    "pinyin": "huà",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_031",
+    "character": "长",
+    "pinyin": "zhǎng",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_032",
+    "character": "放",
+    "pinyin": "fàng",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_033",
+    "character": "用",
+    "pinyin": "yòng",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_034",
+    "character": "总",
+    "pinyin": "zǒng",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_035",
+    "character": "尾",
+    "pinyin": "wěi",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_036",
+    "character": "巴",
+    "pinyin": "bā",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_037",
+    "character": "玉",
+    "pinyin": "yù",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_038",
+    "character": "尖",
+    "pinyin": "jiān",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_039",
+    "character": "竹",
+    "pinyin": "zhú",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_040",
+    "character": "苗",
+    "pinyin": "miáo",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_041",
+    "character": "听",
+    "pinyin": "tīng",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_042",
+    "character": "话",
+    "pinyin": "huà",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_043",
+    "character": "猴",
+    "pinyin": "hóu",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_044",
+    "character": "猩",
+    "pinyin": "xīng",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_045",
+    "character": "给",
+    "pinyin": "gěi",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_046",
+    "character": "进",
+    "pinyin": "jìn",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_047",
+    "character": "告",
+    "pinyin": "gào",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_048",
+    "character": "电",
+    "pinyin": "diàn",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_049",
+    "character": "诉",
+    "pinyin": "sù",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_050",
+    "character": "念",
+    "pinyin": "niàn",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_051",
+    "character": "饭",
+    "pinyin": "fàn",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_052",
+    "character": "乖",
+    "pinyin": "guāi",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_053",
+    "character": "想",
+    "pinyin": "xiǎng",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_054",
+    "character": "面",
+    "pinyin": "miàn",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_055",
+    "character": "住",
+    "pinyin": "zhù",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_056",
+    "character": "前",
+    "pinyin": "qián",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_057",
+    "character": "从",
+    "pinyin": "cóng",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_058",
+    "character": "同",
+    "pinyin": "tóng",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_059",
+    "character": "没",
+    "pinyin": "méi",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_060",
+    "character": "送",
+    "pinyin": "sòng",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_061",
+    "character": "果",
+    "pinyin": "guǒ",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_062",
+    "character": "工",
+    "pinyin": "gōng",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_063",
+    "character": "厂",
+    "pinyin": "chǎng",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_064",
+    "character": "产",
+    "pinyin": "chǎn",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_065",
+    "character": "动",
+    "pinyin": "dòng",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_066",
+    "character": "关",
+    "pinyin": "guān",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_067",
+    "character": "找",
+    "pinyin": "zhǎo",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_068",
+    "character": "按",
+    "pinyin": "àn",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_069",
+    "character": "年",
+    "pinyin": "nián",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_070",
+    "character": "节",
+    "pinyin": "jié",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_071",
+    "character": "桃",
+    "pinyin": "táo",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_072",
+    "character": "荷",
+    "pinyin": "hé",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_073",
+    "character": "菊",
+    "pinyin": "jú",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_074",
+    "character": "梅",
+    "pinyin": "méi",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_075",
+    "character": "冷",
+    "pinyin": "lěng",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_076",
+    "character": "它",
+    "pinyin": "tā",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_077",
+    "character": "怕",
+    "pinyin": "pà",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_078",
+    "character": "躲",
+    "pinyin": "duǒ",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_079",
+    "character": "勇",
+    "pinyin": "yǒng",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_080",
+    "character": "敢",
+    "pinyin": "gǎn",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_081",
+    "character": "堆",
+    "pinyin": "duī",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_082",
+    "character": "仗",
+    "pinyin": "zhàng",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_083",
+    "character": "柳",
+    "pinyin": "liǔ",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_084",
+    "character": "农",
+    "pinyin": "nóng",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_085",
+    "character": "民",
+    "pinyin": "mín",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_086",
+    "character": "伯",
+    "pinyin": "bó",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_087",
+    "character": "种",
+    "pinyin": "zhǒng",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L3_088",
+    "character": "最",
+    "pinyin": "zuì",
+    "book_level": 3,
+    "stage_name": "社交期（生活与礼貌）",
+    "recommended_age": "4-5岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_001",
+    "character": "摔",
+    "pinyin": "shuāi",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_002",
+    "character": "声",
+    "pinyin": "shēng",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_003",
+    "character": "谁",
+    "pinyin": "shuí",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_004",
+    "character": "呢",
+    "pinyin": "ne",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_005",
+    "character": "认",
+    "pinyin": "rèn",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_006",
+    "character": "原",
+    "pinyin": "yuán",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_007",
+    "character": "痛",
+    "pinyin": "tòng",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_008",
+    "character": "喊",
+    "pinyin": "hǎn",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_009",
+    "character": "狼",
+    "pinyin": "láng",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_010",
+    "character": "啦",
+    "pinyin": "la",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_011",
+    "character": "赶",
+    "pinyin": "gǎn",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_012",
+    "character": "救",
+    "pinyin": "jiù",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_013",
+    "character": "假",
+    "pinyin": "jiǎ",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_014",
+    "character": "掉",
+    "pinyin": "diào",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_015",
+    "character": "路",
+    "pinyin": "lù",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_016",
+    "character": "碰",
+    "pinyin": "pèng",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_017",
+    "character": "哪",
+    "pinyin": "nǎ",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_018",
+    "character": "呀",
+    "pinyin": "ya",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_019",
+    "character": "两",
+    "pinyin": "liǎng",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_020",
+    "character": "逃",
+    "pinyin": "táo",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_021",
+    "character": "走",
+    "pinyin": "zǒu",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_022",
+    "character": "她",
+    "pinyin": "tā",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_023",
+    "character": "点",
+    "pinyin": "diǎn",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_024",
+    "character": "音",
+    "pinyin": "yīn",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_025",
+    "character": "可",
+    "pinyin": "kě",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_026",
+    "character": "伸",
+    "pinyin": "shēn",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_027",
+    "character": "缝",
+    "pinyin": "fèng",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_028",
+    "character": "夹",
+    "pinyin": "jiā",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_029",
+    "character": "根",
+    "pinyin": "gēn",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_030",
+    "character": "棍",
+    "pinyin": "gùn",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_031",
+    "character": "丢",
+    "pinyin": "diū",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_032",
+    "character": "灰",
+    "pinyin": "huī",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_033",
+    "character": "萝",
+    "pinyin": "luó",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_034",
+    "character": "卜",
+    "pinyin": "bo",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_035",
+    "character": "熟",
+    "pinyin": "shú",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_036",
+    "character": "拔",
+    "pinyin": "bá",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_037",
+    "character": "拉",
+    "pinyin": "lā",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_038",
+    "character": "鼠",
+    "pinyin": "shǔ",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_039",
+    "character": "咕",
+    "pinyin": "gū",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_040",
+    "character": "咚",
+    "pinyin": "dōng",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_041",
+    "character": "倒",
+    "pinyin": "dào",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_042",
+    "character": "抬",
+    "pinyin": "tái",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_043",
+    "character": "晚",
+    "pinyin": "wǎn",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_044",
+    "character": "左",
+    "pinyin": "zuǒ",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_045",
+    "character": "右",
+    "pinyin": "yòu",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_046",
+    "character": "怎",
+    "pinyin": "zěn",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_047",
+    "character": "么",
+    "pinyin": "me",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_048",
+    "character": "办",
+    "pinyin": "bàn",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_049",
+    "character": "知",
+    "pinyin": "zhī",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_050",
+    "character": "道",
+    "pinyin": "dào",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_051",
+    "character": "午",
+    "pinyin": "wǔ",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_052",
+    "character": "这",
+    "pinyin": "zhè",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_053",
+    "character": "座",
+    "pinyin": "zuò",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_054",
+    "character": "洞",
+    "pinyin": "dòng",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_055",
+    "character": "什",
+    "pinyin": "shén",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_056",
+    "character": "害",
+    "pinyin": "hài",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_057",
+    "character": "付",
+    "pinyin": "fù",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_058",
+    "character": "顶",
+    "pinyin": "dǐng",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_059",
+    "character": "角",
+    "pinyin": "jiǎo",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_060",
+    "character": "死",
+    "pinyin": "sǐ",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_061",
+    "character": "扑",
+    "pinyin": "pū",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_062",
+    "character": "期",
+    "pinyin": "qī",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_063",
+    "character": "带",
+    "pinyin": "dài",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_064",
+    "character": "分",
+    "pinyin": "fēn",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_065",
+    "character": "清",
+    "pinyin": "qīng",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_066",
+    "character": "今",
+    "pinyin": "jīn",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_067",
+    "character": "昨",
+    "pinyin": "zuó",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_068",
+    "character": "光",
+    "pinyin": "guāng",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_069",
+    "character": "阴",
+    "pinyin": "yīn",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_070",
+    "character": "错",
+    "pinyin": "cuò",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_071",
+    "character": "指",
+    "pinyin": "zhǐ",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_072",
+    "character": "拇",
+    "pinyin": "mǔ",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_073",
+    "character": "片",
+    "pinyin": "piàn",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_074",
+    "character": "吹",
+    "pinyin": "chuī",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_075",
+    "character": "浇",
+    "pinyin": "jiāo",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_076",
+    "character": "燕",
+    "pinyin": "yàn",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_077",
+    "character": "睡",
+    "pinyin": "shuì",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_078",
+    "character": "醒",
+    "pinyin": "xǐng",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_079",
+    "character": "蛙",
+    "pinyin": "wā",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_080",
+    "character": "呱",
+    "pinyin": "gū",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_081",
+    "character": "南",
+    "pinyin": "nán",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_082",
+    "character": "椅",
+    "pinyin": "yǐ",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_083",
+    "character": "坐",
+    "pinyin": "zuò",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_084",
+    "character": "身",
+    "pinyin": "shēn",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_085",
+    "character": "吧",
+    "pinyin": "ba",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_086",
+    "character": "桌",
+    "pinyin": "zhuō",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_087",
+    "character": "布",
+    "pinyin": "bù",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L4_088",
+    "character": "抱",
+    "pinyin": "bào",
+    "book_level": 4,
+    "stage_name": "认知期（情绪与自然）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_001",
+    "character": "食",
+    "pinyin": "shí",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_002",
+    "character": "无",
+    "pinyin": "wú",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_003",
+    "character": "名",
+    "pinyin": "míng",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_004",
+    "character": "加",
+    "pinyin": "jiā",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_005",
+    "character": "共",
+    "pinyin": "gòng",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_006",
+    "character": "事",
+    "pinyin": "shì",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_007",
+    "character": "帮",
+    "pinyin": "bāng",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_008",
+    "character": "饿",
+    "pinyin": "è",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_009",
+    "character": "肚",
+    "pinyin": "dù",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_010",
+    "character": "狮",
+    "pinyin": "shī",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_011",
+    "character": "觉",
+    "pinyin": "jué",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_012",
+    "character": "毛",
+    "pinyin": "máo",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_013",
+    "character": "求",
+    "pinyin": "qiú",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_014",
+    "character": "等",
+    "pinyin": "děng",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_015",
+    "character": "香",
+    "pinyin": "xiāng",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_016",
+    "character": "肉",
+    "pinyin": "ròu",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_017",
+    "character": "张",
+    "pinyin": "zhāng",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_018",
+    "character": "网",
+    "pinyin": "wǎng",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_019",
+    "character": "咬",
+    "pinyin": "yǎo",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_020",
+    "character": "力",
+    "pinyin": "lì",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_021",
+    "character": "啊",
+    "pinyin": "a",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_022",
+    "character": "牙",
+    "pinyin": "yá",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_023",
+    "character": "嘴",
+    "pinyin": "zuǐ",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_024",
+    "character": "漂",
+    "pinyin": "piāo",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_025",
+    "character": "胡",
+    "pinyin": "hú",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_026",
+    "character": "虎",
+    "pinyin": "hǔ",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_027",
+    "character": "贴",
+    "pinyin": "tiē",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_028",
+    "character": "才",
+    "pinyin": "cái",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_029",
+    "character": "数",
+    "pinyin": "shù",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_030",
+    "character": "更",
+    "pinyin": "gèng",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_031",
+    "character": "朵",
+    "pinyin": "duǒ",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_032",
+    "character": "纸",
+    "pinyin": "zhǐ",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_033",
+    "character": "圆",
+    "pinyin": "yuán",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_034",
+    "character": "圈",
+    "pinyin": "quān",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_035",
+    "character": "亲",
+    "pinyin": "qīn",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_036",
+    "character": "脸",
+    "pinyin": "liǎn",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_037",
+    "character": "眼",
+    "pinyin": "yǎn",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_038",
+    "character": "睛",
+    "pinyin": "jīng",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_039",
+    "character": "接",
+    "pinyin": "jiē",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_040",
+    "character": "外",
+    "pinyin": "wài",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_041",
+    "character": "笨",
+    "pinyin": "bèn",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_042",
+    "character": "以",
+    "pinyin": "yǐ",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_043",
+    "character": "自",
+    "pinyin": "zì",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_044",
+    "character": "己",
+    "pinyin": "jǐ",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_045",
+    "character": "慢",
+    "pinyin": "màn",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_046",
+    "character": "难",
+    "pinyin": "nán",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_047",
+    "character": "练",
+    "pinyin": "liàn",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_048",
+    "character": "每",
+    "pinyin": "měi",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_049",
+    "character": "颗",
+    "pinyin": "kē",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_050",
+    "character": "样",
+    "pinyin": "yàng",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_051",
+    "character": "因",
+    "pinyin": "yīn",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_052",
+    "character": "为",
+    "pinyin": "wèi",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_053",
+    "character": "离",
+    "pinyin": "lí",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_054",
+    "character": "近",
+    "pinyin": "jìn",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_055",
+    "character": "象",
+    "pinyin": "xiàng",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_056",
+    "character": "船",
+    "pinyin": "chuán",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_057",
+    "character": "闪",
+    "pinyin": "shǎn",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_058",
+    "character": "金",
+    "pinyin": "jīn",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_059",
+    "character": "美",
+    "pinyin": "měi",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_060",
+    "character": "丽",
+    "pinyin": "lì",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_061",
+    "character": "当",
+    "pinyin": "dāng",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_062",
+    "character": "扇",
+    "pinyin": "shàn",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_063",
+    "character": "满",
+    "pinyin": "mǎn",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_064",
+    "character": "干",
+    "pinyin": "gàn",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_065",
+    "character": "朝",
+    "pinyin": "cháo",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_066",
+    "character": "熊",
+    "pinyin": "xióng",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_067",
+    "character": "娃",
+    "pinyin": "wá",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_068",
+    "character": "汽",
+    "pinyin": "qì",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_069",
+    "character": "车",
+    "pinyin": "chē",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_070",
+    "character": "北",
+    "pinyin": "běi",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_071",
+    "character": "京",
+    "pinyin": "jīng",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_072",
+    "character": "往",
+    "pinyin": "wǎng",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_073",
+    "character": "呜",
+    "pinyin": "wū",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_074",
+    "character": "鹿",
+    "pinyin": "lù",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_075",
+    "character": "森",
+    "pinyin": "sēn",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_076",
+    "character": "林",
+    "pinyin": "lín",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_077",
+    "character": "采",
+    "pinyin": "cǎi",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_078",
+    "character": "蘑",
+    "pinyin": "mó",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_079",
+    "character": "菇",
+    "pinyin": "gū",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_080",
+    "character": "篮",
+    "pinyin": "lán",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_081",
+    "character": "直",
+    "pinyin": "zhí",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_082",
+    "character": "摸",
+    "pinyin": "mō",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_083",
+    "character": "苔",
+    "pinyin": "tái",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_084",
+    "character": "所",
+    "pinyin": "suǒ",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_085",
+    "character": "科",
+    "pinyin": "kē",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_086",
+    "character": "灯",
+    "pinyin": "dēng",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_087",
+    "character": "应",
+    "pinyin": "yīng",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_088",
+    "character": "该",
+    "pinyin": "gāi",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L5_089",
+    "character": "题",
+    "pinyin": "tí",
+    "book_level": 5,
+    "stage_name": "进阶期（形容词与科学）",
+    "recommended_age": "5-6岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_001",
+    "character": "停",
+    "pinyin": "tíng",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_002",
+    "character": "而",
+    "pinyin": "ér",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_003",
+    "character": "窗",
+    "pinyin": "chuāng",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_004",
+    "character": "刚",
+    "pinyin": "gāng",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_005",
+    "character": "撞",
+    "pinyin": "zhuàng",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_006",
+    "character": "比",
+    "pinyin": "bǐ",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_007",
+    "character": "记",
+    "pinyin": "jì",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_008",
+    "character": "串",
+    "pinyin": "chuàn",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_009",
+    "character": "被",
+    "pinyin": "bèi",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_010",
+    "character": "够",
+    "pinyin": "gòu",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_011",
+    "character": "命",
+    "pinyin": "mìng",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_012",
+    "character": "颈",
+    "pinyin": "jǐng",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_013",
+    "character": "定",
+    "pinyin": "dìng",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_014",
+    "character": "吓",
+    "pinyin": "xià",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_015",
+    "character": "啄",
+    "pinyin": "zhuó",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_016",
+    "character": "破",
+    "pinyin": "pò",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_017",
+    "character": "湖",
+    "pinyin": "hú",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_018",
+    "character": "棵",
+    "pinyin": "kē",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_019",
+    "character": "瓜",
+    "pinyin": "guā",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_020",
+    "character": "透",
+    "pinyin": "tòu",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_021",
+    "character": "腿",
+    "pinyin": "tuǐ",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_022",
+    "character": "狐",
+    "pinyin": "hú",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_023",
+    "character": "粗",
+    "pinyin": "cū",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_024",
+    "character": "竿",
+    "pinyin": "gān",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_025",
+    "character": "狸",
+    "pinyin": "lí",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_026",
+    "character": "跟",
+    "pinyin": "gēn",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_027",
+    "character": "钓",
+    "pinyin": "diào",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_028",
+    "character": "甩",
+    "pinyin": "shuǎi",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_029",
+    "character": "钩",
+    "pinyin": "gōu",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_030",
+    "character": "忘",
+    "pinyin": "wàng",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_031",
+    "character": "装",
+    "pinyin": "zhuāng",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_032",
+    "character": "饵",
+    "pinyin": "ěr",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_033",
+    "character": "算",
+    "pinyin": "suàn",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_034",
+    "character": "桶",
+    "pinyin": "tǒng",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_035",
+    "character": "坏",
+    "pinyin": "huài",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_036",
+    "character": "忙",
+    "pinyin": "máng",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_037",
+    "character": "洗",
+    "pinyin": "xǐ",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_038",
+    "character": "忽",
+    "pinyin": "hū",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_039",
+    "character": "然",
+    "pinyin": "rán",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_040",
+    "character": "全",
+    "pinyin": "quán",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_041",
+    "character": "条",
+    "pinyin": "tiáo",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_042",
+    "character": "怪",
+    "pinyin": "guài",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_043",
+    "character": "物",
+    "pinyin": "wù",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_044",
+    "character": "猪",
+    "pinyin": "zhū",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_045",
+    "character": "影",
+    "pinyin": "yǐng",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_046",
+    "character": "信",
+    "pinyin": "xìn",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_047",
+    "character": "呼",
+    "pinyin": "hū",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_048",
+    "character": "结",
+    "pinyin": "jié",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_049",
+    "character": "冰",
+    "pinyin": "bīng",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_050",
+    "character": "枝",
+    "pinyin": "zhī",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_051",
+    "character": "发",
+    "pinyin": "fā",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_052",
+    "character": "抖",
+    "pinyin": "dǒu",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_053",
+    "character": "暖",
+    "pinyin": "nuǎn",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_054",
+    "character": "屋",
+    "pinyin": "wū",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_055",
+    "character": "法",
+    "pinyin": "fǎ",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_056",
+    "character": "件",
+    "pinyin": "jiàn",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_057",
+    "character": "于",
+    "pinyin": "yú",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_058",
+    "character": "松",
+    "pinyin": "sōng",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_059",
+    "character": "帽",
+    "pinyin": "mào",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_060",
+    "character": "戴",
+    "pinyin": "dài",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_061",
+    "character": "热",
+    "pinyin": "rè",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_062",
+    "character": "候",
+    "pinyin": "hòu",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_063",
+    "character": "劳",
+    "pinyin": "láo",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_064",
+    "character": "流",
+    "pinyin": "liú",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_065",
+    "character": "汗",
+    "pinyin": "hàn",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_066",
+    "character": "凉",
+    "pinyin": "liáng",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_067",
+    "character": "别",
+    "pinyin": "bié",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_068",
+    "character": "整",
+    "pinyin": "zhěng",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_069",
+    "character": "盖",
+    "pinyin": "gài",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_070",
+    "character": "怜",
+    "pinyin": "lián",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_071",
+    "character": "窝",
+    "pinyin": "wō",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_072",
+    "character": "病",
+    "pinyin": "bìng",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_073",
+    "character": "受",
+    "pinyin": "shòu",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_074",
+    "character": "羽",
+    "pinyin": "yǔ",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_075",
+    "character": "望",
+    "pinyin": "wàng",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_076",
+    "character": "骑",
+    "pinyin": "qí",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_077",
+    "character": "行",
+    "pinyin": "xíng",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_078",
+    "character": "远",
+    "pinyin": "yuǎn",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_079",
+    "character": "经",
+    "pinyin": "jīng",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_080",
+    "character": "旁",
+    "pinyin": "páng",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_081",
+    "character": "婶",
+    "pinyin": "shěn",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_082",
+    "character": "呵",
+    "pinyin": "hē",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_083",
+    "character": "稀",
+    "pinyin": "xī",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_084",
+    "character": "奇",
+    "pinyin": "qí",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_085",
+    "character": "祝",
+    "pinyin": "zhù",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_086",
+    "character": "贺",
+    "pinyin": "hè",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_087",
+    "character": "哟",
+    "pinyin": "yō",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_088",
+    "character": "脑",
+    "pinyin": "nǎo",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_089",
+    "character": "呆",
+    "pinyin": "dāi",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_090",
+    "character": "床",
+    "pinyin": "chuáng",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_091",
+    "character": "闹",
+    "pinyin": "nào",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_092",
+    "character": "钟",
+    "pinyin": "zhōng",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_093",
+    "character": "拨",
+    "pinyin": "bō",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_094",
+    "character": "准",
+    "pinyin": "zhǔn",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_095",
+    "character": "备",
+    "pinyin": "bèi",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_096",
+    "character": "其",
+    "pinyin": "qí",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_097",
+    "character": "实",
+    "pinyin": "shí",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_098",
+    "character": "轻",
+    "pinyin": "qīng",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_099",
+    "character": "响",
+    "pinyin": "xiǎng",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_100",
+    "character": "迟",
+    "pinyin": "chí",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_101",
+    "character": "已",
+    "pinyin": "yǐ",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_102",
+    "character": "叠",
+    "pinyin": "dié",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_103",
+    "character": "包",
+    "pinyin": "bāo",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_104",
+    "character": "碗",
+    "pinyin": "wǎn",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_105",
+    "character": "写",
+    "pinyin": "xiě",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_106",
+    "character": "冒",
+    "pinyin": "mào",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L6_107",
+    "character": "您",
+    "pinyin": "nín",
+    "book_level": 6,
+    "stage_name": "衔接期（幼小冲刺）",
+    "recommended_age": "6-7岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_001",
+    "character": "安",
+    "pinyin": "ān",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_002",
+    "character": "伴",
+    "pinyin": "bàn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_003",
+    "character": "半",
+    "pinyin": "bàn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_004",
+    "character": "办",
+    "pinyin": "bàn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_005",
+    "character": "报",
+    "pinyin": "bào",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_006",
+    "character": "杯",
+    "pinyin": "bēi",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_007",
+    "character": "悲",
+    "pinyin": "bēi",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_008",
+    "character": "北",
+    "pinyin": "běi",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_009",
+    "character": "备",
+    "pinyin": "bèi",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_010",
+    "character": "本",
+    "pinyin": "běn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_011",
+    "character": "必",
+    "pinyin": "bì",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_012",
+    "character": "闭",
+    "pinyin": "bì",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_013",
+    "character": "避",
+    "pinyin": "bì",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_014",
+    "character": "标",
+    "pinyin": "biāo",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_015",
+    "character": "表",
+    "pinyin": "biǎo",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_016",
+    "character": "饼",
+    "pinyin": "bǐng",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_017",
+    "character": "并",
+    "pinyin": "bìng",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_018",
+    "character": "步",
+    "pinyin": "bù",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_019",
+    "character": "猜",
+    "pinyin": "cāi",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_020",
+    "character": "材",
+    "pinyin": "cái",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_021",
+    "character": "彩",
+    "pinyin": "cǎi",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_022",
+    "character": "菜",
+    "pinyin": "cài",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_023",
+    "character": "参",
+    "pinyin": "cān",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_024",
+    "character": "操",
+    "pinyin": "cāo",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_025",
+    "character": "册",
+    "pinyin": "cè",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_026",
+    "character": "查",
+    "pinyin": "chá",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_027",
+    "character": "察",
+    "pinyin": "chá",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_028",
+    "character": "拆",
+    "pinyin": "chāi",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_029",
+    "character": "柴",
+    "pinyin": "chái",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_030",
+    "character": "乘",
+    "pinyin": "chéng",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_031",
+    "character": "充",
+    "pinyin": "chōng",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_032",
+    "character": "抽",
+    "pinyin": "chōu",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_033",
+    "character": "除",
+    "pinyin": "chú",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_034",
+    "character": "楚",
+    "pinyin": "chǔ",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_035",
+    "character": "处",
+    "pinyin": "chù",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_036",
+    "character": "穿",
+    "pinyin": "chuān",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_037",
+    "character": "传",
+    "pinyin": "chuán",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_038",
+    "character": "创",
+    "pinyin": "chuàng",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_039",
+    "character": "词",
+    "pinyin": "cí",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_040",
+    "character": "此",
+    "pinyin": "cǐ",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_041",
+    "character": "村",
+    "pinyin": "cūn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_042",
+    "character": "存",
+    "pinyin": "cún",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_043",
+    "character": "待",
+    "pinyin": "dài",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_044",
+    "character": "代",
+    "pinyin": "dài",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_045",
+    "character": "单",
+    "pinyin": "dān",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_046",
+    "character": "但",
+    "pinyin": "dàn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_047",
+    "character": "淡",
+    "pinyin": "dàn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_048",
+    "character": "蛋",
+    "pinyin": "dàn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_049",
+    "character": "导",
+    "pinyin": "dǎo",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_050",
+    "character": "岛",
+    "pinyin": "dǎo",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_051",
+    "character": "底",
+    "pinyin": "dǐ",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_052",
+    "character": "低",
+    "pinyin": "dī",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_053",
+    "character": "店",
+    "pinyin": "diàn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_054",
+    "character": "调",
+    "pinyin": "diào",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_055",
+    "character": "读",
+    "pinyin": "dú",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_056",
+    "character": "短",
+    "pinyin": "duǎn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_057",
+    "character": "度",
+    "pinyin": "dù",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_058",
+    "character": "断",
+    "pinyin": "duàn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_059",
+    "character": "对",
+    "pinyin": "duì",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_060",
+    "character": "吨",
+    "pinyin": "dūn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_061",
+    "character": "恩",
+    "pinyin": "ēn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_062",
+    "character": "发",
+    "pinyin": "fā",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_063",
+    "character": "翻",
+    "pinyin": "fān",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_064",
+    "character": "凡",
+    "pinyin": "fán",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_065",
+    "character": "烦",
+    "pinyin": "fán",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_066",
+    "character": "反",
+    "pinyin": "fǎn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_067",
+    "character": "房",
+    "pinyin": "fáng",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_068",
+    "character": "防",
+    "pinyin": "fáng",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_069",
+    "character": "肥",
+    "pinyin": "féi",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_070",
+    "character": "费",
+    "pinyin": "fèi",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_071",
+    "character": "分",
+    "pinyin": "fēn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_072",
+    "character": "份",
+    "pinyin": "fèn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_073",
+    "character": "风",
+    "pinyin": "fēng",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_074",
+    "character": "丰",
+    "pinyin": "fēng",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_075",
+    "character": "封",
+    "pinyin": "fēng",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_076",
+    "character": "蜂",
+    "pinyin": "fēng",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_077",
+    "character": "服",
+    "pinyin": "fú",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_078",
+    "character": "福",
+    "pinyin": "fú",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_079",
+    "character": "抚",
+    "pinyin": "fǔ",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_080",
+    "character": "斧",
+    "pinyin": "fǔ",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_081",
+    "character": "父",
+    "pinyin": "fù",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_082",
+    "character": "该",
+    "pinyin": "gāi",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_083",
+    "character": "改",
+    "pinyin": "gǎi",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_084",
+    "character": "甘",
+    "pinyin": "gān",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_085",
+    "character": "敢",
+    "pinyin": "gǎn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_086",
+    "character": "感",
+    "pinyin": "gǎn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_087",
+    "character": "刚",
+    "pinyin": "gāng",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_088",
+    "character": "钢",
+    "pinyin": "gāng",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_089",
+    "character": "高",
+    "pinyin": "gāo",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_090",
+    "character": "搞",
+    "pinyin": "gǎo",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_091",
+    "character": "糕",
+    "pinyin": "gāo",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_092",
+    "character": "膏",
+    "pinyin": "gāo",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_093",
+    "character": "格",
+    "pinyin": "gé",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_094",
+    "character": "阁",
+    "pinyin": "gé",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_095",
+    "character": "各",
+    "pinyin": "gè",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_096",
+    "character": "工",
+    "pinyin": "gōng",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_097",
+    "character": "功",
+    "pinyin": "gōng",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_098",
+    "character": "弓",
+    "pinyin": "gōng",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_099",
+    "character": "沟",
+    "pinyin": "gōu",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_100",
+    "character": "购",
+    "pinyin": "gòu",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_101",
+    "character": "孤",
+    "pinyin": "gū",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_102",
+    "character": "鼓",
+    "pinyin": "gǔ",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_103",
+    "character": "古",
+    "pinyin": "gǔ",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_104",
+    "character": "骨",
+    "pinyin": "gǔ",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_105",
+    "character": "谷",
+    "pinyin": "gǔ",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_106",
+    "character": "故",
+    "pinyin": "gù",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_107",
+    "character": "顾",
+    "pinyin": "gù",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_108",
+    "character": "刮",
+    "pinyin": "guā",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_109",
+    "character": "挂",
+    "pinyin": "guà",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_110",
+    "character": "拐",
+    "pinyin": "guǎi",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_111",
+    "character": "观",
+    "pinyin": "guān",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_112",
+    "character": "官",
+    "pinyin": "guān",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_113",
+    "character": "馆",
+    "pinyin": "guǎn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_114",
+    "character": "管",
+    "pinyin": "guǎn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_115",
+    "character": "惯",
+    "pinyin": "guàn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_116",
+    "character": "光",
+    "pinyin": "guāng",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_117",
+    "character": "广",
+    "pinyin": "guǎng",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_118",
+    "character": "逛",
+    "pinyin": "guàng",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_119",
+    "character": "规",
+    "pinyin": "guī",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_120",
+    "character": "鬼",
+    "pinyin": "guǐ",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_121",
+    "character": "贵",
+    "pinyin": "guì",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_122",
+    "character": "国",
+    "pinyin": "guó",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_123",
+    "character": "果",
+    "pinyin": "guǒ",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_124",
+    "character": "过",
+    "pinyin": "guò",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_125",
+    "character": "海",
+    "pinyin": "hǎi",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_126",
+    "character": "喊",
+    "pinyin": "hǎn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_127",
+    "character": "汉",
+    "pinyin": "hàn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_128",
+    "character": "航",
+    "pinyin": "háng",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_129",
+    "character": "行",
+    "pinyin": "xíng",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_130",
+    "character": "好",
+    "pinyin": "hǎo",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_131",
+    "character": "号",
+    "pinyin": "hào",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_132",
+    "character": "合",
+    "pinyin": "hé",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_133",
+    "character": "何",
+    "pinyin": "hé",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_134",
+    "character": "盒",
+    "pinyin": "hé",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_135",
+    "character": "黑",
+    "pinyin": "hēi",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_136",
+    "character": "很",
+    "pinyin": "hěn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_137",
+    "character": "狠",
+    "pinyin": "hěn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_138",
+    "character": "恨",
+    "pinyin": "hèn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_139",
+    "character": "恒",
+    "pinyin": "héng",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_140",
+    "character": "红",
+    "pinyin": "hóng",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_141",
+    "character": "宏",
+    "pinyin": "hóng",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_142",
+    "character": "厚",
+    "pinyin": "hòu",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_143",
+    "character": "候",
+    "pinyin": "hòu",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_144",
+    "character": "呼",
+    "pinyin": "hū",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_145",
+    "character": "胡",
+    "pinyin": "hú",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_146",
+    "character": "壶",
+    "pinyin": "hú",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_147",
+    "character": "湖",
+    "pinyin": "hú",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_148",
+    "character": "糊",
+    "pinyin": "hú",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_149",
+    "character": "互",
+    "pinyin": "hù",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_150",
+    "character": "护",
+    "pinyin": "hù",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_151",
+    "character": "户",
+    "pinyin": "hù",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_152",
+    "character": "花",
+    "pinyin": "huā",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_153",
+    "character": "华",
+    "pinyin": "huá",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_154",
+    "character": "滑",
+    "pinyin": "huá",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_155",
+    "character": "画",
+    "pinyin": "huà",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_156",
+    "character": "化",
+    "pinyin": "huà",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_157",
+    "character": "话",
+    "pinyin": "huà",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_158",
+    "character": "欢",
+    "pinyin": "huān",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_159",
+    "character": "怀",
+    "pinyin": "huái",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_160",
+    "character": "坏",
+    "pinyin": "huài",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_161",
+    "character": "欢",
+    "pinyin": "huān",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_162",
+    "character": "环",
+    "pinyin": "huán",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_163",
+    "character": "幻",
+    "pinyin": "huàn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_164",
+    "character": "换",
+    "pinyin": "huàn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_165",
+    "character": "黄",
+    "pinyin": "huáng",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_166",
+    "character": "谎",
+    "pinyin": "huǎng",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_167",
+    "character": "灰",
+    "pinyin": "huī",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_168",
+    "character": "恢",
+    "pinyin": "huī",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_169",
+    "character": "辉",
+    "pinyin": "huī",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_170",
+    "character": "回",
+    "pinyin": "huí",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_171",
+    "character": "毁",
+    "pinyin": "huǐ",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_172",
+    "character": "会",
+    "pinyin": "huì",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_173",
+    "character": "汇",
+    "pinyin": "huì",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_174",
+    "character": "婚",
+    "pinyin": "hūn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_175",
+    "character": "活",
+    "pinyin": "huó",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_176",
+    "character": "火",
+    "pinyin": "huǒ",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_177",
+    "character": "伙",
+    "pinyin": "huǒ",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_178",
+    "character": "或",
+    "pinyin": "huò",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_179",
+    "character": "机",
+    "pinyin": "jī",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_180",
+    "character": "鸡",
+    "pinyin": "jī",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_181",
+    "character": "奇",
+    "pinyin": "qí",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_182",
+    "character": "及",
+    "pinyin": "jí",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_183",
+    "character": "级",
+    "pinyin": "jí",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_184",
+    "character": "极",
+    "pinyin": "jí",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_185",
+    "character": "急",
+    "pinyin": "jí",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_186",
+    "character": "挤",
+    "pinyin": "jǐ",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_187",
+    "character": "几",
+    "pinyin": "jǐ",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_188",
+    "character": "己",
+    "pinyin": "jǐ",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_189",
+    "character": "计",
+    "pinyin": "jì",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_190",
+    "character": "记",
+    "pinyin": "jì",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_191",
+    "character": "纪",
+    "pinyin": "jì",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_192",
+    "character": "技",
+    "pinyin": "jì",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_193",
+    "character": "系",
+    "pinyin": "xì",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_194",
+    "character": "际",
+    "pinyin": "jì",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_195",
+    "character": "继",
+    "pinyin": "jì",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_196",
+    "character": "家",
+    "pinyin": "jiā",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_197",
+    "character": "加",
+    "pinyin": "jiā",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_198",
+    "character": "佳",
+    "pinyin": "jiā",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_199",
+    "character": "假",
+    "pinyin": "jiǎ",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_200",
+    "character": "价",
+    "pinyin": "jià",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_201",
+    "character": "架",
+    "pinyin": "jià",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_202",
+    "character": "简",
+    "pinyin": "jiǎn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_203",
+    "character": "减",
+    "pinyin": "jiǎn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_204",
+    "character": "检",
+    "pinyin": "jiǎn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_205",
+    "character": "见",
+    "pinyin": "jiàn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_206",
+    "character": "件",
+    "pinyin": "jiàn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_207",
+    "character": "建",
+    "pinyin": "jiàn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_208",
+    "character": "健",
+    "pinyin": "jiàn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_209",
+    "character": "交",
+    "pinyin": "jiāo",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_210",
+    "character": "浇",
+    "pinyin": "jiāo",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_211",
+    "character": "骄",
+    "pinyin": "jiāo",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_212",
+    "character": "胶",
+    "pinyin": "jiāo",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_213",
+    "character": "角",
+    "pinyin": "jiǎo",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_214",
+    "character": "脚",
+    "pinyin": "jiǎo",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_215",
+    "character": "饺",
+    "pinyin": "jiǎo",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_216",
+    "character": "叫",
+    "pinyin": "jiào",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_217",
+    "character": "较",
+    "pinyin": "jiào",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_218",
+    "character": "接",
+    "pinyin": "jiē",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_219",
+    "character": "街",
+    "pinyin": "jiē",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_220",
+    "character": "节",
+    "pinyin": "jié",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_221",
+    "character": "劫",
+    "pinyin": "jié",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_222",
+    "character": "杰",
+    "pinyin": "jié",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_223",
+    "character": "结",
+    "pinyin": "jié",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_224",
+    "character": "解",
+    "pinyin": "jiě",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_225",
+    "character": "姐",
+    "pinyin": "jiě",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_226",
+    "character": "借",
+    "pinyin": "jiè",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_227",
+    "character": "界",
+    "pinyin": "jiè",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_228",
+    "character": "今",
+    "pinyin": "jīn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_229",
+    "character": "金",
+    "pinyin": "jīn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_230",
+    "character": "斤",
+    "pinyin": "jīn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_231",
+    "character": "仅",
+    "pinyin": "jǐn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_232",
+    "character": "紧",
+    "pinyin": "jǐn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_233",
+    "character": "尽",
+    "pinyin": "jǐn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_234",
+    "character": "进",
+    "pinyin": "jìn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_235",
+    "character": "近",
+    "pinyin": "jìn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_236",
+    "character": "京",
+    "pinyin": "jīng",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_237",
+    "character": "经",
+    "pinyin": "jīng",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_238",
+    "character": "惊",
+    "pinyin": "jīng",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_239",
+    "character": "睛",
+    "pinyin": "jīng",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_240",
+    "character": "景",
+    "pinyin": "jǐng",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_241",
+    "character": "静",
+    "pinyin": "jìng",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_242",
+    "character": "境",
+    "pinyin": "jìng",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_243",
+    "character": "纠",
+    "pinyin": "jiū",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_244",
+    "character": "旧",
+    "pinyin": "jiù",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_245",
+    "character": "就",
+    "pinyin": "jiù",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_246",
+    "character": "橘",
+    "pinyin": "jú",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_247",
+    "character": "举",
+    "pinyin": "jǔ",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_248",
+    "character": "句",
+    "pinyin": "jù",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_249",
+    "character": "具",
+    "pinyin": "jù",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_250",
+    "character": "聚",
+    "pinyin": "jù",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_251",
+    "character": "决",
+    "pinyin": "jué",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_252",
+    "character": "绝",
+    "pinyin": "jué",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_253",
+    "character": "觉",
+    "pinyin": "jué",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  },
+  {
+    "id": "L7_254",
+    "character": "军",
+    "pinyin": "jūn",
+    "book_level": 7,
+    "stage_name": "自主阅读期（学霸拓展）",
+    "recommended_age": "7-8岁",
+    "is_unlocked_default": false
+  }
+]

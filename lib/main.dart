@@ -19,6 +19,8 @@ import 'services/story_management_service.dart';
 import 'services/ai_generation_service.dart';
 import 'models/quiz_config.dart';
 import 'models/quiz_question.dart';
+import 'models/hanzi_learning_config.dart';
+import 'services/hanzi_learning_service.dart';
 // import 'package:just_audio_background/just_audio_background.dart';
 
 import 'pages/home_page.dart';
@@ -59,6 +61,13 @@ void main() async {
   } else {
     debugPrint('⚠️ QuizQuestionAdapter already registered (typeId: 31)');
   }
+  // 汉字学习配置适配器
+  if (!Hive.isAdapterRegistered(40)) {
+    Hive.registerAdapter(HanziLearningConfigAdapter());
+    debugPrint('✅ HanziLearningConfigAdapter registered (typeId: 40)');
+  } else {
+    debugPrint('⚠️ HanziLearningConfigAdapter already registered (typeId: 40)');
+  }
 
   debugPrint('📦 准备初始化 StorageService...');
 
@@ -96,10 +105,15 @@ void main() async {
       final storyManagementService = StoryManagementService.instance;
       await storyManagementService.init();
 
-      // Initialize AI Generation Service (Singleton)
+      // 初始化 AI 生成服务 (Singleton)
       Get.put(AIGenerationService());
 
-      debugPrint('Quiz and Story services initialized');
+      // 初始化汉字学习服务
+      final hanziService = HanziLearningService();
+      Get.put(hanziService);
+      await hanziService.init();
+
+      debugPrint('Quiz, Story and Hanzi services initialized');
     } catch (e, stack) {
       debugPrint('Quiz/Story services init failed: $e');
       debugPrint('Stack: $stack');

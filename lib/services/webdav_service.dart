@@ -24,6 +24,7 @@ import '../models/story_game_config.dart';
 import '../services/story_management_service.dart';
 import '../services/quiz_service.dart';
 import '../models/quiz_config.dart';
+import '../models/hanzi_learning_config.dart';
 
 /// 备份文件信息
 class BackupFileInfo {
@@ -322,6 +323,15 @@ class WebDavService extends GetxService {
         }
       } catch (e) {
         print('备份新年问答失败: $e');
+      }
+
+      // 备份汉字学习配置
+      try {
+        final hanziBox = await Hive.openBox('hanzi_learning_config');
+        backupData['hanziLearningConfig'] =
+            Map<String, dynamic>.from(hanziBox.toMap());
+      } catch (e) {
+        print('备份汉字学习配置失败: $e');
       }
 
       backupData['timestamp'] = DateTime.now().toIso8601String();
@@ -838,6 +848,21 @@ class WebDavService extends GetxService {
         }
       }
 
+      // 恢复汉字学习配置
+      if (backupData['hanziLearningConfig'] != null) {
+        try {
+          final hanziBox = await Hive.openBox('hanzi_learning_config');
+          await hanziBox.clear();
+          final config = backupData['hanziLearningConfig'] as Map;
+          for (var entry in config.entries) {
+            await hanziBox.put(entry.key, entry.value);
+          }
+          await hanziBox.flush();
+        } catch (e) {
+          print('恢复汉字学习配置失败: $e');
+        }
+      }
+
       ToastUtils.showSuccess('数据已恢复，请重启应用以生效');
       return true;
     } catch (e) {
@@ -924,6 +949,10 @@ class WebDavService extends GetxService {
     // StoryGameConfig (14)
     if (!Hive.isAdapterRegistered(14)) {
       Hive.registerAdapter(StoryGameConfigAdapter());
+    }
+    // HanziLearningConfig (40)
+    if (!Hive.isAdapterRegistered(40)) {
+      Hive.registerAdapter(HanziLearningConfigAdapter());
     }
   }
 }
