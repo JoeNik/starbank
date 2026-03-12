@@ -11,6 +11,7 @@ import '../openai_settings_page.dart';
 
 import '../../controllers/app_mode_controller.dart';
 import '../../widgets/toast_utils.dart';
+import '../../widgets/tts_engine_selector.dart';
 
 /// 故事游戏设置页面
 class StoryGameSettingsPage extends StatefulWidget {
@@ -175,6 +176,19 @@ class _StoryGameSettingsPageState extends State<StoryGameSettingsPage> {
                       ),
                     ],
                   ),
+                ),
+
+                SizedBox(height: 24.h),
+
+                // 语音设置
+                _buildSectionTitle('🗣️ 语音合成 (TTS) 设置'),
+                _buildConfigCard(
+                  children: [
+                    const TtsEngineSelector(
+                      featureKey: 'story_game',
+                      title: '当前功能 TTS 引擎',
+                    ),
+                  ],
                 ),
 
                 SizedBox(height: 24.h),

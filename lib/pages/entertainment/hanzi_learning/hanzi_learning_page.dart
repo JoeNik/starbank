@@ -7,6 +7,7 @@ import '../../../services/hanzi_learning_service.dart';
 import '../../../services/tts_service.dart';
 import '../../../controllers/app_mode_controller.dart';
 import '../../../widgets/toast_utils.dart';
+import '../../../widgets/tts_engine_selector.dart';
 import 'hanzi_library_page.dart';
 import 'hanzi_learning_settings_page.dart';
 
@@ -180,8 +181,12 @@ class _HanziLearningPageState extends State<HanziLearningPage>
 
     // 每册的颜色和 Emoji
     const levelColors = [
-      Color(0xFFFF6B6B), Color(0xFFFFB347), Color(0xFF87CEEB),
-      Color(0xFF98D8C8), Color(0xFFC39BD3), Color(0xFFFFD700),
+      Color(0xFFFF6B6B),
+      Color(0xFFFFB347),
+      Color(0xFF87CEEB),
+      Color(0xFF98D8C8),
+      Color(0xFFC39BD3),
+      Color(0xFFFFD700),
       Color(0xFF77DD77),
     ];
     const levelEmojis = ['🌱', '🌿', '🌻', '🌈', '⭐', '🎯', '🏆'];
@@ -262,7 +267,9 @@ class _HanziLearningPageState extends State<HanziLearningPage>
                                         fontWeight: isMax
                                             ? FontWeight.bold
                                             : FontWeight.normal,
-                                        color: isMax ? color : const Color(0xFF333333),
+                                        color: isMax
+                                            ? color
+                                            : const Color(0xFF333333),
                                       ),
                                     ),
                                     Text(
@@ -343,6 +350,11 @@ class _HanziLearningPageState extends State<HanziLearningPage>
         _isLoading = false;
       });
 
+      // 异步在后台预加载此段文本的 CFTTS，如果使用的是 API 方案
+      _tts.clearCfttsCache().then((_) {
+        _tts.prefetchCftts(text, featureKey: 'hanzi_learning_full');
+      });
+
       final coverage = _service.calculateCoverage(text);
       debugPrint('📊 字库覆盖率: ${(coverage * 100).toStringAsFixed(1)}%');
     } catch (e) {
@@ -373,8 +385,10 @@ class _HanziLearningPageState extends State<HanziLearningPage>
       _highlightIndex = 0;
     });
 
-    // 标记是否收到过进度回调（用于判断引擎是否支持）
     bool receivedProgress = false;
+    _karaokeTimer?.cancel();
+    _tts.onProgressCallback = null;
+    _tts.onStartCallback = null;
 
     // 设置 TTS 进度回调 —— 精确同步高亮位置
     _tts.onProgressCallback = (int start, int end) {
@@ -385,37 +399,64 @@ class _HanziLearningPageState extends State<HanziLearningPage>
       }
     };
 
-    // 启动兜底定时器（延迟 500ms 后，如果没收到进度回调才启用）
-    _karaokeTimer?.cancel();
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (!receivedProgress && _isPlayingFull && mounted) {
-        // 引擎不支持 progress 回调，使用估算定时器兜底
-        final rate = _tts.speechRate.value;
-        // speechRate 0.5 = 正常速度（约250ms/字），0 = 最慢，1 = 最快
-        final normalMs = 250;
-        final msPerChar = (normalMs / (rate <= 0.05 ? 0.1 : rate * 2)).toInt().clamp(80, 1000);
-        debugPrint('⏱️ TTS 进度回调不可用，使用兜底定时器: ${msPerChar}ms/字');
-        _karaokeTimer = Timer.periodic(
-          Duration(milliseconds: msPerChar),
-          (timer) {
-            if (!_isPlayingFull || _highlightIndex >= _characters.length - 1) {
-              timer.cancel();
-              return;
-            }
-            if (mounted) {
-              setState(() => _highlightIndex++);
-            }
-          },
-        );
-      }
-    });
+    // 当语音实际开始播放时，才开始兜底的高亮动画逻辑
+    _tts.onStartCallback = () {
+      if (!mounted || !_isPlayingFull) return;
 
-    // 播放 TTS
-    await _tts.speak(_displayText);
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (!receivedProgress && _isPlayingFull && mounted) {
+          // 引擎不支持 progress 回调，使用估算定时器兜底
+          final rate = _tts.speechRate.value;
+
+          int msPerChar;
+          if (_tts.getFeatureTtsEngine('hanzi_learning_full') == 'cftts' ||
+              _tts.useCftts.value) {
+            // 自建 CFTTS 发音紧凑，将停留数字减小以提高跑马灯速度
+            msPerChar = 260;
+          } else {
+            final normalMs = 280;
+            msPerChar = (normalMs / (rate <= 0.05 ? 0.3 : rate * 1.5))
+                .toInt()
+                .clamp(150, 1000);
+          }
+
+          debugPrint('⏱️ TTS 进度回调不可用，使用动态兜底定时器: $msPerChar ms/字');
+
+          void startKaraokeStep() {
+            if (!_isPlayingFull || !mounted) return;
+            if (_highlightIndex >= _characters.length - 1) return;
+
+            final char = _characters[_highlightIndex];
+            int waitMs = msPerChar;
+            // 如果遇到标点符号或空白，直接极速跳过 (10ms几乎没有视觉延迟)
+            if (RegExp(r'[，。！？、：；（）《》“”‘’\n\s]').hasMatch(char)) {
+              waitMs = 10;
+            }
+
+            _karaokeTimer = Timer(Duration(milliseconds: waitMs), () {
+              if (mounted && _isPlayingFull) {
+                setState(() => _highlightIndex++);
+                startKaraokeStep();
+              }
+            });
+          }
+
+          startKaraokeStep();
+        }
+      });
+    };
+
+    // 播放 TTS (await completion)
+    try {
+      await _tts.speak(_displayText, featureKey: 'hanzi_learning_full');
+    } catch (e) {
+      debugPrint('TTS speak failed: $e');
+    }
 
     // 播放结束后清理
     _karaokeTimer?.cancel();
     _tts.onProgressCallback = null;
+    _tts.onStartCallback = null;
     if (mounted) {
       setState(() {
         _isPlayingFull = false;
@@ -451,52 +492,75 @@ class _HanziLearningPageState extends State<HanziLearningPage>
       }
     });
 
-    await _tts.speak(char);
+    await _tts.speak(char, featureKey: 'hanzi_learning_single');
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFFF8E1), // 卡通暖黄底色
-      appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('📝', style: TextStyle(fontSize: 22.sp)),
-            SizedBox(width: 8.w),
-            const Text(
-              '星海识字',
-              style: TextStyle(fontWeight: FontWeight.bold),
+    return PopScope(
+      canPop: _displayText.isEmpty,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (_displayText.isNotEmpty) {
+          setState(() {
+            _displayText = '';
+            _tts.stop();
+          });
+        }
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFFFF8E1), // 卡通暖黄底色
+        appBar: AppBar(
+          title: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('📝', style: TextStyle(fontSize: 22.sp)),
+              SizedBox(width: 8.w),
+              const Text(
+                '星海识字',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          leading: _displayText.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () {
+                    setState(() {
+                      _displayText = '';
+                      _tts.stop();
+                    });
+                  },
+                )
+              : null,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          actions: [
+            // 语音设置按钮
+            IconButton(
+              icon: const Icon(Icons.volume_up),
+              tooltip: '语音设置',
+              onPressed: _showTtsSettings,
             ),
+            // 设置按钮（家长模式）
+            Obx(() {
+              if (_modeController.isParentMode) {
+                return IconButton(
+                  icon: const Icon(Icons.settings),
+                  tooltip: '学习设置',
+                  onPressed: () async {
+                    await Get.to(() => const HanziLearningSettingsPage());
+                    setState(() {});
+                  },
+                );
+              }
+              return const SizedBox.shrink();
+            }),
           ],
         ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          // 语音设置按钮
-          IconButton(
-            icon: const Icon(Icons.volume_up),
-            tooltip: '语音设置',
-            onPressed: _showTtsSettings,
-          ),
-          // 设置按钮（家长模式）
-          Obx(() {
-            if (_modeController.isParentMode) {
-              return IconButton(
-                icon: const Icon(Icons.settings),
-                tooltip: '学习设置',
-                onPressed: () async {
-                  await Get.to(() => const HanziLearningSettingsPage());
-                  setState(() {});
-                },
-              );
-            }
-            return const SizedBox.shrink();
-          }),
-        ],
-      ),
-      body: SafeArea(
-        child: _displayText.isEmpty ? _buildWelcomeView() : _buildGameView(),
+        body: SafeArea(
+          child: _displayText.isEmpty ? _buildWelcomeView() : _buildGameView(),
+        ),
       ),
     );
   }
@@ -508,122 +572,210 @@ class _HanziLearningPageState extends State<HanziLearningPage>
     final maxLevel = config?.unlockedMaxLevel ?? 1;
 
     return SingleChildScrollView(
-      padding: EdgeInsets.all(20.w),
+      padding: EdgeInsets.symmetric(horizontal: 24.w),
       child: Column(
         children: [
-          SizedBox(height: 30.h),
-          // 漂浮的卡通 Emoji
-          AnimatedBuilder(
-            animation: _floatAnimation,
-            builder: (context, child) {
-              return Transform.translate(
-                offset: Offset(0, _floatAnimation.value),
-                child: Text('🧒📖', style: TextStyle(fontSize: 64.sp)),
-              );
-            },
-          ),
           SizedBox(height: 20.h),
+          // 重新设计的“星海”主题吉祥物/动画 - 缩小尺寸以节省空间
+          SizedBox(
+            height: 160.h,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // 底层光晕 - 呼吸灯效果
+                AnimatedBuilder(
+                  animation: _floatAnimation,
+                  builder: (context, child) {
+                    final scale = 1.0 + (_floatAnimation.value / 40);
+                    return Container(
+                      width: 110.w * scale,
+                      height: 110.w * scale,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            const Color(0xFFFFB347).withOpacity(0.35),
+                            const Color(0xFFFFB347).withOpacity(0.0),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                // 星星装饰
+                ...List.generate(5, (index) {
+                  final angle = (index * 72.0) * (3.14159 / 180);
+                  return AnimatedBuilder(
+                    animation: _floatAnimation,
+                    builder: (context, child) {
+                      final offset = 65.w + _floatAnimation.value;
+                      return Transform.translate(
+                        offset: Offset(
+                          offset * (index.isEven ? 1 : 1.1) * (index % 3 == 0 ? 0.8 : 1) * (angle > 1.5 ? -1 : 1), // 错开位置
+                          offset * (angle < 3 ? 0.5 : -0.5),
+                        ),
+                        child: Text(
+                          index.isEven ? '✨' : '⭐',
+                          style: TextStyle(fontSize: (14 + index * 2).sp),
+                        ),
+                      );
+                    },
+                  );
+                }),
+                // 核心视觉：星海中的书
+                AnimatedBuilder(
+                  animation: _floatAnimation,
+                  builder: (context, child) {
+                    return Transform.translate(
+                      offset: Offset(0, _floatAnimation.value),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Text('📔', style: TextStyle(fontSize: 72.sp)),
+                          Positioned(
+                            top: 15.h,
+                            child: Text('🌟', style: TextStyle(fontSize: 20.sp)),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+          
+          SizedBox(height: 15.h),
           Text(
             '星海识字',
             style: TextStyle(
               fontSize: 28.sp,
               fontWeight: FontWeight.bold,
               color: const Color(0xFF333333),
+              letterSpacing: 1.5,
             ),
           ),
-          SizedBox(height: 8.h),
-          Text(
-            '在有趣的故事中读字、认字 ✨',
-            style: TextStyle(
-              fontSize: 14.sp,
-              color: Colors.grey[600],
+          SizedBox(height: 10.h),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.6),
+              borderRadius: BorderRadius.circular(20.r),
+            ),
+            child: Text(
+              '在星海中偶遇每一个文字 ✨',
+              style: TextStyle(
+                fontSize: 14.sp,
+                color: Colors.grey[700],
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
-          SizedBox(height: 28.h),
+          SizedBox(height: 24.h),
 
-          // 字库状态卡片
+          // 字库状态卡片 - 重新设计
           Container(
             width: double.infinity,
-            padding: EdgeInsets.all(20.w),
+            padding: EdgeInsets.all(24.w),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  const Color(0xFFFF6B6B).withOpacity(0.12),
-                  const Color(0xFFFFB347).withOpacity(0.12),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(22.r),
-              border: Border.all(
-                color: const Color(0xFFFF6B6B).withOpacity(0.25),
-              ),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(28.r),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.orange.withOpacity(0.1),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
             ),
             child: Column(
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text('📚', style: TextStyle(fontSize: 20.sp)),
-                    SizedBox(width: 8.w),
+                    Container(
+                      padding: EdgeInsets.all(10.w),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF6B6B).withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text('📊', style: TextStyle(fontSize: 18.sp)),
+                    ),
+                    SizedBox(width: 12.w),
                     Text(
-                      '字库状态',
+                      '进度概览',
                       style: TextStyle(
-                        fontSize: 16.sp,
+                        fontSize: 18.sp,
                         fontWeight: FontWeight.bold,
-                        color: const Color(0xFFFF6B6B),
+                        color: const Color(0xFF333333),
                       ),
                     ),
+                    const Spacer(),
+                    if (knownCount > 0)
+                      Text(
+                        '解锁至第$maxLevel册',
+                        style: TextStyle(
+                          fontSize: 12.sp,
+                          color: const Color(0xFFFF6B6B),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                   ],
                 ),
-                SizedBox(height: 12.h),
+                SizedBox(height: 20.h),
                 if (knownCount > 0) ...[
-                  Text(
-                    '已解锁到第$maxLevel册',
-                    style: TextStyle(
-                      fontSize: 14.sp,
-                      color: Colors.grey[700],
-                    ),
-                  ),
-                  SizedBox(height: 4.h),
-                  Text(
-                    '已认识 $knownCount 个字 ⭐',
-                    style: TextStyle(
-                      fontSize: 18.sp,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF333333),
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildStatItem('已认识', '$knownCount', Colors.orange),
+                      Container(width: 1, height: 30, color: Colors.grey.shade100),
+                      _buildStatItem('书册', '第$maxLevel册', Colors.blue),
+                    ],
                   ),
                 ] else ...[
                   Text(
-                    '还没有设置字库哦 😊',
+                    '开启星海之旅，勾选你认识的字',
+                    textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 16.sp,
-                      color: const Color(0xFF333333),
+                      fontSize: 15.sp,
+                      color: Colors.grey[600],
+                      height: 1.5,
                     ),
                   ),
-                  SizedBox(height: 12.h),
-                  ElevatedButton.icon(
+                  SizedBox(height: 16.h),
+                  ElevatedButton(
                     onPressed: _showLevelSelector,
-                    icon: const Icon(Icons.add),
-                    label: const Text('开始设置'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFFF6B6B),
                       foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 12.h),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16.r),
                       ),
+                      elevation: 0,
                     ),
+                    child: const Text('去设置', style: TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ],
               ],
             ),
           ),
-          SizedBox(height: 28.h),
+          SizedBox(height: 24.h),
 
-          // 开始学习按钮
+          // 开始学习按钮 - 更加醒目
           if (knownCount > 0)
-            SizedBox(
+            Container(
               width: double.infinity,
-              height: 56.h,
+              height: 64.h,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(22.r),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFFF6B6B).withOpacity(0.3),
+                    blurRadius: 15,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
               child: ElevatedButton(
                 onPressed: _isLoading ? null : _generateContent,
                 style: ElevatedButton.styleFrom(
@@ -632,36 +784,35 @@ class _HanziLearningPageState extends State<HanziLearningPage>
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(22.r),
                   ),
-                  elevation: 6,
-                  shadowColor: const Color(0xFFFF6B6B).withOpacity(0.4),
+                  elevation: 0,
                 ),
                 child: _isLoading
                     ? Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           SizedBox(
-                            width: 20.w,
-                            height: 20.w,
+                            width: 22.w,
+                            height: 22.w,
                             child: const CircularProgressIndicator(
-                              strokeWidth: 2,
+                              strokeWidth: 3,
                               color: Colors.white,
                             ),
                           ),
                           SizedBox(width: 12.w),
-                          Text('✨ 魔法生成中...',
-                              style: TextStyle(fontSize: 16.sp)),
+                          Text('✨ 正在召唤文字...', style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold)),
                         ],
                       )
                     : Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text('🚀', style: TextStyle(fontSize: 22.sp)),
-                          SizedBox(width: 8.w),
+                          Icon(Icons.rocket_launch, size: 24.sp),
+                          SizedBox(width: 12.w),
                           Text(
-                            '开始学习',
+                            '开启今日识字',
                             style: TextStyle(
-                              fontSize: 18.sp,
+                              fontSize: 20.sp,
                               fontWeight: FontWeight.bold,
+                              letterSpacing: 2,
                             ),
                           ),
                         ],
@@ -673,6 +824,28 @@ class _HanziLearningPageState extends State<HanziLearningPage>
           if (knownCount > 0) _buildLastRecordButton(),
         ],
       ),
+    );
+  }
+
+  Widget _buildStatItem(String label, String value, Color color) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 22.sp,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12.sp,
+            color: Colors.grey[500],
+          ),
+        ),
+      ],
     );
   }
 
@@ -690,7 +863,8 @@ class _HanziLearningPageState extends State<HanziLearningPage>
     if (timestamp != null) {
       try {
         final dt = DateTime.parse(timestamp);
-        timeLabel = '· ${dt.month}月${dt.day}日 ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+        timeLabel =
+            '· ${dt.month}月${dt.day}日 ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
       } catch (_) {}
     }
 
@@ -829,7 +1003,9 @@ class _HanziLearningPageState extends State<HanziLearningPage>
                   style: TextStyle(
                     fontSize: 12.sp,
                     fontWeight: FontWeight.bold,
-                    color: coverage >= 0.85 ? const Color(0xFF4CAF50) : Colors.orange,
+                    color: coverage >= 0.85
+                        ? const Color(0xFF4CAF50)
+                        : Colors.orange,
                   ),
                 ),
               ],
@@ -904,154 +1080,195 @@ class _HanziLearningPageState extends State<HanziLearningPage>
           ),
         ],
       ),
-      child: Wrap(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: _buildParagraphs(),
+      ),
+    );
+  }
+
+  List<Widget> _buildParagraphs() {
+    final List<Widget> paragraphs = [];
+    List<Widget> currentLine = [];
+
+    for (int index = 0; index < _characters.length; index++) {
+      final char = _characters[index];
+
+      // 当遇到换行符时，将之前收集的一行文字组合成 Wrap 成为一个段落
+      if (char == '\n' || char == '\r') {
+        if (currentLine.isNotEmpty) {
+          paragraphs.add(Wrap(
+            spacing: 2.w,
+            runSpacing: 6.h,
+            alignment: WrapAlignment.start,
+            crossAxisAlignment: WrapCrossAlignment.end,
+            children: List.from(currentLine),
+          ));
+          currentLine.clear();
+        }
+        if (char == '\n') {
+          // 添加真实的段落间距（空出舒适间隔）
+          paragraphs.add(SizedBox(height: 16.h));
+        }
+        continue;
+      }
+
+      currentLine.add(_buildCharWidget(index, char));
+    }
+
+    // 结尾若未在换行处结束，需要把最后一句收尾
+    if (currentLine.isNotEmpty) {
+      paragraphs.add(Wrap(
         spacing: 2.w,
         runSpacing: 6.h,
         alignment: WrapAlignment.start,
         crossAxisAlignment: WrapCrossAlignment.end,
-        children: List.generate(_characters.length, (index) {
-          final char = _characters[index];
-          final hanziRegex = RegExp(r'[\u4e00-\u9fff]');
-          final isHanzi = hanziRegex.hasMatch(char);
-          final isNewChar = isHanzi && _service.isNewChar(char);
-          final isHighlighted = _highlightIndex == index;
-          final isTapped = _tappedCharIndex == index;
+        children: currentLine,
+      ));
+    }
 
-          // 获取拼音
-          final pinyin = isHanzi ? HanziData.getPinyin(char) : null;
-          final hasPinyin = pinyin != null && pinyin.trim().isNotEmpty;
+    return paragraphs;
+  }
 
-          // 核心修复：无论是标点还是无拼音汉字，均使用一个不可见的占位符维持相同的物理高度
-          Widget pinyinWidget = Opacity(
-            opacity: hasPinyin ? 1.0 : 0.0,
-            child: Text(
-              hasPinyin ? pinyin : 'a', 
+  Widget _buildCharWidget(int index, String char) {
+    final hanziRegex = RegExp(r'[\u4e00-\u9fff]');
+    final isHanzi = hanziRegex.hasMatch(char);
+    final isNewChar = isHanzi && _service.isNewChar(char);
+    final isHighlighted = _highlightIndex == index;
+    final isTapped = _tappedCharIndex == index;
+
+    // 获取拼音
+    final pinyin = isHanzi ? HanziData.getPinyin(char) : null;
+    final hasPinyin = pinyin != null && pinyin.trim().isNotEmpty;
+
+    // 核心修复：无论是标点还是无拼音汉字，均使用一个不可见的占位符维持相同的物理高度
+    Widget pinyinWidget = Opacity(
+      opacity: hasPinyin ? 1.0 : 0.0,
+      child: Text(
+        hasPinyin ? pinyin : 'a',
+        style: TextStyle(
+          fontSize: 9.sp,
+          color: isHighlighted
+              ? const Color(0xFFFF6B6B)
+              : isNewChar
+                  ? Colors.orange.shade600
+                  : Colors.grey[400],
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+
+    // 非汉字字符（标点符号）同样包裹一层与汉字完全等高的结构
+    if (!isHanzi) {
+      return Container(
+        padding: EdgeInsets.symmetric(horizontal: 2.w, vertical: 1.h),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.transparent, width: 1.5),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            pinyinWidget,
+            Text(
+              char,
               style: TextStyle(
-                fontSize: 9.sp,
+                fontSize: 24.sp,
+                fontWeight: FontWeight.bold,
+                height: 1.3,
+                color: isHighlighted
+                    ? const Color(0xFFFF6B6B)
+                    : const Color(0xFF333333),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // 汉字字符 - 支持点读 + 拼音标注
+    Widget charWidget = GestureDetector(
+      onTap: () => _tapChar(index),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: EdgeInsets.symmetric(
+          horizontal: 2.w,
+          vertical: 1.h,
+        ),
+        decoration: BoxDecoration(
+          color: isHighlighted
+              ? const Color(0xFFFF6B6B).withOpacity(0.15)
+              : isNewChar
+                  ? Colors.orange.shade50
+                  : Colors.transparent,
+          borderRadius: BorderRadius.circular(8.r),
+          // 核心修复：即使不是新字，也保留透明的 1.5px 边框占位，防止高度突变
+          border: Border.all(
+            color: isNewChar ? Colors.orange.shade300 : Colors.transparent,
+            width: 1.5,
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            pinyinWidget,
+            // 汉字
+            Text(
+              char,
+              style: TextStyle(
+                fontSize: 24.sp,
+                fontWeight: FontWeight.bold,
+                height: 1.3,
                 color: isHighlighted
                     ? const Color(0xFFFF6B6B)
                     : isNewChar
-                        ? Colors.orange.shade600
-                        : Colors.grey[400],
-                fontWeight: FontWeight.w500,
+                        ? Colors.orange.shade800
+                        : const Color(0xFF333333),
               ),
             ),
-          );
-
-          // 非汉字字符（标点符号）同样包裹一层与汉字完全等高的结构
-          if (!isHanzi) {
-            return Container(
-              padding: EdgeInsets.symmetric(horizontal: 2.w, vertical: 1.h),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.transparent, width: 1.5),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  pinyinWidget,
-                  Text(
-                    char,
-                    style: TextStyle(
-                      fontSize: 24.sp,
-                      fontWeight: FontWeight.bold,
-                      height: 1.3,
-                      color: isHighlighted
-                          ? const Color(0xFFFF6B6B)
-                          : const Color(0xFF333333),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          // 汉字字符 - 支持点读 + 拼音标注
-          Widget charWidget = GestureDetector(
-            onTap: () => _tapChar(index),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: EdgeInsets.symmetric(
-                horizontal: 2.w,
-                vertical: 1.h,
-              ),
-              decoration: BoxDecoration(
-                color: isHighlighted
-                    ? const Color(0xFFFF6B6B).withOpacity(0.15)
-                    : isNewChar
-                        ? Colors.orange.shade50
-                        : Colors.transparent,
-                borderRadius: BorderRadius.circular(8.r),
-                // 核心修复：即使不是新字，也保留透明的 1.5px 边框占位，防止高度突变
-                border: Border.all(
-                  color: isNewChar ? Colors.orange.shade300 : Colors.transparent,
-                  width: 1.5,
-                ),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  pinyinWidget,
-                  // 汉字
-                  Text(
-                    char,
-                    style: TextStyle(
-                      fontSize: 24.sp,
-                      fontWeight: FontWeight.bold,
-                      height: 1.3,
-                      color: isHighlighted
-                          ? const Color(0xFFFF6B6B)
-                          : isNewChar
-                              ? Colors.orange.shade800
-                              : const Color(0xFF333333),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-
-          // 添加弹跳 + 水波纹动画
-          if (isTapped && _bounceAnimation != null && _rippleAnimation != null) {
-            charWidget = AnimatedBuilder(
-              animation: _bounceAnimation!,
-              builder: (context, child) {
-                return Transform.scale(
-                  scale: _bounceAnimation!.value,
-                  child: child,
-                );
-              },
-              child: Stack(
-                alignment: Alignment.center,
-                clipBehavior: Clip.none,
-                children: [
-                  charWidget,
-                  // 水波纹扩散层
-                  Positioned.fill(
-                    child: AnimatedBuilder(
-                      animation: _rippleAnimation!,
-                      builder: (context, _) {
-                        final rippleColor = isNewChar
-                            ? Colors.orange.shade400
-                            : const Color(0xFF7C4DFF);
-                        return CustomPaint(
-                          painter: _RipplePainter(
-                            progress: _rippleAnimation!.value,
-                            opacity: _rippleOpacity!.value,
-                            color: rippleColor,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return charWidget;
-        }),
+          ],
+        ),
       ),
     );
+
+    // 添加弹跳 + 水波纹动画
+    if (isTapped && _bounceAnimation != null && _rippleAnimation != null) {
+      charWidget = AnimatedBuilder(
+        animation: _bounceAnimation!,
+        builder: (context, child) {
+          return Transform.scale(
+            scale: _bounceAnimation!.value,
+            child: child,
+          );
+        },
+        child: Stack(
+          alignment: Alignment.center,
+          clipBehavior: Clip.none,
+          children: [
+            charWidget,
+            // 水波纹扩散层
+            Positioned.fill(
+              child: AnimatedBuilder(
+                animation: _rippleAnimation!,
+                builder: (context, _) {
+                  final rippleColor = isNewChar
+                      ? Colors.orange.shade400
+                      : const Color(0xFF7C4DFF);
+                  return CustomPaint(
+                    painter: _RipplePainter(
+                      progress: _rippleAnimation!.value,
+                      opacity: _rippleOpacity!.value,
+                      color: rippleColor,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return charWidget;
   }
 
   /// 底部控制栏
@@ -1097,8 +1314,7 @@ class _HanziLearningPageState extends State<HanziLearningPage>
                   label: '字库',
                   color: const Color(0xFFFFB347),
                   onTap: () async {
-                    final result =
-                        await Get.to(() => const HanziLibraryPage());
+                    final result = await Get.to(() => const HanziLibraryPage());
                     if (result == true) {
                       setState(() {});
                     }
@@ -1131,14 +1347,12 @@ class _HanziLearningPageState extends State<HanziLearningPage>
             width: 56.w,
             height: 56.w,
             decoration: BoxDecoration(
-              color: isDisabled
-                  ? Colors.grey.shade200
-                  : color.withOpacity(0.15),
+              color:
+                  isDisabled ? Colors.grey.shade200 : color.withOpacity(0.15),
               borderRadius: BorderRadius.circular(18.r),
               border: Border.all(
-                color: isDisabled
-                    ? Colors.grey.shade300
-                    : color.withOpacity(0.4),
+                color:
+                    isDisabled ? Colors.grey.shade300 : color.withOpacity(0.4),
                 width: 2,
               ),
             ),
@@ -1283,6 +1497,17 @@ class _HanziLearningPageState extends State<HanziLearningPage>
               ),
               SizedBox(height: 24.h),
 
+              const TtsEngineSelector(
+                featureKey: 'hanzi_learning_full',
+                title: '播放全文默认引擎',
+              ),
+              SizedBox(height: 16.h),
+              const TtsEngineSelector(
+                featureKey: 'hanzi_learning_single',
+                title: '点读默认引擎',
+              ),
+              SizedBox(height: 24.h),
+
               // 语速控制
               _buildSliderControl(
                 icon: Icons.speed,
@@ -1364,8 +1589,8 @@ class _HanziLearningPageState extends State<HanziLearningPage>
               ),
               const Spacer(),
               Obx(() => Container(
-                    padding: EdgeInsets.symmetric(
-                        horizontal: 8.w, vertical: 4.h),
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                     decoration: BoxDecoration(
                       color: color.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(8.r),
@@ -1412,8 +1637,8 @@ class _HanziLearningPageState extends State<HanziLearningPage>
 /// 在被点击的汉字上层绘制一个从中心向外扩散的圆环，不断增加半径、同时透明度渐隐
 class _RipplePainter extends CustomPainter {
   final double progress; // 0.0 ~ 1.0 动画进度
-  final double opacity;  // 0.6 ~ 0.0 透明度
-  final Color color;     // 涟漪颜色
+  final double opacity; // 0.6 ~ 0.0 透明度
+  final Color color; // 涟漪颜色
 
   _RipplePainter({
     required this.progress,

@@ -7,6 +7,7 @@ import '../services/update_service.dart';
 import 'webdav_settings_page.dart';
 import 'openai_settings_page.dart';
 import 'music_cache_settings_page.dart';
+import 'tts_settings_page.dart';
 
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -215,6 +216,18 @@ class SettingsPage extends StatelessWidget {
                               : null,
                         )),
                     const Divider(height: 1),
+                    Obx(() => ListTile(
+                          leading: const Icon(Icons.record_voice_over, color: Colors.orange),
+                          title: const Text("语音设置"),
+                          subtitle: const Text("配置全局 TTS 及发音参数"),
+                          trailing: modeController.isParentMode
+                              ? const Icon(Icons.arrow_forward_ios, size: 16)
+                              : const Icon(Icons.lock, size: 16, color: Colors.grey),
+                          onTap: modeController.isParentMode
+                              ? () => Get.to(() => const TtsSettingsPage())
+                              : null,
+                        )),
+                    const Divider(height: 1),
                     ListTile(
                       leading: const Icon(Icons.library_music,
                           color: Colors.pinkAccent),
@@ -355,64 +368,144 @@ class SettingsPage extends StatelessWidget {
   void _showAboutDialog(String version) {
     Get.dialog(
       AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
-        title: Row(
-          children: [
-            Text('⭐', style: TextStyle(fontSize: 28.sp)),
-            SizedBox(width: 10.w),
-            const Text('Star Bank'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '儿童星星银行',
-              style: TextStyle(
-                fontSize: 16.sp,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: 12.h),
-            Text(
-              '一款帮助家长培养孩子良好行为习惯的应用。\n\n'
-              '通过星星奖励机制，让孩子在完成任务后获得虚拟星星，'
-              '积累星星可以兑换心愿礼物。',
-              style: TextStyle(
-                fontSize: 14.sp,
-                color: Colors.grey.shade700,
-                height: 1.5,
-              ),
-            ),
-            SizedBox(height: 16.h),
-            Container(
-              padding: EdgeInsets.all(12.w),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(12.r),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.verified, color: Colors.blue, size: 20.sp),
-                  SizedBox(width: 8.w),
-                  Text(
-                    '版本 v$version',
-                    style: TextStyle(
-                      color: Colors.blue,
-                      fontWeight: FontWeight.bold,
-                    ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
+        contentPadding: EdgeInsets.zero,
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 顶部横幅
+              Container(
+                padding: EdgeInsets.symmetric(vertical: 24.h),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.orange.shade300, Colors.orange.shade500],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                ],
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+                ),
+                child: Center(
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(12.w),
+                        decoration: const BoxDecoration(
+                          color: Colors.white24,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.stars, color: Colors.white, size: 48.sp),
+                      ),
+                      SizedBox(height: 12.h),
+                      Text(
+                        'Star Bank',
+                        style: TextStyle(
+                          fontSize: 24.sp,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      Text(
+                        'v$version',
+                        style: TextStyle(
+                          fontSize: 12.sp,
+                          color: Colors.white.withOpacity(0.8),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-          ],
+              Padding(
+                padding: EdgeInsets.all(24.w),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '星海银行 (Star Bank) 是一款专为 3-10 岁儿童设计的习惯养成与财商启蒙应用。',
+                      style: TextStyle(
+                        fontSize: 14.sp,
+                        color: const Color(0xFF333333),
+                        fontWeight: FontWeight.bold,
+                        height: 1.5,
+                      ),
+                    ),
+                    SizedBox(height: 16.h),
+                    _buildAboutItem(Icons.auto_awesome, '行为激励', '通过星星奖励机制，将好习惯培养游戏化。'),
+                    _buildAboutItem(Icons.account_balance, '财商启蒙', '模拟银行存储与利息系统，建立初步金钱观。'),
+                    _buildAboutItem(Icons.psychology, 'AI 伴学', '集成了 AI 识字、智能绘本与趣味问答功能。'),
+                    _buildAboutItem(Icons.security, '家长控制', '多模式切换及数据备份，全方位守护成长数据。'),
+                    _buildAboutItem(Icons.info_outline, '版本信息', '当前版本 v$version，系统已是最新状态。'),
+                    SizedBox(height: 8.h),
+                    const Divider(),
+                    SizedBox(height: 8.h),
+                    Center(
+                      child: Text(
+                        '陪孩子一起，让每一份努力都被看见',
+                        style: TextStyle(
+                          fontSize: 12.sp,
+                          fontStyle: FontStyle.italic,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.only(bottom: 16.h, right: 16.w),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Get.back(),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.orange.shade700,
+                        padding: EdgeInsets.symmetric(horizontal: 24.w),
+                      ),
+                      child: const Text('好的', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('确定'),
+      ),
+    );
+  }
+
+  Widget _buildAboutItem(IconData icon, String title, String desc) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 12.h),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: Colors.orange.shade400, size: 20.sp),
+          SizedBox(width: 12.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF444444),
+                  ),
+                ),
+                Text(
+                  desc,
+                  style: TextStyle(
+                    fontSize: 12.sp,
+                    color: Colors.grey.shade600,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

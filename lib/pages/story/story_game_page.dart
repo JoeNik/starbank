@@ -469,6 +469,7 @@ class _StoryGamePageState extends State<StoryGamePage> {
 
       // 语音播放
       await _ttsService.speak(response,
+          featureKey: 'story_game',
           rate: _gameConfig?.ttsRate,
           volume: _gameConfig?.ttsVolume,
           pitch: _gameConfig?.ttsPitch);
@@ -498,6 +499,7 @@ class _StoryGamePageState extends State<StoryGamePage> {
         }
 
         await _ttsService.speak(defaultResponse,
+            featureKey: 'story_game',
             rate: _gameConfig?.ttsRate,
             volume: _gameConfig?.ttsVolume,
             pitch: _gameConfig?.ttsPitch);
@@ -845,6 +847,7 @@ class _StoryGamePageState extends State<StoryGamePage> {
 
         setState(() => _isAIResponding = false);
         await _ttsService.speak(aiResponse,
+            featureKey: 'story_game',
             rate: _gameConfig?.ttsRate,
             volume: _gameConfig?.ttsVolume,
             pitch: _gameConfig?.ttsPitch);
@@ -957,6 +960,7 @@ class _StoryGamePageState extends State<StoryGamePage> {
 
         // 语音播放评价
         await _ttsService.speak(evaluation,
+            featureKey: 'story_game',
             rate: _gameConfig?.ttsRate,
             volume: _gameConfig?.ttsVolume,
             pitch: _gameConfig?.ttsPitch);
@@ -982,6 +986,7 @@ class _StoryGamePageState extends State<StoryGamePage> {
       });
 
       await _ttsService.speak(fallbackEval,
+          featureKey: 'story_game',
           rate: _gameConfig?.ttsRate,
           volume: _gameConfig?.ttsVolume,
           pitch: _gameConfig?.ttsPitch);

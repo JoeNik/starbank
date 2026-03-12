@@ -25,6 +25,8 @@ import '../services/story_management_service.dart';
 import '../services/quiz_service.dart';
 import '../models/quiz_config.dart';
 import '../models/hanzi_learning_config.dart';
+import '../models/cftts_config.dart';
+import '../services/tts_service.dart';
 
 /// 备份文件信息
 class BackupFileInfo {
@@ -332,6 +334,14 @@ class WebDavService extends GetxService {
             Map<String, dynamic>.from(hanziBox.toMap());
       } catch (e) {
         print('备份汉字学习配置失败: $e');
+      }
+
+      // 备份 CFTTS 配置
+      try {
+        final cfttsBox = await Hive.openBox<CfttsConfig>('cftts_config_box');
+        backupData['cfttsConfigBox'] = cfttsBox.values.map((e) => e.toJson()).toList();
+      } catch (e) {
+        print('备份 CFTTS 配置失败: $e');
       }
 
       backupData['timestamp'] = DateTime.now().toIso8601String();
@@ -863,6 +873,31 @@ class WebDavService extends GetxService {
         }
       }
 
+      // 恢复 CFTTS 配置
+      if (backupData['cfttsConfigBox'] != null) {
+        try {
+          final cfttsBox = await Hive.openBox<CfttsConfig>('cftts_config_box');
+          await cfttsBox.clear();
+          for (var item in (backupData['cfttsConfigBox'] as List)) {
+            if (item is Map) {
+              final map = Map<String, dynamic>.from(item);
+              final config = CfttsConfig.fromJson(map);
+              await cfttsBox.add(config);
+            }
+          }
+          await cfttsBox.flush();
+        } catch (e) {
+          print('恢复 CFTTS 配置失败: $e');
+        }
+      }
+
+      // 所有的 TTS 及 CFTTS 恢复完成后，在内存中重新加载它
+      try {
+        if (Get.isRegistered<TtsService>()) {
+          Get.find<TtsService>().reloadSettings();
+        }
+      } catch (_) {}
+
       ToastUtils.showSuccess('数据已恢复，请重启应用以生效');
       return true;
     } catch (e) {
@@ -953,6 +988,10 @@ class WebDavService extends GetxService {
     // HanziLearningConfig (40)
     if (!Hive.isAdapterRegistered(40)) {
       Hive.registerAdapter(HanziLearningConfigAdapter());
+    }
+    // CfttsConfig (41)
+    if (!Hive.isAdapterRegistered(41)) {
+      Hive.registerAdapter(CfttsConfigAdapter());
     }
   }
 }

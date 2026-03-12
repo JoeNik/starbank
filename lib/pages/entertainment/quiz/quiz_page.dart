@@ -15,6 +15,7 @@ import 'quiz_ai_settings_page.dart';
 import 'package:http/http.dart' as http;
 import '../../../models/quiz_question.dart';
 import 'quiz_management_page.dart';
+import '../../../widgets/tts_engine_selector.dart';
 
 /// 小年兽问答页面
 class QuizPage extends StatefulWidget {
@@ -172,7 +173,7 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
   Future<void> _speakQuestion() async {
     final question = _questions[_currentIndex];
     // 只播报题目
-    await _tts.speak(question['question']);
+    await _tts.speak(question['question'], featureKey: 'quiz');
   }
 
   /// 播放答案
@@ -183,7 +184,7 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
     final correctAnswer = options[correctIndex];
 
     // 播报正确答案
-    await _tts.speak('正确答案是: $correctAnswer');
+    await _tts.speak('正确答案是: $correctAnswer', featureKey: 'quiz');
   }
 
   /// 播放答案选项(只播报选项,不播报题目)
@@ -199,13 +200,13 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
       optionsText.write('${optionLabels[i]}、${options[i]}');
     }
 
-    await _tts.speak(optionsText.toString());
+    await _tts.speak(optionsText.toString(), featureKey: 'quiz');
   }
 
   /// 重播知识点
   Future<void> _replayExplanation() async {
     final question = _questions[_currentIndex];
-    await _tts.speak(question['explanation']);
+    await _tts.speak(question['explanation'], featureKey: 'quiz');
   }
 
   /// 重新生成当前题目的图片
@@ -418,7 +419,7 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
     if (isCorrect) {
       _playBeastJump();
       _fireworkController.forward(from: 0);
-      _tts.speak('答对啦!真棒!${question['explanation']}');
+      _tts.speak('答对啦!真棒!${question['explanation']}', featureKey: 'quiz');
     } else {
       // 答错后先说鼓励的话,停顿1秒,再播放知识点
       _speakWrongAnswer();
@@ -428,9 +429,9 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
   /// 播放答错提示(带停顿)
   Future<void> _speakWrongAnswer() async {
     final question = _questions[_currentIndex];
-    await _tts.speak('没关系,再听听');
+    await _tts.speak('没关系,再听听', featureKey: 'quiz');
     await Future.delayed(const Duration(seconds: 1)); // 停顿1秒
-    await _tts.speak(question['explanation']);
+    await _tts.speak(question['explanation'], featureKey: 'quiz');
   }
 
   /// 下一题
@@ -537,7 +538,7 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
       barrierDismissible: false,
     );
 
-    _tts.speak('太棒啦!你答对了$_correctCount题!${_getComment(score)}');
+    _tts.speak('太棒啦!你答对了$_correctCount题!${_getComment(score)}', featureKey: 'quiz');
   }
 
   /// 根据分数获取评价
@@ -588,6 +589,12 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
             },
             icon: const Icon(Icons.library_books),
             tooltip: '题库管理',
+          ),
+          // 语音设置按钮
+          IconButton(
+            icon: const Icon(Icons.volume_up),
+            tooltip: '语音设置',
+            onPressed: _showTtsSettings,
           ),
           // AI设置按钮
           IconButton(
@@ -1214,6 +1221,236 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
                   fontWeight: FontWeight.bold,
                 ),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 显示 TTS 设置对话框
+  void _showTtsSettings() {
+    Get.bottomSheet(
+      Container(
+        padding: EdgeInsets.all(24.w),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(24.r),
+            topRight: Radius.circular(24.r),
+          ),
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 标题栏
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '语音设置',
+                    style: TextStyle(
+                      fontSize: 20.sp,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textMain,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      _tts.setSpeechRate(0.5);
+                      _tts.setPitch(1.0);
+                      _tts.setVolume(1.0);
+                    },
+                    child: const Text('重置'),
+                  ),
+                ],
+              ),
+              SizedBox(height: 24.h),
+
+              // 试听区域
+              Container(
+                padding: EdgeInsets.all(16.w),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24.r),
+                  border: Border.all(color: Colors.grey.shade100),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.hearing, color: Colors.blue, size: 24.sp),
+                        SizedBox(width: 8.w),
+                        Text(
+                          '试听效果',
+                          style: TextStyle(
+                            fontSize: 18.sp,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 16.h),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () async {
+                              await _tts.speak(
+                                '小朋友，新年快乐！一起来猜灯谜吧！',
+                                featureKey: 'quiz',
+                              );
+                            },
+                            icon: const Icon(Icons.play_arrow),
+                            label: const Text('试听'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20.r),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 24.h),
+
+              const TtsEngineSelector(
+                featureKey: 'quiz',
+                title: '脑筋急转弯使用 TTS 引擎',
+              ),
+              SizedBox(height: 24.h),
+
+              // 语速控制
+              _buildSliderControl(
+                icon: Icons.speed,
+                title: '语速',
+                value: _tts.speechRate,
+                min: 0.0,
+                max: 1.0,
+                label: '1.0 为正常语速',
+                color: Colors.amber,
+                onChanged: (val) => _tts.setSpeechRate(val),
+              ),
+              SizedBox(height: 16.h),
+
+              // 音调控制
+              _buildSliderControl(
+                icon: Icons.music_note,
+                title: '音调',
+                value: _tts.pitch,
+                min: 0.5,
+                max: 2.0,
+                label: '1.0 为正常音调',
+                color: Colors.amber,
+                onChanged: (val) => _tts.setPitch(val),
+              ),
+              SizedBox(height: 16.h),
+
+              // 音量控制
+              _buildSliderControl(
+                icon: Icons.volume_up,
+                title: '音量',
+                value: _tts.volume,
+                min: 0.0,
+                max: 1.0,
+                label: '1.0 为最大音量',
+                color: Colors.amber,
+                onChanged: (val) => _tts.setVolume(val),
+              ),
+              SizedBox(height: 24.h),
+            ],
+          ),
+        ),
+      ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+    );
+  }
+
+  /// 构建滑块控制组件
+  Widget _buildSliderControl({
+    required IconData icon,
+    required String title,
+    required RxDouble value,
+    required double min,
+    required double max,
+    required String label,
+    required Color color,
+    Function(double)? onChanged,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20.r),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: Colors.grey, size: 20.sp),
+              SizedBox(width: 8.w),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w500,
+                  color: AppTheme.textMain,
+                ),
+              ),
+              const Spacer(),
+              Obx(() => Container(
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8.r),
+                    ),
+                    child: Text(
+                      value.value.toStringAsFixed(1),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: color.withOpacity(0.8),
+                      ),
+                    ),
+                  )),
+            ],
+          ),
+          SizedBox(height: 8.h),
+          Obx(() => SliderTheme(
+                data: SliderTheme.of(Get.context!).copyWith(
+                  activeTrackColor: color,
+                  inactiveTrackColor: color.withOpacity(0.2),
+                  thumbColor: color,
+                  trackHeight: 4.h,
+                ),
+                child: Slider(
+                  value: value.value,
+                  min: min,
+                  max: max,
+                  onChanged: (v) => value.value = v,
+                ),
+              )),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12.sp,
+              color: Colors.grey,
             ),
           ),
         ],

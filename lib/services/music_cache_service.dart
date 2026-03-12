@@ -135,10 +135,10 @@ class MusicCacheService extends GetxService {
         _cacheDir = Directory(_customCacheDir!);
         debugPrint('📂 [MusicCacheService] 使用自定义目录: $_customCacheDir');
       } else {
-        // 使用应用文档目录
-        final appDir = await getApplicationDocumentsDirectory();
+        // 使用应用支撑目录，防止某些 Android 上的 documents directory 权限问题
+        final appDir = await getApplicationSupportDirectory();
         _cacheDir = Directory('${appDir.path}/music_cache');
-        debugPrint('📂 [MusicCacheService] 应用文档目录: ${appDir.path}');
+        debugPrint('📂 [MusicCacheService] 应用支撑目录: ${appDir.path}');
       }
 
       debugPrint('📂 [MusicCacheService] 缓存目录路径: ${_cacheDir!.path}');

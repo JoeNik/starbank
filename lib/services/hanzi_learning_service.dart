@@ -54,11 +54,11 @@ class HanziLearningService extends GetxService {
       config.value =
           HanziLearningConfig.fromJson(Map<String, dynamic>.from(configMap));
           
-      // 强制升级旧版的 Prompt（如果没有阶段特征占位符，意味着是老数据）
-      if (!config.value!.aiPrompt.contains('{stageHint}')) {
+      // 强制升级旧版的 Prompt
+      if (!config.value!.aiPrompt.contains('【词汇库限制】')) {
         config.value!.aiPrompt = HanziLearningConfig.defaultPrompt;
         saveConfig();
-        debugPrint('🔄 检测到旧版 Prompt，已自动升级为带安全警告和阶段特征的新模板');
+        debugPrint('🔄 检测到旧版 Prompt，已自动升级为带词汇库限制的新模板');
       }
     } else {
       config.value = HanziLearningConfig(id: 'default');
@@ -173,7 +173,8 @@ class HanziLearningService extends GetxService {
       prompt = prompt.replaceAll('{newChars}', newChars.join('、'));
       prompt =
           prompt.replaceAll('{whitelistChars}', whitelistChars.join('、'));
-      // 替换覆盖率占位符
+      prompt = prompt.replaceAll('{childAge}', cfg.childAge.toString());
+      // 替换覆盖率占位符（兼容旧模板可能还有的情况）
       prompt = prompt.replaceAll(
           '{coverageRate}', (cfg.targetCoverageRate * 100).toInt().toString());
       // 替换阶段风格提示占位符

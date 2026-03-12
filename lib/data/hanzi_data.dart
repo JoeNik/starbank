@@ -67,53 +67,78 @@ class HanziData {
   /// 包含超高频连词、代词、动词、助词等，确保即使初学者只解锁了第一册（多为名词），
   /// AI 也能利用这些基础功能词造出完整通顺的句子
   static const List<Map<String, String>> systemWhitelistEntries = [
-    // === 代词 ===
-    {'char': '我', 'pinyin': 'wǒ'},
-    {'char': '你', 'pinyin': 'nǐ'},
-    {'char': '他', 'pinyin': 'tā'},
-    {'char': '她', 'pinyin': 'tā'},
-    {'char': '它', 'pinyin': 'tā'},
-    // === 动词 ===
-    {'char': '是', 'pinyin': 'shì'},
-    {'char': '有', 'pinyin': 'yǒu'},
-    {'char': '在', 'pinyin': 'zài'},
-    {'char': '来', 'pinyin': 'lái'},
-    {'char': '去', 'pinyin': 'qù'},
-    {'char': '看', 'pinyin': 'kàn'},
-    {'char': '吃', 'pinyin': 'chī'},
-    {'char': '喝', 'pinyin': 'hē'},
-    {'char': '跑', 'pinyin': 'pǎo'},
-    {'char': '走', 'pinyin': 'zǒu'},
-    {'char': '飞', 'pinyin': 'fēi'},
-    {'char': '说', 'pinyin': 'shuō'},
-    {'char': '做', 'pinyin': 'zuò'},
-    {'char': '玩', 'pinyin': 'wán'},
-    {'char': '想', 'pinyin': 'xiǎng'},
-    {'char': '要', 'pinyin': 'yào'},
-    {'char': '给', 'pinyin': 'gěi'},
-    {'char': '爱', 'pinyin': 'ài'},
-    // === 连词/助词/介词 ===
-    {'char': '和', 'pinyin': 'hé'},
-    {'char': '的', 'pinyin': 'de'},
-    {'char': '了', 'pinyin': 'le'},
-    {'char': '不', 'pinyin': 'bù'},
-    {'char': '也', 'pinyin': 'yě'},
-    {'char': '很', 'pinyin': 'hěn'},
-    {'char': '都', 'pinyin': 'dōu'},
-    {'char': '把', 'pinyin': 'bǎ'},
-    {'char': '着', 'pinyin': 'zhe'},
-    {'char': '过', 'pinyin': 'guò'},
-    // === 形容词 ===
-    {'char': '好', 'pinyin': 'hǎo'},
-    {'char': '多', 'pinyin': 'duō'},
-    {'char': '少', 'pinyin': 'shǎo'},
-    // === 量词 ===
-    {'char': '个', 'pinyin': 'gè'},
-    {'char': '只', 'pinyin': 'zhī'},
-    // === 方位 ===
-    {'char': '里', 'pinyin': 'lǐ'},
-    {'char': '上', 'pinyin': 'shàng'},
-    {'char': '下', 'pinyin': 'xià'},
+    // === 代词/指代 ===
+    {'char': '我', 'pinyin': 'wǒ'}, {'char': '你', 'pinyin': 'nǐ'},
+    {'char': '他', 'pinyin': 'tā'}, {'char': '她', 'pinyin': 'tā'},
+    {'char': '它', 'pinyin': 'tā'}, {'char': '这', 'pinyin': 'zhè'},
+    {'char': '那', 'pinyin': 'nà'}, {'char': '哪', 'pinyin': 'nǎ'},
+    {'char': '谁', 'pinyin': 'shéi'}, {'char': '些', 'pinyin': 'xiē'},
+    {'char': '什', 'pinyin': 'shén'}, {'char': '么', 'pinyin': 'me'},
+    {'char': '自', 'pinyin': 'zì'}, {'char': '己', 'pinyin': 'jǐ'},
+    
+    // === 基础动词 ===
+    {'char': '是', 'pinyin': 'shì'}, {'char': '有', 'pinyin': 'yǒu'},
+    {'char': '在', 'pinyin': 'zài'}, {'char': '来', 'pinyin': 'lái'},
+    {'char': '去', 'pinyin': 'qù'}, {'char': '看', 'pinyin': 'kàn'},
+    {'char': '吃', 'pinyin': 'chī'}, {'char': '喝', 'pinyin': 'hē'},
+    {'char': '跑', 'pinyin': 'pǎo'}, {'char': '走', 'pinyin': 'zǒu'},
+    {'char': '飞', 'pinyin': 'fēi'}, {'char': '说', 'pinyin': 'shuō'},
+    {'char': '做', 'pinyin': 'zuò'}, {'char': '玩', 'pinyin': 'wán'},
+    {'char': '想', 'pinyin': 'xiǎng'}, {'char': '要', 'pinyin': 'yào'},
+    {'char': '给', 'pinyin': 'gěi'}, {'char': '爱', 'pinyin': 'ài'},
+    {'char': '会', 'pinyin': 'huì'}, {'char': '能', 'pinyin': 'néng'},
+    {'char': '叫', 'pinyin': 'jiào'}, {'char': '让', 'pinyin': 'ràng'},
+    {'char': '帮', 'pinyin': 'bāng'}, {'char': '听', 'pinyin': 'tīng'},
+    {'char': '找', 'pinyin': 'zhǎo'}, {'char': '拿', 'pinyin': 'ná'},
+    {'char': '见', 'pinyin': 'jiàn'}, {'char': '笑', 'pinyin': 'xiào'},
+    {'char': '哭', 'pinyin': 'kū'}, {'char': '睡', 'pinyin': 'shuì'},
+    {'char': '起', 'pinyin': 'qǐ'}, {'char': '开', 'pinyin': 'kāi'},
+    {'char': '关', 'pinyin': 'guān'},
+
+    // === 连词/助词/副词 ===
+    {'char': '和', 'pinyin': 'hé'}, {'char': '的', 'pinyin': 'de'},
+    {'char': '了', 'pinyin': 'le'}, {'char': '不', 'pinyin': 'bù'},
+    {'char': '也', 'pinyin': 'yě'}, {'char': '很', 'pinyin': 'hěn'},
+    {'char': '都', 'pinyin': 'dōu'}, {'char': '把', 'pinyin': 'bǎ'},
+    {'char': '着', 'pinyin': 'zhe'}, {'char': '过', 'pinyin': 'guò'},
+    {'char': '就', 'pinyin': 'jiù'}, {'char': '才', 'pinyin': 'cái'},
+    {'char': '又', 'pinyin': 'yòu'}, {'char': '更', 'pinyin': 'gèng'},
+    {'char': '最', 'pinyin': 'zuì'}, {'char': '还', 'pinyin': 'hái'},
+    {'char': '真', 'pinyin': 'zhēn'}, {'char': '太', 'pinyin': 'tài'},
+    {'char': '得', 'pinyin': 'de'}, {'char': '地', 'pinyin': 'de'},
+    {'char': '但', 'pinyin': 'dàn'}, {'char': '跟', 'pinyin': 'gēn'},
+    {'char': '到', 'pinyin': 'dào'}, {'char': '从', 'pinyin': 'cóng'},
+
+    // === 语气词 ===
+    {'char': '呢', 'pinyin': 'ne'}, {'char': '吗', 'pinyin': 'ma'},
+    {'char': '吧', 'pinyin': 'ba'}, {'char': '啊', 'pinyin': 'a'},
+    {'char': '呀', 'pinyin': 'ya'}, {'char': '哦', 'pinyin': 'ò'},
+
+    // === 基础形容词 ===
+    {'char': '好', 'pinyin': 'hǎo'}, {'char': '多', 'pinyin': 'duō'},
+    {'char': '少', 'pinyin': 'shǎo'}, {'char': '大', 'pinyin': 'dà'},
+    {'char': '小', 'pinyin': 'xiǎo'}, {'char': '高', 'pinyin': 'gāo'},
+    {'char': '长', 'pinyin': 'cháng'}, {'char': '快', 'pinyin': 'kuài'},
+    {'char': '慢', 'pinyin': 'màn'}, {'char': '新', 'pinyin': 'xīn'},
+    {'char': '冷', 'pinyin': 'lěng'}, {'char': '热', 'pinyin': 'rè'},
+    {'char': '远', 'pinyin': 'yuǎn'}, {'char': '近', 'pinyin': 'jìn'},
+
+    // === 基础名词/方位/量词 ===
+    {'char': '个', 'pinyin': 'gè'}, {'char': '只', 'pinyin': 'zhī'},
+    {'char': '条', 'pinyin': 'tiáo'}, {'char': '里', 'pinyin': 'lǐ'},
+    {'char': '上', 'pinyin': 'shàng'}, {'char': '下', 'pinyin': 'xià'},
+    {'char': '中', 'pinyin': 'zhōng'}, {'char': '外', 'pinyin': 'wài'},
+    {'char': '前', 'pinyin': 'qián'}, {'char': '后', 'pinyin': 'hòu'},
+    {'char': '左', 'pinyin': 'zuǒ'}, {'char': '右', 'pinyin': 'yòu'},
+    {'char': '边', 'pinyin': 'biān'}, {'char': '天', 'pinyin': 'tiān'},
+    {'char': '人', 'pinyin': 'rén'},
+
+    // === 数字 ===
+    {'char': '一', 'pinyin': 'yī'}, {'char': '二', 'pinyin': 'èr'},
+    {'char': '三', 'pinyin': 'sān'}, {'char': '四', 'pinyin': 'sì'},
+    {'char': '五', 'pinyin': 'wǔ'}, {'char': '六', 'pinyin': 'liù'},
+    {'char': '七', 'pinyin': 'qī'}, {'char': '八', 'pinyin': 'bā'},
+    {'char': '九', 'pinyin': 'jiǔ'}, {'char': '十', 'pinyin': 'shí'},
   ];
 
   /// 获取系统白名单的纯字符列表

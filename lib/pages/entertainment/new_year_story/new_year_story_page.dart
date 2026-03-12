@@ -18,6 +18,7 @@ import 'story_management_page.dart';
 import '../../../models/new_year_story.dart';
 import '../../../models/openai_config.dart';
 import '../../../services/quiz_service.dart';
+import '../../../widgets/tts_engine_selector.dart';
 
 /// 新年故事听听页面
 class NewYearStoryPage extends StatefulWidget {
@@ -176,6 +177,7 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
       // 先播放文本
       await _tts.speak(
         page['tts'],
+        featureKey: 'new_year_story'
       );
 
       // 播放问题
@@ -183,6 +185,7 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
       await Future.delayed(const Duration(milliseconds: 500)); // 短暂停顿
       await _tts.speak(
         question['text'] as String,
+        featureKey: 'new_year_story'
       );
 
       // 显示问题
@@ -221,6 +224,7 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
     // 播放文本 (尝试等待播放完成)
     await _tts.speak(
       page['tts'],
+      featureKey: 'new_year_story'
     );
 
     // 计算实际已消耗时间
@@ -324,6 +328,7 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
 
     await _tts.speak(
       feedbackText,
+      featureKey: 'new_year_story'
     );
 
     // 根据反馈文本长度计算等待时间
@@ -368,7 +373,7 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
       sb.write(" $opt。");
     }
 
-    await _tts.speak(sb.toString());
+    await _tts.speak(sb.toString(), featureKey: 'new_year_story');
   }
 
   /// 加载故事列表
@@ -1583,6 +1588,7 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
                             onPressed: () async {
                               await _tts.speak(
                                 '小朋友，新年快乐！这是一个精彩的故事。',
+                                featureKey: 'new_year_story',
                               );
                             },
                             icon: const Icon(Icons.play_arrow),
@@ -1601,7 +1607,8 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
                           child: OutlinedButton.icon(
                             onPressed: () {
                               _tts.speak(
-                                '谜语测试: 什么动物跑得最快?',
+                                '测试语音: 什么动物跑得最快?',
+                                featureKey: 'new_year_story',
                               );
                             },
                             icon: const Icon(Icons.face),
@@ -1619,6 +1626,12 @@ class _NewYearStoryPageState extends State<NewYearStoryPage>
                     )
                   ],
                 ),
+              ),
+              SizedBox(height: 24.h),
+
+              const TtsEngineSelector(
+                featureKey: 'new_year_story',
+                title: '新年故事使用 TTS 引擎',
               ),
               SizedBox(height: 24.h),
 
