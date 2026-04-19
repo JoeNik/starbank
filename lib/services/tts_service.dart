@@ -26,6 +26,9 @@ class TtsService extends GetxService {
   // 用于播放 CFTTS 生成音频的服务
   late AudioPlayer _audioPlayer;
 
+  /// 暴露 audioPlayer 给外部监听播放进度（用于卡拉OK同步等场景）
+  AudioPlayer get audioPlayer => _audioPlayer;
+
   // 避免对同一个文本的并发请求
   final Map<String, Future<File?>> _cfttsFetchTasks = {};
 

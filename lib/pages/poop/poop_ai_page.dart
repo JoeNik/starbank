@@ -109,6 +109,15 @@ class _PoopAIPageState extends State<PoopAIPage> {
       // 如果没有选择配置，使用默认配置
       _selectedConfig ??= _openAIService.currentConfig.value;
 
+      // 校验已选模型是否仍在配置的模型列表中
+      if (_selectedConfig != null && _selectedModel.isNotEmpty) {
+        if (!_selectedConfig!.models.contains(_selectedModel)) {
+          debugPrint('⚠️ 已选模型 "$_selectedModel" 已不在模型列表中，自动清理');
+          _selectedModel = _selectedConfig!.selectedModel;
+          await _settingsBox.put('selected_model', _selectedModel);
+        }
+      }
+
       // 如果没有选择模型，使用配置的默认模型
       if (_selectedModel.isEmpty && _selectedConfig != null) {
         _selectedModel = _selectedConfig!.selectedModel;

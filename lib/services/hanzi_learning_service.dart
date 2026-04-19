@@ -54,11 +54,11 @@ class HanziLearningService extends GetxService {
       config.value =
           HanziLearningConfig.fromJson(Map<String, dynamic>.from(configMap));
           
-      // 强制升级旧版的 Prompt
-      if (!config.value!.aiPrompt.contains('【词汇库限制】')) {
+      // 强制升级旧版的 Prompt（检测新版标记）
+      if (!config.value!.aiPrompt.contains('【可用字库】')) {
         config.value!.aiPrompt = HanziLearningConfig.defaultPrompt;
         saveConfig();
-        debugPrint('🔄 检测到旧版 Prompt，已自动升级为带词汇库限制的新模板');
+        debugPrint('🔄 检测到旧版 Prompt，已自动升级为优化后的新模板');
       }
     } else {
       config.value = HanziLearningConfig(id: 'default');
@@ -195,11 +195,12 @@ class HanziLearningService extends GetxService {
       // 选择模型
       String? model = cfg.chatModel.isNotEmpty ? cfg.chatModel : null;
 
-      // 调用 AI
+      // 调用 AI（优化后的 system prompt：重点强调自然流畅，弱化覆盖率约束）
       final response = await _openAIService.chat(
-        systemPrompt: '你是一位儿童文学创作专家，擅长为小朋友创作简单有趣、积极向上的小故事和句子。'
-            '你的创作必须严格使用指定的汉字，确保文本中的汉字覆盖率达到要求。'
-            '直接返回故事文本，不要添加任何解释说明。',
+        systemPrompt: '你是一位拥有20年经验的顶级儿童绘本作家，精通儿童心理学和语言发展规律。'
+            '你的创作必须语言自然、通俗流畅，像妈妈给孩子讲故事一样温暖亲切。'
+            '故事需要有完整的起因、经过和结尾，富有趣味性和教育意义。'
+            '直接返回故事文本，不要添加任何解释说明、标题或标注。',
         userMessage: prompt,
         config: aiConfig,
         model: model,

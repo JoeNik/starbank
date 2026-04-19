@@ -31,6 +31,62 @@ class _QuizAISettingsPageState extends State<QuizAISettingsPage> {
     _imagePromptController =
         TextEditingController(text: _config.imageGenPrompt);
     _chatPromptController = TextEditingController(text: _config.chatPrompt);
+
+    // 校验已保存的配置是否仍然有效，清理已删除的配置引用
+    _validateConfigReferences();
+  }
+
+  /// 校验子功能配置中引用的 AI 配置是否仍然存在
+  void _validateConfigReferences() {
+    final configs = _openAIService.configs;
+    bool needSave = false;
+
+    // 校验生图配置ID
+    if (_config.imageGenConfigId != null) {
+      final found = configs.any((c) => c.id == _config.imageGenConfigId);
+      if (!found) {
+        debugPrint('⚠️ 生图配置 ID "${_config.imageGenConfigId}" 已不存在，自动清理');
+        _config.imageGenConfigId = null;
+        _config.imageGenModel = null;
+        needSave = true;
+      } else {
+        // 配置存在，但校验模型是否在列表中
+        if (_config.imageGenModel != null) {
+          final cfg = configs.firstWhere((c) => c.id == _config.imageGenConfigId);
+          if (!cfg.models.contains(_config.imageGenModel)) {
+            debugPrint('⚠️ 生图模型 "${_config.imageGenModel}" 已不在模型列表中，自动清理');
+            _config.imageGenModel = null;
+            needSave = true;
+          }
+        }
+      }
+    }
+
+    // 校验问答配置ID
+    if (_config.chatConfigId != null) {
+      final found = configs.any((c) => c.id == _config.chatConfigId);
+      if (!found) {
+        debugPrint('⚠️ 问答配置 ID "${_config.chatConfigId}" 已不存在，自动清理');
+        _config.chatConfigId = null;
+        _config.chatModel = null;
+        needSave = true;
+      } else {
+        // 配置存在，但校验模型是否在列表中
+        if (_config.chatModel != null) {
+          final cfg = configs.firstWhere((c) => c.id == _config.chatConfigId);
+          if (!cfg.models.contains(_config.chatModel)) {
+            debugPrint('⚠️ 问答模型 "${_config.chatModel}" 已不在模型列表中，自动清理');
+            _config.chatModel = null;
+            needSave = true;
+          }
+        }
+      }
+    }
+
+    // 如果有变更，持久化保存
+    if (needSave) {
+      _quizService.updateConfig(_config);
+    }
   }
 
   @override
@@ -303,7 +359,9 @@ class _QuizAISettingsPageState extends State<QuizAISettingsPage> {
                     }
 
                     return DropdownButtonFormField<String>(
-                      value: _config.imageGenModel,
+                      value: selectedConfig.models.contains(_config.imageGenModel)
+                          ? _config.imageGenModel
+                          : null,
                       decoration: InputDecoration(
                         hintText: '推荐: $recommendedModel',
                         hintStyle: TextStyle(color: Colors.grey[400]),
@@ -481,7 +539,9 @@ class _QuizAISettingsPageState extends State<QuizAISettingsPage> {
                     }
 
                     return DropdownButtonFormField<String>(
-                      value: _config.chatModel,
+                      value: selectedConfig.models.contains(_config.chatModel)
+                          ? _config.chatModel
+                          : null,
                       decoration: InputDecoration(
                         hintText: recommendedModel == '可选任意 LLM'
                             ? recommendedModel

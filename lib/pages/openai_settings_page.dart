@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:hive/hive.dart';
 import '../models/openai_config.dart';
+import '../models/story_game_config.dart';
 import '../services/openai_service.dart';
+import '../services/quiz_service.dart';
+import '../services/hanzi_learning_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/toast_utils.dart';
 
@@ -488,6 +492,10 @@ class _OpenAISettingsPageState extends State<OpenAISettingsPage> {
         }
 
         await _openAIService!.updateConfig(config);
+
+        // 同步清理子功能中引用的已失效模型
+        _syncSubFeatureModels(config);
+
         ToastUtils.showSuccess('模型列表已更新，共 ${config.models.length} 个模型');
       }
     } catch (e) {
@@ -496,16 +504,147 @@ class _OpenAISettingsPageState extends State<OpenAISettingsPage> {
     }
   }
 
+  /// 同步清理子功能中引用的已失效模型
+  /// 当 AI 配置的可用模型列表发生变化时，自动清理：
+  /// - 问答功能（QuizConfig）中的 imageGenModel、chatModel
+  /// - 故事游戏（StoryGameConfig）中的 imageGenerationModel、visionModel、chatModel
+  /// - 汉字学习（HanziLearningConfig）中的 chatModel
+  void _syncSubFeatureModels(OpenAIConfig updatedConfig) {
+    final configId = updatedConfig.id;
+    final validModels = updatedConfig.models;
+    int cleanedCount = 0;
+
+    // ========== 1. 清理问答功能配置 ==========
+    try {
+      if (Get.isRegistered<QuizService>()) {
+        final quizService = Get.find<QuizService>();
+        final quizConfig = quizService.config.value;
+        if (quizConfig != null) {
+          bool quizNeedSave = false;
+
+          // 检查生图模型
+          if (quizConfig.imageGenConfigId == configId &&
+              quizConfig.imageGenModel != null &&
+              !validModels.contains(quizConfig.imageGenModel)) {
+            debugPrint('🧹 清理问答配置-生图模型: ${quizConfig.imageGenModel}');
+            quizConfig.imageGenModel = null;
+            quizNeedSave = true;
+            cleanedCount++;
+          }
+
+          // 检查问答模型
+          if (quizConfig.chatConfigId == configId &&
+              quizConfig.chatModel != null &&
+              !validModels.contains(quizConfig.chatModel)) {
+            debugPrint('🧹 清理问答配置-问答模型: ${quizConfig.chatModel}');
+            quizConfig.chatModel = null;
+            quizNeedSave = true;
+            cleanedCount++;
+          }
+
+          if (quizNeedSave) {
+            quizService.updateConfig(quizConfig);
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ 同步问答配置时出错: $e');
+    }
+
+    // ========== 2. 清理故事游戏配置 ==========
+    try {
+      if (Hive.isBoxOpen('story_game_config')) {
+        final storyBox = Hive.box('story_game_config');
+        final configMap = storyBox.get('config');
+        if (configMap != null) {
+          final storyConfig =
+              StoryGameConfig.fromJson(Map<String, dynamic>.from(configMap));
+          bool storyNeedSave = false;
+
+          // 检查生图模型
+          if (storyConfig.imageGenerationConfigId == configId &&
+              storyConfig.imageGenerationModel.isNotEmpty &&
+              !validModels.contains(storyConfig.imageGenerationModel)) {
+            debugPrint(
+                '🧹 清理故事配置-生图模型: ${storyConfig.imageGenerationModel}');
+            storyConfig.imageGenerationModel = '';
+            storyNeedSave = true;
+            cleanedCount++;
+          }
+
+          // 检查图像分析模型
+          if (storyConfig.visionConfigId == configId &&
+              storyConfig.visionModel.isNotEmpty &&
+              !validModels.contains(storyConfig.visionModel)) {
+            debugPrint(
+                '🧹 清理故事配置-分析模型: ${storyConfig.visionModel}');
+            storyConfig.visionModel = '';
+            storyNeedSave = true;
+            cleanedCount++;
+          }
+
+          // 检查对话模型
+          if (storyConfig.chatConfigId == configId &&
+              storyConfig.chatModel.isNotEmpty &&
+              !validModels.contains(storyConfig.chatModel)) {
+            debugPrint('🧹 清理故事配置-对话模型: ${storyConfig.chatModel}');
+            storyConfig.chatModel = '';
+            storyNeedSave = true;
+            cleanedCount++;
+          }
+
+          if (storyNeedSave) {
+            storyBox.put('config', storyConfig.toJson());
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ 同步故事游戏配置时出错: $e');
+    }
+
+    // ========== 3. 清理汉字学习配置 ==========
+    try {
+      if (Get.isRegistered<HanziLearningService>()) {
+        final hanziService = Get.find<HanziLearningService>();
+        final hanziConfig = hanziService.config.value;
+        if (hanziConfig != null) {
+          bool hanziNeedSave = false;
+
+          // 检查对话模型
+          if (hanziConfig.chatConfigId == configId &&
+              hanziConfig.chatModel.isNotEmpty &&
+              !validModels.contains(hanziConfig.chatModel)) {
+            debugPrint('🧹 清理识字配置-对话模型: ${hanziConfig.chatModel}');
+            hanziConfig.chatModel = '';
+            hanziNeedSave = true;
+            cleanedCount++;
+          }
+
+          if (hanziNeedSave) {
+            hanziService.saveConfig();
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ 同步识字配置时出错: $e');
+    }
+
+    if (cleanedCount > 0) {
+      debugPrint('✅ 子功能模型同步完成，共清理 $cleanedCount 个失效模型引用');
+    } else {
+      debugPrint('✅ 子功能模型同步完成，所有引用均有效');
+    }
+  }
+
   /// 显示模型管理对话框(多选)
   Future<List<String>?> _showModelManageDialog({
     required List<String> currentModels,
     required List<String> userSelectableModels,
   }) async {
-    // 确保当前已保存的模型也在列表中(防止服务商删除了但本地还想保留的情况? 或者取并集?)
-    // 这里为了简单，以在线列表为主，并在顶部显示已选。
-    // 逻辑：展示 userSelectableModels。默认勾选 currentModels 中的项。
-
-    final RxList<String> selected = RxList<String>.from(currentModels);
+    // 以在线列表为基准，只保留同时存在于在线列表中的已保存模型（取交集）
+    // 不在在线列表中的旧模型会被自动清除，避免"幽灵模型"无法取消勾选
+    final RxList<String> selected = RxList<String>.from(
+        currentModels.where((m) => userSelectableModels.contains(m)));
     final RxList<String> filteredList =
         RxList<String>.from(userSelectableModels);
     final searchController = TextEditingController();

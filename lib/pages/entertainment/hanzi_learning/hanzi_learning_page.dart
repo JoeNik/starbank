@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:just_audio/just_audio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -41,8 +42,17 @@ class _HanziLearningPageState extends State<HanziLearningPage>
   /// 是否正在加载（AI生成中）
   bool _isLoading = false;
 
-  /// 卡拉OK定时器
+  /// 卡拉OK定时器（系统TTS兜底方案）
   Timer? _karaokeTimer;
+
+  /// CFTTS 播放进度订阅（音频比例方案）
+  StreamSubscription<Duration>? _positionSubscription;
+
+  /// 字符权重列表（用于按比例推算高亮位置）
+  List<double> _charWeights = [];
+
+  /// 字符权重累积数组（前缀和，用于快速二分查找）
+  List<double> _charWeightPrefixSum = [];
 
   /// 弹跳动画控制器（单字点读效果）
   AnimationController? _bounceController;
@@ -102,7 +112,8 @@ class _HanziLearningPageState extends State<HanziLearningPage>
   @override
   void dispose() {
     _karaokeTimer?.cancel();
-    _tts.onProgressCallback = null; // 清理进度回调
+    _positionSubscription?.cancel();
+    _tts.onProgressCallback = null;
     _floatController.dispose();
     _bounceController?.dispose();
     _rippleController?.dispose();
@@ -350,6 +361,9 @@ class _HanziLearningPageState extends State<HanziLearningPage>
         _isLoading = false;
       });
 
+      // 预计算字符权重（用于卡拉OK按比例同步）
+      _buildCharWeights();
+
       // 异步在后台预加载此段文本的 CFTTS，如果使用的是 API 方案
       _tts.clearCfttsCache().then((_) {
         _tts.prefetchCftts(text, featureKey: 'hanzi_learning_full');
@@ -364,97 +378,228 @@ class _HanziLearningPageState extends State<HanziLearningPage>
     }
   }
 
+  /// 构建字符权重列表和前缀和（用于卡拉OK比例推算）
+  /// 汉字权重 1.0，标点/空白权重 0.3（朗读时标点只有短停顿），换行权重 0.5
+  void _buildCharWeights() {
+    final punctuationRegex = RegExp(r'[，。！？、：；（）《》""'']');
+
+    _charWeights = _characters.map((char) {
+      if (char == '\n' || char == '\r') return 0.5;
+      if (RegExp(r'\s').hasMatch(char)) return 0.2;
+      if (punctuationRegex.hasMatch(char)) return 0.3;
+      return 1.0; // 汉字和其他文字字符
+    }).toList();
+
+    // 构建前缀和：_charWeightPrefixSum[i] = 前 i 个字符的权重总和
+    _charWeightPrefixSum = [0.0];
+    double sum = 0.0;
+    for (final w in _charWeights) {
+      sum += w;
+      _charWeightPrefixSum.add(sum);
+    }
+  }
+
+  /// 根据播放进度比例（0.0~1.0）推算对应的字符索引
+  /// 使用权重前缀和进行二分查找
+  int _progressToCharIndex(double progress) {
+    if (_charWeightPrefixSum.isEmpty || _characters.isEmpty) return 0;
+
+    final totalWeight = _charWeightPrefixSum.last;
+    if (totalWeight <= 0) return 0;
+
+    final targetWeight = progress * totalWeight;
+
+    // 二分查找：找到第一个前缀和 >= targetWeight 的位置
+    int lo = 0, hi = _characters.length - 1;
+    while (lo < hi) {
+      final mid = (lo + hi) ~/ 2;
+      if (_charWeightPrefixSum[mid + 1] < targetWeight) {
+        lo = mid + 1;
+      } else {
+        hi = mid;
+      }
+    }
+    return lo.clamp(0, _characters.length - 1);
+  }
+
   /// 整句朗读（带卡拉OK效果）
-  /// 优先使用 TTS 进度回调精确同步高亮，兜底使用定时器
+  /// 系统TTS：使用 flutter_tts 的精确进度回调
+  /// CFTTS：使用 just_audio 的 positionStream 按比例推算高亮位置
   Future<void> _playFullText() async {
     if (_displayText.isEmpty) return;
 
+    // 如果正在播放，则停止
     if (_isPlayingFull) {
-      await _tts.stop();
-      _karaokeTimer?.cancel();
-      _tts.onProgressCallback = null;
-      setState(() {
-        _isPlayingFull = false;
-        _highlightIndex = -1;
-      });
+      await _stopFullPlay();
       return;
     }
+
+    // 确保权重已计算
+    if (_charWeights.isEmpty) _buildCharWeights();
 
     setState(() {
       _isPlayingFull = true;
       _highlightIndex = 0;
     });
 
+    // 判断当前使用的是 CFTTS 还是系统 TTS
+    bool isCftts = _tts.useCftts.value;
+    final override = _tts.getFeatureTtsEngine('hanzi_learning_full');
+    if (override == 'cftts') isCftts = true;
+    if (override == 'system') isCftts = false;
+
+    // 检查 CFTTS 是否实际可用
+    if (isCftts && (_tts.cfttsConfig.value == null ||
+        _tts.cfttsConfig.value!.baseUrl.isEmpty)) {
+      isCftts = false;
+    }
+
+    if (isCftts) {
+      await _playWithCfttsSync();
+    } else {
+      await _playWithSystemTtsSync();
+    }
+
+    // 播放结束后清理
+    await _cleanupFullPlay();
+  }
+
+  /// CFTTS 方案：监听 just_audio positionStream，按时间比例推算高亮位置
+  Future<void> _playWithCfttsSync() async {
+    debugPrint('🎵 使用 CFTTS 音频比例同步方案');
+
+    bool durationReady = false;
+    Duration? totalDuration;
+
+    // 先启动 TTS 播放（异步，让音频开始加载）
+    final speakFuture =
+        _tts.speak(_displayText, featureKey: 'hanzi_learning_full');
+
+    // 轮询等待音频加载完成并获取总时长（最多5秒）
+    for (int i = 0; i < 50; i++) {
+      await Future.delayed(const Duration(milliseconds: 100));
+      if (!_isPlayingFull || !mounted) return;
+
+      totalDuration = _tts.audioPlayer.duration;
+      if (totalDuration != null && totalDuration.inMilliseconds > 0) {
+        durationReady = true;
+        break;
+      }
+    }
+
+    if (!durationReady || totalDuration == null) {
+      debugPrint('⚠️ 无法获取音频时长，回退到估算定时器');
+      _startFallbackKaraoke();
+      try {
+        await speakFuture;
+      } catch (_) {}
+      return;
+    }
+
+    debugPrint('⏱️ 音频总时长: ${totalDuration.inMilliseconds}ms, '
+        '文本${_characters.length}字');
+
+    // 监听播放位置流，实时推算高亮索引
+    _positionSubscription?.cancel();
+    _positionSubscription =
+        _tts.audioPlayer.positionStream.listen((position) {
+      if (!_isPlayingFull || !mounted || totalDuration == null) return;
+
+      final progress =
+          position.inMilliseconds / totalDuration!.inMilliseconds;
+      final clampedProgress = progress.clamp(0.0, 1.0);
+      final newIndex = _progressToCharIndex(clampedProgress);
+
+      if (newIndex != _highlightIndex) {
+        setState(() => _highlightIndex = newIndex);
+      }
+    });
+
+    // 等待播放完成
+    try {
+      await speakFuture;
+    } catch (e) {
+      debugPrint('CFTTS speak failed: $e');
+    }
+  }
+
+  /// 系统 TTS 方案：使用 flutter_tts 的精确进度回调
+  Future<void> _playWithSystemTtsSync() async {
+    debugPrint('🔊 使用系统 TTS 精确回调同步方案');
+
     bool receivedProgress = false;
     _karaokeTimer?.cancel();
     _tts.onProgressCallback = null;
     _tts.onStartCallback = null;
 
-    // 设置 TTS 进度回调 —— 精确同步高亮位置
+    // 设置进度回调 - 精确同步
     _tts.onProgressCallback = (int start, int end) {
       receivedProgress = true;
-      // start 是当前朗读到文本的字符偏移，直接对应 _characters 的索引
       if (mounted && _isPlayingFull && start < _characters.length) {
         setState(() => _highlightIndex = start);
       }
     };
 
-    // 当语音实际开始播放时，才开始兜底的高亮动画逻辑
+    // 当语音开始播放后，检查进度回调是否可用
     _tts.onStartCallback = () {
       if (!mounted || !_isPlayingFull) return;
 
       Future.delayed(const Duration(milliseconds: 500), () {
         if (!receivedProgress && _isPlayingFull && mounted) {
-          // 引擎不支持 progress 回调，使用估算定时器兜底
-          final rate = _tts.speechRate.value;
-
-          int msPerChar;
-          if (_tts.getFeatureTtsEngine('hanzi_learning_full') == 'cftts' ||
-              _tts.useCftts.value) {
-            // 自建 CFTTS 发音紧凑，将停留数字减小以提高跑马灯速度
-            msPerChar = 260;
-          } else {
-            final normalMs = 280;
-            msPerChar = (normalMs / (rate <= 0.05 ? 0.3 : rate * 1.5))
-                .toInt()
-                .clamp(150, 1000);
-          }
-
-          debugPrint('⏱️ TTS 进度回调不可用，使用动态兜底定时器: $msPerChar ms/字');
-
-          void startKaraokeStep() {
-            if (!_isPlayingFull || !mounted) return;
-            if (_highlightIndex >= _characters.length - 1) return;
-
-            final char = _characters[_highlightIndex];
-            int waitMs = msPerChar;
-            // 如果遇到标点符号或空白，直接极速跳过 (10ms几乎没有视觉延迟)
-            if (RegExp(r'[，。！？、：；（）《》“”‘’\n\s]').hasMatch(char)) {
-              waitMs = 10;
-            }
-
-            _karaokeTimer = Timer(Duration(milliseconds: waitMs), () {
-              if (mounted && _isPlayingFull) {
-                setState(() => _highlightIndex++);
-                startKaraokeStep();
-              }
-            });
-          }
-
-          startKaraokeStep();
+          _startFallbackKaraoke();
         }
       });
     };
 
-    // 播放 TTS (await completion)
     try {
       await _tts.speak(_displayText, featureKey: 'hanzi_learning_full');
     } catch (e) {
       debugPrint('TTS speak failed: $e');
     }
+  }
 
-    // 播放结束后清理
+  /// 兜底方案：使用固定速率的定时器估算逐字高亮
+  void _startFallbackKaraoke() {
+    final rate = _tts.speechRate.value;
+    final normalMs = 280;
+    final msPerChar = (normalMs / (rate <= 0.05 ? 0.3 : rate * 1.5))
+        .toInt()
+        .clamp(150, 1000);
+
+    debugPrint('⏱️ 兜底定时器: $msPerChar ms/字');
+
+    void step() {
+      if (!_isPlayingFull || !mounted) return;
+      if (_highlightIndex >= _characters.length - 1) return;
+
+      final char = _characters[_highlightIndex];
+      int waitMs = msPerChar;
+      if (RegExp(r'[，。！？、：；（）《》""''\n\s]').hasMatch(char)) {
+        waitMs = 10;
+      }
+
+      _karaokeTimer = Timer(Duration(milliseconds: waitMs), () {
+        if (mounted && _isPlayingFull) {
+          setState(() => _highlightIndex++);
+          step();
+        }
+      });
+    }
+
+    step();
+  }
+
+  /// 停止整句朗读
+  Future<void> _stopFullPlay() async {
+    await _tts.stop();
+    await _cleanupFullPlay();
+  }
+
+  /// 清理播放状态和回调
+  Future<void> _cleanupFullPlay() async {
     _karaokeTimer?.cancel();
+    _positionSubscription?.cancel();
+    _positionSubscription = null;
     _tts.onProgressCallback = null;
     _tts.onStartCallback = null;
     if (mounted) {

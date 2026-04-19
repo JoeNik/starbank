@@ -125,7 +125,7 @@ class OpenAIService extends GetxService {
         'Content-Type': 'application/json',
       };
 
-      // 构建请求体
+      // 构建请求体，显式指定 stream: false 以确保非流式响应
       Map<String, dynamic> requestBody = {
         'model': model ??
             (cfg.selectedModel.isNotEmpty
@@ -134,6 +134,7 @@ class OpenAIService extends GetxService {
         'messages': messages,
         'temperature': 0.7,
         'max_tokens': 2000,
+        'stream': false,
       };
 
       // 如果启用联网搜索，添加工具定义
@@ -169,7 +170,7 @@ class OpenAIService extends GetxService {
             error['error']?['message'] ?? '请求失败: ${response.statusCode}');
       }
 
-      var data = jsonDecode(utf8.decode(response.bodyBytes));
+      var data = _parseResponseBody(utf8.decode(response.bodyBytes));
       var message = data['choices'][0]['message'];
 
       // 检查是否有工具调用
@@ -208,7 +209,7 @@ class OpenAIService extends GetxService {
           throw Exception('Tool response failed');
         }
 
-        data = jsonDecode(utf8.decode(response.bodyBytes));
+        data = _parseResponseBody(utf8.decode(response.bodyBytes));
         message = data['choices'][0]['message'];
       }
 
@@ -801,6 +802,84 @@ class OpenAIService extends GetxService {
       debugPrint('堆栈: $stackTrace');
       rethrow;
     }
+  }
+
+  /// 解析 API 响应体，兼容标准 JSON 和 SSE 格式
+  /// 某些 API 提供商即使 stream=false 也可能返回 SSE 格式
+  Map<String, dynamic> _parseResponseBody(String body) {
+    final trimmed = body.trim();
+
+    // 先尝试直接解析标准 JSON
+    try {
+      return jsonDecode(trimmed) as Map<String, dynamic>;
+    } catch (_) {
+      // 继续尝试 SSE 格式解析
+    }
+
+    // 尝试解析 SSE 格式: 提取 data: 行中的 JSON
+    debugPrint('⚠️ 标准 JSON 解析失败，尝试 SSE 格式解析...');
+    final lines = trimmed.split('\n');
+    Map<String, dynamic>? lastValidData;
+    String accumulatedContent = '';
+
+    for (var line in lines) {
+      line = line.trim();
+      if (line.isEmpty || line == 'data: [DONE]') continue;
+
+      String dataStr = line;
+      if (line.startsWith('data: ')) {
+        dataStr = line.substring(6);
+      } else if (line.startsWith('data:')) {
+        dataStr = line.substring(5);
+      }
+
+      try {
+        final parsed = jsonDecode(dataStr) as Map<String, dynamic>;
+        final choices = parsed['choices'] as List?;
+        if (choices != null && choices.isNotEmpty) {
+          final choice = choices[0] as Map<String, dynamic>;
+          // 检查是否为流式 delta 格式
+          if (choice.containsKey('delta')) {
+            final delta = choice['delta'] as Map<String, dynamic>?;
+            final content = delta?['content'] as String?;
+            if (content != null) {
+              accumulatedContent += content;
+            }
+            lastValidData = parsed;
+          } else {
+            // 非流式格式，直接返回
+            return parsed;
+          }
+        }
+      } catch (_) {
+        // 跳过无法解析的行
+      }
+    }
+
+    // 如果从流式数据中累积了内容，构造标准响应
+    if (accumulatedContent.isNotEmpty && lastValidData != null) {
+      debugPrint('✅ SSE 流式数据解析成功，累积内容长度: ${accumulatedContent.length}');
+      return {
+        'id': lastValidData['id'],
+        'object': 'chat.completion',
+        'choices': [
+          {
+            'index': 0,
+            'message': {
+              'role': 'assistant',
+              'content': accumulatedContent,
+            },
+            'finish_reason': 'stop',
+          }
+        ],
+      };
+    }
+
+    // 最终兜底：抛出有意义的错误
+    throw FormatException(
+      '无法解析 API 响应: 既非标准 JSON 也非有效 SSE 格式\n'
+      '响应内容前100字符: ${trimmed.substring(0, trimmed.length > 100 ? 100 : trimmed.length)}',
+    );
   }
 
   /// 从文本中提取图片URL

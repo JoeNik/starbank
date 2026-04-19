@@ -35,6 +35,8 @@ class MusicPlayerController extends GetxController {
   int _currentPlayTaskId = 0;
   // 是否正在切歌过渡中,防止 stop() 触发的 completed 状态误触自动切歌
   bool _isTransitioning = false;
+  // 安全超时定时器：防止 _isTransitioning 因异常流程永久卡住
+  Timer? _transitionSafetyTimer;
 
   // Progress
   final Rx<Duration> position = Duration.zero.obs;
@@ -203,6 +205,15 @@ class MusicPlayerController extends GetxController {
         _isTransitioning = true;
         debugPrint('🎵 [PlayerState] 歌曲自然播放完成，自动切歌 (模式: ${playMode.value})');
 
+        // 启动安全超时：10秒内若 _isTransitioning 未被正常重置，则强制重置
+        _transitionSafetyTimer?.cancel();
+        _transitionSafetyTimer = Timer(const Duration(seconds: 10), () {
+          if (_isTransitioning) {
+            debugPrint('⚠️ [Safety] _isTransitioning 超时10秒未重置，强制重置');
+            _isTransitioning = false;
+          }
+        });
+
         // 记录历史
         if (playlist.isNotEmpty && currentIndex.value < playlist.length) {
           addToHistory(playlist[currentIndex.value]);
@@ -211,23 +222,28 @@ class MusicPlayerController extends GetxController {
         // 处理单曲循环
         if (playMode.value == PlayMode.single) {
           debugPrint('🎵 [PlayerState] 单曲循环模式，重新播放当前歌曲');
-          audioPlayer!.seek(Duration.zero);
-          audioPlayer!.play();
-          // 单曲循环不需要重置 _isTransitioning,因为 seek+play 会触发 ready 状态
+          audioPlayer!.seek(Duration.zero).then((_) {
+            audioPlayer!.play();
+            // seek+play 完成后立即重置
+            _isTransitioning = false;
+            _transitionSafetyTimer?.cancel();
+          });
         } else {
           // 延迟执行切换，给 UI 和状态一点缓冲时间
-          // 注意: 不要在这里重置 _isTransitioning!
-          // 因为 playNext 调用的 playTrack 是异步的,此时可能还没开始播放
-          // _isTransitioning 会在新歌曲开始播放时(ready && playing)自动重置
           Future.delayed(const Duration(milliseconds: 300), () {
             playNext(isAuto: true);
           });
         }
       }
 
-      // 当播放器准备好并开始播放时，重置过渡状态
-      if (state.processingState == ProcessingState.ready && state.playing) {
-        _isTransitioning = false;
+      // 重置过渡状态：当新歌开始加载或开始播放时
+      if (_isTransitioning) {
+        if (state.processingState == ProcessingState.loading ||
+            state.processingState == ProcessingState.buffering ||
+            (state.processingState == ProcessingState.ready && state.playing)) {
+          _isTransitioning = false;
+          _transitionSafetyTimer?.cancel();
+        }
       }
     });
 
@@ -299,6 +315,7 @@ class MusicPlayerController extends GetxController {
         final cachedPath = await _cacheService.getCachedFilePath(track);
         if (!isTaskValid()) {
           debugPrint('🔄 [PlayTrack #$taskId] 任务已取消(缓存解密后)');
+          _isTransitioning = false;
           return;
         }
         if (cachedPath != null) {
@@ -318,6 +335,7 @@ class MusicPlayerController extends GetxController {
         final res = await _tuneHubService.parseTrack(track.platform, track.id);
         if (!isTaskValid()) {
           debugPrint('🔄 [PlayTrack #$taskId] 任务已取消(URL解析后)');
+          _isTransitioning = false;
           return;
         }
         if (res.containsKey('url') && res['url'] != null) {
@@ -338,6 +356,7 @@ class MusicPlayerController extends GetxController {
     // 检查URL是否有效
     if (playUrl == null || playUrl.isEmpty) {
       debugPrint('⚠️ [PlayTrack #$taskId] 无法获取播放地址');
+      _isTransitioning = false;
       if (isTaskValid()) {
         // 静默跳下一首,不打扰用户
         Future.delayed(const Duration(milliseconds: 500), () {
@@ -357,6 +376,7 @@ class MusicPlayerController extends GetxController {
       final player = await _ensurePlayer();
       if (player == null || !isTaskValid()) {
         debugPrint('🔄 [PlayTrack #$taskId] 任务已取消(获取播放器后)');
+        _isTransitioning = false;
         return;
       }
 
@@ -402,6 +422,7 @@ class MusicPlayerController extends GetxController {
       // 最后一次检查
       if (!isTaskValid()) {
         debugPrint('🔄 [PlayTrack #$taskId] 任务已取消(设置源后)');
+        _isTransitioning = false;
         try {
           await player.stop();
         } catch (_) {}
@@ -584,6 +605,7 @@ class MusicPlayerController extends GetxController {
     // Cannot dispose global player from controller!
     // _musicService handles lifecycle if needed.
     _sleepTimer?.cancel();
+    _transitionSafetyTimer?.cancel();
     super.onClose();
   }
 
