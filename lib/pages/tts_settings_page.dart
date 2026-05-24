@@ -183,7 +183,7 @@ class _TtsSettingsPageState extends State<TtsSettingsPage> {
               final options = _tts.getTtsRouteOptions();
               final value = _tts.getGlobalTtsRoute();
               return DropdownButtonFormField<String>(
-                initialValue: options.any((item) => item['value'] == value)
+                value: options.any((item) => item['value'] == value)
                     ? value
                     : TtsService.engineSystem,
                 decoration: const InputDecoration(
@@ -722,7 +722,7 @@ class _TtsSettingsPageState extends State<TtsSettingsPage> {
         SizedBox(height: 4.h),
         DropdownButtonFormField<String>(
           isExpanded: true,
-          initialValue: items.contains(value)
+          value: items.contains(value)
               ? value
               : (items.isNotEmpty ? items.first : value),
           decoration: InputDecoration(
@@ -1108,7 +1108,7 @@ class _TtsSettingsPageState extends State<TtsSettingsPage> {
                       SizedBox(height: 12.h),
                       Obx(
                         () => DropdownButtonFormField<String>(
-                          initialValue: selectedProviderType.value,
+                          value: selectedProviderType.value,
                           decoration: const InputDecoration(
                             labelText: 'Provider 类型',
                             border: OutlineInputBorder(),
@@ -1151,7 +1151,7 @@ class _TtsSettingsPageState extends State<TtsSettingsPage> {
                       SizedBox(height: 12.h),
                       Obx(
                         () => DropdownButtonFormField<String>(
-                          initialValue: selectedAuthType.value,
+                          value: selectedAuthType.value,
                           decoration: const InputDecoration(
                             labelText: '认证方式',
                             border: OutlineInputBorder(),
@@ -1207,8 +1207,7 @@ class _TtsSettingsPageState extends State<TtsSettingsPage> {
                             SizedBox(height: 4.h),
                             if (hasChoices)
                               DropdownButtonFormField<String>(
-                                initialValue: availableModels
-                                        .contains(selectedModel.value)
+                                value: availableModels.contains(selectedModel.value)
                                     ? selectedModel.value
                                     : availableModels.first,
                                 decoration: const InputDecoration(
@@ -1295,8 +1294,7 @@ class _TtsSettingsPageState extends State<TtsSettingsPage> {
                             SizedBox(height: 4.h),
                             if (hasChoices)
                               DropdownButtonFormField<String>(
-                                initialValue: availableVoices
-                                        .contains(selectedVoice.value)
+                                value: availableVoices.contains(selectedVoice.value)
                                     ? selectedVoice.value
                                     : availableVoices.first,
                                 decoration: const InputDecoration(
@@ -1380,8 +1378,7 @@ class _TtsSettingsPageState extends State<TtsSettingsPage> {
                           children: [
                             if (availableStyles.isNotEmpty)
                               DropdownButtonFormField<String>(
-                                initialValue: availableStyles
-                                        .contains(selectedStyle.value)
+                                value: availableStyles.contains(selectedStyle.value)
                                     ? selectedStyle.value
                                     : availableStyles.first,
                                 decoration: const InputDecoration(
@@ -1457,7 +1454,7 @@ class _TtsSettingsPageState extends State<TtsSettingsPage> {
                       SizedBox(height: 12.h),
                       Obx(
                         () => DropdownButtonFormField<String>(
-                          initialValue: selectedAudioFormat.value,
+                          value: selectedAudioFormat.value,
                           decoration: const InputDecoration(
                             labelText: '音频格式',
                             border: OutlineInputBorder(),
