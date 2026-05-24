@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:just_audio/just_audio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -364,10 +363,8 @@ class _HanziLearningPageState extends State<HanziLearningPage>
       // 预计算字符权重（用于卡拉OK按比例同步）
       _buildCharWeights();
 
-      // 异步在后台预加载此段文本的 CFTTS，如果使用的是 API 方案
-      _tts.clearCfttsCache().then((_) {
-        _tts.prefetchCftts(text, featureKey: 'hanzi_learning_full');
-      });
+      // 异步在后台预加载此段文本的远程 TTS 音频
+      unawaited(_tts.prefetchCftts(text, featureKey: 'hanzi_learning_full'));
 
       final coverage = _service.calculateCoverage(text);
       debugPrint('📊 字库覆盖率: ${(coverage * 100).toStringAsFixed(1)}%');
@@ -375,6 +372,31 @@ class _HanziLearningPageState extends State<HanziLearningPage>
       setState(() => _isLoading = false);
       ToastUtils.showError(
           '生成失败: ${e.toString().replaceAll('Exception:', '')}');
+    }
+  }
+
+  Future<void> _refreshCurrentAudio() async {
+    final text = _displayText.trim();
+    if (text.isEmpty) {
+      ToastUtils.showInfo('请先生成一篇内容');
+      return;
+    }
+
+    if (!_tts.shouldUseAudioBasedPlayback(featureKey: 'hanzi_learning_full')) {
+      ToastUtils.showInfo('当前使用系统 TTS，无需重新生成音频');
+      return;
+    }
+
+    try {
+      await _stopFullPlay();
+      await _tts.clearRemoteTtsCacheForText(
+        text,
+        featureKey: 'hanzi_learning_full',
+      );
+      await _tts.prefetchCftts(text, featureKey: 'hanzi_learning_full');
+      ToastUtils.showSuccess('当前朗读音频已重新生成');
+    } catch (e) {
+      ToastUtils.showError('刷新语音失败: $e');
     }
   }
 
@@ -442,19 +464,10 @@ class _HanziLearningPageState extends State<HanziLearningPage>
       _highlightIndex = 0;
     });
 
-    // 判断当前使用的是 CFTTS 还是系统 TTS
-    bool isCftts = _tts.useCftts.value;
-    final override = _tts.getFeatureTtsEngine('hanzi_learning_full');
-    if (override == 'cftts') isCftts = true;
-    if (override == 'system') isCftts = false;
+    final isAudioBased =
+        _tts.shouldUseAudioBasedPlayback(featureKey: 'hanzi_learning_full');
 
-    // 检查 CFTTS 是否实际可用
-    if (isCftts && (_tts.cfttsConfig.value == null ||
-        _tts.cfttsConfig.value!.baseUrl.isEmpty)) {
-      isCftts = false;
-    }
-
-    if (isCftts) {
+    if (isAudioBased) {
       await _playWithCfttsSync();
     } else {
       await _playWithSystemTtsSync();
@@ -506,7 +519,7 @@ class _HanziLearningPageState extends State<HanziLearningPage>
       if (!_isPlayingFull || !mounted || totalDuration == null) return;
 
       final progress =
-          position.inMilliseconds / totalDuration!.inMilliseconds;
+          position.inMilliseconds / totalDuration.inMilliseconds;
       final clampedProgress = progress.clamp(0.0, 1.0);
       final newIndex = _progressToCharIndex(clampedProgress);
 
@@ -574,7 +587,7 @@ class _HanziLearningPageState extends State<HanziLearningPage>
 
       final char = _characters[_highlightIndex];
       int waitMs = msPerChar;
-      if (RegExp(r'[，。！？、：；（）《》""''\n\s]').hasMatch(char)) {
+      if (RegExp(r'[，。！？、：；（）《》"\n\s]').hasMatch(char)) {
         waitMs = 10;
       }
 
@@ -1157,48 +1170,73 @@ class _HanziLearningPageState extends State<HanziLearningPage>
             ),
           ),
           SizedBox(width: 8.w),
+          if (_tts.shouldUseAudioBasedPlayback(featureKey: 'hanzi_learning_full'))
+            Padding(
+              padding: EdgeInsets.only(right: 8.w),
+              child: OutlinedButton.icon(
+                onPressed: _displayText.trim().isEmpty || _isLoading
+                    ? null
+                    : _refreshCurrentAudio,
+                icon: const Icon(Icons.refresh, size: 16),
+                label: const Text('刷新语音'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF7C4DFF),
+                  side: const BorderSide(color: Color(0xFF7C4DFF)),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+            ),
 
           // 新字提示
           if (newChars.isNotEmpty) ...[
-            Text(
-              '新字：',
-              style: TextStyle(fontSize: 12.sp, color: Colors.grey),
-            ),
-            ...newChars.map((c) {
-              final pinyin = HanziData.getPinyin(c);
-              return Container(
-                margin: EdgeInsets.only(left: 4.w),
-                padding: EdgeInsets.symmetric(
-                  horizontal: 6.w,
-                  vertical: 2.h,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade100,
-                  borderRadius: BorderRadius.circular(8.r),
-                  border: Border.all(color: Colors.orange.shade300),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
+            Expanded(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
                   children: [
                     Text(
-                      pinyin ?? ' ',
-                      style: TextStyle(
-                        fontSize: 8.sp,
-                        color: Colors.orange.shade700,
-                      ),
+                      '新字：',
+                      style: TextStyle(fontSize: 12.sp, color: Colors.grey),
                     ),
-                    Text(
-                      c,
-                      style: TextStyle(
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.orange.shade800,
-                      ),
-                    ),
+                    ...newChars.map((c) {
+                      final pinyin = HanziData.getPinyin(c);
+                      return Container(
+                        margin: EdgeInsets.only(left: 4.w),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 6.w,
+                          vertical: 2.h,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade100,
+                          borderRadius: BorderRadius.circular(8.r),
+                          border: Border.all(color: Colors.orange.shade300),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              pinyin ?? ' ',
+                              style: TextStyle(
+                                fontSize: 8.sp,
+                                color: Colors.orange.shade700,
+                              ),
+                            ),
+                            Text(
+                              c,
+                              style: TextStyle(
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.orange.shade800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
                   ],
                 ),
-              );
-            }),
+              ),
+            ),
           ],
         ],
       ),

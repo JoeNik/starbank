@@ -26,6 +26,7 @@ import '../services/quiz_service.dart';
 import '../models/quiz_config.dart';
 import '../models/hanzi_learning_config.dart';
 import '../models/cftts_config.dart';
+import '../models/openai_tts_config.dart';
 import '../services/tts_service.dart';
 
 /// 备份文件信息
@@ -342,6 +343,16 @@ class WebDavService extends GetxService {
         backupData['cfttsConfigBox'] = cfttsBox.values.map((e) => e.toJson()).toList();
       } catch (e) {
         print('备份 CFTTS 配置失败: $e');
+      }
+
+      // 备份 OpenAI TTS Provider 配置
+      try {
+        final openAITtsBox =
+            await Hive.openBox<OpenAITtsConfig>('openai_tts_config_box');
+        backupData['openAITtsConfigBox'] =
+            openAITtsBox.values.map((e) => e.toJson()).toList();
+      } catch (e) {
+        print('备份 OpenAI TTS 配置失败: $e');
       }
 
       backupData['timestamp'] = DateTime.now().toIso8601String();
@@ -891,6 +902,25 @@ class WebDavService extends GetxService {
         }
       }
 
+      // 恢复 OpenAI TTS Provider 配置
+      if (backupData['openAITtsConfigBox'] != null) {
+        try {
+          final openAITtsBox =
+              await Hive.openBox<OpenAITtsConfig>('openai_tts_config_box');
+          await openAITtsBox.clear();
+          for (var item in (backupData['openAITtsConfigBox'] as List)) {
+            if (item is Map) {
+              final map = Map<String, dynamic>.from(item);
+              final config = OpenAITtsConfig.fromJson(map);
+              await openAITtsBox.put(config.id, config);
+            }
+          }
+          await openAITtsBox.flush();
+        } catch (e) {
+          print('恢复 OpenAI TTS 配置失败: $e');
+        }
+      }
+
       // 所有的 TTS 及 CFTTS 恢复完成后，在内存中重新加载它
       try {
         if (Get.isRegistered<TtsService>()) {
@@ -992,6 +1022,10 @@ class WebDavService extends GetxService {
     // CfttsConfig (41)
     if (!Hive.isAdapterRegistered(41)) {
       Hive.registerAdapter(CfttsConfigAdapter());
+    }
+    // OpenAITtsConfig (42)
+    if (!Hive.isAdapterRegistered(42)) {
+      Hive.registerAdapter(OpenAITtsConfigAdapter());
     }
   }
 }

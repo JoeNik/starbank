@@ -20,6 +20,7 @@ import 'services/ai_generation_service.dart';
 import 'models/quiz_config.dart';
 import 'models/quiz_question.dart';
 import 'models/hanzi_learning_config.dart';
+import 'models/openai_tts_config.dart';
 import 'services/hanzi_learning_service.dart';
 // import 'package:just_audio_background/just_audio_background.dart';
 
@@ -67,6 +68,12 @@ void main() async {
     debugPrint('✅ HanziLearningConfigAdapter registered (typeId: 40)');
   } else {
     debugPrint('⚠️ HanziLearningConfigAdapter already registered (typeId: 40)');
+  }
+  if (!Hive.isAdapterRegistered(42)) {
+    Hive.registerAdapter(OpenAITtsConfigAdapter());
+    debugPrint('✅ OpenAITtsConfigAdapter registered (typeId: 42)');
+  } else {
+    debugPrint('⚠️ OpenAITtsConfigAdapter already registered (typeId: 42)');
   }
 
   debugPrint('📦 准备初始化 StorageService...');

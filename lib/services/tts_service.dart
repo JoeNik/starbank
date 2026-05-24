@@ -9,28 +9,39 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import '../models/cftts_config.dart';
+import '../models/openai_tts_config.dart';
 
 /// 全局 TTS 语音服务
 /// 使用 GetxService 确保全局单例，所有页面共享同一个 TTS 实例
 class TtsService extends GetxService {
+  static const String engineGlobal = 'global';
+  static const String engineSystem = 'system';
+  static const String engineCftts = 'cftts';
+  static const String openAITtsPrefix = 'openai_tts:';
+
   late FlutterTts _flutterTts;
   late Box _settingsBox;
 
   // CFTTS 相关配置
   late Box<CfttsConfig> _cfttsConfigBox;
   final Rx<CfttsConfig?> cfttsConfig = Rx<CfttsConfig?>(null);
-  
-  // 选择使用系统 TTS 还是 CFTTS的开关
+
+  // OpenAI 格式 TTS Provider 配置
+  late Box<OpenAITtsConfig> _openAITtsConfigBox;
+  final RxList<OpenAITtsConfig> openAITtsConfigs = <OpenAITtsConfig>[].obs;
+  final RxString globalTtsRoute = engineSystem.obs;
+
+  // 兼容旧逻辑：是否使用 CFTTS
   final RxBool useCftts = false.obs;
-  
-  // 用于播放 CFTTS 生成音频的服务
+
+  // 用于播放远程 TTS 生成音频的服务
   late AudioPlayer _audioPlayer;
 
   /// 暴露 audioPlayer 给外部监听播放进度（用于卡拉OK同步等场景）
   AudioPlayer get audioPlayer => _audioPlayer;
 
   // 避免对同一个文本的并发请求
-  final Map<String, Future<File?>> _cfttsFetchTasks = {};
+  final Map<String, Future<File?>> _remoteTtsFetchTasks = {};
 
   // 可调参数
   final RxDouble speechRate = 0.5.obs;
@@ -59,7 +70,12 @@ class TtsService extends GetxService {
     if (!Hive.isAdapterRegistered(41)) {
       Hive.registerAdapter(CfttsConfigAdapter());
     }
+    if (!Hive.isAdapterRegistered(42)) {
+      Hive.registerAdapter(OpenAITtsConfigAdapter());
+    }
     _cfttsConfigBox = await Hive.openBox<CfttsConfig>('cftts_config_box');
+    _openAITtsConfigBox =
+        await Hive.openBox<OpenAITtsConfig>('openai_tts_config_box');
 
     // 加载保存的设置
     await _loadSettings();
@@ -81,17 +97,14 @@ class TtsService extends GetxService {
       try {
         final engineList = await _flutterTts.getEngines;
         if (engineList != null && engineList is List) {
-          engines.addAll(engineList.map((e) => e.toString()));
+          engines.assignAll(engineList.map((e) => e.toString()));
 
-          // 如果没有保存的引擎，尝试获取并设置默认引擎
-          // 这有助于在某些系统(如MIUI)上"唤醒"默认引擎
           if (_settingsBox.get('tts_engine', defaultValue: '') == '') {
             try {
               final defaultEngine = await _flutterTts.getDefaultEngine;
               if (defaultEngine != null && defaultEngine.isNotEmpty) {
                 await _flutterTts.setEngine(defaultEngine);
                 currentEngine.value = defaultEngine;
-                // 再次应用设置，确保生效
                 await Future.delayed(const Duration(milliseconds: 200));
                 await _applyGlobalSettings();
               }
@@ -110,7 +123,7 @@ class TtsService extends GetxService {
     });
     _flutterTts.setCompletionHandler(() {
       isSpeaking.value = false;
-      onProgressCallback = null; // 播放结束后清除回调
+      onProgressCallback = null;
     });
     _flutterTts.setCancelHandler(() {
       isSpeaking.value = false;
@@ -120,22 +133,18 @@ class TtsService extends GetxService {
       isSpeaking.value = false;
       onProgressCallback = null;
       debugPrint('TTS Error: $msg');
-      // 尝试重置
       if (msg.toString().contains('not bound')) {
         _resetTts();
       }
     });
 
-    // 朗读进度回调 - 追踪当前朗读到文本的哪个位置 (仅 FlutterTts)
-    _flutterTts.setProgressHandler(
-        (String text, int start, int end, String word) {
+    _flutterTts
+        .setProgressHandler((String text, int start, int end, String word) {
       onProgressCallback?.call(start, end);
     });
 
-    // 监听 just_audio 的播放状态
     _audioPlayer.playerStateStream.listen((state) {
       if (state.processingState == ProcessingState.completed) {
-        // 无论何种音色，如果底层刚刚播放完成，统统标记结束
         isSpeaking.value = false;
         onProgressCallback = null;
       }
@@ -160,9 +169,16 @@ class TtsService extends GetxService {
     pitch.value = _settingsBox.get('pitch', defaultValue: 1.0);
     volume.value = _settingsBox.get('volume', defaultValue: 1.0);
     final savedEngine = _settingsBox.get('tts_engine', defaultValue: '');
-    useCftts.value = _settingsBox.get('use_cftts', defaultValue: false);
 
-    // 加载或创建 CFTTS 配置
+    // 加载旧版 use_cftts 兼容值，再优先读取新版 route
+    useCftts.value = _settingsBox.get('use_cftts', defaultValue: false);
+    final savedRoute = _settingsBox.get(
+      'tts_global_route',
+      defaultValue: useCftts.value ? engineCftts : engineSystem,
+    );
+    globalTtsRoute.value = _normalizeEngineRoute(savedRoute.toString());
+    useCftts.value = globalTtsRoute.value == engineCftts;
+
     if (_cfttsConfigBox.isEmpty) {
       final defaultCftts = CfttsConfig();
       await _cfttsConfigBox.add(defaultCftts);
@@ -171,12 +187,14 @@ class TtsService extends GetxService {
       cfttsConfig.value = _cfttsConfigBox.values.first;
     }
 
-    // 应用设置
+    openAITtsConfigs.assignAll(_openAITtsConfigBox.values);
+    await _normalizePersistedXiaomiMimoConfigs();
+    _ensureOpenAITtsDefaultConsistency();
+
     await _flutterTts.setSpeechRate(speechRate.value);
     await _flutterTts.setPitch(pitch.value);
     await _flutterTts.setVolume(volume.value);
 
-    // 恢复引擎
     if (savedEngine.isNotEmpty) {
       try {
         final engineList = await _flutterTts.getEngines;
@@ -193,38 +211,41 @@ class TtsService extends GetxService {
   /// 重新加载设置（从设置页面返回后调用）
   Future<void> reloadSettings() async {
     await _loadSettings();
-    debugPrint('TTS 设置已重新加载: 语速=${speechRate.value}');
+    debugPrint('TTS 设置已重新加载: 全局路由=${globalTtsRoute.value}');
   }
 
-  /// 播放文本
-  Future<void> speak(String text,
-      {double? rate, double? volume, double? pitch, String? featureKey}) async {
+  Future<void> speak(
+    String text, {
+    double? rate,
+    double? volume,
+    double? pitch,
+    String? featureKey,
+  }) async {
     if (isSpeaking.value) {
       await stop();
     }
 
-    bool shouldCftts = useCftts.value;
-    if (featureKey != null) {
-      final override = getFeatureTtsEngine(featureKey);
-      if (override == 'cftts') shouldCftts = true;
-      if (override == 'system') shouldCftts = false;
-    }
-
-    if (shouldCftts && cfttsConfig.value != null && cfttsConfig.value!.baseUrl.isNotEmpty) {
+    final route = resolveTtsRoute(featureKey: featureKey);
+    if (route == engineCftts && _isCfttsAvailable()) {
       await _speakCftts(text);
       return;
     }
 
-    // 确保语言被设置 (Xiaomi fix)
+    if (route.startsWith(openAITtsPrefix)) {
+      final provider = getOpenAITtsConfigByRoute(route);
+      if (provider != null && _isOpenAITtsAvailable(provider)) {
+        await _speakOpenAITts(provider, text);
+        return;
+      }
+    }
+
     await _flutterTts.setLanguage("zh-CN");
 
     if (rate != null || volume != null || pitch != null) {
-      // 如果指定了参数，则临时设置
       if (rate != null) await _flutterTts.setSpeechRate(rate);
       if (volume != null) await _flutterTts.setVolume(volume);
       if (pitch != null) await _flutterTts.setPitch(pitch);
     } else {
-      // 否则应用全局设置
       await _applyGlobalSettings();
     }
 
@@ -232,86 +253,513 @@ class TtsService extends GetxService {
   }
 
   Future<void> prefetchCftts(String text, {String? featureKey}) async {
-    bool shouldCftts = useCftts.value;
-    if (featureKey != null) {
-      final override = getFeatureTtsEngine(featureKey);
-      if (override == 'cftts') shouldCftts = true;
-      if (override == 'system') shouldCftts = false;
-    }
+    final route = resolveTtsRoute(featureKey: featureKey);
 
-    if (!shouldCftts || cfttsConfig.value == null || cfttsConfig.value!.baseUrl.isEmpty) {
+    if (route == engineCftts && _isCfttsAvailable()) {
+      await _getOrFetchCftts(text);
       return;
     }
 
-    // 调用通用获取缓冲文件的逻辑，提前触发下载任务
-    await _getOrFetchCftts(text);
+    if (route.startsWith(openAITtsPrefix)) {
+      final provider = getOpenAITtsConfigByRoute(route);
+      if (provider != null && _isOpenAITtsAvailable(provider)) {
+        await _getOrFetchOpenAITts(provider, text);
+      }
+    }
   }
 
-  /// 内部获取或下载 CFTTS 的逻辑
+  String resolveTtsRoute({String? featureKey}) {
+    if (featureKey == null) {
+      return globalTtsRoute.value;
+    }
+
+    final override = getFeatureTtsEngine(featureKey);
+    if (override == engineGlobal) {
+      return globalTtsRoute.value;
+    }
+    return _normalizeEngineRoute(override);
+  }
+
+  bool shouldUseAudioBasedPlayback({String? featureKey}) {
+    final route = resolveTtsRoute(featureKey: featureKey);
+    if (route == engineCftts) {
+      return _isCfttsAvailable();
+    }
+    if (route.startsWith(openAITtsPrefix)) {
+      final provider = getOpenAITtsConfigByRoute(route);
+      return provider != null && _isOpenAITtsAvailable(provider);
+    }
+    return false;
+  }
+
+  bool _isCfttsAvailable() {
+    return cfttsConfig.value != null &&
+        cfttsConfig.value!.baseUrl.trim().isNotEmpty;
+  }
+
+  bool _isOpenAITtsAvailable(OpenAITtsConfig config) {
+    return config.isEnabled &&
+        config.baseUrl.trim().isNotEmpty &&
+        config.apiKey.trim().isNotEmpty;
+  }
+
+  String _normalizeEngineRoute(String route) {
+    if (route.isEmpty) return engineSystem;
+    if (route == engineGlobal ||
+        route == engineSystem ||
+        route == engineCftts) {
+      return route;
+    }
+    if (route.startsWith(openAITtsPrefix)) {
+      return route;
+    }
+    return engineSystem;
+  }
+
+  String getGlobalTtsRoute() => globalTtsRoute.value;
+
+  Future<void> setGlobalTtsRoute(String route) async {
+    final normalized = _normalizeEngineRoute(route);
+    globalTtsRoute.value = normalized;
+    useCftts.value = normalized == engineCftts;
+    await _settingsBox.put('tts_global_route', normalized);
+    await _settingsBox.put('use_cftts', useCftts.value);
+  }
+
+  Future<void> setUseCftts(bool value) async {
+    await setGlobalTtsRoute(value ? engineCftts : engineSystem);
+  }
+
+  String getFeatureTtsEngine(String featureKey) {
+    final value =
+        _settingsBox.get('tts_engine_$featureKey', defaultValue: engineGlobal);
+    return _normalizeEngineRoute(value.toString()) == engineSystem &&
+            value.toString() == engineGlobal
+        ? engineGlobal
+        : _normalizeLegacyOverride(value.toString());
+  }
+
+  String _normalizeLegacyOverride(String route) {
+    if (route == engineGlobal ||
+        route == engineSystem ||
+        route == engineCftts) {
+      return route;
+    }
+    if (route.startsWith(openAITtsPrefix)) {
+      return route;
+    }
+    return engineGlobal;
+  }
+
+  Future<void> setFeatureTtsEngine(String featureKey, String engine) async {
+    final normalized = _normalizeLegacyOverride(engine);
+    await _settingsBox.put('tts_engine_$featureKey', normalized);
+  }
+
   Future<File?> _getOrFetchCftts(String text) async {
-    final tempDir = await getTemporaryDirectory();
-    final textMd5 = md5.convert(utf8.encode(text)).toString();
-    final cacheFile = File('${tempDir.path}/cftts_cache_$textMd5.mp3');
+    final cfg = cfttsConfig.value!;
+    final cacheKey = _buildRemoteCacheKey(
+      providerId: 'cftts',
+      text: text,
+      model: cfg.model,
+      voice: cfg.voice,
+      style: '',
+      audioFormat: 'mp3',
+      speed: cfg.speed,
+    );
 
+    final cacheFile = await _buildCfttsCacheFile(text);
     if (await cacheFile.exists()) {
-      return cacheFile; // 已有缓存
+      return cacheFile;
     }
 
-    // 检查是否正在请求，若是，直接等待先前的未来
-    if (_cfttsFetchTasks.containsKey(textMd5)) {
-      return await _cfttsFetchTasks[textMd5];
+    if (_remoteTtsFetchTasks.containsKey(cacheKey)) {
+      return _remoteTtsFetchTasks[cacheKey];
     }
 
-    // 开启新的请求任务
     final task = () async {
       try {
-        final cfg = cfttsConfig.value!;
-        final url = Uri.parse('${cfg.baseUrl}/v1/audio/speech');
-        final headers = {'Content-Type': 'application/json'};
-        if (cfg.apiKey.isNotEmpty) headers['Authorization'] = 'Bearer ${cfg.apiKey}';
-        
+        final url =
+            Uri.parse('${_trimTrailingSlash(cfg.baseUrl)}/v1/audio/speech');
+        final headers = <String, String>{'Content-Type': 'application/json'};
+        if (cfg.apiKey.isNotEmpty) {
+          headers['Authorization'] = 'Bearer ${cfg.apiKey}';
+        }
+
         final body = jsonEncode({
-          "model": cfg.model,
-          "input": text,
-          "voice": cfg.voice,
-          "speed": cfg.speed,
+          'model': cfg.model,
+          'input': text,
+          'voice': cfg.voice,
+          'speed': cfg.speed,
         });
 
         final response = await http.post(url, headers: headers, body: body);
 
         if (response.statusCode == 200) {
           await cacheFile.writeAsBytes(response.bodyBytes);
-          debugPrint('CFTTS 下载成功并保存缓存: ${cacheFile.path}');
           return cacheFile;
-        } else {
-          debugPrint('CFTTS 请求失败: ${response.statusCode} - ${response.body}');
         }
+        debugPrint('CFTTS 请求失败: ${response.statusCode} - ${response.body}');
       } catch (e) {
         debugPrint('CFTTS 预取失败: $e');
       } finally {
-        _cfttsFetchTasks.remove(textMd5);
+        _remoteTtsFetchTasks.remove(cacheKey);
       }
       return null;
     }();
 
-    _cfttsFetchTasks[textMd5] = task;
-    return await task;
+    _remoteTtsFetchTasks[cacheKey] = task;
+    return task;
   }
 
-  /// 清除所有的 CFTTS 缓存
+  Future<File?> _getOrFetchOpenAITts(
+      OpenAITtsConfig config, String text) async {
+    final cacheKey = _buildRemoteCacheKey(
+      providerId: config.id,
+      text: text,
+      model: _resolveOpenAITtsModel(config),
+      voice: _resolveOpenAITtsVoice(config),
+      style: config.selectedStylePreset,
+      audioFormat: config.audioFormat,
+    );
+
+    final cacheFile = await _buildOpenAITtsCacheFile(config, text);
+    if (await cacheFile.exists()) {
+      return cacheFile;
+    }
+
+    if (_remoteTtsFetchTasks.containsKey(cacheKey)) {
+      return _remoteTtsFetchTasks[cacheKey];
+    }
+
+    final task = () async {
+      try {
+        final bytes = await _requestOpenAITtsAudio(config, text);
+        if (bytes == null || bytes.isEmpty) {
+          return null;
+        }
+        await cacheFile.writeAsBytes(bytes, flush: true);
+        return cacheFile;
+      } catch (e) {
+        debugPrint('OpenAI TTS 获取失败: $e');
+      } finally {
+        _remoteTtsFetchTasks.remove(cacheKey);
+      }
+      return null;
+    }();
+
+    _remoteTtsFetchTasks[cacheKey] = task;
+    return task;
+  }
+
+  String _buildRemoteCacheKey({
+    required String providerId,
+    required String text,
+    required String model,
+    required String voice,
+    required String style,
+    required String audioFormat,
+    double? speed,
+  }) {
+    final raw = [
+      providerId,
+      model,
+      voice,
+      style,
+      audioFormat,
+      speed ?? '',
+      text
+    ].join('|');
+    final digest = md5.convert(utf8.encode(raw)).toString();
+    return 'tts_cache_$digest';
+  }
+
+  Future<List<int>?> _requestOpenAITtsAudio(
+      OpenAITtsConfig config, String text) async {
+    final body = _buildOpenAITtsBody(config, text);
+    final url = _buildOpenAITtsUrl(config);
+    final headers = _buildOpenAITtsHeaders(config);
+
+    final response = await http
+        .post(url, headers: headers, body: jsonEncode(body))
+        .timeout(const Duration(seconds: 30));
+
+    if (response.statusCode != 200) {
+      debugPrint('OpenAI TTS 请求失败: ${response.statusCode} - ${response.body}');
+      return null;
+    }
+
+    final contentType = response.headers['content-type'] ?? '';
+    if (contentType.contains('audio/')) {
+      return response.bodyBytes;
+    }
+
+    final data = _parseResponseBody(response.body);
+    return _extractAudioBytes(data);
+  }
+
+  Uri _buildOpenAITtsUrl(OpenAITtsConfig config) {
+    final baseUrl = _trimTrailingSlash(config.baseUrl);
+    if (config.providerType == 'xiaomi_mimo_v25') {
+      return Uri.parse('$baseUrl/chat/completions');
+    }
+    return Uri.parse('$baseUrl/audio/speech');
+  }
+
+  Map<String, String> _buildOpenAITtsHeaders(OpenAITtsConfig config) {
+    final headers = <String, String>{'Content-Type': 'application/json'};
+    if (config.authType == 'api-key') {
+      headers['api-key'] = config.apiKey;
+    } else {
+      headers['Authorization'] = 'Bearer ${config.apiKey}';
+    }
+    return headers;
+  }
+
+  Map<String, dynamic> _buildOpenAITtsBody(
+      OpenAITtsConfig config, String text) {
+    final model = _resolveOpenAITtsModel(config);
+    final voice = _resolveOpenAITtsVoice(config);
+    final styledText =
+        _applyStylePresetToText(text, config.selectedStylePreset);
+
+    if (config.providerType == 'xiaomi_mimo_v25') {
+      return {
+        'model': model,
+        'modalities': ['text', 'audio'],
+        'audio': {
+          'voice': voice,
+          'format': config.audioFormat,
+        },
+        'messages': [
+          {
+            'role': 'user',
+            'content': _buildStyleInstruction(config.selectedStylePreset),
+          },
+          {
+            'role': 'assistant',
+            'content': text,
+          }
+        ],
+        'stream': false,
+      };
+    }
+
+    return {
+      'model': model,
+      'input': styledText,
+      'voice': voice,
+      'format': config.audioFormat,
+    };
+  }
+
+  String _applyStylePresetToText(String text, String stylePreset) {
+    switch (stylePreset) {
+      case '自然':
+        return '请用自然、清晰的语气朗读以下内容：$text';
+      case '温柔':
+        return '请用温柔、亲切、适合孩子的语气朗读以下内容：$text';
+      case '开心':
+        return '请用开心、活泼的语气朗读以下内容：$text';
+      case '讲故事':
+        return '请用富有故事感、适合儿童聆听的语气朗读以下内容：$text';
+      case '默认':
+      default:
+        return text;
+    }
+  }
+
+  String _buildStyleInstruction(String stylePreset) {
+    switch (stylePreset) {
+      case '自然':
+        return '请用自然、清晰的语气朗读。';
+      case '温柔':
+        return '请用温柔、亲切、适合孩子的语气朗读。';
+      case '开心':
+        return '请用开心、活泼的语气朗读。';
+      case '讲故事':
+        return '请用富有故事感、适合儿童聆听的语气朗读。';
+      case '默认':
+      default:
+        return '请直接将后续 assistant 消息内容转换为语音输出。';
+    }
+  }
+
+  Map<String, dynamic> _parseResponseBody(String body) {
+    final trimmed = body.trim();
+    if (trimmed.isEmpty) return <String, dynamic>{};
+
+    try {
+      return jsonDecode(trimmed) as Map<String, dynamic>;
+    } catch (_) {}
+
+    final lines = trimmed
+        .split('\n')
+        .map((line) => line.trim())
+        .where((line) => line.startsWith('data:'));
+    for (final line in lines.toList().reversed) {
+      final chunk = line.substring(5).trim();
+      if (chunk.isEmpty || chunk == '[DONE]') continue;
+      try {
+        return jsonDecode(chunk) as Map<String, dynamic>;
+      } catch (_) {}
+    }
+
+    return <String, dynamic>{};
+  }
+
+  List<int>? _extractAudioBytes(Map<String, dynamic> data) {
+    String? base64Audio;
+
+    final choices = data['choices'];
+    if (choices is List && choices.isNotEmpty) {
+      final first = choices.first;
+      if (first is Map<String, dynamic>) {
+        final message = first['message'];
+        if (message is Map<String, dynamic>) {
+          final audio = message['audio'];
+          if (audio is Map<String, dynamic>) {
+            base64Audio = audio['data']?.toString();
+          }
+        }
+      }
+    }
+
+    base64Audio ??= data['audio']?['data']?.toString();
+    base64Audio ??= data['data']?.toString();
+
+    if (base64Audio == null || base64Audio.isEmpty) {
+      return null;
+    }
+
+    try {
+      return base64Decode(base64Audio);
+    } catch (e) {
+      debugPrint('base64 音频解析失败: $e');
+      return null;
+    }
+  }
+
+  String _audioExtension(String format) {
+    switch (format.toLowerCase()) {
+      case 'wav':
+        return 'wav';
+      case 'aac':
+        return 'aac';
+      case 'opus':
+        return 'opus';
+      case 'flac':
+        return 'flac';
+      case 'pcm':
+        return 'pcm';
+      case 'mp3':
+      default:
+        return 'mp3';
+    }
+  }
+
+  String _trimTrailingSlash(String value) {
+    var result = value.trim();
+    while (result.endsWith('/')) {
+      result = result.substring(0, result.length - 1);
+    }
+    return result;
+  }
+
   Future<void> clearCfttsCache() async {
     try {
       final tempDir = await getTemporaryDirectory();
       final files = tempDir.listSync();
       for (var file in files) {
-        if (file is File && file.path.contains('cftts_cache_')) {
+        if (file is File && file.path.contains('tts_cache_')) {
           await file.delete();
         }
       }
-      debugPrint('CFTTS 缓存已清理');
+      debugPrint('TTS 缓存已清理');
     } catch (e) {
-      debugPrint('清理 CFTTS 缓存失败: $e');
+      debugPrint('清理 TTS 缓存失败: $e');
     }
+  }
+
+  Future<void> clearRemoteTtsCacheForText(
+    String text, {
+    String? featureKey,
+  }) async {
+    final route = resolveTtsRoute(featureKey: featureKey);
+
+    if (route == engineCftts && _isCfttsAvailable()) {
+      await _deleteCacheFile(await _buildCfttsCacheFile(text));
+      return;
+    }
+
+    if (route.startsWith(openAITtsPrefix)) {
+      final provider = getOpenAITtsConfigByRoute(route);
+      if (provider != null && _isOpenAITtsAvailable(provider)) {
+        await _deleteCacheFile(await _buildOpenAITtsCacheFile(provider, text));
+      }
+    }
+  }
+
+  Future<File> _buildCfttsCacheFile(String text) async {
+    final cfg = cfttsConfig.value!;
+    final cacheKey = _buildRemoteCacheKey(
+      providerId: 'cftts',
+      text: text,
+      model: cfg.model,
+      voice: cfg.voice,
+      style: '',
+      audioFormat: 'mp3',
+      speed: cfg.speed,
+    );
+    final tempDir = await getTemporaryDirectory();
+    return File('${tempDir.path}/$cacheKey.mp3');
+  }
+
+  Future<File> _buildOpenAITtsCacheFile(
+      OpenAITtsConfig config, String text) async {
+    final cacheKey = _buildRemoteCacheKey(
+      providerId: config.id,
+      text: text,
+      model: _resolveOpenAITtsModel(config),
+      voice: _resolveOpenAITtsVoice(config),
+      style: config.selectedStylePreset,
+      audioFormat: config.audioFormat,
+    );
+    final tempDir = await getTemporaryDirectory();
+    final extension = _audioExtension(config.audioFormat);
+    return File('${tempDir.path}/$cacheKey.$extension');
+  }
+
+  Future<void> _deleteCacheFile(File file) async {
+    try {
+      if (await file.exists()) {
+        await file.delete();
+      }
+    } catch (e) {
+      debugPrint('删除 TTS 缓存失败: $e');
+    }
+  }
+
+  String _resolveOpenAITtsModel(OpenAITtsConfig config) {
+    return config.selectedModel.isNotEmpty
+        ? config.selectedModel
+        : (config.models.isNotEmpty ? config.models.first : '');
+  }
+
+  String _resolveOpenAITtsVoice(OpenAITtsConfig config) {
+    if (config.providerType == 'xiaomi_mimo_v25') {
+      final voice = config.selectedVoice.isNotEmpty
+          ? config.selectedVoice
+          : (config.voices.isNotEmpty ? config.voices.first : 'mimo_default');
+      return OpenAITtsConfig.normalizeXiaomiMimoV25Voice(voice);
+    }
+    if (config.selectedVoice.isNotEmpty) {
+      return config.selectedVoice;
+    }
+    if (config.voices.isNotEmpty) {
+      return config.voices.first;
+    }
+    return 'alloy';
   }
 
   Future<void> _speakCftts(String text) async {
@@ -320,12 +768,11 @@ class TtsService extends GetxService {
       final playFile = await _getOrFetchCftts(text);
 
       if (playFile == null) {
-         isSpeaking.value = false;
-         debugPrint('CFTTS 请求失败，无法播放');
-         return;
+        isSpeaking.value = false;
+        debugPrint('CFTTS 请求失败，无法播放');
+        return;
       }
 
-      // 强制停止底层的 just_audio，避免重新加载一样路径的缓存时状态被卡在 Completed 导致随后 play() 秒退返回
       await _audioPlayer.stop();
       await _audioPlayer.setFilePath(playFile.path);
       await _audioPlayer.seek(Duration.zero);
@@ -337,14 +784,33 @@ class TtsService extends GetxService {
     }
   }
 
-  /// 在开始播放前应用全局设置
+  Future<void> _speakOpenAITts(OpenAITtsConfig config, String text) async {
+    try {
+      isSpeaking.value = true;
+      final playFile = await _getOrFetchOpenAITts(config, text);
+      if (playFile == null) {
+        isSpeaking.value = false;
+        debugPrint('OpenAI TTS 请求失败，无法播放');
+        return;
+      }
+
+      await _audioPlayer.stop();
+      await _audioPlayer.setFilePath(playFile.path);
+      await _audioPlayer.seek(Duration.zero);
+      onStartCallback?.call();
+      await _audioPlayer.play();
+    } catch (e) {
+      isSpeaking.value = false;
+      debugPrint('OpenAI TTS 播放失败: $e');
+    }
+  }
+
   Future<void> _applyGlobalSettings() async {
     await _flutterTts.setSpeechRate(speechRate.value);
     await _flutterTts.setPitch(pitch.value);
     await _flutterTts.setVolume(volume.value);
   }
 
-  /// 停止播放
   Future<void> stop() async {
     try {
       await _audioPlayer.stop();
@@ -355,98 +821,164 @@ class TtsService extends GetxService {
     isSpeaking.value = false;
   }
 
-  /// 设置语速
   Future<void> setSpeechRate(double rate) async {
     speechRate.value = rate;
     await _flutterTts.setSpeechRate(rate);
     await _settingsBox.put('speech_rate', rate);
   }
 
-  /// 设置音调
   Future<void> setPitch(double value) async {
     pitch.value = value;
     await _flutterTts.setPitch(value);
     await _settingsBox.put('pitch', value);
   }
 
-  /// 设置音量
   Future<void> setVolume(double value) async {
     volume.value = value;
     await _flutterTts.setVolume(value);
     await _settingsBox.put('volume', value);
   }
 
-  /// 设置引擎
   Future<void> setEngine(String engine) async {
     await _flutterTts.setEngine(engine);
     currentEngine.value = engine;
     await _settingsBox.put('tts_engine', engine);
-
-    // 重新应用语速等设置（切换引擎后可能需要）
     await _flutterTts.setSpeechRate(speechRate.value);
     await _flutterTts.setPitch(pitch.value);
     await _flutterTts.setVolume(volume.value);
   }
 
-  /// 获取 CFTTS 支持的语音风格列表
   Future<List<String>> fetchCfttsVoices() async {
     final cfg = cfttsConfig.value;
     if (cfg == null || cfg.baseUrl.isEmpty) return [];
 
     try {
-      final url = Uri.parse('${cfg.baseUrl}/voices');
+      final url = Uri.parse('${_trimTrailingSlash(cfg.baseUrl)}/voices');
       final headers = <String, String>{};
       if (cfg.apiKey.isNotEmpty) {
         headers['Authorization'] = 'Bearer ${cfg.apiKey}';
       }
 
-      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 10));
+      final response = await http
+          .get(url, headers: headers)
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
-        // 由于返回体是 JSON 对象数组
-        // 形如: [{"ShortName": "am-ET-AmehaNeural", ...}, ...]
         final dynamic data = jsonDecode(utf8.decode(response.bodyBytes));
         if (data is List) {
-           final List<String> voices = [];
-           for (var item in data) {
-             if (item is Map && item.containsKey('ShortName')) {
-               voices.add(item['ShortName'].toString());
-             } else if (item is String) {
-               // 兜底某些接口可能直接返回字符串数组
-               voices.add(item);
-             }
-           }
-           if (voices.isNotEmpty) {
-             return voices;
-           }
+          final List<String> voices = [];
+          for (var item in data) {
+            if (item is Map && item.containsKey('ShortName')) {
+              voices.add(item['ShortName'].toString());
+            } else if (item is String) {
+              voices.add(item);
+            }
+          }
+          if (voices.isNotEmpty) {
+            return voices;
+          }
         }
       }
-      debugPrint('获取 CFTTS 语音列表失败: HTTP ${response.statusCode} - ${response.body}');
+      debugPrint(
+          '获取 CFTTS 语音列表失败: HTTP ${response.statusCode} - ${response.body}');
     } catch (e) {
       debugPrint('获取 CFTTS 语音列表异常: $e');
     }
     return [];
   }
 
-  /// 获取引擎显示名称
-  String getEngineDisplayName(String engine) {
-    if (engine.isEmpty) return '系统默认';
-    if (engine.contains('google')) return 'Google TTS';
-    if (engine.contains('samsung')) return '三星 TTS';
-    if (engine.contains('huawei')) return '华为 TTS';
-    if (engine.contains('xiaomi')) return '小米 TTS';
-    if (engine.contains('multi')) return 'MultiTTS';
-    if (engine.contains('iflytek')) return '讯飞 TTS';
-    return engine.split('.').last;
+  Future<List<String>> fetchOpenAITtsModels(OpenAITtsConfig config) async {
+    final baseUrl = _trimTrailingSlash(config.baseUrl);
+    if (baseUrl.isEmpty || config.apiKey.trim().isEmpty) return [];
+
+    try {
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/models'),
+            headers: _buildOpenAITtsHeaders(config),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode != 200) {
+        debugPrint(
+            '获取 OpenAI TTS 模型失败: ${response.statusCode} - ${response.body}');
+        return [];
+      }
+
+      final body = _parseResponseBody(response.body);
+      final data = body['data'];
+      if (data is! List) return [];
+
+      final models = data
+          .map((item) {
+            if (item is Map<String, dynamic>) {
+              return item['id']?.toString() ?? '';
+            }
+            if (item is Map) {
+              return item['id']?.toString() ?? '';
+            }
+            return '';
+          })
+          .where((item) => item.isNotEmpty)
+          .toList();
+
+      return models.cast<String>();
+    } catch (e) {
+      debugPrint('获取 OpenAI TTS 模型异常: $e');
+      return [];
+    }
   }
 
-  /// 切换全局引擎模式（System或CFTTS）
-  Future<void> setUseCftts(bool value) async {
-    useCftts.value = value;
-    await _settingsBox.put('use_cftts', value);
+  Future<List<String>> fetchOpenAITtsVoices(OpenAITtsConfig config) async {
+    final baseUrl = _trimTrailingSlash(config.baseUrl);
+    if (baseUrl.isEmpty || config.apiKey.trim().isEmpty) return [];
+
+    try {
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/voices'),
+            headers: _buildOpenAITtsHeaders(config),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode != 200) {
+        debugPrint(
+            '获取 OpenAI TTS 音色失败: ${response.statusCode} - ${response.body}');
+        return [];
+      }
+
+      final body = _parseResponseBody(response.body);
+      final data = body['data'] ?? body['voices'] ?? body['items'] ?? body;
+
+      if (data is List) {
+        final voices = data
+            .map((item) {
+              if (item is String) return item;
+              if (item is Map<String, dynamic>) {
+                return item['id']?.toString() ??
+                    item['name']?.toString() ??
+                    item['voice']?.toString() ??
+                    '';
+              }
+              if (item is Map) {
+                return item['id']?.toString() ??
+                    item['name']?.toString() ??
+                    item['voice']?.toString() ??
+                    '';
+              }
+              return '';
+            })
+            .where((item) => item.isNotEmpty)
+            .toSet()
+            .toList();
+        return voices.cast<String>();
+      }
+    } catch (e) {
+      debugPrint('获取 OpenAI TTS 音色异常: $e');
+    }
+    return [];
   }
 
-  /// 更新 CFTTS 配置
   Future<void> updateCfttsConfig(CfttsConfig newConfig) async {
     if (_cfttsConfigBox.isEmpty) {
       await _cfttsConfigBox.add(newConfig);
@@ -457,15 +989,147 @@ class TtsService extends GetxService {
     cfttsConfig.value = newConfig;
   }
 
-  /// 获取某个功能特有的 TTS 覆盖设置
-  /// 返回 'global' (跟随系统), 'system' (强制使用系统TTS), 'cftts' (强制使用自建CFTTS)
-  String getFeatureTtsEngine(String featureKey) {
-    return _settingsBox.get('tts_engine_$featureKey', defaultValue: 'global');
+  Future<void> addOpenAITtsConfig(OpenAITtsConfig config) async {
+    if (config.isDefault) {
+      await _setOpenAITtsDefaultFlag(config.id);
+    }
+    await _openAITtsConfigBox.put(config.id, config);
+    openAITtsConfigs.assignAll(_openAITtsConfigBox.values);
   }
 
-  /// 设定某个功能的专项 TTS 覆盖设置
-  Future<void> setFeatureTtsEngine(String featureKey, String engine) async {
-    await _settingsBox.put('tts_engine_$featureKey', engine);
+  Future<void> updateOpenAITtsConfig(OpenAITtsConfig config) async {
+    if (config.isDefault) {
+      await _setOpenAITtsDefaultFlag(config.id);
+    }
+    await _openAITtsConfigBox.put(config.id, config);
+    openAITtsConfigs.assignAll(_openAITtsConfigBox.values);
+  }
+
+  Future<void> deleteOpenAITtsConfig(String id) async {
+    await _openAITtsConfigBox.delete(id);
+    openAITtsConfigs.assignAll(_openAITtsConfigBox.values);
+
+    final route = globalTtsRoute.value;
+    if (route == '$openAITtsPrefix$id') {
+      await setGlobalTtsRoute(engineSystem);
+    }
+
+    final featureKeys = _settingsBox.keys
+        .where((key) => key.toString().startsWith('tts_engine_'))
+        .map((key) => key.toString())
+        .toList();
+    for (final key in featureKeys) {
+      final value = _settingsBox.get(key);
+      if (value == '$openAITtsPrefix$id') {
+        await _settingsBox.put(key, engineGlobal);
+      }
+    }
+  }
+
+  Future<void> setDefaultOpenAITtsConfig(String id) async {
+    await _setOpenAITtsDefaultFlag(id);
+    openAITtsConfigs.assignAll(_openAITtsConfigBox.values);
+  }
+
+  Future<void> _setOpenAITtsDefaultFlag(String id) async {
+    for (final config in _openAITtsConfigBox.values) {
+      final shouldDefault = config.id == id;
+      if (config.isDefault != shouldDefault) {
+        config.isDefault = shouldDefault;
+        await config.save();
+      }
+    }
+  }
+
+  Future<void> _normalizePersistedXiaomiMimoConfigs() async {
+    var changed = false;
+    for (final config in _openAITtsConfigBox.values) {
+      if (config.providerType != 'xiaomi_mimo_v25') continue;
+
+      final normalizedVoice =
+          OpenAITtsConfig.normalizeXiaomiMimoV25Voice(config.selectedVoice);
+      final expectedVoices = OpenAITtsConfig.xiaomiMimoV25PresetVoices;
+
+      if (config.selectedVoice != normalizedVoice ||
+          config.voices.length != expectedVoices.length ||
+          !config.voices.every(expectedVoices.contains)) {
+        config.selectedVoice = normalizedVoice;
+        config.voices = expectedVoices;
+        await config.save();
+        changed = true;
+      }
+    }
+    if (changed) {
+      openAITtsConfigs.assignAll(_openAITtsConfigBox.values);
+    }
+  }
+
+  void _ensureOpenAITtsDefaultConsistency() {
+    final defaults =
+        openAITtsConfigs.where((config) => config.isDefault).toList();
+    if (defaults.length <= 1) return;
+
+    for (var i = 1; i < defaults.length; i++) {
+      defaults[i].isDefault = false;
+      defaults[i].save();
+    }
+    openAITtsConfigs.refresh();
+  }
+
+  OpenAITtsConfig? getOpenAITtsConfigById(String id) {
+    for (final config in openAITtsConfigs) {
+      if (config.id == id) return config;
+    }
+    return null;
+  }
+
+  OpenAITtsConfig? getOpenAITtsConfigByRoute(String route) {
+    if (!route.startsWith(openAITtsPrefix)) return null;
+    final id = route.substring(openAITtsPrefix.length);
+    return getOpenAITtsConfigById(id);
+  }
+
+  List<Map<String, String>> getTtsRouteOptions() {
+    final options = <Map<String, String>>[
+      {'value': engineSystem, 'label': '系统 TTS'},
+      {'value': engineCftts, 'label': '自建 CFTTS'},
+    ];
+
+    for (final config in openAITtsConfigs.where((item) => item.isEnabled)) {
+      options.add({
+        'value': '$openAITtsPrefix${config.id}',
+        'label': config.name,
+      });
+    }
+
+    return options;
+  }
+
+  String getTtsRouteDisplayName(String route, {bool withGlobalPrefix = false}) {
+    String label;
+    if (route == engineGlobal) {
+      label = '跟随全局设置';
+    } else if (route == engineSystem) {
+      label = '系统 TTS';
+    } else if (route == engineCftts) {
+      label = '自建 CFTTS';
+    } else if (route.startsWith(openAITtsPrefix)) {
+      label = getOpenAITtsConfigByRoute(route)?.name ?? '自定义 OpenAI TTS';
+    } else {
+      label = '系统 TTS';
+    }
+    return withGlobalPrefix ? '使用$label' : label;
+  }
+
+  String getEngineDisplayName(String engine) {
+    if (engine.isEmpty) return '系统默认';
+    if (engine.contains('google')) return 'Google TTS';
+    if (engine.contains('samsung')) return '三星 TTS';
+    if (engine.contains('huawei')) return '华为 TTS';
+    if (engine.contains('xiaomi')) return '小米 TTS';
+    if (engine.contains('multi')) return 'MultiTTS';
+    if (engine.contains('iflytek')) return '讯飞 TTS';
+    return engine.split('.').last;
   }
 
   @override

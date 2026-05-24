@@ -55,32 +55,41 @@ class _TtsEngineSelectorState extends State<TtsEngineSelector> {
             borderRadius: BorderRadius.circular(12.r),
             border: Border.all(color: Colors.grey[300]!),
           ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              isExpanded: true,
-              value: _currentEngine,
-              items: const [
-                DropdownMenuItem(
-                  value: 'global',
-                  child: Text('跟随系统全局设置'),
-                ),
-                DropdownMenuItem(
-                  value: 'system',
-                  child: Text('仅使用系统 TTS'),
-                ),
-                DropdownMenuItem(
-                  value: 'cftts',
-                  child: Text('仅使用自建 CFTTS'),
-                ),
-              ],
-              onChanged: (val) {
-                if (val != null) {
-                  setState(() => _currentEngine = val);
-                  _ttsService.setFeatureTtsEngine(widget.featureKey, val);
-                }
+          child: Obx(() {
+            final items = <Map<String, String>>[
+              {
+                'value': TtsService.engineGlobal,
+                'label': '跟随全局设置（${_ttsService.getTtsRouteDisplayName(_ttsService.getGlobalTtsRoute())}）',
               },
-            ),
-          ),
+              ..._ttsService.getTtsRouteOptions(),
+            ];
+
+            final values = items.map((item) => item['value']).whereType<String>().toSet();
+            if (!values.contains(_currentEngine)) {
+              _currentEngine = TtsService.engineGlobal;
+            }
+
+            return DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                isExpanded: true,
+                value: _currentEngine,
+                items: items
+                    .map(
+                      (item) => DropdownMenuItem<String>(
+                        value: item['value'],
+                        child: Text(item['label'] ?? ''),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (val) {
+                  if (val != null) {
+                    setState(() => _currentEngine = val);
+                    _ttsService.setFeatureTtsEngine(widget.featureKey, val);
+                  }
+                },
+              ),
+            );
+          }),
         ),
       ],
     );
