@@ -22,6 +22,9 @@ class PoopAIPage extends StatefulWidget {
 }
 
 class _PoopAIPageState extends State<PoopAIPage> {
+  /// 历史上下文最大条数
+  static const int _maxHistoryContext = 3;
+
   final UserController _userController = Get.find<UserController>();
 
   // AI 服务（全局）
@@ -45,13 +48,19 @@ class _PoopAIPageState extends State<PoopAIPage> {
   bool _isAnalyzing = false;
 
   // 自定义 Prompt（保存到 Hive）
-  String _customPrompt = '''你是一位专业的儿科健康顾问。请根据宝宝的排便记录，分析以下内容：
-1. 排便频率是否正常
-2. 排便时间规律性
-3. 便便类型和颜色是否健康
-4. 给出改善建议
+  String _customPrompt = '''你是一位专业的儿科健康顾问，负责持续跟踪宝宝的排便健康状况。
 
-请用通俗易懂的语言回答，便于家长理解。''';
+每次分析时，你会收到：
+1. 本次的排便记录数据
+2. 历史分析记录（如有），包含之前的记录数据和你的分析结论
+
+请综合历史趋势和本次数据，分析以下内容：
+1. 排便频率是否正常，与历史相比有何变化
+2. 排便时间规律性
+3. 便便类型和颜色是否健康，是否有改善或恶化趋势
+4. 结合历史给出针对性的改善建议
+
+请用通俗易懂的语言回答，便于家长理解。如果是首次分析，则不必提及历史对比。''';
 
   // 当前选择的配置和模型
   OpenAIConfig? _selectedConfig;
@@ -161,7 +170,7 @@ class _PoopAIPageState extends State<PoopAIPage> {
     setState(() => _chatHistory = chats);
   }
 
-  /// 执行 AI 分析
+  /// 执行 AI 分析（结合历史上下文）
   Future<void> _analyzeWithAI() async {
     if (_selectedConfig == null) {
       _showConfigMissingDialog();
@@ -179,16 +188,7 @@ class _PoopAIPageState extends State<PoopAIPage> {
     });
 
     try {
-      // 临时设置当前配置和模型
-      final originalConfig = _openAIService.currentConfig.value;
-      final originalEnableWebSearch = _selectedConfig!.enableWebSearch;
-
-      _openAIService.currentConfig.value = _selectedConfig;
-      _selectedConfig!.selectedModel = _selectedModel;
-      // 使用当前会话的联网设置
-      _selectedConfig!.enableWebSearch = _enableWebSearchForThisSession;
-
-      // 构建用户消息
+      // 构建本次用户消息
       final baby = _userController.currentBaby.value!;
       final recordsText = _records.map((r) {
         return '- ${DateFormat('MM月dd日 HH:mm').format(r.dateTime)}: ${r.typeDesc}, ${r.colorDesc}${r.note.isNotEmpty ? ", 备注: ${r.note}" : ""}';
@@ -201,19 +201,36 @@ class _PoopAIPageState extends State<PoopAIPage> {
 排便记录：
 $recordsText''';
 
-      // 调用 AI
-      final response = await _openAIService.chat(
-        systemPrompt: _customPrompt,
-        userMessage: userMessage,
-      );
+      // 取最近 N 条历史（时间升序，最旧的在前，作为早期上下文）
+      final contextHistory = _chatHistory
+          .take(_maxHistoryContext)
+          .toList()
+          .reversed
+          .toList();
 
-      // 恢复原配置
-      _openAIService.currentConfig.value = originalConfig;
-      _selectedConfig!.enableWebSearch = originalEnableWebSearch;
+      // 构建多轮消息数组
+      final messages = <Map<String, dynamic>>[
+        {'role': 'system', 'content': _customPrompt},
+        // 注入历史分析作为上下文
+        for (final hist in contextHistory) ...[
+          {'role': 'user', 'content': hist.prompt},
+          {'role': 'assistant', 'content': hist.response},
+        ],
+        // 本次分析请求
+        {'role': 'user', 'content': userMessage},
+      ];
+
+      // 调用 AI（带历史上下文）
+      final response = await _openAIService.chatWithHistory(
+        messages: messages,
+        config: _selectedConfig,
+        model: _selectedModel.isNotEmpty ? _selectedModel : null,
+        enableWebSearch: _enableWebSearchForThisSession,
+      );
 
       setState(() => _currentResponse = response);
 
-      // 保存对话记录
+      // 保存本次分析记录
       final chat = AIChat(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         babyId: baby.id,
@@ -316,6 +333,29 @@ $recordsText''';
             _buildRecordsSummary(),
 
             SizedBox(height: 16.h),
+
+            // 历史上下文提示
+            if (_chatHistory.isNotEmpty) ...[
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                decoration: BoxDecoration(
+                  color: Colors.purple.shade50,
+                  borderRadius: BorderRadius.circular(8.r),
+                  border: Border.all(color: Colors.purple.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.history_edu, size: 16.sp, color: Colors.purple),
+                    SizedBox(width: 6.w),
+                    Text(
+                      '将结合最近 ${_chatHistory.length.clamp(1, _maxHistoryContext)} 次历史分析，给出趋势性建议',
+                      style: TextStyle(fontSize: 12.sp, color: Colors.purple.shade700),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 8.h),
+            ],
 
             // 分析按钮
             SizedBox(

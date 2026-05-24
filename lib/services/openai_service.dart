@@ -220,6 +220,131 @@ class OpenAIService extends GetxService {
     }
   }
 
+  /// 发送带历史上下文的聊天请求（多轮对话）
+  /// [messages] 完整的消息列表，格式为 OpenAI messages 数组
+  ///   例：[{role: system, content: ...}, {role: user, content: ...}, {role: assistant, content: ...}, ...]
+  /// [config] 可选，不传则使用 currentConfig
+  /// [model] 可选，不传则使用 config 中的 selectedModel
+  /// [enableWebSearch] 可选，是否启用联网搜索，不传则使用 config 中的 enableWebSearch
+  Future<String> chatWithHistory({
+    required List<Map<String, dynamic>> messages,
+    OpenAIConfig? config,
+    String? model,
+    bool? enableWebSearch,
+  }) async {
+    final cfg = config ?? currentConfig.value;
+    if (cfg == null) {
+      throw Exception('未配置 OpenAI');
+    }
+
+    // 直接使用传入的 messages，便于支持多轮对话上下文
+    final List<Map<String, dynamic>> chatMessages = List.of(messages);
+
+    // 联网搜索开关：参数优先级高于配置
+    final bool webSearchEnabled = enableWebSearch ?? cfg.enableWebSearch;
+
+    try {
+      final uri = Uri.parse('${cfg.baseUrl}/v1/chat/completions');
+      final headers = {
+        'Authorization': 'Bearer ${cfg.apiKey}',
+        'Content-Type': 'application/json',
+      };
+
+      // 构建请求体，显式指定 stream: false 以确保非流式响应
+      Map<String, dynamic> requestBody = {
+        'model': model ??
+            (cfg.selectedModel.isNotEmpty
+                ? cfg.selectedModel
+                : 'gpt-3.5-turbo'),
+        'messages': chatMessages,
+        'temperature': 0.7,
+        'max_tokens': 2000,
+        'stream': false,
+      };
+
+      // 如果启用联网搜索，添加工具定义
+      if (webSearchEnabled) {
+        requestBody['tools'] = [
+          {
+            'type': 'function',
+            'function': {
+              'name': 'web_search',
+              'description': 'Search the internet for real-time information',
+              'parameters': {
+                'type': 'object',
+                'properties': {
+                  'query': {
+                    'type': 'string',
+                    'description': 'The search query',
+                  },
+                },
+                'required': ['query'],
+              },
+            },
+          }
+        ];
+      }
+
+      var response = await http
+          .post(uri, headers: headers, body: jsonEncode(requestBody))
+          .timeout(const Duration(seconds: 180));
+
+      if (response.statusCode != 200) {
+        final error = jsonDecode(response.body);
+        throw Exception(
+            error['error']?['message'] ?? '请求失败: ${response.statusCode}');
+      }
+
+      var data = _parseResponseBody(utf8.decode(response.bodyBytes));
+      var message = data['choices'][0]['message'];
+
+      // 检查是否有工具调用
+      if (message['tool_calls'] != null) {
+        final toolCalls = message['tool_calls'] as List;
+        chatMessages.add(message); // 添加助手的回复（包含工具调用）
+
+        for (var toolCall in toolCalls) {
+          if (toolCall['function']['name'] == 'web_search') {
+            final args = jsonDecode(toolCall['function']['arguments']);
+            final query = args['query'];
+
+            // 模拟搜索结果
+            final searchResult = "Simulated search result for: '$query'. \n"
+                "Note: Actual web search is not available without a backend proxy or Search API Key. "
+                "Please answer based on this context.";
+
+            chatMessages.add({
+              'role': 'tool',
+              'tool_call_id': toolCall['id'],
+              'name': 'web_search',
+              'content': searchResult,
+            });
+          }
+        }
+
+        // 再次调用模型
+        requestBody['messages'] = chatMessages;
+        requestBody.remove('tools'); // 必须移除 tools 这里的简单实现防止多轮
+
+        response = await http
+            .post(uri, headers: headers, body: jsonEncode(requestBody))
+            .timeout(const Duration(seconds: 180));
+
+        if (response.statusCode != 200) {
+          throw Exception('Tool response failed');
+        }
+
+        data = _parseResponseBody(utf8.decode(response.bodyBytes));
+        message = data['choices'][0]['message'];
+      }
+
+      return message['content'] as String;
+    } catch (e) {
+      debugPrint('OpenAI 请求失败: $e');
+      rethrow;
+    }
+  }
+
   /// 导出配置(用于备份)
   List<Map<String, dynamic>> exportConfigs() {
     return configs.map((c) => c.toJson()).toList();
