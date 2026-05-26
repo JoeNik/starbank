@@ -9,6 +9,7 @@ import 'entertainment/quiz/quiz_page.dart';
 import 'entertainment/new_year_story/new_year_story_page.dart';
 import 'entertainment/hanzi_learning/hanzi_learning_page.dart';
 import 'entertainment/encyclopedia/encyclopedia_page.dart';
+import 'entertainment/pinyin_learning/pinyin_learning_page.dart';
 
 /// 娱乐模块入口页面
 class EntertainmentPage extends StatelessWidget {
@@ -172,6 +173,13 @@ class EntertainmentPage extends StatelessWidget {
                     subtitle: 'AI趣味识字',
                     color: const Color(0xFF7C4DFF),
                     onTap: () => Get.to(() => const HanziLearningPage()),
+                  ),
+                  _buildFeatureCard(
+                    emoji: '🗣️',
+                    title: '拼音小耳朵',
+                    subtitle: '听准声母韵母',
+                    color: const Color(0xFFFF8A65),
+                    onTap: () => Get.to(() => const PinyinLearningPage()),
                   ),
                   _buildFeatureCard(
                     emoji: '🔢',

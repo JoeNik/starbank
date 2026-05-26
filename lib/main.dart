@@ -6,6 +6,7 @@ import 'services/storage_service.dart';
 import 'services/webdav_service.dart';
 import 'services/update_service.dart';
 import 'services/tts_service.dart';
+import 'services/pinyin_audio_service.dart';
 import 'controllers/user_controller.dart';
 import 'controllers/shop_controller.dart';
 import 'controllers/app_mode_controller.dart';
@@ -112,6 +113,10 @@ void main() async {
     final ttsService = TtsService();
     await ttsService.init();
     Get.put(ttsService);
+
+    final pinyinAudioService = PinyinAudioService();
+    await pinyinAudioService.init();
+    Get.put(pinyinAudioService);
 
     // 3. Initialize Other Services and Controllers
     Get.put(WebDavService());

@@ -318,10 +318,10 @@ class _EncyclopediaPageState extends State<EncyclopediaPage> {
     final explanation = _explanation;
     if (explanation == null) return null;
     return [
-      '一句话答案。${explanation.shortAnswer}',
-      '为什么。${explanation.why}',
-      '生活例子。${explanation.example}',
-    ].join('\n\n');
+      explanation.shortAnswer,
+      explanation.why,
+      explanation.example,
+    ].where((text) => text.trim().isNotEmpty).join('\n\n');
   }
 
   @override
