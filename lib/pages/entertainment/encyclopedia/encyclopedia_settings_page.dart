@@ -221,7 +221,9 @@ class _EncyclopediaSettingsPageState extends State<EncyclopediaSettingsPage> {
       child: Column(
         children: [
           DropdownButtonFormField<String>(
-            initialValue: _config.chatConfigId,
+            // Flutter 3.27 still requires value; initialValue is unavailable in CI.
+            // ignore: deprecated_member_use
+            value: _config.chatConfigId,
             decoration: InputDecoration(
               labelText: '解析接口',
               border: OutlineInputBorder(
@@ -253,7 +255,9 @@ class _EncyclopediaSettingsPageState extends State<EncyclopediaSettingsPage> {
               final models = selected?.models ?? const <String>[];
               return DropdownButtonFormField<String>(
                 key: ValueKey(_config.chatConfigId),
-                initialValue: models.contains(_config.chatModel)
+                // Flutter 3.27 still requires value; initialValue is unavailable in CI.
+                // ignore: deprecated_member_use
+                value: models.contains(_config.chatModel)
                     ? _config.chatModel
                     : null,
                 decoration: InputDecoration(
