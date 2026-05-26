@@ -11,6 +11,9 @@ import '../models/music/playlist.dart';
 import '../models/new_year_story.dart';
 import '../models/quiz_question.dart';
 import '../models/quiz_config.dart';
+import '../models/encyclopedia_question.dart';
+import '../models/encyclopedia_config.dart';
+import '../models/encyclopedia_explanation_cache.dart';
 
 class StorageService extends GetxService {
   late Box<UserProfile> userBox;
@@ -59,6 +62,28 @@ class StorageService extends GetxService {
       debugPrint('✅ StorageService: NewYearStoryAdapter registered');
     } else {
       debugPrint('⏭️ StorageService: NewYearStoryAdapter 已注册,跳过');
+    }
+    if (!Hive.isAdapterRegistered(43)) {
+      Hive.registerAdapter(EncyclopediaQuestionAdapter());
+      debugPrint(
+          '✅ StorageService: EncyclopediaQuestionAdapter registered (typeId: 43)');
+    } else {
+      debugPrint('⏭️ StorageService: EncyclopediaQuestionAdapter 已注册,跳过');
+    }
+    if (!Hive.isAdapterRegistered(44)) {
+      Hive.registerAdapter(EncyclopediaConfigAdapter());
+      debugPrint(
+          '✅ StorageService: EncyclopediaConfigAdapter registered (typeId: 44)');
+    } else {
+      debugPrint('⏭️ StorageService: EncyclopediaConfigAdapter 已注册,跳过');
+    }
+    if (!Hive.isAdapterRegistered(45)) {
+      Hive.registerAdapter(EncyclopediaExplanationCacheAdapter());
+      debugPrint(
+          '✅ StorageService: EncyclopediaExplanationCacheAdapter registered (typeId: 45)');
+    } else {
+      debugPrint(
+          '⏭️ StorageService: EncyclopediaExplanationCacheAdapter 已注册,跳过');
     }
 
     userBox = await Hive.openBox<UserProfile>('userBox');

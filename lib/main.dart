@@ -15,12 +15,16 @@ import 'services/music_cache_service.dart';
 import 'controllers/music_player_controller.dart';
 import 'services/openai_service.dart';
 import 'services/quiz_service.dart';
+import 'services/encyclopedia_service.dart';
 import 'services/story_management_service.dart';
 import 'services/ai_generation_service.dart';
 import 'models/quiz_config.dart';
 import 'models/quiz_question.dart';
 import 'models/hanzi_learning_config.dart';
 import 'models/openai_tts_config.dart';
+import 'models/encyclopedia_question.dart';
+import 'models/encyclopedia_config.dart';
+import 'models/encyclopedia_explanation_cache.dart';
 import 'services/hanzi_learning_service.dart';
 // import 'package:just_audio_background/just_audio_background.dart';
 
@@ -75,6 +79,26 @@ void main() async {
   } else {
     debugPrint('⚠️ OpenAITtsConfigAdapter already registered (typeId: 42)');
   }
+  if (!Hive.isAdapterRegistered(43)) {
+    Hive.registerAdapter(EncyclopediaQuestionAdapter());
+    debugPrint('✅ EncyclopediaQuestionAdapter registered (typeId: 43)');
+  } else {
+    debugPrint(
+        '⚠️ EncyclopediaQuestionAdapter already registered (typeId: 43)');
+  }
+  if (!Hive.isAdapterRegistered(44)) {
+    Hive.registerAdapter(EncyclopediaConfigAdapter());
+    debugPrint('✅ EncyclopediaConfigAdapter registered (typeId: 44)');
+  } else {
+    debugPrint('⚠️ EncyclopediaConfigAdapter already registered (typeId: 44)');
+  }
+  if (!Hive.isAdapterRegistered(45)) {
+    Hive.registerAdapter(EncyclopediaExplanationCacheAdapter());
+    debugPrint('✅ EncyclopediaExplanationCacheAdapter registered (typeId: 45)');
+  } else {
+    debugPrint(
+        '⚠️ EncyclopediaExplanationCacheAdapter already registered (typeId: 45)');
+  }
 
   debugPrint('📦 准备初始化 StorageService...');
 
@@ -108,6 +132,10 @@ void main() async {
       final quizService = QuizService();
       Get.put(quizService);
       await quizService.init();
+
+      final encyclopediaService = EncyclopediaService();
+      Get.put(encyclopediaService);
+      await encyclopediaService.init();
 
       final storyManagementService = StoryManagementService.instance;
       await storyManagementService.init();

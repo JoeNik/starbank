@@ -28,6 +28,10 @@ import '../models/hanzi_learning_config.dart';
 import '../models/cftts_config.dart';
 import '../models/openai_tts_config.dart';
 import '../services/tts_service.dart';
+import '../services/encyclopedia_service.dart';
+import '../models/encyclopedia_question.dart';
+import '../models/encyclopedia_config.dart';
+import '../models/encyclopedia_explanation_cache.dart';
 
 /// 备份文件信息
 class BackupFileInfo {
@@ -337,10 +341,22 @@ class WebDavService extends GetxService {
         print('备份汉字学习配置失败: $e');
       }
 
+      // 备份生活科学百科
+      try {
+        if (Get.isRegistered<EncyclopediaService>()) {
+          final encyclopediaService = Get.find<EncyclopediaService>();
+          final data = await encyclopediaService.exportData();
+          backupData['encyclopediaData'] = data;
+        }
+      } catch (e) {
+        print('备份生活科学百科失败: $e');
+      }
+
       // 备份 CFTTS 配置
       try {
         final cfttsBox = await Hive.openBox<CfttsConfig>('cftts_config_box');
-        backupData['cfttsConfigBox'] = cfttsBox.values.map((e) => e.toJson()).toList();
+        backupData['cfttsConfigBox'] =
+            cfttsBox.values.map((e) => e.toJson()).toList();
       } catch (e) {
         print('备份 CFTTS 配置失败: $e');
       }
@@ -884,6 +900,66 @@ class WebDavService extends GetxService {
         }
       }
 
+      // 恢复生活科学百科
+      if (backupData['encyclopediaData'] != null) {
+        try {
+          if (Get.isRegistered<EncyclopediaService>()) {
+            final encyclopediaService = Get.find<EncyclopediaService>();
+            await encyclopediaService.importData(
+              Map<String, dynamic>.from(backupData['encyclopediaData'] as Map),
+            );
+          } else {
+            // 服务未注册时，直接写入相关 Box，保证数据不丢失
+            final configBox =
+                await Hive.openBox<EncyclopediaConfig>('encyclopedia_config');
+            final questionBox = await Hive.openBox<EncyclopediaQuestion>(
+                'encyclopedia_questions');
+            final cacheBox = await Hive.openBox<EncyclopediaExplanationCache>(
+                'encyclopedia_explanation_cache');
+            final playRecordBox =
+                await Hive.openBox('encyclopedia_play_record');
+
+            final raw = Map<String, dynamic>.from(
+                backupData['encyclopediaData'] as Map);
+
+            if (raw['config'] != null) {
+              await configBox.clear();
+              await configBox.add(EncyclopediaConfig.fromJson(
+                Map<String, dynamic>.from(raw['config'] as Map),
+              ));
+            }
+
+            if (raw['questions'] != null) {
+              await questionBox.clear();
+              for (final item in (raw['questions'] as List)) {
+                final q = EncyclopediaQuestion.fromJson(
+                    Map<String, dynamic>.from(item as Map));
+                await questionBox.put(q.id, q);
+              }
+            }
+
+            if (raw['explanationCaches'] != null) {
+              await cacheBox.clear();
+              for (final item in (raw['explanationCaches'] as List)) {
+                final c = EncyclopediaExplanationCache.fromJson(
+                    Map<String, dynamic>.from(item as Map));
+                await cacheBox.put(c.cacheKey, c);
+              }
+            }
+
+            if (raw['playRecords'] != null) {
+              await playRecordBox.clear();
+              final m = Map<String, dynamic>.from(raw['playRecords'] as Map);
+              for (final entry in m.entries) {
+                await playRecordBox.put(entry.key, entry.value);
+              }
+            }
+          }
+        } catch (e) {
+          print('恢复生活科学百科失败: $e');
+        }
+      }
+
       // 恢复 CFTTS 配置
       if (backupData['cfttsConfigBox'] != null) {
         try {
@@ -1026,6 +1102,18 @@ class WebDavService extends GetxService {
     // OpenAITtsConfig (42)
     if (!Hive.isAdapterRegistered(42)) {
       Hive.registerAdapter(OpenAITtsConfigAdapter());
+    }
+    // EncyclopediaQuestion (43)
+    if (!Hive.isAdapterRegistered(43)) {
+      Hive.registerAdapter(EncyclopediaQuestionAdapter());
+    }
+    // EncyclopediaConfig (44)
+    if (!Hive.isAdapterRegistered(44)) {
+      Hive.registerAdapter(EncyclopediaConfigAdapter());
+    }
+    // EncyclopediaExplanationCache (45)
+    if (!Hive.isAdapterRegistered(45)) {
+      Hive.registerAdapter(EncyclopediaExplanationCacheAdapter());
     }
   }
 }

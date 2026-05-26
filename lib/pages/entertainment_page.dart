@@ -8,6 +8,7 @@ import 'entertainment/music/music_home_page.dart';
 import 'entertainment/quiz/quiz_page.dart';
 import 'entertainment/new_year_story/new_year_story_page.dart';
 import 'entertainment/hanzi_learning/hanzi_learning_page.dart';
+import 'entertainment/encyclopedia/encyclopedia_page.dart';
 
 /// 娱乐模块入口页面
 class EntertainmentPage extends StatelessWidget {
@@ -158,6 +159,13 @@ class EntertainmentPage extends StatelessWidget {
                 crossAxisSpacing: 16.w,
                 childAspectRatio: 0.9,
                 children: [
+                  _buildFeatureCard(
+                    emoji: '🌍',
+                    title: '生活科学百科',
+                    subtitle: '一问一答学知识',
+                    color: const Color(0xFF4DB6AC),
+                    onTap: () => Get.to(() => const EncyclopediaPage()),
+                  ),
                   _buildFeatureCard(
                     emoji: '🔤',
                     title: '星海识字',
