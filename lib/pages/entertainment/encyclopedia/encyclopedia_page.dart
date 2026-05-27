@@ -749,6 +749,7 @@ class _EncyclopediaPageState extends State<EncyclopediaPage> {
           Row(
             children: [
               SizedBox(
+                width: 122.w,
                 height: 38.h,
                 child: ElevatedButton(
                   onPressed: _isLoadingExplanation || !canRetry
@@ -759,23 +760,26 @@ class _EncyclopediaPageState extends State<EncyclopediaPage> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primary,
                     foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(horizontal: 14.w),
-                    minimumSize: Size(108.w, 38.h),
+                    padding: EdgeInsets.zero,
+                    minimumSize: Size(122.w, 38.h),
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  child: Stack(
+                    alignment: Alignment.center,
                     children: [
-                      Icon(
-                        hasExplanation ? Icons.refresh : Icons.auto_awesome,
-                        size: 18.sp,
+                      Positioned(
+                        left: 14.w,
+                        child: Icon(
+                          hasExplanation ? Icons.refresh : Icons.auto_awesome,
+                          size: 18.sp,
+                        ),
                       ),
-                      SizedBox(width: 6.w),
-                      Text(
-                        hasExplanation ? '重新解析' : '获取解析',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 13.sp),
+                      Center(
+                        child: Text(
+                          hasExplanation ? '重新解析' : '获取解析',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 13.sp),
+                        ),
                       ),
                     ],
                   ),

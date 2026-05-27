@@ -18,11 +18,9 @@ const Map<String, String> mathKeySpeechMap = {
   '÷': '除以',
   '=': '等于',
   'C': '清空',
-  '⌫': '删除',
   '读': '朗读',
   '提交': '提交',
   '清空': '清空答案',
-  '删除': '删除',
 };
 
 const List<String> mathWarmupSpeechTexts = [
@@ -43,7 +41,6 @@ const List<String> mathWarmupSpeechTexts = [
   '除以',
   '等于',
   '清空',
-  '删除',
   '提交',
   '答对啦，真棒！',
   '差一点点，再想一想。',

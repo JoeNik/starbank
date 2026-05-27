@@ -72,6 +72,18 @@ class _PracticeResult {
   }
 }
 
+class _VerticalMark {
+  const _VerticalMark({
+    required this.text,
+    required this.color,
+    this.background,
+  });
+
+  final String text;
+  final Color color;
+  final Color? background;
+}
+
 class MathCalculatorPage extends StatefulWidget {
   const MathCalculatorPage({super.key});
 
@@ -348,7 +360,6 @@ class _MathCalculatorPageState extends State<MathCalculatorPage>
   }
 
   void _backspaceCalculator() {
-    _enqueueButtonSpeech(_buttonSpeech('⌫'));
     setState(() {
       if (_display.length <= 1 || _display == '不能除以0') {
         _display = '0';
@@ -364,7 +375,6 @@ class _MathCalculatorPageState extends State<MathCalculatorPage>
   }
 
   void _backspacePracticeInput() {
-    _enqueueButtonSpeech(_buttonSpeech('删除'));
     setState(() {
       if (_answerInput.isNotEmpty) {
         _answerInput = _answerInput.substring(0, _answerInput.length - 1);
@@ -793,6 +803,9 @@ class _MathCalculatorPageState extends State<MathCalculatorPage>
       ),
       child: TabBar(
         controller: _tabController,
+        dividerColor: Colors.transparent,
+        dividerHeight: 0,
+        overlayColor: WidgetStateProperty.all(Colors.transparent),
         indicatorSize: TabBarIndicatorSize.tab,
         indicator: BoxDecoration(
           color: _mathButter,
@@ -1343,17 +1356,7 @@ class _MathCalculatorPageState extends State<MathCalculatorPage>
       title: _problem.supportsVertical ? '竖式' : '想法',
       color: _mathButter,
       child: _problem.supportsVertical
-          ? Text(
-              _verticalText(_problem),
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: _mathCoral,
-                fontSize: 28.sp,
-                height: 1.2,
-                fontFamily: 'monospace',
-                fontWeight: FontWeight.w900,
-              ),
-            )
+          ? _buildVerticalWork(_problem)
           : Text(
               _thinkingText(_problem),
               style: TextStyle(
@@ -1412,7 +1415,7 @@ class _MathCalculatorPageState extends State<MathCalculatorPage>
     );
   }
 
-  String _verticalText(_MathProblem problem) {
+  Widget _buildVerticalWork(_MathProblem problem) {
     final left = problem.left.round();
     final right = problem.right.round();
     final answer = problem.answer.round();
@@ -1420,34 +1423,206 @@ class _MathCalculatorPageState extends State<MathCalculatorPage>
       max(left.toString().length, right.toString().length),
       answer.toString().length,
     );
-    final helperCells = problem.op == _MathOp.add
+    final carryCells = problem.op == _MathOp.add
         ? _additionCarryCells(left, right, digitCount)
-        : _subtractionBorrowCells(left, right, digitCount);
-    const prefixWidth = 2;
-    final cellWidth = helperCells.any((cell) => cell.length > 1) ? 3 : 2;
+        : List<String>.filled(digitCount, '');
+    final borrowMarks = problem.op == _MathOp.subtract
+        ? _subtractionBorrowMarks(left, right, digitCount)
+        : List<_VerticalMark?>.filled(digitCount, null);
+    final hasCarry = carryCells.any((cell) => cell.isNotEmpty);
+    final hasBorrow = borrowMarks.any((mark) => mark != null);
 
-    final lines = <String>[];
-    if (helperCells.any((cell) => cell.isNotEmpty)) {
-      lines.add(
-        '${' ' * prefixWidth}${_spacedCells(helperCells, cellWidth: cellWidth)}'
-            .trimRight(),
-      );
+    return Center(
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            if (hasCarry) _verticalMarkRow(carryCells, digitCount),
+            _verticalNumberRow(left, digitCount),
+            if (hasBorrow) ...[
+              SizedBox(height: 3.h),
+              _verticalBorrowRow(borrowMarks),
+            ],
+            _verticalNumberRow(
+              right,
+              digitCount,
+              operator: _opSymbol(problem.op),
+            ),
+            Container(
+              width: 30.w + digitCount * 38.w,
+              height: 3.h,
+              margin: EdgeInsets.symmetric(vertical: 5.h),
+              decoration: BoxDecoration(
+                color: _mathInk.withValues(alpha: 0.62),
+                borderRadius: BorderRadius.circular(99.r),
+              ),
+            ),
+            _verticalNumberRow(answer, digitCount),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _verticalNumberRow(int value, int width, {String operator = ''}) {
+    final cells = value
+        .toString()
+        .padLeft(width, ' ')
+        .split('')
+        .map((char) => char.trim())
+        .toList();
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: 30.w,
+          child: Text(
+            operator,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: _mathInk,
+              fontSize: 26.sp,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0,
+            ),
+          ),
+        ),
+        ...cells.map((cell) => _verticalDigitCell(cell)),
+      ],
+    );
+  }
+
+  Widget _verticalDigitCell(String text) {
+    return SizedBox(
+      width: 38.w,
+      height: 34.h,
+      child: Center(
+        child: Text(
+          text,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: _mathInk,
+            fontSize: 27.sp,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _verticalMarkRow(List<String> cells, int width) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(width: 30.w),
+        ...List.generate(width, (index) {
+          final text = cells[index];
+          return SizedBox(
+            width: 38.w,
+            height: 24.h,
+            child: Center(
+              child: text.isEmpty
+                  ? const SizedBox.shrink()
+                  : _verticalMarkChip(
+                      _VerticalMark(
+                        text: text,
+                        color: _mathSea,
+                        background: _mathSky.withValues(alpha: 0.72),
+                      ),
+                    ),
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _verticalBorrowRow(List<_VerticalMark?> marks) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(width: 30.w),
+        ...marks.map(
+          (mark) => SizedBox(
+            width: 38.w,
+            height: 26.h,
+            child: Center(
+              child: mark == null
+                  ? const SizedBox.shrink()
+                  : _verticalMarkChip(mark),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _verticalMarkChip(_VerticalMark mark) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
+      decoration: BoxDecoration(
+        color: mark.background ?? mark.color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(8.r),
+        border: Border.all(color: mark.color.withValues(alpha: 0.55)),
+      ),
+      child: Text(
+        mark.text,
+        maxLines: 1,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: mark.color,
+          fontSize: mark.text.length > 2 ? 8.5.sp : 12.sp,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0,
+        ),
+      ),
+    );
+  }
+
+  List<_VerticalMark?> _subtractionBorrowMarks(
+    int left,
+    int right,
+    int width,
+  ) {
+    final working =
+        left.toString().padLeft(width, '0').split('').map(int.parse).toList();
+    final rightDigits =
+        right.toString().padLeft(width, '0').split('').map(int.parse).toList();
+    final markers = List<_VerticalMark?>.filled(width, null);
+
+    for (var i = width - 1; i >= 0; i--) {
+      if (working[i] < rightDigits[i]) {
+        var borrowFrom = i - 1;
+        while (borrowFrom >= 0 && working[borrowFrom] == 0) {
+          working[borrowFrom] = 9;
+          markers[borrowFrom] = _VerticalMark(
+            text: '9',
+            color: _mathSea,
+            background: _mathSky.withValues(alpha: 0.7),
+          );
+          borrowFrom--;
+        }
+        if (borrowFrom >= 0) {
+          working[borrowFrom] -= 1;
+          markers[borrowFrom] = _VerticalMark(
+            text: working[borrowFrom].toString(),
+            color: _mathSea,
+            background: _mathSky.withValues(alpha: 0.7),
+          );
+          working[i] += 10;
+          markers[i] = _VerticalMark(
+            text: working[i].toString(),
+            color: _mathCoral,
+            background: const Color(0xFFFFE2DE),
+          );
+        }
+      }
     }
-    lines
-      ..add(
-        '${' ' * prefixWidth}${_spacedDigits(left, digitCount, cellWidth: cellWidth)}'
-            .trimRight(),
-      )
-      ..add(
-        '${_opSymbol(problem.op)} ${_spacedDigits(right, digitCount, cellWidth: cellWidth)}'
-            .trimRight(),
-      )
-      ..add('${' ' * prefixWidth}${'─' * (digitCount * cellWidth)}')
-      ..add(
-        '${' ' * prefixWidth}${_spacedDigits(answer, digitCount, cellWidth: cellWidth)}'
-            .trimRight(),
-      );
-    return lines.join('\n');
+
+    return markers;
   }
 
   List<String> _additionCarryCells(int left, int right, int width) {
@@ -1469,47 +1644,6 @@ class _MathCalculatorPageState extends State<MathCalculatorPage>
     return markers;
   }
 
-  List<String> _subtractionBorrowCells(int left, int right, int width) {
-    final working =
-        left.toString().padLeft(width, '0').split('').map(int.parse).toList();
-    final rightDigits =
-        right.toString().padLeft(width, '0').split('').map(int.parse).toList();
-    final markers = List<String>.filled(width, '');
-
-    for (var i = width - 1; i >= 0; i--) {
-      if (working[i] < rightDigits[i]) {
-        var borrowFrom = i - 1;
-        while (borrowFrom >= 0 && working[borrowFrom] == 0) {
-          working[borrowFrom] = 9;
-          markers[borrowFrom] = '9';
-          borrowFrom--;
-        }
-        if (borrowFrom >= 0) {
-          working[borrowFrom] -= 1;
-          markers[borrowFrom] = working[borrowFrom].toString();
-          working[i] += 10;
-          markers[i] = working[i].toString();
-        }
-      }
-    }
-
-    return markers;
-  }
-
-  String _spacedDigits(int value, int width, {required int cellWidth}) {
-    final cells = value
-        .toString()
-        .padLeft(width, ' ')
-        .split('')
-        .map((char) => char.trim())
-        .toList();
-    return _spacedCells(cells, cellWidth: cellWidth);
-  }
-
-  String _spacedCells(List<String> cells, {required int cellWidth}) {
-    return cells.map((cell) => cell.padLeft(cellWidth)).join();
-  }
-
   bool _hasAdditionCarry(int left, int right) {
     final width = max(
       max(left.toString().length, right.toString().length),
@@ -1521,8 +1655,8 @@ class _MathCalculatorPageState extends State<MathCalculatorPage>
 
   bool _hasSubtractionBorrow(int left, int right) {
     final width = max(left.toString().length, right.toString().length);
-    return _subtractionBorrowCells(left, right, width)
-        .any((cell) => cell.isNotEmpty);
+    return _subtractionBorrowMarks(left, right, width)
+        .any((mark) => mark != null);
   }
 
   String _thinkingText(_MathProblem problem) {
