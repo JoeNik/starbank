@@ -187,7 +187,7 @@ class _EncyclopediaPageState extends State<EncyclopediaPage> {
         _explanation = EncyclopediaExplanationResult(
           shortAnswer: '正确答案是：${question.answer}',
           why: builtInExplanation,
-          example: '生活中可以多观察类似现象，慢慢你会更理解这个知识点。',
+          example: _service.buildBuiltInExample(question),
           fromCache: false,
           fromBuiltIn: true,
         );
@@ -378,26 +378,35 @@ class _EncyclopediaPageState extends State<EncyclopediaPage> {
         ],
       ),
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: EdgeInsets.all(16.w),
-                child: Column(
-                  children: [
-                    _buildQuestionCard(q),
-                    SizedBox(height: 10.h),
-                    _buildOptions(q),
-                    SizedBox(height: 10.h),
-                    if (_showResult) _buildAnswerSummary(q),
-                    if (_showResult) SizedBox(height: 10.h),
-                    if (_showResult) _buildExplainPanel(q),
-                  ],
-                ),
+            const Positioned.fill(
+              child: IgnorePointer(
+                child: _EncyclopediaBackgroundScene(),
               ),
             ),
-            _buildBottomBar(),
+            Column(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: EdgeInsets.all(16.w),
+                    child: Column(
+                      children: [
+                        _buildQuestionCard(q),
+                        SizedBox(height: 10.h),
+                        _buildOptions(q),
+                        SizedBox(height: 10.h),
+                        if (_showResult) _buildAnswerSummary(q),
+                        if (_showResult) SizedBox(height: 10.h),
+                        if (_showResult) _buildExplainPanel(q),
+                      ],
+                    ),
+                  ),
+                ),
+                _buildBottomBar(),
+              ],
+            ),
           ],
         ),
       ),
@@ -428,7 +437,7 @@ class _EncyclopediaPageState extends State<EncyclopediaPage> {
               SizedBox(width: 8.w),
               Expanded(
                 child: Text(
-                  q.category == 'science' ? '科学百科' : '生活常识',
+                  _categoryLabel(q.category),
                   style: TextStyle(
                     fontSize: 13.sp,
                     color: Colors.grey[600],
@@ -461,6 +470,48 @@ class _EncyclopediaPageState extends State<EncyclopediaPage> {
         ],
       ),
     );
+  }
+
+  String _categoryLabel(String category) {
+    switch (category.toLowerCase()) {
+      case 'astronomy':
+        return '天文与地球';
+      case 'space':
+        return '宇宙探索';
+      case 'weather':
+        return '天气与水循环';
+      case 'body':
+        return '人体健康';
+      case 'animal':
+        return '动物世界';
+      case 'plant':
+        return '植物秘密';
+      case 'physics':
+        return '物理现象';
+      case 'chemistry':
+        return '生活化学';
+      case 'earth':
+        return '地球科学';
+      case 'environment':
+        return '环境保护';
+      case 'technology':
+        return '科技生活';
+      case 'food':
+        return '食物营养';
+      case 'math':
+        return '数学规律';
+      case 'safety':
+        return '安全常识';
+      case 'ocean':
+        return '海洋百科';
+      case 'daily_life':
+      case 'life':
+        return '生活常识';
+      case 'science':
+        return '科学百科';
+      default:
+        return '科学百科';
+    }
   }
 
   Widget _buildEmptyState() {
@@ -697,20 +748,37 @@ class _EncyclopediaPageState extends State<EncyclopediaPage> {
           SizedBox(height: 8.h),
           Row(
             children: [
-              ElevatedButton.icon(
-                onPressed: _isLoadingExplanation || !canRetry
-                    ? null
-                    : () => _requestExplanation(
-                          forceRefresh: hasExplanation,
-                        ),
-                icon: Icon(hasExplanation ? Icons.refresh : Icons.auto_awesome),
-                label: Text(
-                  hasExplanation ? '重新解析' : '获取解析',
-                  style: TextStyle(fontSize: 13.sp),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primary,
-                  foregroundColor: Colors.white,
+              SizedBox(
+                height: 38.h,
+                child: ElevatedButton(
+                  onPressed: _isLoadingExplanation || !canRetry
+                      ? null
+                      : () => _requestExplanation(
+                            forceRefresh: hasExplanation,
+                          ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(horizontal: 14.w),
+                    minimumSize: Size(108.w, 38.h),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        hasExplanation ? Icons.refresh : Icons.auto_awesome,
+                        size: 18.sp,
+                      ),
+                      SizedBox(width: 6.w),
+                      Text(
+                        hasExplanation ? '重新解析' : '获取解析',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 13.sp),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               SizedBox(width: 10.w),
@@ -1094,6 +1162,196 @@ class _EncyclopediaPageState extends State<EncyclopediaPage> {
         ],
       ),
     );
+  }
+}
+
+class _EncyclopediaBackgroundScene extends StatefulWidget {
+  const _EncyclopediaBackgroundScene();
+
+  @override
+  State<_EncyclopediaBackgroundScene> createState() =>
+      _EncyclopediaBackgroundSceneState();
+}
+
+class _EncyclopediaBackgroundSceneState
+    extends State<_EncyclopediaBackgroundScene>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 36),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          return CustomPaint(
+            painter: _EncyclopediaBackgroundPainter(_controller.value),
+            child: const SizedBox.expand(),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _EncyclopediaBackgroundPainter extends CustomPainter {
+  final double progress;
+
+  const _EncyclopediaBackgroundPainter(this.progress);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) return;
+
+    _drawSnow(canvas, size);
+    _drawFish(canvas, size);
+    _drawHorse(canvas, size);
+  }
+
+  void _drawSnow(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.lightBlueAccent.withValues(alpha: 0.13)
+      ..strokeWidth = 1.1
+      ..strokeCap = StrokeCap.round;
+
+    const flakes = 18;
+    for (var i = 0; i < flakes; i++) {
+      final seed = i * 37.0;
+      final x = ((seed * 5.1) + progress * size.width * 0.22) % size.width;
+      final y =
+          ((seed * 11.3) + progress * size.height * (0.55 + i % 3 * 0.12)) %
+              size.height;
+      final radius = 2.5 + (i % 4) * 0.8;
+      final center = Offset(x, y);
+      canvas.drawLine(
+        center.translate(-radius, 0),
+        center.translate(radius, 0),
+        paint,
+      );
+      canvas.drawLine(
+        center.translate(0, -radius),
+        center.translate(0, radius),
+        paint,
+      );
+      canvas.drawLine(
+        center.translate(-radius * 0.7, -radius * 0.7),
+        center.translate(radius * 0.7, radius * 0.7),
+        paint,
+      );
+      canvas.drawLine(
+        center.translate(radius * 0.7, -radius * 0.7),
+        center.translate(-radius * 0.7, radius * 0.7),
+        paint,
+      );
+    }
+  }
+
+  void _drawFish(Canvas canvas, Size size) {
+    final bodyPaint = Paint()
+      ..color = Colors.teal.withValues(alpha: 0.11)
+      ..style = PaintingStyle.fill;
+    final finPaint = Paint()
+      ..color = Colors.cyan.withValues(alpha: 0.13)
+      ..style = PaintingStyle.fill;
+    final eyePaint = Paint()
+      ..color = Colors.blueGrey.withValues(alpha: 0.16)
+      ..style = PaintingStyle.fill;
+
+    for (var i = 0; i < 4; i++) {
+      final laneY = size.height * (0.18 + i * 0.17);
+      final direction = i.isEven ? 1.0 : -1.0;
+      final travel = (progress + i * 0.21) % 1.0;
+      final x = direction > 0
+          ? -36.w + travel * (size.width + 72.w)
+          : size.width + 36.w - travel * (size.width + 72.w);
+      final wave = sin((progress * pi * 2) + i) * 8.h;
+      canvas.save();
+      canvas.translate(x, laneY + wave);
+      canvas.scale(direction, 1);
+
+      final bodyRect = Rect.fromCenter(
+        center: Offset.zero,
+        width: 34.w,
+        height: 18.h,
+      );
+      canvas.drawOval(bodyRect, bodyPaint);
+
+      final tail = Path()
+        ..moveTo(-17.w, 0)
+        ..lineTo(-29.w, -9.h)
+        ..lineTo(-29.w, 9.h)
+        ..close();
+      canvas.drawPath(tail, finPaint);
+
+      final topFin = Path()
+        ..moveTo(-2.w, -8.h)
+        ..lineTo(8.w, -18.h)
+        ..lineTo(12.w, -5.h)
+        ..close();
+      canvas.drawPath(topFin, finPaint);
+
+      canvas.drawCircle(Offset(10.w, -3.h), 1.5.w, eyePaint);
+      canvas.restore();
+    }
+  }
+
+  void _drawHorse(Canvas canvas, Size size) {
+    final groundY = size.height * 0.82;
+    final x = ((progress * 0.45 + 0.1) % 1.0) * (size.width + 100.w) - 50.w;
+    final bob = sin(progress * pi * 2) * 2.h;
+    final paint = Paint()
+      ..color = Colors.brown.withValues(alpha: 0.08)
+      ..strokeWidth = 3.w
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+    final fill = Paint()
+      ..color = Colors.brown.withValues(alpha: 0.08)
+      ..style = PaintingStyle.fill;
+
+    canvas.save();
+    canvas.translate(x, groundY + bob);
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset.zero, width: 42.w, height: 20.h),
+      fill,
+    );
+    canvas.drawCircle(Offset(25.w, -11.h), 9.w, fill);
+    canvas.drawLine(Offset(15.w, -8.h), Offset(24.w, -13.h), paint);
+
+    final step = sin(progress * pi * 4);
+    canvas.drawLine(
+        Offset(-14.w, 8.h), Offset(-20.w + step * 4.w, 26.h), paint);
+    canvas.drawLine(Offset(-3.w, 9.h), Offset(-6.w - step * 4.w, 27.h), paint);
+    canvas.drawLine(Offset(10.w, 8.h), Offset(16.w - step * 4.w, 26.h), paint);
+    canvas.drawLine(Offset(18.w, 6.h), Offset(23.w + step * 4.w, 24.h), paint);
+    canvas.drawLine(Offset(-22.w, -2.h), Offset(-34.w, -10.h), paint);
+
+    final ear = Path()
+      ..moveTo(25.w, -20.h)
+      ..lineTo(29.w, -30.h)
+      ..lineTo(32.w, -18.h)
+      ..close();
+    canvas.drawPath(ear, fill);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _EncyclopediaBackgroundPainter oldDelegate) {
+    return oldDelegate.progress != progress;
   }
 }
 

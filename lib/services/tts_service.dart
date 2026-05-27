@@ -227,14 +227,14 @@ class TtsService extends GetxService {
 
     final route = resolveTtsRoute(featureKey: featureKey);
     if (route == engineCftts && _isCfttsAvailable()) {
-      await _speakCftts(text);
+      await _speakCftts(text, rate: rate);
       return;
     }
 
     if (route.startsWith(openAITtsPrefix)) {
       final provider = getOpenAITtsConfigByRoute(route);
       if (provider != null && _isOpenAITtsAvailable(provider)) {
-        await _speakOpenAITts(provider, text);
+        await _speakOpenAITts(provider, text, rate: rate);
         return;
       }
     }
@@ -762,7 +762,7 @@ class TtsService extends GetxService {
     return 'alloy';
   }
 
-  Future<void> _speakCftts(String text) async {
+  Future<void> _speakCftts(String text, {double? rate}) async {
     try {
       isSpeaking.value = true;
       final playFile = await _getOrFetchCftts(text);
@@ -776,6 +776,7 @@ class TtsService extends GetxService {
       await _audioPlayer.stop();
       await _audioPlayer.setFilePath(playFile.path);
       await _audioPlayer.seek(Duration.zero);
+      await _audioPlayer.setSpeed(rate ?? 1.0);
       onStartCallback?.call();
       await _audioPlayer.play();
     } catch (e) {
@@ -784,7 +785,11 @@ class TtsService extends GetxService {
     }
   }
 
-  Future<void> _speakOpenAITts(OpenAITtsConfig config, String text) async {
+  Future<void> _speakOpenAITts(
+    OpenAITtsConfig config,
+    String text, {
+    double? rate,
+  }) async {
     try {
       isSpeaking.value = true;
       final playFile = await _getOrFetchOpenAITts(config, text);
@@ -797,6 +802,7 @@ class TtsService extends GetxService {
       await _audioPlayer.stop();
       await _audioPlayer.setFilePath(playFile.path);
       await _audioPlayer.seek(Duration.zero);
+      await _audioPlayer.setSpeed(rate ?? 1.0);
       onStartCallback?.call();
       await _audioPlayer.play();
     } catch (e) {

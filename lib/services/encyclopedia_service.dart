@@ -400,6 +400,113 @@ class EncyclopediaService extends GetxService {
     return cleaned;
   }
 
+  String buildBuiltInExample(EncyclopediaQuestion question) {
+    final text = '${question.question} ${question.answer}';
+    final category = question.category.toLowerCase();
+
+    bool has(Iterable<String> words) => words.any(text.contains);
+
+    if (has(['月亮', '月相'])) {
+      return '可以连续几晚在同一时间看看月亮，记录亮面变大还是变小，就能看到月相变化。';
+    }
+    if (has(['星星', '太阳', '白天', '黑夜'])) {
+      return '白天和晚上分别看看天空亮度，你会发现强光会让微弱的星光不容易被看见。';
+    }
+    if (has(['四季', '季节', '夏天', '冬天'])) {
+      return '同一棵树在春夏秋冬的样子不同，是观察季节变化的好线索。';
+    }
+    if (has(['雨', '云', '雾', '露', '霜'])) {
+      return '下雨前后观察云、地面水迹和空气湿度，可以把水循环和天气联系起来。';
+    }
+    if (has(['彩虹', '折射', '反射'])) {
+      return '雨后太阳出来时，背对太阳看看有水滴的天空方向，有机会看到彩虹。';
+    }
+    if (has(['雷', '闪电'])) {
+      return '看到闪电后再听雷声，常常会发现声音来得更晚，因为光传播得比声音快。';
+    }
+    if (has(['风', '气压'])) {
+      return '看看旗子、树叶或风车朝哪里动，就能判断空气正在往哪个方向流动。';
+    }
+    if (has(['汗', '体温', '热'])) {
+      return '运动后摸摸额头和手臂，再感受汗水蒸发时的凉意，就能理解身体怎样散热。';
+    }
+    if (has(['牙', '刷牙', '蛀牙'])) {
+      return '吃完东西后照照镜子，牙缝里可能有残渣，刷牙就是在清理这些地方。';
+    }
+    if (has(['睡', '哈欠', '困'])) {
+      return '如果前一晚睡得少，第二天更容易打哈欠或走神，这说明身体需要休息。';
+    }
+    if (has(['伤口', '血', '结痂'])) {
+      return '小擦伤恢复时不要抠痂，观察它慢慢变干脱落，就是皮肤修复的过程。';
+    }
+    if (has(['叶', '植物', '种子', '花', '根'])) {
+      return '把一盆植物放在窗边，隔几天看看新叶和茎的方向，能观察到植物对环境的反应。';
+    }
+    if (has(['鸟', '羽毛', '翅膀'])) {
+      return '观察鸟起飞和降落时翅膀的动作，可以看到它们怎样推动空气。';
+    }
+    if (has(['鱼', '水里', '鳃'])) {
+      return '看鱼游动时嘴巴和鳃盖一开一合，就是水流经过鳃帮助呼吸。';
+    }
+    if (has(['猫', '狗', '眼睛', '夜里'])) {
+      return '傍晚光线变暗时，动物的瞳孔变化能帮助它们更好地利用微弱光线。';
+    }
+    if (has(['影子', '光线'])) {
+      return '用台灯照一本书，移动书的位置和角度，影子的大小和方向会跟着改变。';
+    }
+    if (has(['磁铁', '铁', '指南针'])) {
+      return '用磁铁分别靠近回形针、纸片和塑料尺，就能比较哪些材料会被吸引。';
+    }
+    if (has(['冰', '浮', '水面'])) {
+      return '把冰块放进清水里，观察它浮在水面上，就能看到密度不同带来的结果。';
+    }
+    if (has(['声音', '振动'])) {
+      return '轻轻拨动橡皮筋，听声音的同时看它振动，能明白声音和振动有关。';
+    }
+    if (has(['垃圾', '回收', '污染'])) {
+      return '把纸盒、果皮和旧电池分开放，能看到不同垃圾需要不同处理方法。';
+    }
+    if (has(['电灯', '电流', '电池'])) {
+      return '在家长帮助下观察手电筒，开关闭合后灯亮，断开后灯灭，这就是电路在工作。';
+    }
+    if (has(['冰箱', '制冷', '食物'])) {
+      return '摸摸冰箱背面或侧面会有些热，因为冰箱正在把里面的热量搬到外面。';
+    }
+
+    switch (category) {
+      case 'astronomy':
+      case 'space':
+        return '晚上观察天空时，可以把看到的现象和地球、月亮、太阳的位置关系联系起来。';
+      case 'weather':
+        return '天气变化常能从云、风、温度和地面水迹里找到线索，出门前可以一起观察。';
+      case 'body':
+        return '身体的感觉常常在提醒我们发生了什么，比如热、累、饿、困都值得认真听一听。';
+      case 'animal':
+        return '观察动物的身体结构和动作，常能发现它们怎样适应自己的生活环境。';
+      case 'plant':
+        return '照顾植物时记录浇水、光照和生长变化，可以把植物知识看得更清楚。';
+      case 'physics':
+        return '用安全的小实验观察光、声音、冷热或运动，能把抽象的物理现象变得直观。';
+      case 'chemistry':
+        return '厨房和清洁用品里有很多化学现象，但观察时一定要有大人陪同，不能随意混合材料。';
+      case 'earth':
+      case 'environment':
+        return '把身边的水、土壤、垃圾和天气联系起来看，会更容易理解地球环境怎样运转。';
+      case 'technology':
+        return '看看家里的电器什么时候工作、什么时候停止，能帮助理解科技怎样服务生活。';
+      case 'food':
+        return '做饭和吃饭时可以观察颜色、气味、软硬变化，很多食物知识都藏在这些变化里。';
+      case 'math':
+        return '把数量、形状和规律放到积木、棋盘或日常物品里看，数学会更容易理解。';
+      case 'safety':
+        return '遇到安全问题时先停下来观察环境，再按正确方法行动，比着急乱动更可靠。';
+      case 'ocean':
+        return '看海洋纪录片或水族箱时，留意水流、动物身体和生活环境之间的关系。';
+    }
+
+    return '可以把“${question.answer}”当作线索，和家长一起找一个安全、容易观察的场景来验证。';
+  }
+
   EncyclopediaExplanationResult _fallbackFromQuestion(
     EncyclopediaQuestion question,
     String? errorMessage,
@@ -410,7 +517,7 @@ class EncyclopediaService extends GetxService {
     return EncyclopediaExplanationResult(
       shortAnswer: '正确答案是：${question.answer}',
       why: fallback,
-      example: '生活中可以多观察类似现象，慢慢你会更理解这个知识点。',
+      example: buildBuiltInExample(question),
       fromCache: false,
       fromBuiltIn: question.explanation.isNotEmpty,
       usedFallback: true,

@@ -1,0 +1,4482 @@
+[
+  {
+    "id": "why_astronomy_001",
+    "question": "为什么会有白天和黑夜？",
+    "emoji": "🌍",
+    "options": [
+      "太阳每天熄灭一次",
+      "地球不停自转"
+    ],
+    "correctIndex": 1,
+    "answer": "地球不停自转",
+    "explanation": "地球自转时，朝向太阳的一面被照亮形成白天，背向太阳的一面就是黑夜。",
+    "category": "astronomy",
+    "source": "remote"
+  },
+  {
+    "id": "why_astronomy_002",
+    "question": "为什么月亮会有圆缺变化？",
+    "emoji": "🌙",
+    "options": [
+      "月亮真的被削掉了",
+      "看到的受光部分在变化"
+    ],
+    "correctIndex": 1,
+    "answer": "看到的受光部分在变化",
+    "explanation": "月亮绕地球运动时，太阳照亮的那一面被我们看到的多少不同，所以出现月相。",
+    "category": "astronomy",
+    "source": "remote"
+  },
+  {
+    "id": "why_astronomy_003",
+    "question": "为什么白天很难看见星星？",
+    "emoji": "⭐",
+    "options": [
+      "星星白天都消失了",
+      "太阳光把天空照得太亮"
+    ],
+    "correctIndex": 1,
+    "answer": "太阳光把天空照得太亮",
+    "explanation": "星星仍在天空中，只是太阳光散射后让天空很亮，微弱的星光被盖住了。",
+    "category": "astronomy",
+    "source": "remote"
+  },
+  {
+    "id": "why_astronomy_004",
+    "question": "为什么太阳看起来从东边升起？",
+    "emoji": "☀️",
+    "options": [
+      "太阳绕地球向东跑",
+      "地球自西向东自转"
+    ],
+    "correctIndex": 1,
+    "answer": "地球自西向东自转",
+    "explanation": "地球自西向东转动，让我们感觉太阳从东方升起、西方落下。",
+    "category": "astronomy",
+    "source": "remote"
+  },
+  {
+    "id": "why_astronomy_005",
+    "question": "为什么一年会有四季？",
+    "emoji": "🌱",
+    "options": [
+      "地轴倾斜并绕太阳公转",
+      "太阳忽冷忽热"
+    ],
+    "correctIndex": 0,
+    "answer": "地轴倾斜并绕太阳公转",
+    "explanation": "地球绕太阳公转时地轴保持倾斜，不同季节得到的阳光角度和时间不同。",
+    "category": "astronomy",
+    "source": "remote"
+  },
+  {
+    "id": "why_astronomy_006",
+    "question": "为什么夏天白天常常更长？",
+    "emoji": "🌞",
+    "options": [
+      "钟表夏天走得慢",
+      "太阳在天空中的路程更长"
+    ],
+    "correctIndex": 1,
+    "answer": "太阳在天空中的路程更长",
+    "explanation": "夏季所在半球朝向太阳多一些，太阳升得早、落得晚，所以白天更长。",
+    "category": "astronomy",
+    "source": "remote"
+  },
+  {
+    "id": "why_astronomy_007",
+    "question": "为什么银河看起来像淡淡的光带？",
+    "emoji": "🌌",
+    "options": [
+      "天空被云划出白线",
+      "许多恒星的光混在一起"
+    ],
+    "correctIndex": 1,
+    "answer": "许多恒星的光混在一起",
+    "explanation": "银河是大量恒星组成的星系盘面，我们从内部看过去，会看到密集星光形成的光带。",
+    "category": "astronomy",
+    "source": "remote"
+  },
+  {
+    "id": "why_astronomy_008",
+    "question": "为什么月亮本身不会发光？",
+    "emoji": "🌕",
+    "options": [
+      "它反射太阳光",
+      "它里面有小灯泡"
+    ],
+    "correctIndex": 0,
+    "answer": "它反射太阳光",
+    "explanation": "月亮是岩石天体，本身不发光；我们看到的月光主要是它反射的太阳光。",
+    "category": "astronomy",
+    "source": "remote"
+  },
+  {
+    "id": "why_astronomy_009",
+    "question": "为什么日食不是每天都发生？",
+    "emoji": "🌑",
+    "options": [
+      "太阳月亮地球很少正好排成一线",
+      "月亮每天都绕错方向"
+    ],
+    "correctIndex": 0,
+    "answer": "太阳月亮地球很少正好排成一线",
+    "explanation": "月球轨道相对地球公转轨道有倾斜，只有位置特别合适时才会挡住太阳。",
+    "category": "astronomy",
+    "source": "remote"
+  },
+  {
+    "id": "why_astronomy_010",
+    "question": "为什么农历十五前后月亮更圆？",
+    "emoji": "🌔",
+    "options": [
+      "太阳照亮的月面几乎正对我们",
+      "月亮到那天会变胖"
+    ],
+    "correctIndex": 0,
+    "answer": "太阳照亮的月面几乎正对我们",
+    "explanation": "这时地球大致位于太阳和月亮之间，我们能看到月亮受光面的大部分。",
+    "category": "astronomy",
+    "source": "remote"
+  },
+  {
+    "id": "why_astronomy_011",
+    "question": "为什么行星不会自己发强光？",
+    "emoji": "🪐",
+    "options": [
+      "行星主要反射恒星光",
+      "行星都没有颜色"
+    ],
+    "correctIndex": 0,
+    "answer": "行星主要反射恒星光",
+    "explanation": "行星不像恒星那样靠内部核反应发出强光，夜空中看到的行星多是反射太阳光。",
+    "category": "astronomy",
+    "source": "remote"
+  },
+  {
+    "id": "why_astronomy_012",
+    "question": "为什么北极星看起来位置比较固定？",
+    "emoji": "🧭",
+    "options": [
+      "它接近地球自转轴指向",
+      "它被钉在天空上"
+    ],
+    "correctIndex": 0,
+    "answer": "它接近地球自转轴指向",
+    "explanation": "地球自转轴北端大致指向北极星附近，所以其他星星绕它转动时，它看起来变化较小。",
+    "category": "astronomy",
+    "source": "remote"
+  },
+  {
+    "id": "why_astronomy_013",
+    "question": "为什么流星会发亮？",
+    "emoji": "🌠",
+    "options": [
+      "小天体进入大气层被加热",
+      "星星从天空掉下来"
+    ],
+    "correctIndex": 0,
+    "answer": "小天体进入大气层被加热",
+    "explanation": "小石块或尘埃高速进入大气层，与空气作用发热发光，就形成流星。",
+    "category": "astronomy",
+    "source": "remote"
+  },
+  {
+    "id": "why_astronomy_014",
+    "question": "为什么地球看起来像球？",
+    "emoji": "🌎",
+    "options": [
+      "引力把大物体拉成近似球形",
+      "海水把地球磨圆了"
+    ],
+    "correctIndex": 0,
+    "answer": "引力把大物体拉成近似球形",
+    "explanation": "地球质量很大，引力会把物质向中心拉，使整体成为接近球体的形状。",
+    "category": "astronomy",
+    "source": "remote"
+  },
+  {
+    "id": "why_astronomy_015",
+    "question": "为什么月亮每天升起时间会变化？",
+    "emoji": "🌗",
+    "options": [
+      "地球每天换一个月亮",
+      "月亮绕地球运动"
+    ],
+    "correctIndex": 1,
+    "answer": "月亮绕地球运动",
+    "explanation": "月亮绕地球转动，和太阳的相对位置每天改变，所以升起时间也会推迟或变化。",
+    "category": "astronomy",
+    "source": "remote"
+  },
+  {
+    "id": "why_astronomy_016",
+    "question": "为什么彗星有时会拖着尾巴？",
+    "emoji": "☄️",
+    "options": [
+      "彗星在漏气逃跑",
+      "太阳加热彗星释放气体和尘埃"
+    ],
+    "correctIndex": 1,
+    "answer": "太阳加热彗星释放气体和尘埃",
+    "explanation": "彗星靠近太阳时，冰和尘埃被加热喷出，在太阳风作用下形成明亮尾巴。",
+    "category": "astronomy",
+    "source": "remote"
+  },
+  {
+    "id": "why_astronomy_017",
+    "question": "为什么中午太阳看起来更高？",
+    "emoji": "🌤️",
+    "options": [
+      "地球转到当地面向太阳更正的位置",
+      "太阳爬到了天空顶上"
+    ],
+    "correctIndex": 0,
+    "answer": "地球转到当地面向太阳更正的位置",
+    "explanation": "一天中地球自转让太阳视位置不断变化，中午附近太阳高度通常最大。",
+    "category": "astronomy",
+    "source": "remote"
+  },
+  {
+    "id": "why_astronomy_018",
+    "question": "为什么月亮有时白天也能看见？",
+    "emoji": "🌛",
+    "options": [
+      "月亮迷路到了白天",
+      "月亮位置和天空亮度允许被看到"
+    ],
+    "correctIndex": 1,
+    "answer": "月亮位置和天空亮度允许被看到",
+    "explanation": "月亮并不只在夜晚出现，当它在白天天空且亮度足够时，我们也能看见。",
+    "category": "astronomy",
+    "source": "remote"
+  },
+  {
+    "id": "why_astronomy_019",
+    "question": "为什么不同地方看到日出时间不同？",
+    "emoji": "🌐",
+    "options": [
+      "地球是球形并在自转",
+      "太阳偏心照顾某些城市"
+    ],
+    "correctIndex": 0,
+    "answer": "地球是球形并在自转",
+    "explanation": "地球不同经度会先后转向太阳，所以东边地区通常更早迎来日出。",
+    "category": "astronomy",
+    "source": "remote"
+  },
+  {
+    "id": "why_astronomy_020",
+    "question": "为什么望远镜能看清远处天体？",
+    "emoji": "🔭",
+    "options": [
+      "它收集并放大更多光线",
+      "它能把星星拉近地球"
+    ],
+    "correctIndex": 0,
+    "answer": "它收集并放大更多光线",
+    "explanation": "望远镜用镜片或镜面收集更多光，并形成更大的像，让远处天体细节更容易看见。",
+    "category": "astronomy",
+    "source": "remote"
+  },
+  {
+    "id": "why_space_001",
+    "question": "为什么火箭能飞出地球？",
+    "emoji": "🚀",
+    "options": [
+      "火箭被天空吸上去",
+      "高速喷气产生反作用力"
+    ],
+    "correctIndex": 1,
+    "answer": "高速喷气产生反作用力",
+    "explanation": "火箭向下高速喷出气体，气体也给火箭向上的反作用力，速度足够大就能进入太空。",
+    "category": "space",
+    "source": "remote"
+  },
+  {
+    "id": "why_space_002",
+    "question": "为什么卫星能绕地球飞很久？",
+    "emoji": "🛰️",
+    "options": [
+      "速度和地球引力形成轨道运动",
+      "卫星一直开着翅膀"
+    ],
+    "correctIndex": 0,
+    "answer": "速度和地球引力形成轨道运动",
+    "explanation": "卫星向前飞得很快，同时被地球引力拉向地球，两者配合就形成绕行轨道。",
+    "category": "space",
+    "source": "remote"
+  },
+  {
+    "id": "why_space_003",
+    "question": "为什么宇航员在太空会飘起来？",
+    "emoji": "👩‍🚀",
+    "options": [
+      "处在绕地飞行的失重状态",
+      "太空里完全没有引力"
+    ],
+    "correctIndex": 0,
+    "answer": "处在绕地飞行的失重状态",
+    "explanation": "宇航员和飞船一起绕地球自由下落，看起来像没有重量，但地球引力仍然存在。",
+    "category": "space",
+    "source": "remote"
+  },
+  {
+    "id": "why_space_004",
+    "question": "为什么宇航服要很厚很复杂？",
+    "emoji": "🧑‍🚀",
+    "options": [
+      "要提供空气、温度和压力保护",
+      "只是为了看起来帅"
+    ],
+    "correctIndex": 0,
+    "answer": "要提供空气、温度和压力保护",
+    "explanation": "太空没有适合人体呼吸的空气，温度和辐射也危险，宇航服像小型生命保障系统。",
+    "category": "space",
+    "source": "remote"
+  },
+  {
+    "id": "why_space_005",
+    "question": "为什么太空看起来很黑？",
+    "emoji": "🌌",
+    "options": [
+      "太阳在太空不发光",
+      "没有足够空气散射阳光"
+    ],
+    "correctIndex": 1,
+    "answer": "没有足够空气散射阳光",
+    "explanation": "地球天空发蓝是空气散射阳光，太空中空气极少，阳光没有被散成明亮背景。",
+    "category": "space",
+    "source": "remote"
+  },
+  {
+    "id": "why_space_006",
+    "question": "为什么土星有漂亮的环？",
+    "emoji": "🪐",
+    "options": [
+      "大量冰块和岩石碎片绕它运动",
+      "土星戴着一条金属圈"
+    ],
+    "correctIndex": 0,
+    "answer": "大量冰块和岩石碎片绕它运动",
+    "explanation": "土星环由无数小颗粒组成，它们在土星引力作用下沿轨道运行。",
+    "category": "space",
+    "source": "remote"
+  },
+  {
+    "id": "why_space_007",
+    "question": "为什么月球表面有许多坑？",
+    "emoji": "🌑",
+    "options": [
+      "陨石撞击留下痕迹",
+      "月球表面长了洞"
+    ],
+    "correctIndex": 0,
+    "answer": "陨石撞击留下痕迹",
+    "explanation": "月球几乎没有大气和流水风化，陨石撞出的坑能保存很久。",
+    "category": "space",
+    "source": "remote"
+  },
+  {
+    "id": "why_space_008",
+    "question": "为什么太空实验很特别？",
+    "emoji": "🧪",
+    "options": [
+      "微重力会改变物体行为",
+      "实验器材在太空会变聪明"
+    ],
+    "correctIndex": 0,
+    "answer": "微重力会改变物体行为",
+    "explanation": "在微重力环境里，液体、火焰、晶体和生物生长可能与地面不同，能帮助科学研究。",
+    "category": "space",
+    "source": "remote"
+  },
+  {
+    "id": "why_space_009",
+    "question": "为什么登月时脚印能保存很久？",
+    "emoji": "🌕",
+    "options": [
+      "脚印被月光固定住",
+      "月球没有风雨冲刷"
+    ],
+    "correctIndex": 1,
+    "answer": "月球没有风雨冲刷",
+    "explanation": "月球表面没有像地球这样的风和雨，所以脚印不容易被自然抹掉。",
+    "category": "space",
+    "source": "remote"
+  },
+  {
+    "id": "why_space_010",
+    "question": "为什么探测器能把照片传回地球？",
+    "emoji": "📡",
+    "options": [
+      "把照片装进小火箭扔回来",
+      "用无线电信号发送数据"
+    ],
+    "correctIndex": 1,
+    "answer": "用无线电信号发送数据",
+    "explanation": "探测器把照片变成数字信号，通过天线发射无线电波，地面接收后再还原图像。",
+    "category": "space",
+    "source": "remote"
+  },
+  {
+    "id": "why_space_011",
+    "question": "为什么空间站不会一直掉下来撞地球？",
+    "emoji": "🛸",
+    "options": [
+      "它被一根看不见的线吊着",
+      "它有足够水平速度并会定期调整轨道"
+    ],
+    "correctIndex": 1,
+    "answer": "它有足够水平速度并会定期调整轨道",
+    "explanation": "空间站也受重力影响，但高速向前飞形成轨道，还会用推进器修正高度。",
+    "category": "space",
+    "source": "remote"
+  },
+  {
+    "id": "why_space_012",
+    "question": "为什么太阳能板在太空很有用？",
+    "emoji": "☀️",
+    "options": [
+      "能把阳光转化为电能",
+      "能直接制造氧气"
+    ],
+    "correctIndex": 0,
+    "answer": "能把阳光转化为电能",
+    "explanation": "太空中阳光充足，太阳能板可以把光能转成电能，供卫星和空间站使用。",
+    "category": "space",
+    "source": "remote"
+  },
+  {
+    "id": "why_space_013",
+    "question": "为什么火星探测要选合适窗口？",
+    "emoji": "🧭",
+    "options": [
+      "地球和火星位置会周期性接近",
+      "火星只在某天开门"
+    ],
+    "correctIndex": 0,
+    "answer": "地球和火星位置会周期性接近",
+    "explanation": "行星绕太阳速度不同，等两者相对位置合适时发射，可以省燃料、缩短旅程。",
+    "category": "space",
+    "source": "remote"
+  },
+  {
+    "id": "why_space_014",
+    "question": "为什么太阳是恒星？",
+    "emoji": "🌞",
+    "options": [
+      "它只是最大的一颗行星",
+      "它能靠核聚变发光发热"
+    ],
+    "correctIndex": 1,
+    "answer": "它能靠核聚变发光发热",
+    "explanation": "太阳内部进行核聚变，持续释放光和热，这正是恒星的重要特征。",
+    "category": "space",
+    "source": "remote"
+  },
+  {
+    "id": "why_space_015",
+    "question": "为什么小行星形状常不规则？",
+    "emoji": "🪨",
+    "options": [
+      "它们都被切坏了",
+      "质量较小引力不够拉圆"
+    ],
+    "correctIndex": 1,
+    "answer": "质量较小引力不够拉圆",
+    "explanation": "许多小行星质量小，自身引力不足以把岩石拉成球形，所以外形像不规则石块。",
+    "category": "space",
+    "source": "remote"
+  },
+  {
+    "id": "why_space_016",
+    "question": "为什么有些彗星被叫作脏雪球？",
+    "emoji": "🧊",
+    "options": [
+      "含有冰、尘埃和岩石颗粒",
+      "它们由地球上的雪做成"
+    ],
+    "correctIndex": 0,
+    "answer": "含有冰、尘埃和岩石颗粒",
+    "explanation": "彗星常含冰冻物质和尘埃，靠近太阳时会挥发并带出颗粒，看起来像带尘的冰团。",
+    "category": "space",
+    "source": "remote"
+  },
+  {
+    "id": "why_space_017",
+    "question": "为什么哈勃望远镜放在太空？",
+    "emoji": "🔭",
+    "options": [
+      "太空里离星星近得多",
+      "能避开大气扰动"
+    ],
+    "correctIndex": 1,
+    "answer": "能避开大气扰动",
+    "explanation": "地球大气会让星光抖动和吸收部分光，太空望远镜能得到更清晰稳定的图像。",
+    "category": "space",
+    "source": "remote"
+  },
+  {
+    "id": "why_space_018",
+    "question": "为什么从太空看地球是蓝色的？",
+    "emoji": "🌍",
+    "options": [
+      "海洋覆盖面积大并反射蓝光",
+      "地球表面全是蓝油漆"
+    ],
+    "correctIndex": 0,
+    "answer": "海洋覆盖面积大并反射蓝光",
+    "explanation": "地球表面有大片海洋，大气也会散射蓝光，所以从太空看常呈蓝色。",
+    "category": "space",
+    "source": "remote"
+  },
+  {
+    "id": "why_space_019",
+    "question": "为什么地球磁场能保护我们？",
+    "emoji": "🧲",
+    "options": [
+      "能偏转一部分太阳带电粒子",
+      "能挡住所有陨石"
+    ],
+    "correctIndex": 0,
+    "answer": "能偏转一部分太阳带电粒子",
+    "explanation": "地球磁场像保护罩，能让许多来自太阳的带电粒子偏转，减少它们直接冲向地面。",
+    "category": "space",
+    "source": "remote"
+  },
+  {
+    "id": "why_space_020",
+    "question": "为什么深空照片常需要长时间曝光？",
+    "emoji": "📷",
+    "options": [
+      "相机在太空反应很慢",
+      "远处天体光线很微弱"
+    ],
+    "correctIndex": 1,
+    "answer": "远处天体光线很微弱",
+    "explanation": "遥远星云和星系传来的光很少，长时间收集光线才能形成清楚的图像。",
+    "category": "space",
+    "source": "remote"
+  },
+  {
+    "id": "why_weather_001",
+    "question": "为什么会下雨？",
+    "emoji": "🌧️",
+    "options": [
+      "水蒸气凝结成水滴落下",
+      "云朵被挤破了"
+    ],
+    "correctIndex": 0,
+    "answer": "水蒸气凝结成水滴落下",
+    "explanation": "地面水分蒸发到空中，遇冷凝结成小水滴，水滴变大变重后就落成雨。",
+    "category": "weather",
+    "source": "remote"
+  },
+  {
+    "id": "why_weather_002",
+    "question": "为什么雨后有时会出现彩虹？",
+    "emoji": "🌈",
+    "options": [
+      "天空自己画了颜色",
+      "阳光被小水滴折射和反射"
+    ],
+    "correctIndex": 1,
+    "answer": "阳光被小水滴折射和反射",
+    "explanation": "阳光进入空气中的小水滴后被分开成多种颜色，再反射到我们眼中形成彩虹。",
+    "category": "weather",
+    "source": "remote"
+  },
+  {
+    "id": "why_weather_003",
+    "question": "为什么会刮风？",
+    "emoji": "🌬️",
+    "options": [
+      "树木把空气扇动了",
+      "空气从气压高处流向低处"
+    ],
+    "correctIndex": 1,
+    "answer": "空气从气压高处流向低处",
+    "explanation": "太阳加热地面不均匀，造成气压差，空气流动起来就形成风。",
+    "category": "weather",
+    "source": "remote"
+  },
+  {
+    "id": "why_weather_004",
+    "question": "为什么会打雷？",
+    "emoji": "⚡",
+    "options": [
+      "闪电加热空气产生震动",
+      "云朵在敲鼓"
+    ],
+    "correctIndex": 0,
+    "answer": "闪电加热空气产生震动",
+    "explanation": "闪电使周围空气瞬间受热膨胀，空气剧烈震动传播到耳朵里就是雷声。",
+    "category": "weather",
+    "source": "remote"
+  },
+  {
+    "id": "why_weather_005",
+    "question": "为什么早晨有时会起雾？",
+    "emoji": "🌫️",
+    "options": [
+      "近地空气里的水蒸气遇冷凝结",
+      "地面冒出了烟"
+    ],
+    "correctIndex": 0,
+    "answer": "近地空气里的水蒸气遇冷凝结",
+    "explanation": "夜晚降温后，空气中的水蒸气变成许多悬浮小水滴，贴近地面就形成雾。",
+    "category": "weather",
+    "source": "remote"
+  },
+  {
+    "id": "why_weather_006",
+    "question": "为什么冬天呼出的气像白雾？",
+    "emoji": "❄️",
+    "options": [
+      "嘴里冒出烟",
+      "水蒸气遇冷变成小水滴"
+    ],
+    "correctIndex": 1,
+    "answer": "水蒸气遇冷变成小水滴",
+    "explanation": "呼出的气温暖又潮湿，遇到冷空气后凝结成微小水滴，所以看起来白白的。",
+    "category": "weather",
+    "source": "remote"
+  },
+  {
+    "id": "why_weather_007",
+    "question": "为什么云不会像石头一样掉下来？",
+    "emoji": "☁️",
+    "options": [
+      "云没有重量",
+      "云滴很小会被上升气流托住"
+    ],
+    "correctIndex": 1,
+    "answer": "云滴很小会被上升气流托住",
+    "explanation": "云由极小水滴或冰晶组成，它们下降很慢，还会被空气运动托着。",
+    "category": "weather",
+    "source": "remote"
+  },
+  {
+    "id": "why_weather_008",
+    "question": "为什么雪花常有六角形结构？",
+    "emoji": "🌨️",
+    "options": [
+      "水分子结冰时排列有规律",
+      "天空用模具压出来"
+    ],
+    "correctIndex": 0,
+    "answer": "水分子结冰时排列有规律",
+    "explanation": "冰晶中水分子的排列方式容易形成六角对称，所以许多雪花有六角特征。",
+    "category": "weather",
+    "source": "remote"
+  },
+  {
+    "id": "why_weather_009",
+    "question": "为什么草叶上会有露珠？",
+    "emoji": "💧",
+    "options": [
+      "草叶自己流汗了",
+      "夜晚降温让水蒸气凝结"
+    ],
+    "correctIndex": 1,
+    "answer": "夜晚降温让水蒸气凝结",
+    "explanation": "夜间草叶表面变冷，空气中的水蒸气在上面凝结成小水珠。",
+    "category": "weather",
+    "source": "remote"
+  },
+  {
+    "id": "why_weather_010",
+    "question": "为什么霜会出现在很冷的早晨？",
+    "emoji": "🧊",
+    "options": [
+      "水蒸气直接凝华成冰晶",
+      "白色灰尘落到地上"
+    ],
+    "correctIndex": 0,
+    "answer": "水蒸气直接凝华成冰晶",
+    "explanation": "当物体表面低于冰点时，空气中的水蒸气可能直接变成冰晶附着在上面。",
+    "category": "weather",
+    "source": "remote"
+  },
+  {
+    "id": "why_weather_011",
+    "question": "为什么龙卷风会旋转？",
+    "emoji": "🌪️",
+    "options": [
+      "强烈上升气流和风向差让空气打转",
+      "风在原地跳舞"
+    ],
+    "correctIndex": 0,
+    "answer": "强烈上升气流和风向差让空气打转",
+    "explanation": "雷暴中上下气流很强，不同高度风向风速不同，空气柱可能被拉伸并快速旋转。",
+    "category": "weather",
+    "source": "remote"
+  },
+  {
+    "id": "why_weather_012",
+    "question": "为什么晒过的地面会发烫？",
+    "emoji": "☀️",
+    "options": [
+      "地面自己在发热",
+      "地面吸收太阳能转成热"
+    ],
+    "correctIndex": 1,
+    "answer": "地面吸收太阳能转成热",
+    "explanation": "阳光照到地面后，一部分能量被吸收并变成热量，所以地面温度升高。",
+    "category": "weather",
+    "source": "remote"
+  },
+  {
+    "id": "why_weather_013",
+    "question": "为什么海边白天常有海风？",
+    "emoji": "🌊",
+    "options": [
+      "大海在吹气",
+      "陆地升温快形成气压差"
+    ],
+    "correctIndex": 1,
+    "answer": "陆地升温快形成气压差",
+    "explanation": "白天陆地比海水升温快，陆地上方空气上升，海上较凉空气流向陆地形成海风。",
+    "category": "weather",
+    "source": "remote"
+  },
+  {
+    "id": "why_weather_014",
+    "question": "为什么天气预报要测气压？",
+    "emoji": "🌡️",
+    "options": [
+      "气压能告诉云的颜色",
+      "气压变化和天气系统有关"
+    ],
+    "correctIndex": 1,
+    "answer": "气压变化和天气系统有关",
+    "explanation": "气压高低和空气运动密切相关，低压常与云雨天气有关，高压常更稳定。",
+    "category": "weather",
+    "source": "remote"
+  },
+  {
+    "id": "why_weather_015",
+    "question": "为什么乌云常预示要下雨？",
+    "emoji": "☔",
+    "options": [
+      "云里水滴多且厚会挡光",
+      "云变黑就一定破掉"
+    ],
+    "correctIndex": 0,
+    "answer": "云里水滴多且厚会挡光",
+    "explanation": "含水量多、厚度大的云会挡住更多阳光，看起来灰暗，也更可能产生降水。",
+    "category": "weather",
+    "source": "remote"
+  },
+  {
+    "id": "why_weather_016",
+    "question": "为什么高山上气温通常更低？",
+    "emoji": "🌤️",
+    "options": [
+      "海拔升高空气更稀薄且保温弱",
+      "山顶离太阳更远很多"
+    ],
+    "correctIndex": 0,
+    "answer": "海拔升高空气更稀薄且保温弱",
+    "explanation": "高处空气稀薄，吸收和保存热量能力较弱，所以海拔越高常越冷。",
+    "category": "weather",
+    "source": "remote"
+  },
+  {
+    "id": "why_weather_017",
+    "question": "为什么热天洒水会感觉凉快？",
+    "emoji": "💦",
+    "options": [
+      "水把热气压进地下",
+      "水蒸发会带走热量"
+    ],
+    "correctIndex": 1,
+    "answer": "水蒸发会带走热量",
+    "explanation": "水从液体变成水蒸气需要吸收热量，蒸发时会带走地面和空气的一部分热。",
+    "category": "weather",
+    "source": "remote"
+  },
+  {
+    "id": "why_weather_018",
+    "question": "为什么台风眼附近反而较平静？",
+    "emoji": "🌀",
+    "options": [
+      "台风中心没有空气",
+      "中心下沉气流让云雨较少"
+    ],
+    "correctIndex": 1,
+    "answer": "中心下沉气流让云雨较少",
+    "explanation": "强台风中心附近可能有下沉气流，云雨较少，但周围眼墙风雨非常猛烈。",
+    "category": "weather",
+    "source": "remote"
+  },
+  {
+    "id": "why_weather_019",
+    "question": "为什么雾霾会让远处看不清？",
+    "emoji": "🌁",
+    "options": [
+      "眼睛突然变弱了",
+      "空气中颗粒会散射和吸收光"
+    ],
+    "correctIndex": 1,
+    "answer": "空气中颗粒会散射和吸收光",
+    "explanation": "雾滴和污染颗粒挡住、散射光线，远处物体反射来的光变少，能见度下降。",
+    "category": "weather",
+    "source": "remote"
+  },
+  {
+    "id": "why_weather_020",
+    "question": "为什么先看到闪电后听到雷？",
+    "emoji": "🌩️",
+    "options": [
+      "耳朵反应比眼睛慢很多",
+      "光传播速度比声音快"
+    ],
+    "correctIndex": 1,
+    "answer": "光传播速度比声音快",
+    "explanation": "闪电的光几乎瞬间到达眼睛，而声音在空气中传播慢得多，所以雷声晚一些到。",
+    "category": "weather",
+    "source": "remote"
+  },
+  {
+    "id": "why_body_001",
+    "question": "为什么运动后会出汗？",
+    "emoji": "🏃",
+    "options": [
+      "汗液蒸发帮助身体散热",
+      "身体把喝的水漏出来"
+    ],
+    "correctIndex": 0,
+    "answer": "汗液蒸发帮助身体散热",
+    "explanation": "运动时肌肉产生热量，汗液从皮肤蒸发会带走热，帮助体温保持稳定。",
+    "category": "body",
+    "source": "remote"
+  },
+  {
+    "id": "why_body_002",
+    "question": "为什么困了容易打哈欠？",
+    "emoji": "🥱",
+    "options": [
+      "嘴巴想做伸展运动",
+      "可能帮助调节清醒状态"
+    ],
+    "correctIndex": 1,
+    "answer": "可能帮助调节清醒状态",
+    "explanation": "打哈欠常和疲劳、困倦有关，科学家认为它可能参与大脑和身体状态调节。",
+    "category": "body",
+    "source": "remote"
+  },
+  {
+    "id": "why_body_003",
+    "question": "为什么要早晚刷牙？",
+    "emoji": "🪥",
+    "options": [
+      "让牙齿立刻变长",
+      "清除牙菌斑和食物残渣"
+    ],
+    "correctIndex": 1,
+    "answer": "清除牙菌斑和食物残渣",
+    "explanation": "牙菌斑里的细菌会利用食物残渣产生酸，认真刷牙能减少蛀牙风险。",
+    "category": "body",
+    "source": "remote"
+  },
+  {
+    "id": "why_body_004",
+    "question": "为什么小朋友要保证睡眠？",
+    "emoji": "😴",
+    "options": [
+      "睡觉能让作业自己完成",
+      "睡眠帮助生长和记忆整理"
+    ],
+    "correctIndex": 1,
+    "answer": "睡眠帮助生长和记忆整理",
+    "explanation": "睡眠时身体会修复和生长，大脑也会整理当天学习到的信息。",
+    "category": "body",
+    "source": "remote"
+  },
+  {
+    "id": "why_body_005",
+    "question": "为什么伤口会结痂？",
+    "emoji": "🩹",
+    "options": [
+      "皮肤上长出泥土",
+      "血液凝固形成保护层"
+    ],
+    "correctIndex": 1,
+    "answer": "血液凝固形成保护层",
+    "explanation": "受伤后血液中的成分会凝固止血，干燥后形成痂，保护下面正在修复的皮肤。",
+    "category": "body",
+    "source": "remote"
+  },
+  {
+    "id": "why_body_006",
+    "question": "为什么眼睛需要眨眼？",
+    "emoji": "👀",
+    "options": [
+      "把泪液铺开保持湿润",
+      "眼睛在拍照片"
+    ],
+    "correctIndex": 0,
+    "answer": "把泪液铺开保持湿润",
+    "explanation": "眨眼能把泪液均匀涂在眼球表面，减少干涩，也能帮助清除细小灰尘。",
+    "category": "body",
+    "source": "remote"
+  },
+  {
+    "id": "why_body_007",
+    "question": "为什么耳朵能听到声音？",
+    "emoji": "👂",
+    "options": [
+      "声音直接变成文字",
+      "声波让鼓膜和听觉结构振动"
+    ],
+    "correctIndex": 1,
+    "answer": "声波让鼓膜和听觉结构振动",
+    "explanation": "空气振动进入耳道，使鼓膜和内耳结构产生信号，大脑再把信号理解为声音。",
+    "category": "body",
+    "source": "remote"
+  },
+  {
+    "id": "why_body_008",
+    "question": "为什么鼻子能闻到气味？",
+    "emoji": "👃",
+    "options": [
+      "气味分子刺激嗅觉细胞",
+      "鼻子里藏着气味字典"
+    ],
+    "correctIndex": 0,
+    "answer": "气味分子刺激嗅觉细胞",
+    "explanation": "空气中的气味分子进入鼻腔，与嗅觉细胞接触后产生神经信号，大脑识别出气味。",
+    "category": "body",
+    "source": "remote"
+  },
+  {
+    "id": "why_body_009",
+    "question": "为什么骨头很硬？",
+    "emoji": "🦴",
+    "options": [
+      "骨头里面全是石头",
+      "含有钙盐等矿物质"
+    ],
+    "correctIndex": 1,
+    "answer": "含有钙盐等矿物质",
+    "explanation": "骨组织里有胶原纤维和矿物质，既有一定韧性，也能支撑身体。",
+    "category": "body",
+    "source": "remote"
+  },
+  {
+    "id": "why_body_010",
+    "question": "为什么心脏一直跳？",
+    "emoji": "💓",
+    "options": [
+      "它在给身体打节拍玩",
+      "把血液泵到全身"
+    ],
+    "correctIndex": 1,
+    "answer": "把血液泵到全身",
+    "explanation": "心脏收缩和舒张推动血液流动，把氧气和营养送到身体各处。",
+    "category": "body",
+    "source": "remote"
+  },
+  {
+    "id": "why_body_011",
+    "question": "为什么跑步时呼吸会变快？",
+    "emoji": "🫁",
+    "options": [
+      "身体需要更多氧气并排出二氧化碳",
+      "空气突然变少了"
+    ],
+    "correctIndex": 0,
+    "answer": "身体需要更多氧气并排出二氧化碳",
+    "explanation": "运动时肌肉工作更强，需要更多氧气，也产生更多二氧化碳，所以呼吸加快。",
+    "category": "body",
+    "source": "remote"
+  },
+  {
+    "id": "why_body_012",
+    "question": "为什么肚子饿会咕咕叫？",
+    "emoji": "🍎",
+    "options": [
+      "胃肠运动推动气体和液体",
+      "肚子里有小鼓"
+    ],
+    "correctIndex": 0,
+    "answer": "胃肠运动推动气体和液体",
+    "explanation": "胃肠道即使没有很多食物也会蠕动，气体和液体被推动时可能发出声音。",
+    "category": "body",
+    "source": "remote"
+  },
+  {
+    "id": "why_body_013",
+    "question": "为什么发烧时体温升高？",
+    "emoji": "🤒",
+    "options": [
+      "身体免疫反应改变体温调节",
+      "身体里面着火了"
+    ],
+    "correctIndex": 0,
+    "answer": "身体免疫反应改变体温调节",
+    "explanation": "感染时免疫系统会释放信号，让体温调节点升高；高烧或不舒服要及时告诉大人。",
+    "category": "body",
+    "source": "remote"
+  },
+  {
+    "id": "why_body_014",
+    "question": "为什么锻炼能让肌肉更有力？",
+    "emoji": "💪",
+    "options": [
+      "肌肉在适当刺激后修复增强",
+      "肌肉被汗水泡大了"
+    ],
+    "correctIndex": 0,
+    "answer": "肌肉在适当刺激后修复增强",
+    "explanation": "规律运动会让肌肉纤维适应负荷，休息和营养充足时逐渐变得更强。",
+    "category": "body",
+    "source": "remote"
+  },
+  {
+    "id": "why_body_015",
+    "question": "为什么学习后需要复习？",
+    "emoji": "🧠",
+    "options": [
+      "大脑会自动永远记住",
+      "复习能加强记忆连接"
+    ],
+    "correctIndex": 1,
+    "answer": "复习能加强记忆连接",
+    "explanation": "新知识如果不用容易忘，复习会让相关神经连接更稳定，记得更牢。",
+    "category": "body",
+    "source": "remote"
+  },
+  {
+    "id": "why_body_016",
+    "question": "为什么乳牙掉了会长恒牙？",
+    "emoji": "🦷",
+    "options": [
+      "牙齿每天都会换一套",
+      "恒牙在牙床里逐渐发育并顶出"
+    ],
+    "correctIndex": 1,
+    "answer": "恒牙在牙床里逐渐发育并顶出",
+    "explanation": "儿童成长时恒牙在牙龈下发育，逐渐吸收乳牙牙根并把乳牙替换掉。",
+    "category": "body",
+    "source": "remote"
+  },
+  {
+    "id": "why_body_017",
+    "question": "为什么饭前洗手能减少生病？",
+    "emoji": "🧼",
+    "options": [
+      "能去掉许多细菌和病毒",
+      "水能把所有疾病吓跑"
+    ],
+    "correctIndex": 0,
+    "answer": "能去掉许多细菌和病毒",
+    "explanation": "手会接触很多物体，洗手能减少病原体从手进入口鼻的机会。",
+    "category": "body",
+    "source": "remote"
+  },
+  {
+    "id": "why_body_018",
+    "question": "为什么舌头能尝出味道？",
+    "emoji": "👅",
+    "options": [
+      "味蕾能感受不同味道信号",
+      "舌头表面有小厨师"
+    ],
+    "correctIndex": 0,
+    "answer": "味蕾能感受不同味道信号",
+    "explanation": "舌头上的味蕾能感受甜、酸、咸、苦、鲜等味道，并把信息传给大脑。",
+    "category": "body",
+    "source": "remote"
+  },
+  {
+    "id": "why_body_019",
+    "question": "为什么血液是红色的？",
+    "emoji": "🩸",
+    "options": [
+      "红细胞里的血红蛋白含铁",
+      "血液被皮肤染红了"
+    ],
+    "correctIndex": 0,
+    "answer": "红细胞里的血红蛋白含铁",
+    "explanation": "血红蛋白负责运输氧气，含铁结构让富含红细胞的血液呈红色。",
+    "category": "body",
+    "source": "remote"
+  },
+  {
+    "id": "why_body_020",
+    "question": "为什么坐姿不正容易累？",
+    "emoji": "🧍",
+    "options": [
+      "肌肉和脊柱受力不均",
+      "椅子偷偷变硬了"
+    ],
+    "correctIndex": 0,
+    "answer": "肌肉和脊柱受力不均",
+    "explanation": "长期弯腰或歪坐会让部分肌肉持续紧张，也会让脊柱受力不舒服。",
+    "category": "body",
+    "source": "remote"
+  },
+  {
+    "id": "why_animal_001",
+    "question": "为什么鸟能飞？",
+    "emoji": "🐦",
+    "options": [
+      "羽毛里装着气球",
+      "翅膀形状和肌肉产生升力"
+    ],
+    "correctIndex": 1,
+    "answer": "翅膀形状和肌肉产生升力",
+    "explanation": "鸟拍动翅膀推动空气，翅膀形状帮助产生升力，轻巧身体也适合飞行。",
+    "category": "animal",
+    "source": "remote"
+  },
+  {
+    "id": "why_animal_002",
+    "question": "为什么鱼能在水里呼吸？",
+    "emoji": "🐟",
+    "options": [
+      "鱼不需要氧气",
+      "鱼鳃能从水中获取氧气"
+    ],
+    "correctIndex": 1,
+    "answer": "鱼鳃能从水中获取氧气",
+    "explanation": "水中溶解着少量氧气，鱼让水流过鳃，鳃里的血管吸收氧气。",
+    "category": "animal",
+    "source": "remote"
+  },
+  {
+    "id": "why_animal_003",
+    "question": "为什么猫在暗处看得比较好？",
+    "emoji": "🐱",
+    "options": [
+      "猫眼会自己发强光照路",
+      "猫眼能更好利用弱光"
+    ],
+    "correctIndex": 1,
+    "answer": "猫眼能更好利用弱光",
+    "explanation": "猫的眼睛结构适合收集微弱光线，但在完全没有光的地方也看不见。",
+    "category": "animal",
+    "source": "remote"
+  },
+  {
+    "id": "why_animal_004",
+    "question": "为什么蜘蛛会结网？",
+    "emoji": "🕷️",
+    "options": [
+      "蜘蛛在织被子",
+      "蛛网能捕食和保护"
+    ],
+    "correctIndex": 1,
+    "answer": "蛛网能捕食和保护",
+    "explanation": "许多蜘蛛吐丝结网，用黏性的网捕捉昆虫，有些蛛丝还能保护卵或帮助移动。",
+    "category": "animal",
+    "source": "remote"
+  },
+  {
+    "id": "why_animal_005",
+    "question": "为什么蜜蜂要采花蜜？",
+    "emoji": "🐝",
+    "options": [
+      "花蜜是食物和酿蜜原料",
+      "蜜蜂在给花朵洗澡"
+    ],
+    "correctIndex": 0,
+    "answer": "花蜜是食物和酿蜜原料",
+    "explanation": "蜜蜂采集花蜜获得能量，并把它带回蜂巢加工成蜂蜜储存。",
+    "category": "animal",
+    "source": "remote"
+  },
+  {
+    "id": "why_animal_006",
+    "question": "为什么毛毛虫会变成蝴蝶？",
+    "emoji": "🦋",
+    "options": [
+      "它换了一件彩色衣服",
+      "它经历完全变态发育"
+    ],
+    "correctIndex": 1,
+    "answer": "它经历完全变态发育",
+    "explanation": "蝴蝶一生会经历卵、幼虫、蛹、成虫阶段，蛹内身体结构会大幅重组。",
+    "category": "animal",
+    "source": "remote"
+  },
+  {
+    "id": "why_animal_007",
+    "question": "为什么青蛙小时候像小鱼？",
+    "emoji": "🐸",
+    "options": [
+      "蝌蚪阶段适合水中生活",
+      "青蛙先假装成鱼"
+    ],
+    "correctIndex": 0,
+    "answer": "蝌蚪阶段适合水中生活",
+    "explanation": "青蛙幼体蝌蚪有尾巴并用鳃呼吸，长大后逐渐长出四肢并适应陆地和水边生活。",
+    "category": "animal",
+    "source": "remote"
+  },
+  {
+    "id": "why_animal_008",
+    "question": "为什么企鹅不会飞却会游泳？",
+    "emoji": "🐧",
+    "options": [
+      "翅膀演化成适合划水的鳍状肢",
+      "企鹅忘记怎么飞"
+    ],
+    "correctIndex": 0,
+    "answer": "翅膀演化成适合划水的鳍状肢",
+    "explanation": "企鹅的翅膀短而结实，适合在水中像桨一样推动身体。",
+    "category": "animal",
+    "source": "remote"
+  },
+  {
+    "id": "why_animal_009",
+    "question": "为什么蝙蝠夜里能避开障碍？",
+    "emoji": "🦇",
+    "options": [
+      "蝙蝠天生有夜视灯",
+      "利用回声定位"
+    ],
+    "correctIndex": 1,
+    "answer": "利用回声定位",
+    "explanation": "许多蝙蝠发出超声波，听回声判断物体位置和距离。",
+    "category": "animal",
+    "source": "remote"
+  },
+  {
+    "id": "why_animal_010",
+    "question": "为什么大象鼻子很灵活？",
+    "emoji": "🐘",
+    "options": [
+      "鼻子里面有骨头关节",
+      "鼻子里有许多肌肉"
+    ],
+    "correctIndex": 1,
+    "answer": "鼻子里有许多肌肉",
+    "explanation": "大象鼻子没有骨头，却有大量肌肉，能闻气味、吸水、卷东西和交流。",
+    "category": "animal",
+    "source": "remote"
+  },
+  {
+    "id": "why_animal_011",
+    "question": "为什么长颈鹿脖子很长？",
+    "emoji": "🦒",
+    "options": [
+      "有助于取食高处树叶和观察",
+      "每节骨头都比别的动物多很多"
+    ],
+    "correctIndex": 0,
+    "answer": "有助于取食高处树叶和观察",
+    "explanation": "长颈鹿和多数哺乳动物一样有七块颈椎，但颈椎特别长，适合吃高处叶子。",
+    "category": "animal",
+    "source": "remote"
+  },
+  {
+    "id": "why_animal_012",
+    "question": "为什么骆驼能在沙漠坚持较久？",
+    "emoji": "🐫",
+    "options": [
+      "驼峰里装满清水",
+      "身体能节水并储存脂肪能量"
+    ],
+    "correctIndex": 1,
+    "answer": "身体能节水并储存脂肪能量",
+    "explanation": "骆驼驼峰主要储存脂肪，身体还擅长减少水分损失，适应干旱环境。",
+    "category": "animal",
+    "source": "remote"
+  },
+  {
+    "id": "why_animal_013",
+    "question": "为什么有些动物冬天会冬眠？",
+    "emoji": "🐻",
+    "options": [
+      "它们讨厌下雪",
+      "降低能量消耗度过食物少的季节"
+    ],
+    "correctIndex": 1,
+    "answer": "降低能量消耗度过食物少的季节",
+    "explanation": "冬季食物少、温度低，冬眠能让动物降低代谢，节省能量。",
+    "category": "animal",
+    "source": "remote"
+  },
+  {
+    "id": "why_animal_014",
+    "question": "为什么猫头鹰飞行声音很小？",
+    "emoji": "🦉",
+    "options": [
+      "它会屏住呼吸飞",
+      "羽毛边缘能减弱气流噪声"
+    ],
+    "correctIndex": 1,
+    "answer": "羽毛边缘能减弱气流噪声",
+    "explanation": "猫头鹰羽毛结构特殊，能让空气更平稳地通过，帮助它安静接近猎物。",
+    "category": "animal",
+    "source": "remote"
+  },
+  {
+    "id": "why_animal_015",
+    "question": "为什么蛇会蜕皮？",
+    "emoji": "🐍",
+    "options": [
+      "蛇想换颜色",
+      "旧皮不能跟着身体继续长大"
+    ],
+    "correctIndex": 1,
+    "answer": "旧皮不能跟着身体继续长大",
+    "explanation": "蛇的外层皮肤较硬，身体长大或皮肤磨损后，会把旧皮脱掉。",
+    "category": "animal",
+    "source": "remote"
+  },
+  {
+    "id": "why_animal_016",
+    "question": "为什么蚂蚁总排成队？",
+    "emoji": "🐜",
+    "options": [
+      "蚂蚁在上体育课",
+      "用气味信息引导同伴"
+    ],
+    "correctIndex": 1,
+    "answer": "用气味信息引导同伴",
+    "explanation": "蚂蚁会留下信息素气味，同伴沿着气味路线寻找食物或回巢。",
+    "category": "animal",
+    "source": "remote"
+  },
+  {
+    "id": "why_animal_017",
+    "question": "为什么海豚要浮出水面？",
+    "emoji": "🐬",
+    "options": [
+      "它想看看天空",
+      "它用肺呼吸空气"
+    ],
+    "correctIndex": 1,
+    "answer": "它用肺呼吸空气",
+    "explanation": "海豚是哺乳动物，不像鱼用鳃呼吸，需要定期到水面吸入空气。",
+    "category": "animal",
+    "source": "remote"
+  },
+  {
+    "id": "why_animal_018",
+    "question": "为什么壁虎能爬墙？",
+    "emoji": "🦎",
+    "options": [
+      "脚底有胶水",
+      "脚趾上有微小结构产生吸附力"
+    ],
+    "correctIndex": 1,
+    "answer": "脚趾上有微小结构产生吸附力",
+    "explanation": "壁虎脚趾有大量细小绒毛，能和墙面产生微弱作用力，帮助它贴住表面。",
+    "category": "animal",
+    "source": "remote"
+  },
+  {
+    "id": "why_animal_019",
+    "question": "为什么乌龟有硬壳？",
+    "emoji": "🐢",
+    "options": [
+      "壳能保护身体",
+      "乌龟背着石头房子"
+    ],
+    "correctIndex": 0,
+    "answer": "壳能保护身体",
+    "explanation": "乌龟壳由骨骼和角质层组成，能保护柔软身体，并和脊柱、肋骨相连。",
+    "category": "animal",
+    "source": "remote"
+  },
+  {
+    "id": "why_animal_020",
+    "question": "为什么斑马会有条纹？",
+    "emoji": "🦓",
+    "options": [
+      "可能和识别、避虫等作用有关",
+      "为了让人类数线条"
+    ],
+    "correctIndex": 0,
+    "answer": "可能和识别、避虫等作用有关",
+    "explanation": "斑马条纹的作用仍在研究中，可能帮助同伴识别，也可能影响吸血昆虫靠近。",
+    "category": "animal",
+    "source": "remote"
+  },
+  {
+    "id": "why_plant_001",
+    "question": "为什么很多叶子是绿色的？",
+    "emoji": "🌿",
+    "options": [
+      "植物喜欢绿色颜料",
+      "叶绿素反射绿色光"
+    ],
+    "correctIndex": 1,
+    "answer": "叶绿素反射绿色光",
+    "explanation": "叶绿素帮助植物吸收光能制造养分，同时反射较多绿色光，所以叶子常显绿色。",
+    "category": "plant",
+    "source": "remote"
+  },
+  {
+    "id": "why_plant_002",
+    "question": "为什么植物需要阳光？",
+    "emoji": "☀️",
+    "options": [
+      "阳光直接把植物拉高",
+      "阳光提供光合作用能量"
+    ],
+    "correctIndex": 1,
+    "answer": "阳光提供光合作用能量",
+    "explanation": "植物利用阳光、水和二氧化碳制造有机养分，这个过程叫光合作用。",
+    "category": "plant",
+    "source": "remote"
+  },
+  {
+    "id": "why_plant_003",
+    "question": "为什么种子遇到水会发芽？",
+    "emoji": "🌱",
+    "options": [
+      "水把种子泡成小树",
+      "水激活种子里的生命活动"
+    ],
+    "correctIndex": 1,
+    "answer": "水激活种子里的生命活动",
+    "explanation": "水进入种子后，胚开始恢复活动，在合适温度和空气下长出根和芽。",
+    "category": "plant",
+    "source": "remote"
+  },
+  {
+    "id": "why_plant_004",
+    "question": "为什么有些植物会向光弯？",
+    "emoji": "🌻",
+    "options": [
+      "太阳用线拉着植物",
+      "茎两侧生长速度不同"
+    ],
+    "correctIndex": 1,
+    "answer": "茎两侧生长速度不同",
+    "explanation": "植物感受光照后，背光一侧可能长得更快，于是茎向光源方向弯曲。",
+    "category": "plant",
+    "source": "remote"
+  },
+  {
+    "id": "why_plant_005",
+    "question": "为什么仙人掌能在干旱地方生活？",
+    "emoji": "🌵",
+    "options": [
+      "它不需要水",
+      "茎能储水且叶变成刺减少蒸发"
+    ],
+    "correctIndex": 1,
+    "answer": "茎能储水且叶变成刺减少蒸发",
+    "explanation": "仙人掌把水储存在肥厚茎里，刺状叶减少水分散失，也能保护自己。",
+    "category": "plant",
+    "source": "remote"
+  },
+  {
+    "id": "why_plant_006",
+    "question": "为什么树有年轮？",
+    "emoji": "🌳",
+    "options": [
+      "季节变化让木质部生长快慢不同",
+      "树每年自己画圆圈"
+    ],
+    "correctIndex": 0,
+    "answer": "季节变化让木质部生长快慢不同",
+    "explanation": "树木在不同季节生长速度不同，形成颜色和密度不同的木质层，看起来像一圈圈年轮。",
+    "category": "plant",
+    "source": "remote"
+  },
+  {
+    "id": "why_plant_007",
+    "question": "为什么花会有香味和颜色？",
+    "emoji": "🌸",
+    "options": [
+      "花在打扮给自己看",
+      "吸引传粉动物靠近"
+    ],
+    "correctIndex": 1,
+    "answer": "吸引传粉动物靠近",
+    "explanation": "许多花用颜色和气味吸引昆虫、鸟类等帮忙传粉，从而完成繁殖。",
+    "category": "plant",
+    "source": "remote"
+  },
+  {
+    "id": "why_plant_008",
+    "question": "为什么秋天有些树叶会变黄？",
+    "emoji": "🍃",
+    "options": [
+      "树叶被风染色",
+      "叶绿素减少露出其他色素"
+    ],
+    "correctIndex": 1,
+    "answer": "叶绿素减少露出其他色素",
+    "explanation": "气温和日照变化会让叶绿素分解，黄色、橙色等色素更明显地显现出来。",
+    "category": "plant",
+    "source": "remote"
+  },
+  {
+    "id": "why_plant_009",
+    "question": "为什么植物根要往土里长？",
+    "emoji": "🌾",
+    "options": [
+      "根害怕阳光",
+      "根需要吸水、吸收矿物质并固定身体"
+    ],
+    "correctIndex": 1,
+    "answer": "根需要吸水、吸收矿物质并固定身体",
+    "explanation": "根向土壤生长可以吸收水和矿物质，还能把植物牢牢固定住。",
+    "category": "plant",
+    "source": "remote"
+  },
+  {
+    "id": "why_plant_010",
+    "question": "为什么蘑菇不是植物？",
+    "emoji": "🍄",
+    "options": [
+      "蘑菇属于真菌不能光合作用",
+      "它长在地上所以一定是植物"
+    ],
+    "correctIndex": 0,
+    "answer": "蘑菇属于真菌不能光合作用",
+    "explanation": "真菌没有叶绿素，不能像绿色植物那样光合作用，而是分解或吸收现成有机物。",
+    "category": "plant",
+    "source": "remote"
+  },
+  {
+    "id": "why_plant_011",
+    "question": "为什么松树冬天也常常是绿色？",
+    "emoji": "🌲",
+    "options": [
+      "针叶能减少水分散失并较耐寒",
+      "松树不知道冬天来了"
+    ],
+    "correctIndex": 0,
+    "answer": "针叶能减少水分散失并较耐寒",
+    "explanation": "松树针叶表面积小、表皮厚，能在寒冷季节保留水分和叶绿素。",
+    "category": "plant",
+    "source": "remote"
+  },
+  {
+    "id": "why_plant_012",
+    "question": "为什么果实里常有种子？",
+    "emoji": "🌰",
+    "options": [
+      "种子是植物繁殖后代的结构",
+      "果实把石子藏起来"
+    ],
+    "correctIndex": 0,
+    "answer": "种子是植物繁殖后代的结构",
+    "explanation": "开花植物受精后形成种子，果实能保护种子，也帮助种子传播。",
+    "category": "plant",
+    "source": "remote"
+  },
+  {
+    "id": "why_plant_013",
+    "question": "为什么蒲公英种子能飞？",
+    "emoji": "🌼",
+    "options": [
+      "冠毛像小伞帮助随风传播",
+      "种子长了翅膀发动机"
+    ],
+    "correctIndex": 0,
+    "answer": "冠毛像小伞帮助随风传播",
+    "explanation": "蒲公英种子上有细细冠毛，能增加空气阻力，让风把它们带到更远的地方。",
+    "category": "plant",
+    "source": "remote"
+  },
+  {
+    "id": "why_plant_014",
+    "question": "为什么土豆发芽后不建议随便吃？",
+    "emoji": "🥔",
+    "options": [
+      "发芽会把营养变成糖果",
+      "可能含较多龙葵素"
+    ],
+    "correctIndex": 1,
+    "answer": "可能含较多龙葵素",
+    "explanation": "土豆发芽或变绿时龙葵素可能增加，吃了会不舒服，应让大人判断处理。",
+    "category": "plant",
+    "source": "remote"
+  },
+  {
+    "id": "why_plant_015",
+    "question": "为什么玉米粒一排排长在棒上？",
+    "emoji": "🌽",
+    "options": [
+      "每粒玉米来自一朵小花发育",
+      "有人把它们粘上去"
+    ],
+    "correctIndex": 0,
+    "answer": "每粒玉米来自一朵小花发育",
+    "explanation": "玉米雌穗上有许多小花，受粉后每个子房发育成一粒玉米。",
+    "category": "plant",
+    "source": "remote"
+  },
+  {
+    "id": "why_plant_016",
+    "question": "为什么盆栽浇太多水会烂根？",
+    "emoji": "🪴",
+    "options": [
+      "植物讨厌喝水",
+      "根缺氧并容易被微生物侵害"
+    ],
+    "correctIndex": 1,
+    "answer": "根缺氧并容易被微生物侵害",
+    "explanation": "土壤长期积水会让根部空气不足，根细胞受伤，也容易滋生病菌。",
+    "category": "plant",
+    "source": "remote"
+  },
+  {
+    "id": "why_plant_017",
+    "question": "为什么豆科植物能帮助土壤变肥？",
+    "emoji": "🫘",
+    "options": [
+      "根瘤菌能固定空气中的氮",
+      "豆子会把肥料撒出来"
+    ],
+    "correctIndex": 0,
+    "answer": "根瘤菌能固定空气中的氮",
+    "explanation": "许多豆科植物根部有根瘤菌，能把空气中的氮转成植物可利用的形式。",
+    "category": "plant",
+    "source": "remote"
+  },
+  {
+    "id": "why_plant_018",
+    "question": "为什么有些花白天开晚上合？",
+    "emoji": "🌷",
+    "options": [
+      "花晚上要睡在被子里",
+      "受光照和温度节律影响"
+    ],
+    "correctIndex": 1,
+    "answer": "受光照和温度节律影响",
+    "explanation": "植物会对光照、温度和内部生物钟作出反应，花瓣开合能保护花粉或适应传粉时间。",
+    "category": "plant",
+    "source": "remote"
+  },
+  {
+    "id": "why_plant_019",
+    "question": "为什么植物也需要空气？",
+    "emoji": "🍀",
+    "options": [
+      "植物只喝水就够了",
+      "需要二氧化碳和氧气参与生命活动"
+    ],
+    "correctIndex": 1,
+    "answer": "需要二氧化碳和氧气参与生命活动",
+    "explanation": "植物光合作用需要二氧化碳，呼吸作用也需要氧气，空气对植物生存很重要。",
+    "category": "plant",
+    "source": "remote"
+  },
+  {
+    "id": "why_plant_020",
+    "question": "为什么胡萝卜主要吃根？",
+    "emoji": "🥕",
+    "options": [
+      "它的根储存了大量养分",
+      "叶子把根染成橙色"
+    ],
+    "correctIndex": 0,
+    "answer": "它的根储存了大量养分",
+    "explanation": "胡萝卜膨大的主根储存糖类等营养，所以成为我们常吃的部分。",
+    "category": "plant",
+    "source": "remote"
+  },
+  {
+    "id": "why_physics_001",
+    "question": "为什么会有影子？",
+    "emoji": "🕶️",
+    "options": [
+      "地面自己变黑了",
+      "物体挡住光形成暗区"
+    ],
+    "correctIndex": 1,
+    "answer": "物体挡住光形成暗区",
+    "explanation": "光通常沿直线传播，被不透明物体挡住后，后方照不到光的地方就是影子。",
+    "category": "physics",
+    "source": "remote"
+  },
+  {
+    "id": "why_physics_002",
+    "question": "为什么磁铁能吸铁？",
+    "emoji": "🧲",
+    "options": [
+      "磁场会吸引铁磁性材料",
+      "铁钉自己喜欢磁铁"
+    ],
+    "correctIndex": 0,
+    "answer": "磁场会吸引铁磁性材料",
+    "explanation": "磁铁周围有磁场，能吸引铁、镍、钴等具有铁磁性的材料。",
+    "category": "physics",
+    "source": "remote"
+  },
+  {
+    "id": "why_physics_003",
+    "question": "为什么冰会浮在水面上？",
+    "emoji": "🧊",
+    "options": [
+      "冰害怕沉下去",
+      "冰的密度比液态水小"
+    ],
+    "correctIndex": 1,
+    "answer": "冰的密度比液态水小",
+    "explanation": "水结冰后体积变大，单位体积质量变小，所以冰块能浮在液态水上。",
+    "category": "physics",
+    "source": "remote"
+  },
+  {
+    "id": "why_physics_004",
+    "question": "为什么声音能传播？",
+    "emoji": "🔊",
+    "options": [
+      "声音自己长脚跑",
+      "振动通过介质传递"
+    ],
+    "correctIndex": 1,
+    "answer": "振动通过介质传递",
+    "explanation": "物体振动带动空气、水或固体振动，振动传到耳朵，我们就听到声音。",
+    "category": "physics",
+    "source": "remote"
+  },
+  {
+    "id": "why_physics_005",
+    "question": "为什么镜子能照出人影？",
+    "emoji": "🪞",
+    "options": [
+      "光在光滑表面规则反射",
+      "镜子记住了人的样子"
+    ],
+    "correctIndex": 0,
+    "answer": "光在光滑表面规则反射",
+    "explanation": "镜面很光滑，能把光按规律反射到眼睛里，于是形成清楚的像。",
+    "category": "physics",
+    "source": "remote"
+  },
+  {
+    "id": "why_physics_006",
+    "question": "为什么吸管能把饮料吸上来？",
+    "emoji": "🥤",
+    "options": [
+      "嘴里降低气压让外界气压推饮料上升",
+      "吸管里有小泵"
+    ],
+    "correctIndex": 0,
+    "answer": "嘴里降低气压让外界气压推饮料上升",
+    "explanation": "吸气时吸管内压强变小，杯外空气压着饮料，把饮料推上吸管。",
+    "category": "physics",
+    "source": "remote"
+  },
+  {
+    "id": "why_physics_007",
+    "question": "为什么跷跷板能一上一下？",
+    "emoji": "⚖️",
+    "options": [
+      "力臂和重量共同决定转动",
+      "木板自己在摇摆"
+    ],
+    "correctIndex": 0,
+    "answer": "力臂和重量共同决定转动",
+    "explanation": "离支点越远，同样重量产生的转动效果越大，所以位置会影响跷跷板平衡。",
+    "category": "physics",
+    "source": "remote"
+  },
+  {
+    "id": "why_physics_008",
+    "question": "为什么自行车轮胎要充气？",
+    "emoji": "🚲",
+    "options": [
+      "空气压力支撑车身并减震",
+      "轮胎喜欢圆鼓鼓"
+    ],
+    "correctIndex": 0,
+    "answer": "空气压力支撑车身并减震",
+    "explanation": "轮胎里的空气被压缩后能支撑重量，也能吸收路面震动，让骑行更平稳。",
+    "category": "physics",
+    "source": "remote"
+  },
+  {
+    "id": "why_physics_009",
+    "question": "为什么风筝能飞起来？",
+    "emoji": "🪁",
+    "options": [
+      "线把风筝拽上天",
+      "风和风筝形状产生升力"
+    ],
+    "correctIndex": 1,
+    "answer": "风和风筝形状产生升力",
+    "explanation": "风流过风筝表面时产生向上的力，线帮助控制角度，风筝就能留在空中。",
+    "category": "physics",
+    "source": "remote"
+  },
+  {
+    "id": "why_physics_010",
+    "question": "为什么大船那么重还能浮？",
+    "emoji": "🚢",
+    "options": [
+      "船底有很多气球",
+      "排开水产生足够浮力"
+    ],
+    "correctIndex": 1,
+    "answer": "排开水产生足够浮力",
+    "explanation": "船体排开大量水，水给船向上的浮力等于或超过船重时，船就能浮起来。",
+    "category": "physics",
+    "source": "remote"
+  },
+  {
+    "id": "why_physics_011",
+    "question": "为什么热胀冷缩会发生？",
+    "emoji": "🌡️",
+    "options": [
+      "温度升高时微粒运动更剧烈",
+      "物体热了就想伸懒腰"
+    ],
+    "correctIndex": 0,
+    "answer": "温度升高时微粒运动更剧烈",
+    "explanation": "大多数物质受热时微粒间平均距离变大，冷却时距离变小，所以尺寸会变化。",
+    "category": "physics",
+    "source": "remote"
+  },
+  {
+    "id": "why_physics_012",
+    "question": "为什么水烧开会冒泡？",
+    "emoji": "🍲",
+    "options": [
+      "液态水变成水蒸气",
+      "锅底在吹气"
+    ],
+    "correctIndex": 0,
+    "answer": "液态水变成水蒸气",
+    "explanation": "水达到沸点后，锅底附近大量水变成水蒸气，气泡上升并破裂。",
+    "category": "physics",
+    "source": "remote"
+  },
+  {
+    "id": "why_physics_013",
+    "question": "为什么滑梯越光滑越容易滑？",
+    "emoji": "🛝",
+    "options": [
+      "摩擦力更小",
+      "滑梯在推人"
+    ],
+    "correctIndex": 0,
+    "answer": "摩擦力更小",
+    "explanation": "粗糙表面阻碍运动的摩擦力更大，光滑表面摩擦力小，人更容易滑下去。",
+    "category": "physics",
+    "source": "remote"
+  },
+  {
+    "id": "why_physics_014",
+    "question": "为什么鼓面敲得越紧声音越高？",
+    "emoji": "🥁",
+    "options": [
+      "振动频率更高",
+      "鼓面变薄了"
+    ],
+    "correctIndex": 0,
+    "answer": "振动频率更高",
+    "explanation": "鼓面越紧，振动得越快，声音频率越高，听起来音调也更高。",
+    "category": "physics",
+    "source": "remote"
+  },
+  {
+    "id": "why_physics_015",
+    "question": "为什么手电筒能照远处？",
+    "emoji": "🔦",
+    "options": [
+      "灯光会自动认路",
+      "反光杯和透镜让光更集中"
+    ],
+    "correctIndex": 1,
+    "answer": "反光杯和透镜让光更集中",
+    "explanation": "手电筒把灯泡或 LED 发出的光汇聚到一个方向，光束集中后能照得更远。",
+    "category": "physics",
+    "source": "remote"
+  },
+  {
+    "id": "why_physics_016",
+    "question": "为什么气球放手会乱飞？",
+    "emoji": "🎈",
+    "options": [
+      "气球被空气追着跑",
+      "喷出的空气产生反作用力"
+    ],
+    "correctIndex": 1,
+    "answer": "喷出的空气产生反作用力",
+    "explanation": "气球里的空气从口部快速喷出，同时给气球相反方向的推力，让它乱飞。",
+    "category": "physics",
+    "source": "remote"
+  },
+  {
+    "id": "why_physics_017",
+    "question": "为什么灭火器能灭火？",
+    "emoji": "🧯",
+    "options": [
+      "隔绝氧气或降低温度",
+      "白色粉末会吓跑火"
+    ],
+    "correctIndex": 0,
+    "answer": "隔绝氧气或降低温度",
+    "explanation": "燃烧需要可燃物、氧气和合适温度，灭火器能破坏其中一个或多个条件。",
+    "category": "physics",
+    "source": "remote"
+  },
+  {
+    "id": "why_physics_018",
+    "question": "为什么金属勺放热汤里会变热？",
+    "emoji": "🥄",
+    "options": [
+      "热汤把颜色传给勺子",
+      "金属导热快"
+    ],
+    "correctIndex": 1,
+    "answer": "金属导热快",
+    "explanation": "金属中热量传递很快，汤里的热能沿勺子传到手握的一端。",
+    "category": "physics",
+    "source": "remote"
+  },
+  {
+    "id": "why_physics_019",
+    "question": "为什么肥皂泡是圆的？",
+    "emoji": "🫧",
+    "options": [
+      "表面张力让面积尽量小",
+      "空气把泡泡吹成球"
+    ],
+    "correctIndex": 0,
+    "answer": "表面张力让面积尽量小",
+    "explanation": "在同样体积下，球形表面积最小，液膜表面张力会把泡泡拉成接近球形。",
+    "category": "physics",
+    "source": "remote"
+  },
+  {
+    "id": "why_physics_020",
+    "question": "为什么过山车下坡会变快？",
+    "emoji": "🎢",
+    "options": [
+      "车厢突然变轻了",
+      "重力势能转化为动能"
+    ],
+    "correctIndex": 1,
+    "answer": "重力势能转化为动能",
+    "explanation": "过山车在高处有较多重力势能，下坡时这部分能量转成运动能量，速度增加。",
+    "category": "physics",
+    "source": "remote"
+  },
+  {
+    "id": "why_chemistry_001",
+    "question": "为什么面包会变松软？",
+    "emoji": "🍞",
+    "options": [
+      "面粉自己膨胀成海绵",
+      "酵母产生二氧化碳形成气孔"
+    ],
+    "correctIndex": 1,
+    "answer": "酵母产生二氧化碳形成气孔",
+    "explanation": "酵母发酵时释放二氧化碳，气体被面团包住，烘烤后形成松软结构。",
+    "category": "chemistry",
+    "source": "remote"
+  },
+  {
+    "id": "why_chemistry_002",
+    "question": "为什么切开的苹果会变褐色？",
+    "emoji": "🍎",
+    "options": [
+      "果肉接触氧气发生酶促氧化",
+      "苹果在生气变黑"
+    ],
+    "correctIndex": 0,
+    "answer": "果肉接触氧气发生酶促氧化",
+    "explanation": "苹果细胞被切开后，里面的物质和氧气接触，在酶作用下生成褐色物质。",
+    "category": "chemistry",
+    "source": "remote"
+  },
+  {
+    "id": "why_chemistry_003",
+    "question": "为什么鸡蛋煮熟会变硬？",
+    "emoji": "🥚",
+    "options": [
+      "蛋白质受热变性凝固",
+      "水把鸡蛋冻硬了"
+    ],
+    "correctIndex": 0,
+    "answer": "蛋白质受热变性凝固",
+    "explanation": "鸡蛋里的蛋白质受热后结构改变并互相连接，所以从透明液体变成白色固体。",
+    "category": "chemistry",
+    "source": "remote"
+  },
+  {
+    "id": "why_chemistry_004",
+    "question": "为什么肥皂能洗掉油污？",
+    "emoji": "🧼",
+    "options": [
+      "分子一端亲水一端亲油",
+      "肥皂把油污吃掉了"
+    ],
+    "correctIndex": 0,
+    "answer": "分子一端亲水一端亲油",
+    "explanation": "肥皂分子能一边抓住油污、一边跟水混合，帮助油污离开物体表面。",
+    "category": "chemistry",
+    "source": "remote"
+  },
+  {
+    "id": "why_chemistry_005",
+    "question": "为什么汽水会冒泡？",
+    "emoji": "🥤",
+    "options": [
+      "杯子在吐气",
+      "溶解的二氧化碳释放出来"
+    ],
+    "correctIndex": 1,
+    "answer": "溶解的二氧化碳释放出来",
+    "explanation": "汽水中压入了二氧化碳，打开后压力降低，气体从液体里跑出来形成泡泡。",
+    "category": "chemistry",
+    "source": "remote"
+  },
+  {
+    "id": "why_chemistry_006",
+    "question": "为什么铁会生锈？",
+    "emoji": "🔥",
+    "options": [
+      "铁和氧气水分反应生成铁锈",
+      "铁表面长了红色灰尘"
+    ],
+    "correctIndex": 0,
+    "answer": "铁和氧气水分反应生成铁锈",
+    "explanation": "潮湿空气中，铁会和氧气、水发生化学反应，生成红褐色铁锈。",
+    "category": "chemistry",
+    "source": "remote"
+  },
+  {
+    "id": "why_chemistry_007",
+    "question": "为什么柠檬吃起来很酸？",
+    "emoji": "🍋",
+    "options": [
+      "含有较多柠檬酸",
+      "黄色食物都酸"
+    ],
+    "correctIndex": 0,
+    "answer": "含有较多柠檬酸",
+    "explanation": "柠檬中含有柠檬酸等酸性物质，会刺激味觉细胞产生酸味感觉。",
+    "category": "chemistry",
+    "source": "remote"
+  },
+  {
+    "id": "why_chemistry_008",
+    "question": "为什么盐能溶在水里？",
+    "emoji": "🧂",
+    "options": [
+      "盐粒被水藏起来",
+      "盐的离子能被水分子包围"
+    ],
+    "correctIndex": 1,
+    "answer": "盐的离子能被水分子包围",
+    "explanation": "食盐由钠离子和氯离子组成，水分子能把它们分散开，所以盐会溶解。",
+    "category": "chemistry",
+    "source": "remote"
+  },
+  {
+    "id": "why_chemistry_009",
+    "question": "为什么糖加热会变焦糖色？",
+    "emoji": "🍬",
+    "options": [
+      "糖受热发生焦糖化反应",
+      "火把糖染成棕色"
+    ],
+    "correctIndex": 0,
+    "answer": "糖受热发生焦糖化反应",
+    "explanation": "糖在较高温度下分解并形成新的有色、有香味的物质，所以颜色变深。",
+    "category": "chemistry",
+    "source": "remote"
+  },
+  {
+    "id": "why_chemistry_010",
+    "question": "为什么蜡烛燃烧会变短？",
+    "emoji": "🕯️",
+    "options": [
+      "火焰把蜡烛咬掉",
+      "蜡受热变成蒸气参与燃烧"
+    ],
+    "correctIndex": 1,
+    "answer": "蜡受热变成蒸气参与燃烧",
+    "explanation": "蜡烛芯吸上融化的蜡，蜡蒸气和氧气反应释放光和热，蜡就不断减少。",
+    "category": "chemistry",
+    "source": "remote"
+  },
+  {
+    "id": "why_chemistry_011",
+    "question": "为什么牛奶放久会变酸？",
+    "emoji": "🥛",
+    "options": [
+      "牛奶自己变成柠檬汁",
+      "微生物把乳糖转化成酸"
+    ],
+    "correctIndex": 1,
+    "answer": "微生物把乳糖转化成酸",
+    "explanation": "保存不当时细菌繁殖，会把牛奶中的乳糖转化为乳酸等物质，使味道变酸。",
+    "category": "chemistry",
+    "source": "remote"
+  },
+  {
+    "id": "why_chemistry_012",
+    "question": "为什么漂白水不能随便和清洁剂混用？",
+    "emoji": "🧽",
+    "options": [
+      "可能产生有毒气体",
+      "混在一起一定更干净"
+    ],
+    "correctIndex": 0,
+    "answer": "可能产生有毒气体",
+    "explanation": "不同清洁剂成分可能反应产生危险气体，儿童不能自行混合清洁用品。",
+    "category": "chemistry",
+    "source": "remote"
+  },
+  {
+    "id": "why_chemistry_013",
+    "question": "为什么盐能让冰更容易融化？",
+    "emoji": "🧊",
+    "options": [
+      "盐水冰点低于纯水",
+      "盐会给冰加热"
+    ],
+    "correctIndex": 0,
+    "answer": "盐水冰点低于纯水",
+    "explanation": "盐溶进冰表面的水后降低冰点，使部分冰在较低温度下也能融化。",
+    "category": "chemistry",
+    "source": "remote"
+  },
+  {
+    "id": "why_chemistry_014",
+    "question": "为什么紫甘蓝汁能测酸碱？",
+    "emoji": "🍇",
+    "options": [
+      "花青素遇酸碱会变色",
+      "紫色液体会猜答案"
+    ],
+    "correctIndex": 0,
+    "answer": "花青素遇酸碱会变色",
+    "explanation": "紫甘蓝中的花青素在不同酸碱环境下结构变化，颜色也会随之改变。",
+    "category": "chemistry",
+    "source": "remote"
+  },
+  {
+    "id": "why_chemistry_015",
+    "question": "为什么干冰会冒白雾？",
+    "emoji": "💨",
+    "options": [
+      "二氧化碳升华并让水蒸气凝结",
+      "干冰里面有烟"
+    ],
+    "correctIndex": 0,
+    "answer": "二氧化碳升华并让水蒸气凝结",
+    "explanation": "干冰直接从固体变成气体，同时让周围空气变冷，水蒸气凝结成白雾。",
+    "category": "chemistry",
+    "source": "remote"
+  },
+  {
+    "id": "why_chemistry_016",
+    "question": "为什么小苏打遇醋会起泡？",
+    "emoji": "🧪",
+    "options": [
+      "醋把粉末煮开了",
+      "酸碱反应产生二氧化碳"
+    ],
+    "correctIndex": 1,
+    "answer": "酸碱反应产生二氧化碳",
+    "explanation": "小苏打和醋中的酸反应，释放二氧化碳气体，所以会看到许多泡泡。",
+    "category": "chemistry",
+    "source": "remote"
+  },
+  {
+    "id": "why_chemistry_017",
+    "question": "为什么茶水放久颜色会变深？",
+    "emoji": "🍵",
+    "options": [
+      "杯子把茶染深了",
+      "茶多酚等物质被氧化"
+    ],
+    "correctIndex": 1,
+    "answer": "茶多酚等物质被氧化",
+    "explanation": "茶中的一些成分接触空气后会氧化，生成颜色更深的物质。",
+    "category": "chemistry",
+    "source": "remote"
+  },
+  {
+    "id": "why_chemistry_018",
+    "question": "为什么食品包装常要密封？",
+    "emoji": "🫙",
+    "options": [
+      "减少氧气、水分和微生物进入",
+      "包装袋怕空气"
+    ],
+    "correctIndex": 0,
+    "answer": "减少氧气、水分和微生物进入",
+    "explanation": "密封能减慢氧化、受潮和微生物污染，让食物更不容易变质。",
+    "category": "chemistry",
+    "source": "remote"
+  },
+  {
+    "id": "why_chemistry_019",
+    "question": "为什么酒精能消毒？",
+    "emoji": "🧴",
+    "options": [
+      "能破坏许多微生物的蛋白和膜",
+      "酒精味道让细菌逃跑"
+    ],
+    "correctIndex": 0,
+    "answer": "能破坏许多微生物的蛋白和膜",
+    "explanation": "合适浓度的酒精会影响细菌和部分病毒的结构，从而降低感染风险。",
+    "category": "chemistry",
+    "source": "remote"
+  },
+  {
+    "id": "why_chemistry_020",
+    "question": "为什么淀粉遇碘酒会变蓝紫色？",
+    "emoji": "🥣",
+    "options": [
+      "碘分子进入淀粉螺旋结构",
+      "碘酒把食物染成墨水"
+    ],
+    "correctIndex": 0,
+    "answer": "碘分子进入淀粉螺旋结构",
+    "explanation": "淀粉分子有特殊结构，能和碘形成显色复合物，因此出现蓝紫色。",
+    "category": "chemistry",
+    "source": "remote"
+  },
+  {
+    "id": "why_earth_001",
+    "question": "为什么火山会喷发？",
+    "emoji": "🌋",
+    "options": [
+      "山里面有人烧水",
+      "地下岩浆和气体压力释放"
+    ],
+    "correctIndex": 1,
+    "answer": "地下岩浆和气体压力释放",
+    "explanation": "地球内部岩浆和气体积累压力，当压力沿裂缝释放时，岩浆可能喷出地表。",
+    "category": "earth",
+    "source": "remote"
+  },
+  {
+    "id": "why_earth_002",
+    "question": "为什么会发生地震？",
+    "emoji": "🌏",
+    "options": [
+      "地球在打喷嚏",
+      "地下岩层突然错动释放能量"
+    ],
+    "correctIndex": 1,
+    "answer": "地下岩层突然错动释放能量",
+    "explanation": "地壳岩层长期受力后突然破裂或错动，能量以地震波形式传播，引起地面震动。",
+    "category": "earth",
+    "source": "remote"
+  },
+  {
+    "id": "why_earth_003",
+    "question": "为什么高山会形成？",
+    "emoji": "🏔️",
+    "options": [
+      "板块挤压或火山活动抬升地表",
+      "土地自己堆成山"
+    ],
+    "correctIndex": 0,
+    "answer": "板块挤压或火山活动抬升地表",
+    "explanation": "地球板块相互碰撞会把岩层挤皱抬高，火山喷发也能堆积形成山体。",
+    "category": "earth",
+    "source": "remote"
+  },
+  {
+    "id": "why_earth_004",
+    "question": "为什么海水是咸的？",
+    "emoji": "🌊",
+    "options": [
+      "河流和岩石带来盐分长期积累",
+      "大海里放了很多食盐"
+    ],
+    "correctIndex": 0,
+    "answer": "河流和岩石带来盐分长期积累",
+    "explanation": "雨水和河流溶解岩石中的矿物质带入海洋，水蒸发后盐分逐渐留下。",
+    "category": "earth",
+    "source": "remote"
+  },
+  {
+    "id": "why_earth_005",
+    "question": "为什么沙漠降雨少？",
+    "emoji": "🏜️",
+    "options": [
+      "大气环流和地形让水汽难到达",
+      "沙子把雨喝光了"
+    ],
+    "correctIndex": 0,
+    "answer": "大气环流和地形让水汽难到达",
+    "explanation": "一些地区受高压下沉气流或山脉阻挡影响，水汽少，降水也少。",
+    "category": "earth",
+    "source": "remote"
+  },
+  {
+    "id": "why_earth_006",
+    "question": "为什么岩石会风化？",
+    "emoji": "🪨",
+    "options": [
+      "温度、水、风和生物长期作用",
+      "岩石自己变老掉渣"
+    ],
+    "correctIndex": 0,
+    "answer": "温度、水、风和生物长期作用",
+    "explanation": "冷热变化、水流、冰冻、植物根和化学反应都会让岩石逐渐破碎或改变。",
+    "category": "earth",
+    "source": "remote"
+  },
+  {
+    "id": "why_earth_007",
+    "question": "为什么河流会弯弯曲曲？",
+    "emoji": "🏞️",
+    "options": [
+      "河流喜欢走弯路",
+      "水流冲刷和沉积不断改变河道"
+    ],
+    "correctIndex": 1,
+    "answer": "水流冲刷和沉积不断改变河道",
+    "explanation": "河水在外侧冲刷、内侧沉积，时间久了河道就可能形成弯曲形状。",
+    "category": "earth",
+    "source": "remote"
+  },
+  {
+    "id": "why_earth_008",
+    "question": "为什么珊瑚礁常在温暖浅海？",
+    "emoji": "🪸",
+    "options": [
+      "珊瑚和共生藻需要阳光和适宜温度",
+      "珊瑚怕深水黑暗"
+    ],
+    "correctIndex": 0,
+    "answer": "珊瑚和共生藻需要阳光和适宜温度",
+    "explanation": "许多造礁珊瑚依赖共生藻光合作用，温暖、清澈、浅水环境更适合生长。",
+    "category": "earth",
+    "source": "remote"
+  },
+  {
+    "id": "why_earth_009",
+    "question": "为什么指南针会指向南北？",
+    "emoji": "🧭",
+    "options": [
+      "针尖认识北方",
+      "受到地球磁场影响"
+    ],
+    "correctIndex": 1,
+    "answer": "受到地球磁场影响",
+    "explanation": "指南针磁针会沿地球磁场方向排列，所以大致指向南北。",
+    "category": "earth",
+    "source": "remote"
+  },
+  {
+    "id": "why_earth_010",
+    "question": "为什么有些地方会出现溶洞？",
+    "emoji": "🕳️",
+    "options": [
+      "地下被挖出了宫殿",
+      "地下水溶解石灰岩形成空洞"
+    ],
+    "correctIndex": 1,
+    "answer": "地下水溶解石灰岩形成空洞",
+    "explanation": "含二氧化碳的水能慢慢溶解石灰岩，长期作用后形成洞穴和钟乳石。",
+    "category": "earth",
+    "source": "remote"
+  },
+  {
+    "id": "why_earth_011",
+    "question": "为什么煤来自古代植物？",
+    "emoji": "🪵",
+    "options": [
+      "煤是黑色石头天生如此",
+      "植物遗体在地下长期受压变化"
+    ],
+    "correctIndex": 1,
+    "answer": "植物遗体在地下长期受压变化",
+    "explanation": "古代植物被埋在地下，在缺氧、高压等条件下经过漫长时间转变成煤。",
+    "category": "earth",
+    "source": "remote"
+  },
+  {
+    "id": "why_earth_012",
+    "question": "为什么石油常埋在地下？",
+    "emoji": "🛢️",
+    "options": [
+      "古代生物遗体在沉积层中转化",
+      "地下天然装满油桶"
+    ],
+    "correctIndex": 0,
+    "answer": "古代生物遗体在沉积层中转化",
+    "explanation": "海洋微生物遗体被泥沙掩埋，在高温高压下慢慢转化为石油和天然气。",
+    "category": "earth",
+    "source": "remote"
+  },
+  {
+    "id": "why_earth_013",
+    "question": "为什么海边会有沙滩？",
+    "emoji": "🏖️",
+    "options": [
+      "岩石和贝壳被风浪磨碎堆积",
+      "海水制造了小米粒"
+    ],
+    "correctIndex": 0,
+    "answer": "岩石和贝壳被风浪磨碎堆积",
+    "explanation": "海浪把岩石、贝壳和珊瑚碎屑不断冲刷磨细，再堆积到岸边形成沙滩。",
+    "category": "earth",
+    "source": "remote"
+  },
+  {
+    "id": "why_earth_014",
+    "question": "为什么峡谷能被河流切出来？",
+    "emoji": "🌁",
+    "options": [
+      "流水长期侵蚀岩石",
+      "地面自己裂开变深"
+    ],
+    "correctIndex": 0,
+    "answer": "流水长期侵蚀岩石",
+    "explanation": "河水携带沙石不断冲刷河床，经过很长时间能把地表切出深谷。",
+    "category": "earth",
+    "source": "remote"
+  },
+  {
+    "id": "why_earth_015",
+    "question": "为什么冰川会移动？",
+    "emoji": "❄️",
+    "options": [
+      "冰块自己长了脚",
+      "巨大冰体受重力缓慢流动"
+    ],
+    "correctIndex": 1,
+    "answer": "巨大冰体受重力缓慢流动",
+    "explanation": "冰川虽然是固体，但在巨大重量和重力作用下会像很慢的河一样移动。",
+    "category": "earth",
+    "source": "remote"
+  },
+  {
+    "id": "why_earth_016",
+    "question": "为什么地球内部很热？",
+    "emoji": "🌐",
+    "options": [
+      "地心装着太阳",
+      "形成时残余热和放射性衰变供热"
+    ],
+    "correctIndex": 1,
+    "answer": "形成时残余热和放射性衰变供热",
+    "explanation": "地球内部热量来自早期形成残余热，也来自某些元素放射性衰变释放的能量。",
+    "category": "earth",
+    "source": "remote"
+  },
+  {
+    "id": "why_earth_017",
+    "question": "为什么土壤有不同颜色？",
+    "emoji": "🧱",
+    "options": [
+      "矿物、有机质和水分不同",
+      "土地被颜料刷过"
+    ],
+    "correctIndex": 0,
+    "answer": "矿物、有机质和水分不同",
+    "explanation": "土壤颜色受铁等矿物、有机质含量和湿度影响，所以有黑、黄、红等颜色。",
+    "category": "earth",
+    "source": "remote"
+  },
+  {
+    "id": "why_earth_018",
+    "question": "为什么空气越高越稀薄？",
+    "emoji": "🌫️",
+    "options": [
+      "重力让大部分空气集中在低处",
+      "天空把空气吸走"
+    ],
+    "correctIndex": 0,
+    "answer": "重力让大部分空气集中在低处",
+    "explanation": "地球引力把空气拉向地面，高处上方空气少，气压低，所以空气更稀薄。",
+    "category": "earth",
+    "source": "remote"
+  },
+  {
+    "id": "why_earth_019",
+    "question": "为什么潮汐会涨落？",
+    "emoji": "🌊",
+    "options": [
+      "月球和太阳引力影响海水",
+      "海水在按时呼吸"
+    ],
+    "correctIndex": 0,
+    "answer": "月球和太阳引力影响海水",
+    "explanation": "月球引力是潮汐主要原因，太阳也有影响，地球自转让海水出现周期性涨落。",
+    "category": "earth",
+    "source": "remote"
+  },
+  {
+    "id": "why_earth_020",
+    "question": "为什么地球有大气层？",
+    "emoji": "🪐",
+    "options": [
+      "空气被天空玻璃罩住",
+      "地球引力抓住了大量气体"
+    ],
+    "correctIndex": 1,
+    "answer": "地球引力抓住了大量气体",
+    "explanation": "地球质量足够大，引力能把氮气、氧气等气体留在周围，形成大气层。",
+    "category": "earth",
+    "source": "remote"
+  },
+  {
+    "id": "why_environment_001",
+    "question": "为什么要节约用水？",
+    "emoji": "💧",
+    "options": [
+      "可直接利用的淡水有限",
+      "水龙头会累"
+    ],
+    "correctIndex": 0,
+    "answer": "可直接利用的淡水有限",
+    "explanation": "地球水很多，但多数是海水或难以直接利用的水，节约用水能保护淡水资源。",
+    "category": "environment",
+    "source": "remote"
+  },
+  {
+    "id": "why_environment_002",
+    "question": "为什么垃圾要分类？",
+    "emoji": "♻️",
+    "options": [
+      "垃圾会自己消失",
+      "便于回收利用和安全处理"
+    ],
+    "correctIndex": 1,
+    "answer": "便于回收利用和安全处理",
+    "explanation": "不同垃圾处理方式不同，分类能提高回收效率，也能减少有害物质污染环境。",
+    "category": "environment",
+    "source": "remote"
+  },
+  {
+    "id": "why_environment_003",
+    "question": "为什么森林能保护水土？",
+    "emoji": "🌳",
+    "options": [
+      "树叶能把泥土粘住",
+      "树根固定土壤并减缓雨水冲刷"
+    ],
+    "correctIndex": 1,
+    "answer": "树根固定土壤并减缓雨水冲刷",
+    "explanation": "植物根系抓住土壤，树冠和落叶层减缓雨水速度，能减少水土流失。",
+    "category": "environment",
+    "source": "remote"
+  },
+  {
+    "id": "why_environment_004",
+    "question": "为什么保护蜜蜂很重要？",
+    "emoji": "🐝",
+    "options": [
+      "蜜蜂只会生产蜂蜜",
+      "许多植物需要昆虫传粉"
+    ],
+    "correctIndex": 1,
+    "answer": "许多植物需要昆虫传粉",
+    "explanation": "蜜蜂等传粉昆虫帮助很多植物结种子和果实，对生态系统和农业都有作用。",
+    "category": "environment",
+    "source": "remote"
+  },
+  {
+    "id": "why_environment_005",
+    "question": "为什么空气污染会影响健康？",
+    "emoji": "🌫️",
+    "options": [
+      "灰色空气只是不好看",
+      "有害颗粒和气体会刺激身体"
+    ],
+    "correctIndex": 1,
+    "answer": "有害颗粒和气体会刺激身体",
+    "explanation": "污染物进入呼吸道可能刺激鼻、喉、肺，也可能影响心血管健康。",
+    "category": "environment",
+    "source": "remote"
+  },
+  {
+    "id": "why_environment_006",
+    "question": "为什么废旧电池不能乱扔？",
+    "emoji": "🔋",
+    "options": [
+      "可能含有污染环境的物质",
+      "电池会自己跑回工厂"
+    ],
+    "correctIndex": 0,
+    "answer": "可能含有污染环境的物质",
+    "explanation": "一些电池含重金属或化学物质，随意丢弃可能污染土壤和水。",
+    "category": "environment",
+    "source": "remote"
+  },
+  {
+    "id": "why_environment_007",
+    "question": "为什么要少用一次性塑料袋？",
+    "emoji": "🛍️",
+    "options": [
+      "塑料难降解且可能变成微塑料",
+      "塑料袋会吃掉空气"
+    ],
+    "correctIndex": 0,
+    "answer": "塑料难降解且可能变成微塑料",
+    "explanation": "很多塑料在自然环境中分解很慢，破碎后还可能形成微塑料影响生物。",
+    "category": "environment",
+    "source": "remote"
+  },
+  {
+    "id": "why_environment_008",
+    "question": "为什么步行骑车更环保？",
+    "emoji": "🚲",
+    "options": [
+      "减少燃油消耗和尾气排放",
+      "自行车能净化空气"
+    ],
+    "correctIndex": 0,
+    "answer": "减少燃油消耗和尾气排放",
+    "explanation": "步行和骑车不直接燃烧汽油，能减少二氧化碳和污染物排放。",
+    "category": "environment",
+    "source": "remote"
+  },
+  {
+    "id": "why_environment_009",
+    "question": "为什么地球变暖值得关注？",
+    "emoji": "🌡️",
+    "options": [
+      "会影响气候、海平面和生态",
+      "只是冬天不冷了"
+    ],
+    "correctIndex": 0,
+    "answer": "会影响气候、海平面和生态",
+    "explanation": "全球变暖会改变降雨和极端天气，导致冰川融化、海平面上升并影响动植物。",
+    "category": "environment",
+    "source": "remote"
+  },
+  {
+    "id": "why_environment_010",
+    "question": "为什么河流污染会影响鱼？",
+    "emoji": "🐟",
+    "options": [
+      "水质变化会减少氧气或带来毒物",
+      "鱼只是不喜欢脏颜色"
+    ],
+    "correctIndex": 0,
+    "answer": "水质变化会减少氧气或带来毒物",
+    "explanation": "污染物可能毒害水生生物，也可能让水中氧气减少，使鱼类难以生存。",
+    "category": "environment",
+    "source": "remote"
+  },
+  {
+    "id": "why_environment_011",
+    "question": "为什么过量施肥会污染水体？",
+    "emoji": "🌾",
+    "options": [
+      "营养物质流入河湖引发藻类过度生长",
+      "肥料会把水染绿"
+    ],
+    "correctIndex": 0,
+    "answer": "营养物质流入河湖引发藻类过度生长",
+    "explanation": "氮、磷过多会让藻类大量繁殖，藻类死亡分解时消耗氧气，破坏水生态。",
+    "category": "environment",
+    "source": "remote"
+  },
+  {
+    "id": "why_environment_012",
+    "question": "为什么生物多样性重要？",
+    "emoji": "🦜",
+    "options": [
+      "物种相互依赖维持生态稳定",
+      "动物越多越热闹而已"
+    ],
+    "correctIndex": 0,
+    "answer": "物种相互依赖维持生态稳定",
+    "explanation": "不同生物在食物网和环境调节中各有作用，物种越丰富，生态系统通常越有韧性。",
+    "category": "environment",
+    "source": "remote"
+  },
+  {
+    "id": "why_environment_013",
+    "question": "为什么植树能改善环境？",
+    "emoji": "🌱",
+    "options": [
+      "树会制造所有天气",
+      "树能吸收二氧化碳并提供栖息地"
+    ],
+    "correctIndex": 1,
+    "answer": "树能吸收二氧化碳并提供栖息地",
+    "explanation": "树木光合作用吸收二氧化碳、释放氧气，还能降温、固土并为动物提供家园。",
+    "category": "environment",
+    "source": "remote"
+  },
+  {
+    "id": "why_environment_014",
+    "question": "为什么洗涤剂不能大量倒进河里？",
+    "emoji": "🧴",
+    "options": [
+      "河水能自动全部消毒",
+      "会影响水生生物和水质"
+    ],
+    "correctIndex": 1,
+    "answer": "会影响水生生物和水质",
+    "explanation": "部分洗涤剂成分会刺激或毒害水生生物，也可能造成泡沫和富营养化问题。",
+    "category": "environment",
+    "source": "remote"
+  },
+  {
+    "id": "why_environment_015",
+    "question": "为什么随手关灯能节能？",
+    "emoji": "💡",
+    "options": [
+      "灯会因为被关而休息",
+      "减少不必要的电力消耗"
+    ],
+    "correctIndex": 1,
+    "answer": "减少不必要的电力消耗",
+    "explanation": "电力生产常消耗能源，关掉不用的灯能减少能源浪费和相关排放。",
+    "category": "environment",
+    "source": "remote"
+  },
+  {
+    "id": "why_environment_016",
+    "question": "为什么少浪费食物也是环保？",
+    "emoji": "🍽️",
+    "options": [
+      "食物生产运输会消耗资源",
+      "剩饭会自己变成肥料"
+    ],
+    "correctIndex": 0,
+    "answer": "食物生产运输会消耗资源",
+    "explanation": "粮食从种植到餐桌需要水、土地、能源和运输，减少浪费就是减少资源消耗。",
+    "category": "environment",
+    "source": "remote"
+  },
+  {
+    "id": "why_environment_017",
+    "question": "为什么城市里夏天常更热？",
+    "emoji": "🏙️",
+    "options": [
+      "建筑和路面吸热形成热岛效应",
+      "城市有更多太阳"
+    ],
+    "correctIndex": 0,
+    "answer": "建筑和路面吸热形成热岛效应",
+    "explanation": "水泥、柏油和建筑会吸收并释放热量，绿地少也会让城市局部温度更高。",
+    "category": "environment",
+    "source": "remote"
+  },
+  {
+    "id": "why_environment_018",
+    "question": "为什么饮料瓶要尽量回收？",
+    "emoji": "🧃",
+    "options": [
+      "材料可再利用减少新资源消耗",
+      "瓶子会自己变新"
+    ],
+    "correctIndex": 0,
+    "answer": "材料可再利用减少新资源消耗",
+    "explanation": "塑料、玻璃和金属瓶经过分类回收后可以再加工，减少垃圾和资源开采。",
+    "category": "environment",
+    "source": "remote"
+  },
+  {
+    "id": "why_environment_019",
+    "question": "为什么厨余垃圾可以堆肥？",
+    "emoji": "🪣",
+    "options": [
+      "微生物能分解有机物变成肥料",
+      "果皮会直接变成土"
+    ],
+    "correctIndex": 0,
+    "answer": "微生物能分解有机物变成肥料",
+    "explanation": "菜叶果皮等有机物在微生物作用下分解，条件合适时能变成富含养分的堆肥。",
+    "category": "environment",
+    "source": "remote"
+  },
+  {
+    "id": "why_environment_020",
+    "question": "为什么海洋垃圾会伤害动物？",
+    "emoji": "🌊",
+    "options": [
+      "海浪会立刻清理垃圾",
+      "动物可能误食或被缠住"
+    ],
+    "correctIndex": 1,
+    "answer": "动物可能误食或被缠住",
+    "explanation": "塑料袋、渔网等垃圾可能让海洋动物误食、中毒或缠绕受伤。",
+    "category": "environment",
+    "source": "remote"
+  },
+  {
+    "id": "why_technology_001",
+    "question": "为什么电灯一开就亮？",
+    "emoji": "💡",
+    "options": [
+      "电路接通后电流让灯发光",
+      "开关把太阳叫来了"
+    ],
+    "correctIndex": 0,
+    "answer": "电路接通后电流让灯发光",
+    "explanation": "打开开关后电路闭合，电流通过灯泡或 LED，电能转化成光能。",
+    "category": "technology",
+    "source": "remote"
+  },
+  {
+    "id": "why_technology_002",
+    "question": "为什么冰箱能制冷？",
+    "emoji": "🧊",
+    "options": [
+      "冰箱里藏着雪",
+      "把箱内热量搬到箱外"
+    ],
+    "correctIndex": 1,
+    "answer": "把箱内热量搬到箱外",
+    "explanation": "冰箱制冷系统让制冷剂循环，吸收箱内热量并释放到外部。",
+    "category": "technology",
+    "source": "remote"
+  },
+  {
+    "id": "why_technology_003",
+    "question": "为什么手机能打电话？",
+    "emoji": "📱",
+    "options": [
+      "把声音变成电信号再无线传输",
+      "手机里有人传话"
+    ],
+    "correctIndex": 0,
+    "answer": "把声音变成电信号再无线传输",
+    "explanation": "手机麦克风把声音转成信号，通过基站和网络传到对方手机，再变回声音。",
+    "category": "technology",
+    "source": "remote"
+  },
+  {
+    "id": "why_technology_004",
+    "question": "为什么相机能拍照？",
+    "emoji": "📷",
+    "options": [
+      "相机把景物装进盒子",
+      "感光元件记录进入镜头的光"
+    ],
+    "correctIndex": 1,
+    "answer": "感光元件记录进入镜头的光",
+    "explanation": "镜头把光聚到感光元件上，电子元件把光的信息转换成数字图像。",
+    "category": "technology",
+    "source": "remote"
+  },
+  {
+    "id": "why_technology_005",
+    "question": "为什么电梯能上下运行？",
+    "emoji": "🛗",
+    "options": [
+      "电梯被楼层吸上去",
+      "电机、钢缆和控制系统共同工作"
+    ],
+    "correctIndex": 1,
+    "answer": "电机、钢缆和控制系统共同工作",
+    "explanation": "电梯用电机驱动钢缆或其他装置移动轿厢，控制系统负责停在正确楼层。",
+    "category": "technology",
+    "source": "remote"
+  },
+  {
+    "id": "why_technology_006",
+    "question": "为什么高铁能跑得很快？",
+    "emoji": "🚄",
+    "options": [
+      "车轮比普通车大很多",
+      "轨道平顺、动力强、空气阻力设计好"
+    ],
+    "correctIndex": 1,
+    "answer": "轨道平顺、动力强、空气阻力设计好",
+    "explanation": "高铁有专用轨道、强大电力牵引和流线型车身，能安全稳定高速运行。",
+    "category": "technology",
+    "source": "remote"
+  },
+  {
+    "id": "why_technology_007",
+    "question": "为什么导航能知道位置？",
+    "emoji": "🛰️",
+    "options": [
+      "手机在问路边石头",
+      "接收多颗卫星信号计算位置"
+    ],
+    "correctIndex": 1,
+    "answer": "接收多颗卫星信号计算位置",
+    "explanation": "定位设备接收卫星发来的时间和位置信号，通过计算与多颗卫星的距离确定位置。",
+    "category": "technology",
+    "source": "remote"
+  },
+  {
+    "id": "why_technology_008",
+    "question": "为什么机器人能按指令行动？",
+    "emoji": "🤖",
+    "options": [
+      "机器人自己有魔法",
+      "程序控制传感器和电机"
+    ],
+    "correctIndex": 1,
+    "answer": "程序控制传感器和电机",
+    "explanation": "机器人通过传感器获取信息，由程序判断，再控制电机、轮子或机械臂动作。",
+    "category": "technology",
+    "source": "remote"
+  },
+  {
+    "id": "why_technology_009",
+    "question": "为什么电脑能快速计算？",
+    "emoji": "💻",
+    "options": [
+      "芯片用电子开关处理二进制信息",
+      "电脑里有很多小算盘"
+    ],
+    "correctIndex": 0,
+    "answer": "芯片用电子开关处理二进制信息",
+    "explanation": "电脑芯片中有大量微小电子元件，能以极高速度执行逻辑运算。",
+    "category": "technology",
+    "source": "remote"
+  },
+  {
+    "id": "why_technology_010",
+    "question": "为什么上网能看到远方信息？",
+    "emoji": "🌐",
+    "options": [
+      "数据通过网络设备传输",
+      "屏幕能直接看见远处"
+    ],
+    "correctIndex": 0,
+    "answer": "数据通过网络设备传输",
+    "explanation": "网页、图片和视频被分成数据包，经光纤、无线和服务器传到设备上再显示。",
+    "category": "technology",
+    "source": "remote"
+  },
+  {
+    "id": "why_technology_011",
+    "question": "为什么充电宝能给手机充电？",
+    "emoji": "🔋",
+    "options": [
+      "充电宝会制造新电",
+      "内部电池储存并输出电能"
+    ],
+    "correctIndex": 1,
+    "answer": "内部电池储存并输出电能",
+    "explanation": "充电宝先把电能存进电池，需要时再通过电路把电能输送给手机。",
+    "category": "technology",
+    "source": "remote"
+  },
+  {
+    "id": "why_technology_012",
+    "question": "为什么降噪耳机会变安静？",
+    "emoji": "🎧",
+    "options": [
+      "用反向声波抵消部分噪声",
+      "耳机把声音吃掉"
+    ],
+    "correctIndex": 0,
+    "answer": "用反向声波抵消部分噪声",
+    "explanation": "主动降噪耳机检测外界低频噪声，再发出相反波形的声音来减弱噪声。",
+    "category": "technology",
+    "source": "remote"
+  },
+  {
+    "id": "why_technology_013",
+    "question": "为什么打印机能打印文字？",
+    "emoji": "🖨️",
+    "options": [
+      "把数字图像转成墨点或粉末图案",
+      "纸自己长出字"
+    ],
+    "correctIndex": 0,
+    "answer": "把数字图像转成墨点或粉末图案",
+    "explanation": "打印机按电脑给出的信息控制喷墨或激光成像，把文字和图片固定到纸上。",
+    "category": "technology",
+    "source": "remote"
+  },
+  {
+    "id": "why_technology_014",
+    "question": "为什么红绿灯能指挥交通？",
+    "emoji": "🚦",
+    "options": [
+      "灯光会判断每个人心情",
+      "按规则显示不同颜色信号"
+    ],
+    "correctIndex": 1,
+    "answer": "按规则显示不同颜色信号",
+    "explanation": "红绿灯用颜色和时间顺序告诉车辆、行人何时停、何时通行，减少冲突。",
+    "category": "technology",
+    "source": "remote"
+  },
+  {
+    "id": "why_technology_015",
+    "question": "为什么烟雾报警器能提醒火灾？",
+    "emoji": "🧯",
+    "options": [
+      "它闻到烧焦味才叫",
+      "能检测烟雾颗粒或光线变化"
+    ],
+    "correctIndex": 1,
+    "answer": "能检测烟雾颗粒或光线变化",
+    "explanation": "烟雾进入报警器后会影响内部电路或光路，装置检测到异常就发出警报。",
+    "category": "technology",
+    "source": "remote"
+  },
+  {
+    "id": "why_technology_016",
+    "question": "为什么太阳能板能发电？",
+    "emoji": "☀️",
+    "options": [
+      "半导体把光能转成电能",
+      "太阳光里装着电池"
+    ],
+    "correctIndex": 0,
+    "answer": "半导体把光能转成电能",
+    "explanation": "太阳能电池中的半导体吸收光后产生电流，把太阳光的一部分能量变成电。",
+    "category": "technology",
+    "source": "remote"
+  },
+  {
+    "id": "why_technology_017",
+    "question": "为什么安全气囊能保护乘客？",
+    "emoji": "🚗",
+    "options": [
+      "碰撞时迅速充气缓冲身体",
+      "气囊把车弹回去"
+    ],
+    "correctIndex": 0,
+    "answer": "碰撞时迅速充气缓冲身体",
+    "explanation": "车辆检测到严重碰撞时，安全气囊快速展开，减少人撞到硬物的冲击。",
+    "category": "technology",
+    "source": "remote"
+  },
+  {
+    "id": "why_technology_018",
+    "question": "为什么遥控器能控制电视？",
+    "emoji": "📡",
+    "options": [
+      "按钮把命令喊给电视",
+      "发出红外或无线信号"
+    ],
+    "correctIndex": 1,
+    "answer": "发出红外或无线信号",
+    "explanation": "遥控器按键后发送特定信号，电视接收并识别后执行换台、调音量等操作。",
+    "category": "technology",
+    "source": "remote"
+  },
+  {
+    "id": "why_technology_019",
+    "question": "为什么电磁铁能开关磁力？",
+    "emoji": "🧲",
+    "options": [
+      "通电产生磁场断电磁场减弱",
+      "磁铁会听按钮的话"
+    ],
+    "correctIndex": 0,
+    "answer": "通电产生磁场断电磁场减弱",
+    "explanation": "电流通过线圈会产生磁场，断开电流后磁场大大减弱，所以能控制吸力。",
+    "category": "technology",
+    "source": "remote"
+  },
+  {
+    "id": "why_technology_020",
+    "question": "为什么指纹可以解锁手机？",
+    "emoji": "🧬",
+    "options": [
+      "手机认识手指的温度",
+      "指纹纹路具有个人特征"
+    ],
+    "correctIndex": 1,
+    "answer": "指纹纹路具有个人特征",
+    "explanation": "手机传感器记录指纹纹路特征，并与已保存模板比对，匹配后才解锁。",
+    "category": "technology",
+    "source": "remote"
+  },
+  {
+    "id": "why_food_001",
+    "question": "为什么米饭煮熟会变软？",
+    "emoji": "🍚",
+    "options": [
+      "米粒被水泡成棉花",
+      "淀粉吸水受热糊化"
+    ],
+    "correctIndex": 1,
+    "answer": "淀粉吸水受热糊化",
+    "explanation": "米粒中的淀粉吸水加热后结构改变，变得柔软黏糯。",
+    "category": "food",
+    "source": "remote"
+  },
+  {
+    "id": "why_food_002",
+    "question": "为什么牛奶能补充钙？",
+    "emoji": "🥛",
+    "options": [
+      "牛奶是白色所以有钙",
+      "牛奶含有较多钙和蛋白质"
+    ],
+    "correctIndex": 1,
+    "answer": "牛奶含有较多钙和蛋白质",
+    "explanation": "牛奶中的钙有助于骨骼和牙齿健康，同时也含蛋白质等营养。",
+    "category": "food",
+    "source": "remote"
+  },
+  {
+    "id": "why_food_003",
+    "question": "为什么胡萝卜对眼睛有帮助？",
+    "emoji": "🥕",
+    "options": [
+      "吃了就能夜里发光",
+      "含有可转化为维生素A的胡萝卜素"
+    ],
+    "correctIndex": 1,
+    "answer": "含有可转化为维生素A的胡萝卜素",
+    "explanation": "胡萝卜素能在体内转化为维生素A，维生素A对视觉和上皮组织健康重要。",
+    "category": "food",
+    "source": "remote"
+  },
+  {
+    "id": "why_food_004",
+    "question": "为什么橙子吃起来酸甜？",
+    "emoji": "🍊",
+    "options": [
+      "含糖和有机酸",
+      "橙色水果都酸甜"
+    ],
+    "correctIndex": 0,
+    "answer": "含糖和有机酸",
+    "explanation": "橙子里的糖带来甜味，柠檬酸等有机酸带来酸味，两者共同形成酸甜口感。",
+    "category": "food",
+    "source": "remote"
+  },
+  {
+    "id": "why_food_005",
+    "question": "为什么煎蛋会变香？",
+    "emoji": "🍳",
+    "options": [
+      "锅把香味涂上去",
+      "蛋白质和糖受热产生香味物质"
+    ],
+    "correctIndex": 1,
+    "answer": "蛋白质和糖受热产生香味物质",
+    "explanation": "加热时食物成分发生反应，生成许多带香气和颜色的物质。",
+    "category": "food",
+    "source": "remote"
+  },
+  {
+    "id": "why_food_006",
+    "question": "为什么香蕉熟了会变甜？",
+    "emoji": "🍌",
+    "options": [
+      "香蕉被阳光灌进糖",
+      "淀粉逐渐转化为糖"
+    ],
+    "correctIndex": 1,
+    "answer": "淀粉逐渐转化为糖",
+    "explanation": "香蕉成熟过程中，部分淀粉被酶分解成糖，所以口感更甜更软。",
+    "category": "food",
+    "source": "remote"
+  },
+  {
+    "id": "why_food_007",
+    "question": "为什么西瓜吃起来很多汁？",
+    "emoji": "🍉",
+    "options": [
+      "果肉细胞含有大量水分",
+      "西瓜里面有小水袋"
+    ],
+    "correctIndex": 0,
+    "answer": "果肉细胞含有大量水分",
+    "explanation": "西瓜果肉中水分比例很高，细胞破裂时水分释放出来，所以吃起来多汁。",
+    "category": "food",
+    "source": "remote"
+  },
+  {
+    "id": "why_food_008",
+    "question": "为什么坚果不能一次吃太多？",
+    "emoji": "🥜",
+    "options": [
+      "脂肪和能量较高",
+      "坚果会在肚子里发芽"
+    ],
+    "correctIndex": 0,
+    "answer": "脂肪和能量较高",
+    "explanation": "坚果含健康脂肪和蛋白质，但能量密度高，吃太多容易超过身体需要。",
+    "category": "food",
+    "source": "remote"
+  },
+  {
+    "id": "why_food_009",
+    "question": "为什么蔬菜要多样化？",
+    "emoji": "🥦",
+    "options": [
+      "颜色多才好看",
+      "不同蔬菜提供不同营养"
+    ],
+    "correctIndex": 1,
+    "answer": "不同蔬菜提供不同营养",
+    "explanation": "深绿、橙黄、紫色等蔬菜含不同维生素、矿物质和植物化学物，搭配更均衡。",
+    "category": "food",
+    "source": "remote"
+  },
+  {
+    "id": "why_food_010",
+    "question": "为什么全麦面包更容易有饱腹感？",
+    "emoji": "🍞",
+    "options": [
+      "颜色深就一定更顶饿",
+      "含更多膳食纤维"
+    ],
+    "correctIndex": 1,
+    "answer": "含更多膳食纤维",
+    "explanation": "全麦保留更多麸皮和胚芽，膳食纤维较多，消化速度相对慢。",
+    "category": "food",
+    "source": "remote"
+  },
+  {
+    "id": "why_food_011",
+    "question": "为什么含糖饮料不宜常喝？",
+    "emoji": "🥤",
+    "options": [
+      "甜味会把水分赶走",
+      "糖分多会增加龋齿和能量摄入"
+    ],
+    "correctIndex": 1,
+    "answer": "糖分多会增加龋齿和能量摄入",
+    "explanation": "含糖饮料容易让人在不知不觉中摄入很多糖，也会增加牙齿被酸侵蚀的机会。",
+    "category": "food",
+    "source": "remote"
+  },
+  {
+    "id": "why_food_012",
+    "question": "为什么盐吃太多不好？",
+    "emoji": "🧂",
+    "options": [
+      "盐会让人立刻变渴坏",
+      "过多钠会增加身体负担"
+    ],
+    "correctIndex": 1,
+    "answer": "过多钠会增加身体负担",
+    "explanation": "盐里的钠是身体需要的元素，但过量摄入可能影响血压和肾脏负担。",
+    "category": "food",
+    "source": "remote"
+  },
+  {
+    "id": "why_food_013",
+    "question": "为什么热汤要慢慢喝？",
+    "emoji": "🍲",
+    "options": [
+      "太烫会伤口腔和食道",
+      "热汤会跑得更快"
+    ],
+    "correctIndex": 0,
+    "answer": "太烫会伤口腔和食道",
+    "explanation": "高温食物可能烫伤口腔黏膜和食道，稍微放凉再喝更安全。",
+    "category": "food",
+    "source": "remote"
+  },
+  {
+    "id": "why_food_014",
+    "question": "为什么冷冻能保存食物更久？",
+    "emoji": "🧊",
+    "options": [
+      "冰箱能杀死所有细菌",
+      "低温减慢微生物生长和化学变化"
+    ],
+    "correctIndex": 1,
+    "answer": "低温减慢微生物生长和化学变化",
+    "explanation": "冷冻能让微生物活动大大减慢，也能减缓食物变质反应，但不能让食物永远不坏。",
+    "category": "food",
+    "source": "remote"
+  },
+  {
+    "id": "why_food_015",
+    "question": "为什么野外蘑菇不能随便吃？",
+    "emoji": "🍄",
+    "options": [
+      "有些蘑菇有毒且难辨认",
+      "野蘑菇味道都不好"
+    ],
+    "correctIndex": 0,
+    "answer": "有些蘑菇有毒且难辨认",
+    "explanation": "许多毒蘑菇和可食蘑菇外形相似，误食可能严重中毒，必须避免采食。",
+    "category": "food",
+    "source": "remote"
+  },
+  {
+    "id": "why_food_016",
+    "question": "为什么肉要充分煮熟？",
+    "emoji": "🥩",
+    "options": [
+      "高温能杀死许多病原体",
+      "肉熟了颜色才好看"
+    ],
+    "correctIndex": 0,
+    "answer": "高温能杀死许多病原体",
+    "explanation": "生肉可能带有细菌或寄生虫，充分加热能降低感染风险。",
+    "category": "food",
+    "source": "remote"
+  },
+  {
+    "id": "why_food_017",
+    "question": "为什么蜂蜜很甜？",
+    "emoji": "🍯",
+    "options": [
+      "蜜蜂往里面加了白糖",
+      "主要含果糖和葡萄糖"
+    ],
+    "correctIndex": 1,
+    "answer": "主要含果糖和葡萄糖",
+    "explanation": "蜂蜜来自花蜜加工，含有大量果糖、葡萄糖等糖类，所以味道很甜。",
+    "category": "food",
+    "source": "remote"
+  },
+  {
+    "id": "why_food_018",
+    "question": "为什么腌菜会变咸？",
+    "emoji": "🥒",
+    "options": [
+      "盐分进入蔬菜组织",
+      "蔬菜自己长出盐"
+    ],
+    "correctIndex": 0,
+    "answer": "盐分进入蔬菜组织",
+    "explanation": "腌制时盐水中的盐分扩散到蔬菜里，也会让部分水分从蔬菜中出来。",
+    "category": "food",
+    "source": "remote"
+  },
+  {
+    "id": "why_food_019",
+    "question": "为什么面条煮久会变软烂？",
+    "emoji": "🍜",
+    "options": [
+      "淀粉吸水膨胀且结构变弱",
+      "面条被热水吓软"
+    ],
+    "correctIndex": 0,
+    "answer": "淀粉吸水膨胀且结构变弱",
+    "explanation": "面条中的淀粉和蛋白质受热吸水，时间过长结构变松散，就会软烂。",
+    "category": "food",
+    "source": "remote"
+  },
+  {
+    "id": "why_food_020",
+    "question": "为什么饭前吃一点蔬菜有帮助？",
+    "emoji": "🥗",
+    "options": [
+      "膳食纤维能增加饱腹并延缓吸收",
+      "蔬菜能挡住所有油"
+    ],
+    "correctIndex": 0,
+    "answer": "膳食纤维能增加饱腹并延缓吸收",
+    "explanation": "蔬菜里的膳食纤维能增加饱腹感，也能让一餐的营养搭配更均衡。",
+    "category": "food",
+    "source": "remote"
+  },
+  {
+    "id": "why_safety_001",
+    "question": "为什么过马路要看红绿灯？",
+    "emoji": "🚦",
+    "options": [
+      "红绿灯颜色更漂亮",
+      "减少人与车辆冲突"
+    ],
+    "correctIndex": 1,
+    "answer": "减少人与车辆冲突",
+    "explanation": "红绿灯按规则安排车辆和行人通行，遵守信号能显著降低交通危险。",
+    "category": "safety",
+    "source": "remote"
+  },
+  {
+    "id": "why_safety_002",
+    "question": "为什么坐车要系安全带？",
+    "emoji": "🚗",
+    "options": [
+      "安全带能让车更快",
+      "碰撞时固定身体减少伤害"
+    ],
+    "correctIndex": 1,
+    "answer": "碰撞时固定身体减少伤害",
+    "explanation": "车辆急停或碰撞时，人会因惯性向前冲，安全带能把身体约束在座位上。",
+    "category": "safety",
+    "source": "remote"
+  },
+  {
+    "id": "why_safety_003",
+    "question": "为什么电器着火不能直接泼水？",
+    "emoji": "🔥",
+    "options": [
+      "水可能导电造成触电",
+      "火会喝水变大"
+    ],
+    "correctIndex": 0,
+    "answer": "水可能导电造成触电",
+    "explanation": "带电设备遇水可能让电流通过人体或扩散危险，应先断电并求助大人。",
+    "category": "safety",
+    "source": "remote"
+  },
+  {
+    "id": "why_safety_004",
+    "question": "为什么遇到火灾要弯腰低姿前进？",
+    "emoji": "🧯",
+    "options": [
+      "地面会更亮",
+      "有毒烟气和热空气多在上方"
+    ],
+    "correctIndex": 1,
+    "answer": "有毒烟气和热空气多在上方",
+    "explanation": "火灾烟气上升，低处相对更容易呼吸和看清路线，但应按安全指引撤离。",
+    "category": "safety",
+    "source": "remote"
+  },
+  {
+    "id": "why_safety_005",
+    "question": "为什么游泳要有大人看护？",
+    "emoji": "🏊",
+    "options": [
+      "溺水可能发生得很快且不易发现",
+      "水会突然变深很多"
+    ],
+    "correctIndex": 0,
+    "answer": "溺水可能发生得很快且不易发现",
+    "explanation": "孩子体力和判断力有限，水中危险变化快，有大人看护能及时帮助。",
+    "category": "safety",
+    "source": "remote"
+  },
+  {
+    "id": "why_safety_006",
+    "question": "为什么不能乱吃药？",
+    "emoji": "💊",
+    "options": [
+      "药片颜色好看也能吃",
+      "药物剂量和适应症必须正确"
+    ],
+    "correctIndex": 1,
+    "answer": "药物剂量和适应症必须正确",
+    "explanation": "药物会影响身体功能，吃错种类或剂量可能有危险，必须按医生和家长指导。",
+    "category": "safety",
+    "source": "remote"
+  },
+  {
+    "id": "why_safety_007",
+    "question": "为什么不能湿手摸插座？",
+    "emoji": "🔌",
+    "options": [
+      "水会增加导电触电风险",
+      "插座会怕水咬人"
+    ],
+    "correctIndex": 0,
+    "answer": "水会增加导电触电风险",
+    "explanation": "湿手电阻降低，接触电源时电流更容易通过身体，可能造成严重触电。",
+    "category": "safety",
+    "source": "remote"
+  },
+  {
+    "id": "why_safety_008",
+    "question": "为什么热水热汤要小心端？",
+    "emoji": "🍲",
+    "options": [
+      "高温液体会烫伤皮肤",
+      "碗会突然变重"
+    ],
+    "correctIndex": 0,
+    "answer": "高温液体会烫伤皮肤",
+    "explanation": "热水热汤洒出后能迅速烫伤皮肤，应双手稳拿并远离奔跑打闹。",
+    "category": "safety",
+    "source": "remote"
+  },
+  {
+    "id": "why_safety_009",
+    "question": "为什么不能攀爬窗台？",
+    "emoji": "🪟",
+    "options": [
+      "高处坠落风险很大",
+      "窗台会变滑梯"
+    ],
+    "correctIndex": 0,
+    "answer": "高处坠落风险很大",
+    "explanation": "窗台和阳台边缘没有安全活动空间，一旦失去平衡可能造成严重伤害。",
+    "category": "safety",
+    "source": "remote"
+  },
+  {
+    "id": "why_safety_010",
+    "question": "为什么不能闻不认识的化学品？",
+    "emoji": "🧪",
+    "options": [
+      "闻一下就能知道答案",
+      "可能刺激或毒害呼吸道"
+    ],
+    "correctIndex": 1,
+    "answer": "可能刺激或毒害呼吸道",
+    "explanation": "一些化学品挥发出的气体有刺激性或毒性，不能靠近闻，也不能随意触碰。",
+    "category": "safety",
+    "source": "remote"
+  },
+  {
+    "id": "why_safety_011",
+    "question": "为什么遇到陌生狗不要突然摸？",
+    "emoji": "🐕",
+    "options": [
+      "狗一定都喜欢被摸",
+      "动物可能受惊或防御"
+    ],
+    "correctIndex": 1,
+    "answer": "动物可能受惊或防御",
+    "explanation": "陌生动物不了解你的意图，突然靠近可能让它紧张，最好先远离并询问主人。",
+    "category": "safety",
+    "source": "remote"
+  },
+  {
+    "id": "why_safety_012",
+    "question": "为什么刀具要让大人帮忙使用？",
+    "emoji": "🔪",
+    "options": [
+      "锋利边缘容易割伤",
+      "刀具只会切菜不会伤人"
+    ],
+    "correctIndex": 0,
+    "answer": "锋利边缘容易割伤",
+    "explanation": "刀具能轻易切开皮肤，儿童使用时需要大人指导和合适姿势。",
+    "category": "safety",
+    "source": "remote"
+  },
+  {
+    "id": "why_safety_013",
+    "question": "为什么骑车要戴头盔？",
+    "emoji": "🚲",
+    "options": [
+      "头盔能让车更稳",
+      "摔倒时保护头部"
+    ],
+    "correctIndex": 1,
+    "answer": "摔倒时保护头部",
+    "explanation": "头部受伤后果严重，头盔能吸收一部分冲击，降低伤害风险。",
+    "category": "safety",
+    "source": "remote"
+  },
+  {
+    "id": "why_safety_014",
+    "question": "为什么打雷时不要站在大树下？",
+    "emoji": "🌩️",
+    "options": [
+      "大树可能成为雷电通道",
+      "树叶会吸走声音"
+    ],
+    "correctIndex": 0,
+    "answer": "大树可能成为雷电通道",
+    "explanation": "雷雨中高大孤立物更容易被雷击，站在树下可能遭遇侧击或跨步电压危险。",
+    "category": "safety",
+    "source": "remote"
+  },
+  {
+    "id": "why_safety_015",
+    "question": "为什么电梯故障时不能扒门？",
+    "emoji": "🛗",
+    "options": [
+      "电梯井和移动部件很危险",
+      "门后一定有人能拉你"
+    ],
+    "correctIndex": 0,
+    "answer": "电梯井和移动部件很危险",
+    "explanation": "电梯门外可能不是安全楼层，强行扒门可能坠落或受夹，应按警铃等待救援。",
+    "category": "safety",
+    "source": "remote"
+  },
+  {
+    "id": "why_safety_016",
+    "question": "为什么夏天户外要防晒？",
+    "emoji": "🌞",
+    "options": [
+      "强紫外线会伤害皮肤和眼睛",
+      "防晒只是为了不变黑"
+    ],
+    "correctIndex": 0,
+    "answer": "强紫外线会伤害皮肤和眼睛",
+    "explanation": "紫外线过强会晒伤皮肤，也可能伤眼，帽子、遮阳和防晒用品能降低风险。",
+    "category": "safety",
+    "source": "remote"
+  },
+  {
+    "id": "why_safety_017",
+    "question": "为什么冬天路面结冰要慢走？",
+    "emoji": "🧊",
+    "options": [
+      "冰会故意绊人",
+      "冰面摩擦力小容易滑倒"
+    ],
+    "correctIndex": 1,
+    "answer": "冰面摩擦力小容易滑倒",
+    "explanation": "鞋底和冰面的摩擦力比干地面小，快速跑跳更容易失去平衡。",
+    "category": "safety",
+    "source": "remote"
+  },
+  {
+    "id": "why_safety_018",
+    "question": "为什么走路时不要一直看手机？",
+    "emoji": "📱",
+    "options": [
+      "手机屏幕会变重",
+      "会降低对车辆和障碍物的注意"
+    ],
+    "correctIndex": 1,
+    "answer": "会降低对车辆和障碍物的注意",
+    "explanation": "走路需要观察周围环境，低头看屏幕会错过台阶、车辆和行人等危险。",
+    "category": "safety",
+    "source": "remote"
+  },
+  {
+    "id": "why_safety_019",
+    "question": "为什么吃小圆食物要细嚼慢咽？",
+    "emoji": "🍇",
+    "options": [
+      "圆食物会自己跳动",
+      "避免呛入气道"
+    ],
+    "correctIndex": 1,
+    "answer": "避免呛入气道",
+    "explanation": "葡萄、坚果等小圆硬食物如果吞咽太急，可能卡住气道，应切小或慢慢咀嚼。",
+    "category": "safety",
+    "source": "remote"
+  },
+  {
+    "id": "why_safety_020",
+    "question": "为什么要记住紧急求助电话？",
+    "emoji": "🧯",
+    "options": [
+      "电话号码能让危险消失",
+      "危险时能快速联系救援"
+    ],
+    "correctIndex": 1,
+    "answer": "危险时能快速联系救援",
+    "explanation": "遇到火灾、急病或危险时，准确拨打求助电话能让专业人员尽快赶到。",
+    "category": "safety",
+    "source": "remote"
+  },
+  {
+    "id": "why_ocean_001",
+    "question": "为什么海浪会一阵一阵拍岸？",
+    "emoji": "🌊",
+    "options": [
+      "海水在主动跳舞",
+      "风把能量传给海水形成波浪"
+    ],
+    "correctIndex": 1,
+    "answer": "风把能量传给海水形成波浪",
+    "explanation": "风吹过海面时把能量传给水，波浪向岸边传播，遇浅水后破碎拍岸。",
+    "category": "ocean",
+    "source": "remote"
+  },
+  {
+    "id": "why_ocean_002",
+    "question": "为什么鲸鱼要浮出水面呼吸？",
+    "emoji": "🐋",
+    "options": [
+      "鲸鱼想晒太阳",
+      "鲸鱼用肺呼吸空气"
+    ],
+    "correctIndex": 1,
+    "answer": "鲸鱼用肺呼吸空气",
+    "explanation": "鲸鱼是哺乳动物，不能像鱼用鳃取氧，需要定期到水面通过气孔呼吸。",
+    "category": "ocean",
+    "source": "remote"
+  },
+  {
+    "id": "why_ocean_003",
+    "question": "为什么珊瑚怕海水变热？",
+    "emoji": "🪸",
+    "options": [
+      "高温会破坏珊瑚和共生藻关系",
+      "珊瑚只喜欢冷水"
+    ],
+    "correctIndex": 0,
+    "answer": "高温会破坏珊瑚和共生藻关系",
+    "explanation": "海水异常升温会让珊瑚失去共生藻，出现白化，长期会影响生存。",
+    "category": "ocean",
+    "source": "remote"
+  },
+  {
+    "id": "why_ocean_004",
+    "question": "为什么章鱼能改变颜色？",
+    "emoji": "🦑",
+    "options": [
+      "皮肤色素细胞和肌肉共同作用",
+      "章鱼带着彩灯"
+    ],
+    "correctIndex": 0,
+    "answer": "皮肤色素细胞和肌肉共同作用",
+    "explanation": "章鱼皮肤里有色素细胞，神经控制这些细胞伸缩，能快速改变颜色和花纹。",
+    "category": "ocean",
+    "source": "remote"
+  },
+  {
+    "id": "why_ocean_005",
+    "question": "为什么深海鱼常长得奇特？",
+    "emoji": "🐠",
+    "options": [
+      "深海把鱼压变形",
+      "适应黑暗、高压和食物少的环境"
+    ],
+    "correctIndex": 1,
+    "answer": "适应黑暗、高压和食物少的环境",
+    "explanation": "深海没有阳光、压力大、食物稀少，动物会演化出发光、大嘴等特殊适应。",
+    "category": "ocean",
+    "source": "remote"
+  },
+  {
+    "id": "why_ocean_006",
+    "question": "为什么海水不能直接当饮用水？",
+    "emoji": "🧂",
+    "options": [
+      "海水颜色不够清",
+      "盐分太高会加重身体失水"
+    ],
+    "correctIndex": 1,
+    "answer": "盐分太高会加重身体失水",
+    "explanation": "海水含盐量远高于人体适合范围，直接大量饮用会让身体需要排出更多盐和水。",
+    "category": "ocean",
+    "source": "remote"
+  },
+  {
+    "id": "why_ocean_007",
+    "question": "为什么章鱼能钻进很小的洞？",
+    "emoji": "🐙",
+    "options": [
+      "它能把骨头收起来",
+      "身体柔软且没有硬骨架"
+    ],
+    "correctIndex": 1,
+    "answer": "身体柔软且没有硬骨架",
+    "explanation": "章鱼没有脊椎骨，身体柔软，只要坚硬的嘴能通过，就能挤过狭小空间。",
+    "category": "ocean",
+    "source": "remote"
+  },
+  {
+    "id": "why_ocean_008",
+    "question": "为什么螃蟹要蜕壳？",
+    "emoji": "🦀",
+    "options": [
+      "它想换新衣服",
+      "硬壳不能随身体长大"
+    ],
+    "correctIndex": 1,
+    "answer": "硬壳不能随身体长大",
+    "explanation": "螃蟹外骨骼坚硬，长大时必须脱掉旧壳，等新壳变硬后继续保护身体。",
+    "category": "ocean",
+    "source": "remote"
+  },
+  {
+    "id": "why_ocean_009",
+    "question": "为什么贝壳能保护软体动物？",
+    "emoji": "🐚",
+    "options": [
+      "硬壳阻挡捕食者和环境伤害",
+      "贝壳只是装饰"
+    ],
+    "correctIndex": 0,
+    "answer": "硬壳阻挡捕食者和环境伤害",
+    "explanation": "许多软体动物身体柔软，分泌碳酸钙形成外壳来保护自己。",
+    "category": "ocean",
+    "source": "remote"
+  },
+  {
+    "id": "why_ocean_010",
+    "question": "为什么鲨鱼要不停游动？",
+    "emoji": "🦈",
+    "options": [
+      "有些种类需要水流过鳃呼吸",
+      "鲨鱼一停就忘了方向"
+    ],
+    "correctIndex": 0,
+    "answer": "有些种类需要水流过鳃呼吸",
+    "explanation": "部分鲨鱼靠游动让水流过鳃获得氧气，不过也有些鲨鱼能停在海底呼吸。",
+    "category": "ocean",
+    "source": "remote"
+  },
+  {
+    "id": "why_ocean_011",
+    "question": "为什么水母身体透明？",
+    "emoji": "🪼",
+    "options": [
+      "水母由玻璃做成",
+      "身体含水量很高且组织简单"
+    ],
+    "correctIndex": 1,
+    "answer": "身体含水量很高且组织简单",
+    "explanation": "水母身体大部分是水，组织薄而透明，这有助于在水中隐藏。",
+    "category": "ocean",
+    "source": "remote"
+  },
+  {
+    "id": "why_ocean_012",
+    "question": "为什么海豹能在水下憋气？",
+    "emoji": "🦭",
+    "options": [
+      "海豹不需要呼吸",
+      "血液和肌肉能储存较多氧气"
+    ],
+    "correctIndex": 1,
+    "answer": "血液和肌肉能储存较多氧气",
+    "explanation": "海豹潜水前吸气，并能降低心率、把氧气优先供给重要器官。",
+    "category": "ocean",
+    "source": "remote"
+  },
+  {
+    "id": "why_ocean_013",
+    "question": "为什么鱼群会一起转向？",
+    "emoji": "🐟",
+    "options": [
+      "鱼群有一个队长喊口令",
+      "依靠视觉和侧线感受同伴运动"
+    ],
+    "correctIndex": 1,
+    "answer": "依靠视觉和侧线感受同伴运动",
+    "explanation": "鱼能观察旁边同伴，也能用侧线感受水流变化，从而快速同步方向。",
+    "category": "ocean",
+    "source": "remote"
+  },
+  {
+    "id": "why_ocean_014",
+    "question": "为什么深海很黑？",
+    "emoji": "🌑",
+    "options": [
+      "海底把光吃掉了",
+      "阳光难以穿透到深处"
+    ],
+    "correctIndex": 1,
+    "answer": "阳光难以穿透到深处",
+    "explanation": "海水会吸收和散射阳光，深度增加后光越来越少，深海几乎没有阳光。",
+    "category": "ocean",
+    "source": "remote"
+  },
+  {
+    "id": "why_ocean_015",
+    "question": "为什么海洋能调节气候？",
+    "emoji": "🌡️",
+    "options": [
+      "海水能储存和搬运大量热量",
+      "海水会控制太阳"
+    ],
+    "correctIndex": 0,
+    "answer": "海水能储存和搬运大量热量",
+    "explanation": "海洋热容量大，能吸收、释放并通过洋流运输热量，影响沿海和全球气候。",
+    "category": "ocean",
+    "source": "remote"
+  },
+  {
+    "id": "why_ocean_016",
+    "question": "为什么洋流会流动？",
+    "emoji": "🌀",
+    "options": [
+      "海水都往一个方向跑",
+      "风、温盐差和地球自转共同作用"
+    ],
+    "correctIndex": 1,
+    "answer": "风、温盐差和地球自转共同作用",
+    "explanation": "海面风、海水密度差和地球自转会驱动大规模海水运动，形成洋流。",
+    "category": "ocean",
+    "source": "remote"
+  },
+  {
+    "id": "why_ocean_017",
+    "question": "为什么海冰融化对海洋有影响？",
+    "emoji": "🧊",
+    "options": [
+      "冰化了只多一点水",
+      "会改变盐度、栖息地和反射率"
+    ],
+    "correctIndex": 1,
+    "answer": "会改变盐度、栖息地和反射率",
+    "explanation": "海冰影响海水盐度和极地动物生活，也会改变地表反射阳光的能力。",
+    "category": "ocean",
+    "source": "remote"
+  },
+  {
+    "id": "why_ocean_018",
+    "question": "为什么海龟会回到出生地附近产卵？",
+    "emoji": "🐢",
+    "options": [
+      "可能利用磁场和气味等线索导航",
+      "它记得每一块沙子"
+    ],
+    "correctIndex": 0,
+    "answer": "可能利用磁场和气味等线索导航",
+    "explanation": "海龟导航机制很复杂，研究认为地磁、气味和洋流等线索都可能帮助它们回游。",
+    "category": "ocean",
+    "source": "remote"
+  },
+  {
+    "id": "why_ocean_019",
+    "question": "为什么河豚遇危险会鼓起来？",
+    "emoji": "🐡",
+    "options": [
+      "吸入水或空气让身体变大",
+      "它在吹气球玩"
+    ],
+    "correctIndex": 0,
+    "answer": "吸入水或空气让身体变大",
+    "explanation": "河豚变大后更难被捕食者吞下，也能露出刺或毒性作为防御。",
+    "category": "ocean",
+    "source": "remote"
+  },
+  {
+    "id": "why_ocean_020",
+    "question": "为什么虾煮熟会变红？",
+    "emoji": "🦐",
+    "options": [
+      "锅把虾染红",
+      "色素蛋白受热分离显出虾青素颜色"
+    ],
+    "correctIndex": 1,
+    "answer": "色素蛋白受热分离显出虾青素颜色",
+    "explanation": "虾壳中的虾青素原本被蛋白质影响，受热后显出红橙色。",
+    "category": "ocean",
+    "source": "remote"
+  },
+  {
+    "id": "why_math_001",
+    "question": "为什么零很重要？",
+    "emoji": "🔢",
+    "options": [
+      "零只是空白没用",
+      "它表示没有数量并能占位"
+    ],
+    "correctIndex": 1,
+    "answer": "它表示没有数量并能占位",
+    "explanation": "零既能表示数量为无，也能在十进制里占位，让 10 和 100 这样的数有明确含义。",
+    "category": "math",
+    "source": "remote"
+  },
+  {
+    "id": "why_math_002",
+    "question": "为什么加法可以交换顺序？",
+    "emoji": "➕",
+    "options": [
+      "合起来的总数不变",
+      "数字会自己换位置"
+    ],
+    "correctIndex": 0,
+    "answer": "合起来的总数不变",
+    "explanation": "三颗糖加两颗糖和两颗糖加三颗糖，总数都是五颗，这就是加法交换律。",
+    "category": "math",
+    "source": "remote"
+  },
+  {
+    "id": "why_math_003",
+    "question": "为什么乘法能表示重复加法？",
+    "emoji": "✖️",
+    "options": [
+      "每组一样多时可以快速合计",
+      "乘号能让数字变魔术"
+    ],
+    "correctIndex": 0,
+    "answer": "每组一样多时可以快速合计",
+    "explanation": "例如 4 组每组 3 个，就是 3 加 3 加 3 加 3，也可以写成 4 乘 3。",
+    "category": "math",
+    "source": "remote"
+  },
+  {
+    "id": "why_math_004",
+    "question": "为什么测量要用统一单位？",
+    "emoji": "📏",
+    "options": [
+      "方便不同人比较长度",
+      "尺子喜欢整齐"
+    ],
+    "correctIndex": 0,
+    "answer": "方便不同人比较长度",
+    "explanation": "如果每个人用不同脚步当单位，结果很难比较；厘米、米等统一单位能减少误会。",
+    "category": "math",
+    "source": "remote"
+  },
+  {
+    "id": "why_math_005",
+    "question": "为什么三角形很稳？",
+    "emoji": "🔺",
+    "options": [
+      "三角形比较勇敢",
+      "三条边确定形状不易变形"
+    ],
+    "correctIndex": 1,
+    "answer": "三条边确定形状不易变形",
+    "explanation": "三角形三边长度确定后形状固定，受力时不容易像四边形那样歪斜。",
+    "category": "math",
+    "source": "remote"
+  },
+  {
+    "id": "why_math_006",
+    "question": "为什么圆没有角？",
+    "emoji": "⚪",
+    "options": [
+      "圆上每点到圆心距离相等",
+      "圆把角藏起来了"
+    ],
+    "correctIndex": 0,
+    "answer": "圆上每点到圆心距离相等",
+    "explanation": "圆是由到圆心距离相同的点组成的曲线，没有突然转折的顶点。",
+    "category": "math",
+    "source": "remote"
+  },
+  {
+    "id": "why_math_007",
+    "question": "为什么位数越靠左表示越大单位？",
+    "emoji": "🧮",
+    "options": [
+      "左边数字更用力",
+      "十进制每左移一位扩大十倍"
+    ],
+    "correctIndex": 1,
+    "answer": "十进制每左移一位扩大十倍",
+    "explanation": "在十进制里，个位左边是十位，再左边是百位，每一位代表的单位都扩大十倍。",
+    "category": "math",
+    "source": "remote"
+  },
+  {
+    "id": "why_math_008",
+    "question": "为什么分数能表示一部分？",
+    "emoji": "🧩",
+    "options": [
+      "分数只适合分蛋糕",
+      "把整体平均分后取其中几份"
+    ],
+    "correctIndex": 1,
+    "answer": "把整体平均分后取其中几份",
+    "explanation": "把一个整体平均分成若干份，取其中几份就能用分数表示，例如二分之一。",
+    "category": "math",
+    "source": "remote"
+  },
+  {
+    "id": "why_math_009",
+    "question": "为什么直角是九十度？",
+    "emoji": "📐",
+    "options": [
+      "一圈被分成三百六十度的四分之一",
+      "直角天生喜欢九十"
+    ],
+    "correctIndex": 0,
+    "answer": "一圈被分成三百六十度的四分之一",
+    "explanation": "角度单位把一整圈定为 360 度，直角是四分之一圈，所以是 90 度。",
+    "category": "math",
+    "source": "remote"
+  },
+  {
+    "id": "why_math_010",
+    "question": "为什么钟面一圈是十二小时？",
+    "emoji": "🕒",
+    "options": [
+      "历史计时习惯把一天分成两段十二小时",
+      "钟面只能放十二个数"
+    ],
+    "correctIndex": 0,
+    "answer": "历史计时习惯把一天分成两段十二小时",
+    "explanation": "许多文化长期使用十二进制计时，现代钟面保留了十二小时一圈的表示方式。",
+    "category": "math",
+    "source": "remote"
+  },
+  {
+    "id": "why_math_011",
+    "question": "为什么骰子每面朝上的机会差不多？",
+    "emoji": "🎲",
+    "options": [
+      "形状均匀时各面条件相同",
+      "骰子喜欢公平"
+    ],
+    "correctIndex": 0,
+    "answer": "形状均匀时各面条件相同",
+    "explanation": "规则骰子六个面大小形状相同，充分滚动后每个面朝上的可能性大致相等。",
+    "category": "math",
+    "source": "remote"
+  },
+  {
+    "id": "why_math_012",
+    "question": "为什么长方形面积用长乘宽？",
+    "emoji": "🧱",
+    "options": [
+      "面积只要猜一猜",
+      "可以看成许多单位小方格排成行列"
+    ],
+    "correctIndex": 1,
+    "answer": "可以看成许多单位小方格排成行列",
+    "explanation": "长方形有几行、每行几个单位方格，总数就是长和宽对应数量的乘积。",
+    "category": "math",
+    "source": "remote"
+  },
+  {
+    "id": "why_math_013",
+    "question": "为什么统计要看样本数量？",
+    "emoji": "📊",
+    "options": [
+      "数量越少越省事所以更准",
+      "样本太少容易偶然偏差"
+    ],
+    "correctIndex": 1,
+    "answer": "样本太少容易偶然偏差",
+    "explanation": "只看一两次结果可能碰巧，样本多一些通常能更稳定地反映整体情况。",
+    "category": "math",
+    "source": "remote"
+  },
+  {
+    "id": "why_math_014",
+    "question": "为什么规律题要找重复或变化？",
+    "emoji": "🔁",
+    "options": [
+      "规律来自稳定的关系",
+      "答案总在最后一个图里"
+    ],
+    "correctIndex": 0,
+    "answer": "规律来自稳定的关系",
+    "explanation": "观察颜色、数量、方向或形状怎样重复和变化，就能推测下一个可能是什么。",
+    "category": "math",
+    "source": "remote"
+  },
+  {
+    "id": "why_math_015",
+    "question": "为什么平均数不一定代表每个人？",
+    "emoji": "🪙",
+    "options": [
+      "平均数会受极大极小值影响",
+      "平均数就是每个人都一样"
+    ],
+    "correctIndex": 0,
+    "answer": "平均数会受极大极小值影响",
+    "explanation": "平均数表示总量平分后的结果，但如果数据差异很大，它可能不能代表多数情况。",
+    "category": "math",
+    "source": "remote"
+  },
+  {
+    "id": "why_math_016",
+    "question": "为什么立方体有六个面？",
+    "emoji": "📦",
+    "options": [
+      "方块随便长出六面",
+      "三个方向各有一对相对的正方形面"
+    ],
+    "correctIndex": 1,
+    "answer": "三个方向各有一对相对的正方形面",
+    "explanation": "立方体向上下一对、左右一对、前后一对，共有六个相同的正方形面。",
+    "category": "math",
+    "source": "remote"
+  },
+  {
+    "id": "why_math_017",
+    "question": "为什么除法能表示平均分？",
+    "emoji": "➗",
+    "options": [
+      "除号会把东西切开",
+      "把总数分成相等的几份"
+    ],
+    "correctIndex": 1,
+    "answer": "把总数分成相等的几份",
+    "explanation": "例如 12 个苹果平均分给 3 人，每人 4 个，这就是 12 除以 3。",
+    "category": "math",
+    "source": "remote"
+  },
+  {
+    "id": "why_math_018",
+    "question": "为什么估算很有用？",
+    "emoji": "🧠",
+    "options": [
+      "能快速判断答案是否合理",
+      "估算永远比精算准"
+    ],
+    "correctIndex": 0,
+    "answer": "能快速判断答案是否合理",
+    "explanation": "估算不求完全精确，但能帮助我们在购物、测量和检查计算时快速判断大概范围。",
+    "category": "math",
+    "source": "remote"
+  },
+  {
+    "id": "why_math_019",
+    "question": "为什么地图比例尺能表示真实距离？",
+    "emoji": "🧭",
+    "options": [
+      "用固定比例缩小实际长度",
+      "地图会自动变大"
+    ],
+    "correctIndex": 0,
+    "answer": "用固定比例缩小实际长度",
+    "explanation": "比例尺说明图上一段长度对应现实中多长，按同一比例就能换算真实距离。",
+    "category": "math",
+    "source": "remote"
+  },
+  {
+    "id": "why_math_020",
+    "question": "为什么圆周率不是整数？",
+    "emoji": "🧵",
+    "options": [
+      "圆没有量准",
+      "圆周长和直径的比例是无限不循环小数"
+    ],
+    "correctIndex": 1,
+    "answer": "圆周长和直径的比例是无限不循环小数",
+    "explanation": "任何圆的周长除以直径都约等于 3.14159，这个比例不能写成有限小数。",
+    "category": "math",
+    "source": "remote"
+  },
+  {
+    "id": "why_daily_life_001",
+    "question": "为什么肥皂洗手要搓一会儿？",
+    "emoji": "🧼",
+    "options": [
+      "泡泡越大越消毒",
+      "需要时间让污垢和微生物脱离皮肤"
+    ],
+    "correctIndex": 1,
+    "answer": "需要时间让污垢和微生物脱离皮肤",
+    "explanation": "搓洗能让肥皂接触指缝和掌心，把油污、灰尘和许多微生物带走。",
+    "category": "daily_life",
+    "source": "remote"
+  },
+  {
+    "id": "why_daily_life_002",
+    "question": "为什么书包不能背太重？",
+    "emoji": "🎒",
+    "options": [
+      "会让肩颈和脊柱负担过大",
+      "书包会把书压坏"
+    ],
+    "correctIndex": 0,
+    "answer": "会让肩颈和脊柱负担过大",
+    "explanation": "长期背过重书包会让肌肉疲劳、姿势变差，可能影响脊柱健康。",
+    "category": "daily_life",
+    "source": "remote"
+  },
+  {
+    "id": "why_daily_life_003",
+    "question": "为什么运动前要热身？",
+    "emoji": "🏃",
+    "options": [
+      "热身能让鞋更防滑",
+      "让肌肉关节逐渐进入状态"
+    ],
+    "correctIndex": 1,
+    "answer": "让肌肉关节逐渐进入状态",
+    "explanation": "热身能增加血液供应，让关节和肌肉更灵活，减少突然运动带来的受伤风险。",
+    "category": "daily_life",
+    "source": "remote"
+  },
+  {
+    "id": "why_daily_life_004",
+    "question": "为什么热天要及时喝水？",
+    "emoji": "💧",
+    "options": [
+      "出汗会带走身体水分",
+      "喝水能让天气变凉"
+    ],
+    "correctIndex": 0,
+    "answer": "出汗会带走身体水分",
+    "explanation": "炎热或运动时身体通过出汗散热，水分流失多，及时补水能维持身体运转。",
+    "category": "daily_life",
+    "source": "remote"
+  },
+  {
+    "id": "why_daily_life_005",
+    "question": "为什么吃饭要细嚼慢咽？",
+    "emoji": "🍽️",
+    "options": [
+      "饭会自己变少",
+      "帮助消化并避免呛咳"
+    ],
+    "correctIndex": 1,
+    "answer": "帮助消化并避免呛咳",
+    "explanation": "充分咀嚼能把食物变小并混合唾液，也给身体时间感受饱腹。",
+    "category": "daily_life",
+    "source": "remote"
+  },
+  {
+    "id": "why_daily_life_006",
+    "question": "为什么看书写字要保持距离？",
+    "emoji": "📚",
+    "options": [
+      "减少眼睛长时间调节负担",
+      "书本会吸走视力"
+    ],
+    "correctIndex": 0,
+    "answer": "减少眼睛长时间调节负担",
+    "explanation": "眼睛长时间近距离用力调节容易疲劳，保持合适距离和休息有助于保护视力。",
+    "category": "daily_life",
+    "source": "remote"
+  },
+  {
+    "id": "why_daily_life_007",
+    "question": "为什么饭后漱口有帮助？",
+    "emoji": "🪥",
+    "options": [
+      "能冲走部分食物残渣",
+      "漱口能替代所有刷牙"
+    ],
+    "correctIndex": 0,
+    "answer": "能冲走部分食物残渣",
+    "explanation": "饭后漱口可以减少口腔残渣和酸性环境，但早晚认真刷牙仍然很重要。",
+    "category": "daily_life",
+    "source": "remote"
+  },
+  {
+    "id": "why_daily_life_008",
+    "question": "为什么睡前少看屏幕更好？",
+    "emoji": "🛏️",
+    "options": [
+      "屏幕会偷走梦",
+      "强光和内容刺激会影响入睡"
+    ],
+    "correctIndex": 1,
+    "answer": "强光和内容刺激会影响入睡",
+    "explanation": "屏幕光线和兴奋内容会让大脑更清醒，睡前减少使用更容易安静入睡。",
+    "category": "daily_life",
+    "source": "remote"
+  },
+  {
+    "id": "why_daily_life_009",
+    "question": "为什么房间要通风？",
+    "emoji": "🪟",
+    "options": [
+      "风会把房间吹大",
+      "换入新鲜空气并降低异味和污染物"
+    ],
+    "correctIndex": 1,
+    "answer": "换入新鲜空气并降低异味和污染物",
+    "explanation": "通风能让二氧化碳、气味和一些室内污染物排出，同时补充新鲜空气。",
+    "category": "daily_life",
+    "source": "remote"
+  },
+  {
+    "id": "why_daily_life_010",
+    "question": "为什么冬天穿多层衣服更暖？",
+    "emoji": "🧥",
+    "options": [
+      "衣服层间空气能减少热量散失",
+      "衣服越重越热"
+    ],
+    "correctIndex": 0,
+    "answer": "衣服层间空气能减少热量散失",
+    "explanation": "多层衣物之间夹住空气，空气导热慢，能帮助身体保温。",
+    "category": "daily_life",
+    "source": "remote"
+  },
+  {
+    "id": "why_daily_life_011",
+    "question": "为什么雨伞能挡雨？",
+    "emoji": "☂️",
+    "options": [
+      "伞把雨水弹回云里",
+      "伞面材料让水难以穿过"
+    ],
+    "correctIndex": 1,
+    "answer": "伞面材料让水难以穿过",
+    "explanation": "伞面通常防水，雨滴落在上面会沿表面滑走，不容易穿透到人身上。",
+    "category": "daily_life",
+    "source": "remote"
+  },
+  {
+    "id": "why_daily_life_012",
+    "question": "为什么打喷嚏要遮住口鼻？",
+    "emoji": "🧻",
+    "options": [
+      "遮住后喷嚏会消失",
+      "减少飞沫传播给别人"
+    ],
+    "correctIndex": 1,
+    "answer": "减少飞沫传播给别人",
+    "explanation": "喷嚏会带出许多小飞沫，用纸巾或手肘遮挡能保护周围的人。",
+    "category": "daily_life",
+    "source": "remote"
+  },
+  {
+    "id": "why_daily_life_013",
+    "question": "为什么洗澡不能水太烫？",
+    "emoji": "🧴",
+    "options": [
+      "高温会刺激皮肤并破坏皮脂",
+      "热水会把皮肤洗薄"
+    ],
+    "correctIndex": 0,
+    "answer": "高温会刺激皮肤并破坏皮脂",
+    "explanation": "过热的水会让皮肤干燥、发红或不舒服，温水清洁更安全。",
+    "category": "daily_life",
+    "source": "remote"
+  },
+  {
+    "id": "why_daily_life_014",
+    "question": "为什么鞋子要合脚？",
+    "emoji": "🥿",
+    "options": [
+      "保护脚并帮助稳定行走",
+      "鞋子大一点跑得快"
+    ],
+    "correctIndex": 0,
+    "answer": "保护脚并帮助稳定行走",
+    "explanation": "过大或过小的鞋会磨脚、影响发力和平衡，合脚鞋更舒服也更安全。",
+    "category": "daily_life",
+    "source": "remote"
+  },
+  {
+    "id": "why_daily_life_015",
+    "question": "为什么家里要定期打扫？",
+    "emoji": "🧹",
+    "options": [
+      "灰尘会自己排队离开",
+      "减少灰尘、过敏原和病菌积累"
+    ],
+    "correctIndex": 1,
+    "answer": "减少灰尘、过敏原和病菌积累",
+    "explanation": "灰尘里可能有皮屑、花粉和微生物，定期清洁能让居住环境更健康。",
+    "category": "daily_life",
+    "source": "remote"
+  },
+  {
+    "id": "why_daily_life_016",
+    "question": "为什么热饭不能马上放满冰箱？",
+    "emoji": "🧊",
+    "options": [
+      "会让冰箱内温度升高",
+      "冰箱会被热饭吓坏"
+    ],
+    "correctIndex": 0,
+    "answer": "会让冰箱内温度升高",
+    "explanation": "大量热食直接放入会增加冰箱负担，也可能影响旁边食物的保存温度。",
+    "category": "daily_life",
+    "source": "remote"
+  },
+  {
+    "id": "why_daily_life_017",
+    "question": "为什么衣服晒太阳会干得快？",
+    "emoji": "🧺",
+    "options": [
+      "阳光和空气流动加快水分蒸发",
+      "太阳把水喝掉"
+    ],
+    "correctIndex": 0,
+    "answer": "阳光和空气流动加快水分蒸发",
+    "explanation": "阳光提供热量，风带走潮湿空气，水分更快从衣服里蒸发出去。",
+    "category": "daily_life",
+    "source": "remote"
+  },
+  {
+    "id": "why_daily_life_018",
+    "question": "为什么楼道不能堆杂物？",
+    "emoji": "🧯",
+    "options": [
+      "会阻碍逃生和救援",
+      "杂物会让楼道变窄好看"
+    ],
+    "correctIndex": 0,
+    "answer": "会阻碍逃生和救援",
+    "explanation": "紧急时楼道是逃生通道，杂物可能绊倒人或挡住消防救援路线。",
+    "category": "daily_life",
+    "source": "remote"
+  },
+  {
+    "id": "why_daily_life_019",
+    "question": "为什么公交车上要扶好站稳？",
+    "emoji": "🚌",
+    "options": [
+      "扶手能让人长高",
+      "车辆启动刹车时身体会因惯性晃动"
+    ],
+    "correctIndex": 1,
+    "answer": "车辆启动刹车时身体会因惯性晃动",
+    "explanation": "公交车速度变化时，身体会继续保持原来的运动状态，扶稳能防止摔倒。",
+    "category": "daily_life",
+    "source": "remote"
+  },
+  {
+    "id": "why_daily_life_020",
+    "question": "为什么喝饮料后最好漱口？",
+    "emoji": "🧃",
+    "options": [
+      "漱口能把甜味留住",
+      "糖和酸可能影响牙齿"
+    ],
+    "correctIndex": 1,
+    "answer": "糖和酸可能影响牙齿",
+    "explanation": "含糖或酸性饮料会让口腔环境更容易伤牙，喝后用清水漱口能减少停留。",
+    "category": "daily_life",
+    "source": "remote"
+  }
+]

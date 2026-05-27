@@ -30,6 +30,7 @@ class PinyinAudioService extends GetxService {
   final RxInt cachedCount = 0.obs;
 
   final Map<String, int> _cacheIndex = {};
+  int _playRunId = 0;
 
   Future<PinyinAudioService> init() async {
     _audioPlayer = AudioPlayer();
@@ -64,6 +65,7 @@ class PinyinAudioService extends GetxService {
   Future<void> play(String audioKey) async {
     if (audioKey.trim().isEmpty) return;
 
+    final runId = ++_playRunId;
     try {
       isLoading.value = true;
       currentAudioKey.value = audioKey;
@@ -74,15 +76,100 @@ class PinyinAudioService extends GetxService {
       }
 
       await _audioPlayer.stop();
+      if (runId != _playRunId) return;
       await _audioPlayer.setFilePath(audioFile.path);
       await _audioPlayer.seek(Duration.zero);
+      if (runId != _playRunId) return;
       await _audioPlayer.play();
     } catch (e) {
       debugPrint('拼音音频播放失败: $e');
-      ToastUtils.showError('拼音音频加载失败，请检查网络后再试');
+      if (runId == _playRunId) {
+        ToastUtils.showError('拼音音频加载失败，请检查网络后再试');
+      }
     } finally {
-      isLoading.value = false;
+      if (runId == _playRunId) {
+        isLoading.value = false;
+      }
     }
+  }
+
+  Future<void> playSequence(
+    List<String> audioKeys, {
+    Duration gap = const Duration(milliseconds: 180),
+  }) async {
+    if (audioKeys.isEmpty) return;
+
+    final runId = ++_playRunId;
+    try {
+      isLoading.value = true;
+      await _audioPlayer.stop();
+
+      for (final audioKey in audioKeys) {
+        if (runId != _playRunId) return;
+        if (audioKey.trim().isEmpty) continue;
+        currentAudioKey.value = audioKey;
+        final audioFile = await _getOrFetchAudio(audioKey);
+        if (audioFile == null) {
+          continue;
+        }
+        if (runId != _playRunId) return;
+        await _playFileToEnd(audioFile, runId: runId);
+        if (runId != _playRunId) return;
+        if (gap.inMilliseconds > 0) {
+          await Future.delayed(gap);
+        }
+      }
+    } catch (e) {
+      debugPrint('拼音串读播放失败: $e');
+      if (runId == _playRunId) {
+        ToastUtils.showError('拼音串读失败，请稍后再试');
+      }
+    } finally {
+      if (runId == _playRunId) {
+        isLoading.value = false;
+      }
+    }
+  }
+
+  Future<PinyinCacheWarmupResult> cacheAudioKeys(
+    Iterable<String> audioKeys, {
+    bool forceRefresh = false,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    final uniqueKeys = audioKeys
+        .map((key) => key.trim())
+        .where((key) => key.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+
+    var done = 0;
+    final failedKeys = <String>[];
+    onProgress?.call(done, uniqueKeys.length);
+
+    for (final audioKey in uniqueKeys) {
+      try {
+        final audioFile = await _getOrFetchAudio(
+          audioKey,
+          forceRefresh: forceRefresh,
+          showToastOnMissing: false,
+        );
+        if (audioFile == null) {
+          failedKeys.add(audioKey);
+        }
+      } catch (e) {
+        debugPrint('预缓存拼音音频失败 $audioKey: $e');
+        failedKeys.add(audioKey);
+      } finally {
+        done++;
+        onProgress?.call(done, uniqueKeys.length);
+      }
+    }
+
+    return PinyinCacheWarmupResult(
+      total: uniqueKeys.length,
+      failedKeys: failedKeys,
+    );
   }
 
   Future<void> updateSettings({
@@ -122,6 +209,7 @@ class PinyinAudioService extends GetxService {
   }
 
   Future<void> stop() async {
+    _playRunId++;
     try {
       await _audioPlayer.stop();
     } catch (e) {
@@ -136,8 +224,33 @@ class PinyinAudioService extends GetxService {
     super.onClose();
   }
 
-  Future<File?> _getOrFetchAudio(String audioKey) async {
+  Future<void> _playFileToEnd(File audioFile, {required int runId}) async {
+    await _audioPlayer.setFilePath(audioFile.path);
+    await _audioPlayer.seek(Duration.zero);
+    if (runId != _playRunId) return;
+    final completed = _audioPlayer.processingStateStream.firstWhere(
+      (state) =>
+          state == ProcessingState.completed || state == ProcessingState.idle,
+    );
+    await _audioPlayer.play();
+    await completed.timeout(
+      const Duration(seconds: 8),
+      onTimeout: () => ProcessingState.completed,
+    );
+  }
+
+  Future<File?> _getOrFetchAudio(
+    String audioKey, {
+    bool forceRefresh = false,
+    bool showToastOnMissing = true,
+  }) async {
     final cacheFile = _cacheFileFor(audioKey);
+    if (forceRefresh && await cacheFile.exists()) {
+      await cacheFile.delete();
+      _cacheIndex.remove(audioKey);
+      await _saveCacheIndex();
+    }
+
     if (await cacheFile.exists()) {
       await _touchCache(audioKey);
       return cacheFile;
@@ -148,7 +261,9 @@ class PinyinAudioService extends GetxService {
         .timeout(const Duration(seconds: 20));
     if (response.statusCode != 200 || response.bodyBytes.isEmpty) {
       debugPrint('拼音音频请求失败: ${response.statusCode} ${response.body}');
-      ToastUtils.showError('没有找到这个拼音音频，请稍后再试');
+      if (showToastOnMissing) {
+        ToastUtils.showError('没有找到这个拼音音频，请稍后再试');
+      }
       return null;
     }
 
@@ -239,4 +354,17 @@ class PinyinAudioService extends GetxService {
     }
     return result;
   }
+}
+
+class PinyinCacheWarmupResult {
+  final int total;
+  final List<String> failedKeys;
+
+  const PinyinCacheWarmupResult({
+    required this.total,
+    required this.failedKeys,
+  });
+
+  int get successCount => total - failedKeys.length;
+  bool get hasFailures => failedKeys.isNotEmpty;
 }

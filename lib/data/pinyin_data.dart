@@ -26,6 +26,20 @@ class PinyinItem {
   String audioKey([int? tone]) => '$audioBase${tone ?? defaultTone}';
 }
 
+class PinyinWord {
+  final String text;
+  final String pinyin;
+  final List<String> audioKeys;
+  final String tip;
+
+  const PinyinWord({
+    required this.text,
+    required this.pinyin,
+    required this.audioKeys,
+    required this.tip,
+  });
+}
+
 class PinyinData {
   static const initials = <PinyinItem>[
     PinyinItem(
@@ -416,6 +430,147 @@ class PinyinData {
   ];
 
   static const toneLabels = ['一声', '二声', '三声', '四声'];
+
+  static const words = <PinyinWord>[
+    PinyinWord(
+      text: '小猫',
+      pinyin: 'xiǎo māo',
+      audioKeys: ['xiao3', 'mao1'],
+      tip: '先三声，再一声：xiǎo māo',
+    ),
+    PinyinWord(
+      text: '小狗',
+      pinyin: 'xiǎo gǒu',
+      audioKeys: ['xiao3', 'gou3'],
+      tip: '两个三声分开读清楚',
+    ),
+    PinyinWord(
+      text: '小牛',
+      pinyin: 'xiǎo niú',
+      audioKeys: ['xiao3', 'niu2'],
+      tip: '听清 niú 的二声往上扬',
+    ),
+    PinyinWord(
+      text: '小鸟',
+      pinyin: 'xiǎo niǎo',
+      audioKeys: ['xiao3', 'niao3'],
+      tip: '两个三声分开读清楚',
+    ),
+    PinyinWord(
+      text: '白兔',
+      pinyin: 'bái tù',
+      audioKeys: ['bai2', 'tu4'],
+      tip: '二声接四声：bái tù',
+    ),
+    PinyinWord(
+      text: '西瓜',
+      pinyin: 'xī guā',
+      audioKeys: ['xi1', 'gua1'],
+      tip: '两个一声平稳读',
+    ),
+    PinyinWord(
+      text: '苹果',
+      pinyin: 'píng guǒ',
+      audioKeys: ['ping2', 'guo3'],
+      tip: '二声接三声：píng guǒ',
+    ),
+    PinyinWord(
+      text: '牛奶',
+      pinyin: 'niú nǎi',
+      audioKeys: ['niu2', 'nai3'],
+      tip: '二声接三声：niú nǎi',
+    ),
+    PinyinWord(
+      text: '面包',
+      pinyin: 'miàn bāo',
+      audioKeys: ['mian4', 'bao1'],
+      tip: '四声接一声：miàn bāo',
+    ),
+    PinyinWord(
+      text: '花朵',
+      pinyin: 'huā duǒ',
+      audioKeys: ['hua1', 'duo3'],
+      tip: '一声接三声：huā duǒ',
+    ),
+    PinyinWord(
+      text: '小鱼',
+      pinyin: 'xiǎo yú',
+      audioKeys: ['xiao3', 'yu2'],
+      tip: '听清 yú 里的 ü 音',
+    ),
+    PinyinWord(
+      text: '太阳',
+      pinyin: 'tài yáng',
+      audioKeys: ['tai4', 'yang2'],
+      tip: '四声接二声：tài yáng',
+    ),
+    PinyinWord(
+      text: '云朵',
+      pinyin: 'yún duǒ',
+      audioKeys: ['yun2', 'duo3'],
+      tip: 'yún 是整体认读音节',
+    ),
+    PinyinWord(
+      text: '大山',
+      pinyin: 'dà shān',
+      audioKeys: ['da4', 'shan1'],
+      tip: '四声接一声：dà shān',
+    ),
+    PinyinWord(
+      text: '小河',
+      pinyin: 'xiǎo hé',
+      audioKeys: ['xiao3', 'he2'],
+      tip: '三声接二声：xiǎo hé',
+    ),
+    PinyinWord(
+      text: '上学',
+      pinyin: 'shàng xué',
+      audioKeys: ['shang4', 'xue2'],
+      tip: '翘舌 shàng 接 xué',
+    ),
+    PinyinWord(
+      text: '回家',
+      pinyin: 'huí jiā',
+      audioKeys: ['hui2', 'jia1'],
+      tip: '二声接一声：huí jiā',
+    ),
+    PinyinWord(
+      text: '看书',
+      pinyin: 'kàn shū',
+      audioKeys: ['kan4', 'shu1'],
+      tip: '四声接一声：kàn shū',
+    ),
+    PinyinWord(
+      text: '画画',
+      pinyin: 'huà huà',
+      audioKeys: ['hua4', 'hua4'],
+      tip: '两个四声连起来读',
+    ),
+    PinyinWord(
+      text: '开门',
+      pinyin: 'kāi mén',
+      audioKeys: ['kai1', 'men2'],
+      tip: '一声接二声：kāi mén',
+    ),
+    PinyinWord(
+      text: '洗手',
+      pinyin: 'xǐ shǒu',
+      audioKeys: ['xi3', 'shou3'],
+      tip: '两个三声分开读清楚',
+    ),
+    PinyinWord(
+      text: '汽车',
+      pinyin: 'qì chē',
+      audioKeys: ['qi4', 'che1'],
+      tip: 'qì 接翘舌 chē',
+    ),
+    PinyinWord(
+      text: '飞机',
+      pinyin: 'fēi jī',
+      audioKeys: ['fei1', 'ji1'],
+      tip: '两个一声平稳读',
+    ),
+  ];
 
   static List<PinyinItem> bySection(PinyinSection section) {
     switch (section) {

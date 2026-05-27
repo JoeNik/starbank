@@ -10,6 +10,7 @@ import 'entertainment/new_year_story/new_year_story_page.dart';
 import 'entertainment/hanzi_learning/hanzi_learning_page.dart';
 import 'entertainment/encyclopedia/encyclopedia_page.dart';
 import 'entertainment/pinyin_learning/pinyin_learning_page.dart';
+import 'entertainment/math/math_calculator_page.dart';
 
 /// 娱乐模块入口页面
 class EntertainmentPage extends StatelessWidget {
@@ -47,7 +48,7 @@ class EntertainmentPage extends StatelessWidget {
                   borderRadius: BorderRadius.circular(24.r),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFFF6B9D).withOpacity(0.3),
+                      color: const Color(0xFFFF6B9D).withValues(alpha: 0.3),
                       blurRadius: 15,
                       offset: const Offset(0, 8),
                     ),
@@ -69,7 +70,7 @@ class EntertainmentPage extends StatelessWidget {
                       '这里有好玩的游戏和益智学习',
                       style: TextStyle(
                         fontSize: 14.sp,
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withValues(alpha: 0.9),
                       ),
                     ),
                   ],
@@ -184,10 +185,9 @@ class EntertainmentPage extends StatelessWidget {
                   _buildFeatureCard(
                     emoji: '🔢',
                     title: '数学乐园',
-                    subtitle: '敬请期待',
-                    color: Colors.grey.shade300,
-                    isComingSoon: true,
-                    onTap: () {},
+                    subtitle: '计算器和练习题',
+                    color: const Color(0xFFFFD166),
+                    onTap: () => Get.to(() => const MathCalculatorPage()),
                   ),
                 ],
               ),
@@ -215,7 +215,7 @@ class EntertainmentPage extends StatelessWidget {
           borderRadius: BorderRadius.circular(24.r),
           boxShadow: [
             BoxShadow(
-              color: color.withOpacity(isComingSoon ? 0.1 : 0.2),
+              color: color.withValues(alpha: isComingSoon ? 0.1 : 0.2),
               blurRadius: 12,
               offset: const Offset(0, 6),
             ),
@@ -233,7 +233,7 @@ class EntertainmentPage extends StatelessWidget {
                     width: 64.w,
                     height: 64.w,
                     decoration: BoxDecoration(
-                      color: color.withOpacity(0.2),
+                      color: color.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(20.r),
                     ),
                     child: Center(
