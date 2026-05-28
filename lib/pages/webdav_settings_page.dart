@@ -308,10 +308,80 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
               '超过限制时会自动删除最早的备份',
               style: TextStyle(fontSize: 12.sp, color: AppTheme.textSub),
             ),
+            SizedBox(height: 16.h),
+            Text(
+              "备份策略",
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14.sp),
+            ),
+            SizedBox(height: 8.h),
+            Obx(() => DropdownButtonFormField<WebDavBackupStrategy>(
+                  key: ValueKey(webDavService.backupStrategy.value),
+                  initialValue: webDavService.backupStrategy.value,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: WebDavBackupStrategy.full,
+                      child: Text('全量备份（兼容旧版）'),
+                    ),
+                    DropdownMenuItem(
+                      value: WebDavBackupStrategy.efficientV2,
+                      child: Text('高效备份（实验性）'),
+                    ),
+                  ],
+                  onChanged: isLoading.value
+                      ? null
+                      : (value) {
+                          if (value == null) return;
+                          _selectBackupStrategy(value);
+                        },
+                )),
+            SizedBox(height: 8.h),
+            Obx(() => Text(
+                  webDavService.backupStrategy.value ==
+                          WebDavBackupStrategy.efficientV2
+                      ? '减少重复上传，使用独立 v2 备份目录'
+                      : '旧版全量 JSON 备份，兼容现有备份文件',
+                  style: TextStyle(fontSize: 12.sp, color: AppTheme.textSub),
+                )),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _selectBackupStrategy(WebDavBackupStrategy strategy) async {
+    if (strategy == webDavService.backupStrategy.value) return;
+    if (strategy == WebDavBackupStrategy.efficientV2 &&
+        !webDavService.isEfficientBackupSupported) {
+      ToastUtils.showWarning('当前平台暂不支持高效备份');
+      return;
+    }
+    if (strategy == WebDavBackupStrategy.efficientV2 &&
+        !webDavService.hasAcknowledgedV2Experiment) {
+      final proceed = await _confirmV2Experiment();
+      if (!proceed) return;
+      await webDavService.acknowledgeV2Experiment();
+    }
+    await webDavService.setBackupStrategy(strategy);
+    await _loadBackups();
+  }
+
+  Future<bool> _confirmV2Experiment() async {
+    final result = await Get.defaultDialog(
+      title: '启用高效备份？',
+      middleText:
+          '高效备份会使用新的 v2 目录结构，减少重复上传。恢复时会校验完整性；如果对象损坏，将不会继续恢复。你可以随时切回全量备份。',
+      textConfirm: '我已了解',
+      textCancel: '取消',
+      confirmTextColor: Colors.white,
+      onConfirm: () => Get.back(result: true),
+      onCancel: () => Get.back(result: false),
+    );
+    return result == true;
   }
 
   Widget _buildActionCard() {
@@ -329,34 +399,48 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
             Row(
               children: [
                 Expanded(
-                  child: Obx(() => ElevatedButton.icon(
-                        onPressed: isLoading.value
-                            ? null
-                            : () async {
-                                isLoading.value = true;
-                                await webDavService.backupData();
-                                isLoading.value = false;
-                                _loadBackups();
-                              },
-                        icon: isLoading.value
-                            ? SizedBox(
-                                width: 14.w,
-                                height: 14.w,
-                                child: const CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.white),
-                                ),
-                              )
-                            : Icon(Icons.cloud_upload, size: 18.sp),
-                        label: Text(isLoading.value ? "备份中" : "备份",
-                            style: TextStyle(fontSize: 14.sp)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                          padding: EdgeInsets.symmetric(vertical: 8.h),
-                          minimumSize: Size(0, 36.h),
-                        ),
-                      )),
+                  child: Obx(() {
+                    final backupRunning = webDavService.isBackupRunning.value;
+                    return ElevatedButton.icon(
+                      onPressed: backupRunning
+                          ? webDavService.cancelBackup
+                          : isLoading.value
+                              ? null
+                              : () async {
+                                  isLoading.value = true;
+                                  await webDavService.backupData();
+                                  isLoading.value = false;
+                                  _loadBackups();
+                                },
+                      icon: backupRunning
+                          ? Icon(Icons.close, size: 18.sp)
+                          : isLoading.value
+                              ? SizedBox(
+                                  width: 14.w,
+                                  height: 14.w,
+                                  child: const CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white),
+                                  ),
+                                )
+                              : Icon(Icons.cloud_upload, size: 18.sp),
+                      label: Text(
+                        backupRunning
+                            ? "取消备份"
+                            : isLoading.value
+                                ? "备份中"
+                                : "备份",
+                        style: TextStyle(fontSize: 14.sp),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            backupRunning ? Colors.red : Colors.blue,
+                        padding: EdgeInsets.symmetric(vertical: 8.h),
+                        minimumSize: Size(0, 36.h),
+                      ),
+                    );
+                  }),
                 ),
                 SizedBox(width: 16.w),
                 Expanded(
@@ -385,6 +469,32 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
                 ),
               ],
             ),
+            Obx(() {
+              final progress = webDavService.operationProgress.value;
+              if (progress.isEmpty) return const SizedBox.shrink();
+              return Padding(
+                padding: EdgeInsets.only(top: 12.h),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 14.w,
+                      height: 14.w,
+                      child: const CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    SizedBox(width: 8.w),
+                    Expanded(
+                      child: Text(
+                        progress,
+                        style: TextStyle(
+                          fontSize: 12.sp,
+                          color: AppTheme.textSub,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
           ],
         ),
       ),
@@ -454,7 +564,11 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
                             color: Colors.orange,
                           ),
                           title: Text(fileInfo.filename),
-                          subtitle: Text('大小: ${fileInfo.formattedSize}'),
+                          subtitle: Text(
+                            '大小: ${fileInfo.formattedSize}'
+                            '${fileInfo.strategy == 'v2' ? ' · 高效备份' : ''}'
+                            '${fileInfo.warningCount > 0 ? ' · 有 ${fileInfo.warningCount} 个警告' : ''}',
+                          ),
                           trailing: IconButton(
                             icon: const Icon(Icons.delete, color: Colors.red),
                             onPressed: () => _confirmDelete(fileInfo.path),

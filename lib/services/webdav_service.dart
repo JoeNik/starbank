@@ -1,11 +1,13 @@
 import 'package:get/get.dart';
 import 'package:webdav_client/webdav_client.dart' as webdav;
 import 'package:hive/hive.dart';
+import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:archive/archive.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'storage_service.dart';
+import 'webdav_backup_v2_service.dart';
 import '../widgets/toast_utils.dart';
 import '../models/user_profile.dart';
 import '../models/baby.dart';
@@ -38,11 +40,17 @@ class BackupFileInfo {
   final String path; // 完整路径（用于操作）
   final String filename; // 文件名（用于显示）
   final int size; // 文件大小（字节）
+  final String strategy; // full / v2
+  final int warningCount;
+  final Map<String, dynamic>? summary;
 
   BackupFileInfo({
     required this.path,
     required this.filename,
     required this.size,
+    this.strategy = 'full',
+    this.warningCount = 0,
+    this.summary,
   });
 
   /// 格式化文件大小显示
@@ -53,6 +61,8 @@ class BackupFileInfo {
   }
 }
 
+enum WebDavBackupStrategy { full, efficientV2 }
+
 /// WebDAV备份服务
 class WebDavService extends GetxService {
   webdav.Client? _client;
@@ -60,6 +70,19 @@ class WebDavService extends GetxService {
 
   final RxString currentUrl = ''.obs;
   final RxString currentUser = ''.obs;
+  final Rx<WebDavBackupStrategy> backupStrategy = WebDavBackupStrategy.full.obs;
+  final RxString operationProgress = ''.obs;
+  final RxBool isOperationRunning = false.obs;
+  final RxBool isBackupRunning = false.obs;
+  bool _backupCancelRequested = false;
+  late final WebDavBackupV2Service _v2 = WebDavBackupV2Service(
+    storage: _storage,
+    read: _readRemoteV2,
+    write: _writeRemoteV2,
+    remove: _removeRemoteV2,
+    mkdir: _mkdirRemoteV2,
+    list: _listRemoteV2,
+  );
 
   @override
   void onInit() {
@@ -78,6 +101,11 @@ class WebDavService extends GetxService {
       currentUser.value = user;
       initClient(url, user, pwd, save: false);
     }
+
+    final strategy = box.get('webdav_backup_strategy') as String?;
+    backupStrategy.value = strategy == 'v2'
+        ? WebDavBackupStrategy.efficientV2
+        : WebDavBackupStrategy.full;
   }
 
   /// 初始化WebDAV客户端
@@ -113,14 +141,56 @@ class WebDavService extends GetxService {
   /// 是否已配置WebDAV
   bool get isConfigured => _client != null;
 
+  bool get isEfficientBackupSupported => !kIsWeb;
+
+  Future<void> setBackupStrategy(WebDavBackupStrategy strategy) async {
+    backupStrategy.value = strategy;
+    await _storage.settingsBox.put(
+      'webdav_backup_strategy',
+      strategy == WebDavBackupStrategy.efficientV2 ? 'v2' : 'full',
+    );
+  }
+
+  bool get hasAcknowledgedV2Experiment =>
+      _storage.settingsBox.get('webdav_v2_experiment_ack') == true;
+
+  Future<void> acknowledgeV2Experiment() async {
+    await _storage.settingsBox.put('webdav_v2_experiment_ack', true);
+  }
+
+  void cancelBackup() {
+    if (!isBackupRunning.value) return;
+    _backupCancelRequested = true;
+    operationProgress.value = '正在取消备份';
+  }
+
+  bool get _shouldCancelBackup => _backupCancelRequested;
+
+  void _throwIfBackupCancelled() {
+    if (_shouldCancelBackup) {
+      throw const WebDavBackupCancelledException();
+    }
+  }
+
   /// 备份所有Hive数据到WebDAV
   Future<bool> backupData() async {
     if (_client == null) {
       ToastUtils.showError('请先配置WebDAV');
       return false;
     }
+    if (isOperationRunning.value) {
+      ToastUtils.showWarning('已有备份或恢复任务正在进行');
+      return false;
+    }
+    if (backupStrategy.value == WebDavBackupStrategy.efficientV2) {
+      return _backupDataV2();
+    }
 
     try {
+      _backupCancelRequested = false;
+      isOperationRunning.value = true;
+      isBackupRunning.value = true;
+      operationProgress.value = '正在采集数据';
       _checkAdapters();
       final Map<String, dynamic> backupData = {};
 
@@ -373,6 +443,8 @@ class WebDavService extends GetxService {
 
       backupData['timestamp'] = DateTime.now().toIso8601String();
 
+      _throwIfBackupCancelled();
+      operationProgress.value = '正在压缩备份';
       final jsonString = jsonEncode(backupData);
       final jsonBytes = utf8.encode(jsonString);
 
@@ -392,19 +464,171 @@ class WebDavService extends GetxService {
         await _client!.mkdir('/starbank');
       } catch (_) {}
 
+      _throwIfBackupCancelled();
+      operationProgress.value = '正在上传备份';
       // upload
       await _client!.write(remotePath, Uint8List.fromList(compressedBytes));
 
+      _throwIfBackupCancelled();
+      operationProgress.value = '正在清理旧备份';
       // 清理旧备份
       await _cleanupOldBackups();
 
       Get.back();
       ToastUtils.showSuccess('备份已存至: $remotePath');
       return true;
+    } on WebDavBackupCancelledException {
+      ToastUtils.showWarning('已取消备份');
+      return false;
     } catch (e) {
       ToastUtils.showError('备份失败: $e');
       return false;
+    } finally {
+      isOperationRunning.value = false;
+      isBackupRunning.value = false;
+      _backupCancelRequested = false;
+      operationProgress.value = '';
     }
+  }
+
+  Future<bool> _backupDataV2() async {
+    if (!isEfficientBackupSupported) {
+      ToastUtils.showError('高效备份暂不支持 Web 平台');
+      return false;
+    }
+
+    try {
+      _backupCancelRequested = false;
+      isOperationRunning.value = true;
+      isBackupRunning.value = true;
+      _checkAdapters();
+      V2Snapshot snapshot;
+      try {
+        snapshot = await _v2.buildSnapshot(
+          allowMissingMedia: false,
+          onProgress: (message) => operationProgress.value = message,
+          shouldCancel: () => _shouldCancelBackup,
+        );
+      } on V2MissingMediaException catch (e) {
+        final shouldContinue =
+            await _confirmContinueWithMissingMedia(e.warnings);
+        if (!shouldContinue) {
+          ToastUtils.showWarning('已取消备份');
+          return false;
+        }
+        snapshot = await _v2.buildSnapshot(
+          allowMissingMedia: true,
+          onProgress: (message) => operationProgress.value = message,
+          shouldCancel: () => _shouldCancelBackup,
+        );
+      }
+
+      _throwIfBackupCancelled();
+      final latestHash = await _v2.latestSnapshotHash(
+        list: _listRemoteV2,
+        read: _readRemoteV2,
+      );
+      if (latestHash == snapshot.snapshotHash) {
+        ToastUtils.showSuccess('自上次高效备份后数据无变化');
+        return true;
+      }
+
+      final remotePath = await _v2.uploadSnapshot(
+        snapshot: snapshot,
+        read: _readRemoteV2,
+        write: _writeRemoteV2,
+        mkdir: _mkdirRemoteV2,
+        list: _listRemoteV2,
+        onProgress: (message) => operationProgress.value = message,
+        shouldCancel: () => _shouldCancelBackup,
+      );
+      _throwIfBackupCancelled();
+      operationProgress.value = '正在清理旧备份';
+      await _v2.cleanupRemote(
+        maxCount: maxBackupCount,
+        list: _listRemoteV2,
+        read: _readRemoteV2,
+        remove: _removeRemoteV2,
+      );
+      Get.back();
+      ToastUtils.showSuccess('高效备份已存至: $remotePath');
+      return true;
+    } on WebDavBackupCancelledException {
+      ToastUtils.showWarning('已取消备份');
+      return false;
+    } catch (e) {
+      ToastUtils.showError('高效备份失败: $e');
+      return false;
+    } finally {
+      isOperationRunning.value = false;
+      isBackupRunning.value = false;
+      _backupCancelRequested = false;
+      operationProgress.value = '';
+    }
+  }
+
+  Future<bool> _confirmContinueWithMissingMedia(
+    List<V2BackupWarning> warnings,
+  ) async {
+    final preview = warnings.take(5).map((w) {
+      final label = w.record.isEmpty ? w.field : '${w.record} / ${w.field}';
+      return '$label\n${w.originalPath}';
+    }).join('\n\n');
+    final result = await Get.defaultDialog<bool>(
+      title: '发现缺失媒体',
+      middleText: '有 ${warnings.length} 个图片文件缺失或不可读。默认取消备份。\n\n$preview',
+      textConfirm: '忽略这些媒体并继续',
+      textCancel: '取消备份',
+      confirmTextColor: Colors.white,
+      onConfirm: () {
+        Get.back(result: true);
+      },
+      onCancel: () {
+        Get.back(result: false);
+      },
+    );
+    return result == true;
+  }
+
+  Future<Uint8List> _readRemoteV2(String path) async {
+    return Uint8List.fromList(await _client!.read(path));
+  }
+
+  Future<void> _writeRemoteV2(String path, Uint8List bytes) async {
+    await _client!.write(path, bytes);
+  }
+
+  Future<void> _removeRemoteV2(String path) async {
+    await _client!.remove(path);
+  }
+
+  Future<void> _mkdirRemoteV2(String path) async {
+    await _client!.mkdir(path);
+  }
+
+  Future<List<V2RemoteFile>> _listRemoteV2(String path) async {
+    final files = await _client!.readDir(path);
+    return files
+        .map((f) => V2RemoteFile(
+              path: f.path ?? '',
+              size: f.size ?? 0,
+              modifiedAt: _remoteModifiedAt(f),
+            ))
+        .toList();
+  }
+
+  DateTime? _remoteModifiedAt(dynamic file) {
+    for (final getter in <DateTime? Function()>[
+      () => file.mTime as DateTime?,
+      () => file.modified as DateTime?,
+      () => file.lastModified as DateTime?,
+    ]) {
+      try {
+        final value = getter();
+        if (value != null) return value;
+      } catch (_) {}
+    }
+    return null;
   }
 
   /// 获取最大备份数量设置
@@ -444,6 +668,164 @@ class WebDavService extends GetxService {
 
   /// 从WebDAV恢复数据
   Future<bool> restoreData(String remotePath) async {
+    if (isOperationRunning.value) {
+      ToastUtils.showWarning('已有备份或恢复任务正在进行');
+      return false;
+    }
+    if (remotePath.endsWith('.manifest.json.gz')) {
+      return _restoreDataV2(remotePath);
+    }
+    try {
+      isOperationRunning.value = true;
+      return await _restoreDataFullWithRollback(remotePath);
+    } catch (e) {
+      ToastUtils.showError('恢复失败: $e');
+      return false;
+    } finally {
+      isOperationRunning.value = false;
+      operationProgress.value = '';
+    }
+  }
+
+  Future<bool> _restoreDataFullWithRollback(String remotePath) async {
+    final safetyFile = isEfficientBackupSupported
+        ? await _v2.writeSafetySnapshot(
+            allowMissingMedia: true,
+            onProgress: (message) => operationProgress.value = message,
+          )
+        : null;
+    operationProgress.value = '正在写入恢复数据';
+    final success = await _restoreDataFull(
+      remotePath,
+      createSafety: false,
+      showSuccess: false,
+      showError: false,
+    );
+    if (success) {
+      ToastUtils.showSuccess('数据已恢复，请重启应用以生效');
+      return true;
+    }
+
+    if (safetyFile != null) {
+      operationProgress.value = '正在回滚到恢复前状态';
+      final safetyData = await _v2.readSafetySnapshot(safetyFile);
+      final rollback = await _restoreBackupMapViaTempFile(safetyData);
+      if (rollback) {
+        ToastUtils.showError('恢复失败，已回滚到恢复前状态');
+      } else {
+        ToastUtils.showError('恢复失败，回滚也失败，请保留安全快照: ${safetyFile.path}');
+      }
+      return false;
+    }
+
+    ToastUtils.showError('恢复失败');
+    return false;
+  }
+
+  Future<bool> _restoreDataV2(String remotePath) async {
+    if (_client == null) {
+      ToastUtils.showError('请先配置WebDAV');
+      return false;
+    }
+    if (isOperationRunning.value) {
+      ToastUtils.showWarning('已有备份或恢复任务正在进行');
+      return false;
+    }
+    try {
+      isOperationRunning.value = true;
+      _checkAdapters();
+      final bundle = await _v2.downloadRemoteBackupData(
+        manifestPath: remotePath,
+        read: _readRemoteV2,
+        onProgress: (message) => operationProgress.value = message,
+      );
+      if (bundle.warnings.isNotEmpty) {
+        final proceed = await _confirmRestoreWithWarnings(bundle.warnings);
+        if (!proceed) return false;
+      }
+      operationProgress.value = '正在创建恢复前安全快照';
+      final safetyFile = await _v2.writeSafetySnapshot(
+        allowMissingMedia: true,
+        onProgress: (message) => operationProgress.value = message,
+      );
+      operationProgress.value = '正在写入恢复数据';
+      final success = await _restoreBackupMapViaTempFile(bundle.backupData);
+      if (!success) {
+        operationProgress.value = '正在回滚到恢复前状态';
+        final safetyData = await _v2.readSafetySnapshot(safetyFile);
+        final rollback = await _restoreBackupMapViaTempFile(safetyData);
+        if (rollback) {
+          ToastUtils.showError('恢复失败，已回滚到恢复前状态');
+        } else {
+          ToastUtils.showError('恢复失败，回滚也失败，请保留安全快照: ${safetyFile.path}');
+        }
+        return false;
+      }
+      ToastUtils.showSuccess('数据已恢复，请重启应用以生效');
+      return true;
+    } catch (e) {
+      ToastUtils.showError('高效备份恢复失败: $e');
+      return false;
+    } finally {
+      isOperationRunning.value = false;
+      operationProgress.value = '';
+    }
+  }
+
+  Future<bool> _restoreBackupMapViaTempFile(
+    Map<String, dynamic> backupData,
+  ) async {
+    final jsonBytes = utf8.encode(jsonEncode(backupData));
+    final compressed = GZipEncoder().encode(jsonBytes);
+    final path =
+        '$webDavBackupV2Root/restore_tmp/restore_${DateTime.now().millisecondsSinceEpoch}.json.gz';
+    try {
+      try {
+        await _client!.mkdir('$webDavBackupV2Root/restore_tmp');
+      } catch (_) {}
+      await _client!.write(path, Uint8List.fromList(compressed));
+      return _restoreDataFull(
+        path,
+        createSafety: false,
+        showSuccess: false,
+        showError: false,
+      );
+    } finally {
+      try {
+        await _client!.remove(path);
+      } catch (_) {}
+    }
+  }
+
+  Future<bool> _confirmRestoreWithWarnings(
+    List<V2BackupWarning> warnings,
+  ) async {
+    final preview = warnings.take(5).map((w) {
+      final label = w.record.isEmpty ? w.field : '${w.record} / ${w.field}';
+      return '$label\n${w.originalPath}';
+    }).join('\n\n');
+    final result = await Get.defaultDialog<bool>(
+      title: '备份包含警告',
+      middleText: '这份备份创建时忽略了 ${warnings.length} 个媒体文件。\n\n$preview',
+      textConfirm: '继续恢复',
+      textCancel: '取消恢复',
+      confirmTextColor: Colors.white,
+      onConfirm: () {
+        Get.back(result: true);
+      },
+      onCancel: () {
+        Get.back(result: false);
+      },
+    );
+    return result == true;
+  }
+
+  Future<bool> _restoreDataFull(
+    String remotePath, {
+    bool createSafety = true,
+    bool showSuccess = true,
+    bool showError = true,
+  }) async {
     if (_client == null) {
       ToastUtils.showError('请先配置WebDAV');
       return false;
@@ -451,6 +833,13 @@ class WebDavService extends GetxService {
 
     try {
       _checkAdapters();
+      if (createSafety && isEfficientBackupSupported) {
+        operationProgress.value = '正在创建恢复前安全快照';
+        await _v2.writeSafetySnapshot(
+          allowMissingMedia: true,
+          onProgress: (message) => operationProgress.value = message,
+        );
+      }
       final data = await _client!.read(remotePath);
 
       String jsonString;
@@ -1004,10 +1393,14 @@ class WebDavService extends GetxService {
         }
       } catch (_) {}
 
-      ToastUtils.showSuccess('数据已恢复，请重启应用以生效');
+      if (showSuccess) {
+        ToastUtils.showSuccess('数据已恢复，请重启应用以生效');
+      }
       return true;
     } catch (e) {
-      ToastUtils.showError('恢复失败: $e');
+      if (showError) {
+        ToastUtils.showError('恢复失败: $e');
+      }
       return false;
     }
   }
@@ -1015,16 +1408,39 @@ class WebDavService extends GetxService {
   /// 获取备份文件列表（包含详细信息）
   Future<List<BackupFileInfo>> listBackupsDetailed() async {
     if (_client == null) return [];
+    if (backupStrategy.value == WebDavBackupStrategy.efficientV2) {
+      try {
+        final files = await _v2.listRemoteManifests(
+          list: _listRemoteV2,
+          read: _readRemoteV2,
+        );
+        return files
+            .map((info) => BackupFileInfo(
+                  path: info.path,
+                  filename: _extractFilename(info.path),
+                  size: info.size,
+                  strategy: 'v2',
+                  warningCount: info.warnings.length,
+                  summary: info.summary,
+                ))
+            .toList();
+      } catch (e) {
+        debugPrint('List v2 backups failed: $e');
+        return [];
+      }
+    }
     try {
       final list = await _client!.readDir('/starbank');
       return list
           .where((f) =>
-              (f.path ?? '').endsWith('.json') ||
-              (f.path ?? '').endsWith('.json.gz'))
+              ((f.path ?? '').endsWith('.json') ||
+                  (f.path ?? '').endsWith('.json.gz')) &&
+              !(f.path ?? '').contains('/v2/'))
           .map((f) => BackupFileInfo(
                 path: f.path ?? '',
                 filename: _extractFilename(f.path ?? ''),
                 size: f.size ?? 0,
+                strategy: 'full',
               ))
           .toList();
     } catch (e) {
@@ -1060,7 +1476,16 @@ class WebDavService extends GetxService {
     }
 
     try {
-      await _client!.remove(remotePath);
+      if (remotePath.endsWith('.manifest.json.gz')) {
+        await _v2.deleteManifestAndGc(
+          manifestPath: remotePath,
+          list: _listRemoteV2,
+          read: _readRemoteV2,
+          remove: _removeRemoteV2,
+        );
+      } else {
+        await _client!.remove(remotePath);
+      }
       ToastUtils.showSuccess('备份已删除');
       return true;
     } catch (e) {
