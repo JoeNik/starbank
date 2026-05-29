@@ -1230,154 +1230,158 @@ class _QuizPageState extends State<QuizPage> with TickerProviderStateMixin {
 
   /// 显示 TTS 设置对话框
   void _showTtsSettings() {
-    Get.bottomSheet(
-      Container(
-        padding: EdgeInsets.all(24.w),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(24.r),
-            topRight: Radius.circular(24.r),
-          ),
+    Get.to(
+      () => Scaffold(
+        backgroundColor: const Color(0xFFFFF8E1),
+        appBar: AppBar(
+          title: const Text('语音设置（新年知多少）'),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          actions: [
+            TextButton(
+              onPressed: () {
+                _tts.setSpeechRate(0.5);
+                _tts.setPitch(1.0);
+                _tts.setVolume(1.0);
+              },
+              child: const Text('重置'),
+            ),
+          ],
         ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 标题栏
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '语音设置',
-                    style: TextStyle(
-                      fontSize: 20.sp,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.textMain,
-                    ),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: EdgeInsets.all(20.w),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(16.w),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20.r),
+                    border: Border.all(color: Colors.amber.shade100),
                   ),
-                  TextButton(
-                    onPressed: () {
-                      _tts.setSpeechRate(0.5);
-                      _tts.setPitch(1.0);
-                      _tts.setVolume(1.0);
-                    },
-                    child: const Text('重置'),
-                  ),
-                ],
-              ),
-              SizedBox(height: 24.h),
-
-              // 试听区域
-              Container(
-                padding: EdgeInsets.all(16.w),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24.r),
-                  border: Border.all(color: Colors.grey.shade100),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.hearing, color: Colors.blue, size: 24.sp),
-                        SizedBox(width: 8.w),
-                        Text(
-                          '试听效果',
+                  child: Row(
+                    children: [
+                      Icon(Icons.volume_up, color: Colors.amber, size: 24.sp),
+                      SizedBox(width: 10.w),
+                      Expanded(
+                        child: Text(
+                          '新年知多少语音设置',
                           style: TextStyle(
                             fontSize: 18.sp,
                             fontWeight: FontWeight.bold,
+                            color: AppTheme.textMain,
                           ),
                         ),
-                      ],
-                    ),
-                    SizedBox(height: 16.h),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () async {
-                              await _tts.speak(
-                                '小朋友，新年快乐！一起来猜灯谜吧！',
-                                featureKey: 'quiz',
-                              );
-                            },
-                            icon: const Icon(Icons.play_arrow),
-                            label: const Text('试听'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20.r),
-                              ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 20.h),
+
+                // 试听区域
+                Container(
+                  padding: EdgeInsets.all(16.w),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20.r),
+                    border: Border.all(color: Colors.grey.shade100),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.hearing, color: Colors.blue, size: 24.sp),
+                          SizedBox(width: 8.w),
+                          Text(
+                            '试听效果',
+                            style: TextStyle(
+                              fontSize: 18.sp,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 16.h),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () async {
+                            await _tts.speak(
+                              '小朋友，新年快乐！一起来猜灯谜吧！',
+                              featureKey: 'quiz',
+                            );
+                          },
+                          icon: const Icon(Icons.play_arrow),
+                          label: const Text('试听'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20.r),
                             ),
                           ),
                         ),
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              SizedBox(height: 24.h),
+                SizedBox(height: 20.h),
 
-              const TtsEngineSelector(
-                featureKey: 'quiz',
-                title: '脑筋急转弯使用 TTS 引擎',
-              ),
-              SizedBox(height: 24.h),
+                const TtsEngineSelector(
+                  featureKey: 'quiz',
+                  title: '脑筋急转弯使用 TTS 引擎',
+                ),
+                SizedBox(height: 20.h),
 
-              // 语速控制
-              _buildSliderControl(
-                icon: Icons.speed,
-                title: '语速',
-                value: _tts.speechRate,
-                min: 0.0,
-                max: 1.0,
-                label: '1.0 为正常语速',
-                color: Colors.amber,
-                onChanged: (val) => _tts.setSpeechRate(val),
-              ),
-              SizedBox(height: 16.h),
-
-              // 音调控制
-              _buildSliderControl(
-                icon: Icons.music_note,
-                title: '音调',
-                value: _tts.pitch,
-                min: 0.5,
-                max: 2.0,
-                label: '1.0 为正常音调',
-                color: Colors.amber,
-                onChanged: (val) => _tts.setPitch(val),
-              ),
-              SizedBox(height: 16.h),
-
-              // 音量控制
-              _buildSliderControl(
-                icon: Icons.volume_up,
-                title: '音量',
-                value: _tts.volume,
-                min: 0.0,
-                max: 1.0,
-                label: '1.0 为最大音量',
-                color: Colors.amber,
-                onChanged: (val) => _tts.setVolume(val),
-              ),
-              SizedBox(height: 24.h),
-            ],
+                _buildSliderControl(
+                  icon: Icons.speed,
+                  title: '语速',
+                  value: _tts.speechRate,
+                  min: 0.0,
+                  max: 1.0,
+                  label: '1.0 为正常语速',
+                  color: Colors.amber,
+                  onChanged: (val) => _tts.setSpeechRate(val),
+                ),
+                SizedBox(height: 16.h),
+                _buildSliderControl(
+                  icon: Icons.music_note,
+                  title: '音调',
+                  value: _tts.pitch,
+                  min: 0.5,
+                  max: 2.0,
+                  label: '1.0 为正常音调',
+                  color: Colors.amber,
+                  onChanged: (val) => _tts.setPitch(val),
+                ),
+                SizedBox(height: 16.h),
+                _buildSliderControl(
+                  icon: Icons.volume_up,
+                  title: '音量',
+                  value: _tts.volume,
+                  min: 0.0,
+                  max: 1.0,
+                  label: '1.0 为最大音量',
+                  color: Colors.amber,
+                  onChanged: (val) => _tts.setVolume(val),
+                ),
+                SizedBox(height: 24.h),
+              ],
+            ),
           ),
         ),
       ),
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
     );
   }
 
