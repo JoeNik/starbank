@@ -316,7 +316,7 @@ class _WebDavSettingsPageState extends State<WebDavSettingsPage> {
             SizedBox(height: 8.h),
             Obx(() => DropdownButtonFormField<WebDavBackupStrategy>(
                   key: ValueKey(webDavService.backupStrategy.value),
-                  initialValue: webDavService.backupStrategy.value,
+                  value: webDavService.backupStrategy.value,
                   decoration: const InputDecoration(
                     border: OutlineInputBorder(),
                     contentPadding:
