@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -80,6 +82,7 @@ class _EncyclopediaSettingsPageState extends State<EncyclopediaSettingsPage> {
     _config.wrongFeedbackText =
         _normalizedFeedback(_wrongFeedbackController.text, '答错了，继续加油哦');
     await _service.updateConfig(_config);
+    unawaited(_cacheFeedbackTts());
     if (showToast) {
       ToastUtils.showSuccess('百科设置已保存');
     }
@@ -88,6 +91,23 @@ class _EncyclopediaSettingsPageState extends State<EncyclopediaSettingsPage> {
   String _normalizedFeedback(String value, String fallback) {
     final trimmed = value.trim();
     return trimmed.isEmpty ? fallback : trimmed;
+  }
+
+  Future<void> _cacheFeedbackTts() async {
+    if (!_tts.shouldUseAudioBasedPlayback(featureKey: 'encyclopedia')) return;
+
+    final feedbackTexts = <String>{
+      _config.correctFeedbackText.trim(),
+      _config.wrongFeedbackText.trim(),
+    }.where((text) => text.isNotEmpty);
+
+    try {
+      for (final text in feedbackTexts) {
+        await _tts.prefetchCftts(text, featureKey: 'encyclopedia');
+      }
+    } catch (e) {
+      debugPrint('百科反馈 TTS 缓存失败: $e');
+    }
   }
 
   Future<void> _previewFeedback(String text, String loadingKey) async {

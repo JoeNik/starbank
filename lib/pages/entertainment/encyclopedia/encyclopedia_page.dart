@@ -39,7 +39,8 @@ class _EncyclopediaPageState extends State<EncyclopediaPage> {
   DateTime? _lastFetchAt;
   Timer? _cooldownTimer;
   int _cooldownSeconds = 0;
-  String? _ttsLoadingKey;
+  final Map<String, Future<void>> _ttsPrefetchTasks = {};
+  final Map<String, Set<String>> _ttsLoadingTokensByKey = {};
 
   @override
   void initState() {
@@ -91,6 +92,7 @@ class _EncyclopediaPageState extends State<EncyclopediaPage> {
         _questions.addAll(list.take(min(10, list.length)));
         _isInitialLoading = false;
       });
+      _prefetchCurrentQuestionTts();
     } catch (e) {
       if (!mounted) return;
       setState(() => _isInitialLoading = false);
@@ -112,37 +114,119 @@ class _EncyclopediaPageState extends State<EncyclopediaPage> {
   Future<void> _speakOptions() async {
     final q = _currentQuestion;
     if (q == null) return;
+    await _speakText(_optionsSpeechText(q), 'options');
+  }
+
+  String _optionsSpeechText(EncyclopediaQuestion q) {
     final labels = ['A', 'B'];
-    final text = q.options
+    return q.options
         .take(2)
         .toList()
         .asMap()
         .entries
         .map((e) => '${labels[e.key]}、${e.value}')
         .join('，');
-    await _speakText(text, 'options');
   }
 
   Future<void> _speakText(String text, String loadingKey) async {
-    if (text.trim().isEmpty) return;
+    final content = text.trim();
+    if (content.isEmpty) return;
     final showLoading =
         _tts.shouldUseAudioBasedPlayback(featureKey: 'encyclopedia');
     try {
-      if (showLoading && mounted) {
-        setState(() => _ttsLoadingKey = loadingKey);
-        await _tts.prefetchCftts(text, featureKey: 'encyclopedia');
-        if (mounted && _ttsLoadingKey == loadingKey) {
-          setState(() => _ttsLoadingKey = null);
-        }
+      if (showLoading) {
+        await _prefetchTts(content, loadingKey);
       }
-      await _tts.speak(text, featureKey: 'encyclopedia');
+      await _tts.speak(content, featureKey: 'encyclopedia');
     } catch (e) {
       ToastUtils.showWarning('语音播放失败: $e');
-    } finally {
-      if (mounted && _ttsLoadingKey == loadingKey) {
-        setState(() => _ttsLoadingKey = null);
-      }
     }
+  }
+
+  void _prefetchCurrentQuestionTts() {
+    final q = _currentQuestion;
+    if (q == null) return;
+    if (!_tts.shouldUseAudioBasedPlayback(featureKey: 'encyclopedia')) return;
+
+    unawaited(_prefetchTts(q.question, 'question'));
+    unawaited(_prefetchTts(_optionsSpeechText(q), 'options'));
+  }
+
+  void _prefetchExplanationTts() {
+    final text = _buildExplanationSpeechText();
+    if (text == null) return;
+    unawaited(_prefetchTts(text, 'explanation_all'));
+  }
+
+  Future<void> _prefetchTts(
+    String text,
+    String loadingKey, {
+    bool showLoading = true,
+  }) {
+    final content = text.trim();
+    if (content.isEmpty) return Future.value();
+    if (!_tts.shouldUseAudioBasedPlayback(featureKey: 'encyclopedia')) {
+      return Future.value();
+    }
+
+    final route = _tts.resolveTtsRoute(featureKey: 'encyclopedia');
+    final token = '$loadingKey|$route|${content.hashCode}';
+    final existing = _ttsPrefetchTasks[token];
+    if (existing != null) {
+      if (showLoading) {
+        _setTtsLoading(loadingKey, token, true);
+        unawaited(existing.whenComplete(
+          () => _setTtsLoading(loadingKey, token, false),
+        ));
+      }
+      return existing;
+    }
+
+    final task = () async {
+      if (showLoading) {
+        _setTtsLoading(loadingKey, token, true);
+      }
+      try {
+        await _tts.prefetchCftts(content, featureKey: 'encyclopedia');
+      } finally {
+        _ttsPrefetchTasks.remove(token);
+        if (showLoading) {
+          _setTtsLoading(loadingKey, token, false);
+        }
+      }
+    }();
+
+    _ttsPrefetchTasks[token] = task;
+    return task;
+  }
+
+  void _setTtsLoading(String loadingKey, String token, bool isLoading) {
+    if (!mounted) return;
+    setState(() {
+      if (isLoading) {
+        final tokens = _ttsLoadingTokensByKey.putIfAbsent(
+          loadingKey,
+          () => <String>{},
+        );
+        tokens.add(token);
+        return;
+      }
+
+      final tokens = _ttsLoadingTokensByKey[loadingKey];
+      if (tokens == null) return;
+      tokens.remove(token);
+      if (tokens.isEmpty) {
+        _ttsLoadingTokensByKey.remove(loadingKey);
+      }
+    });
+  }
+
+  bool _isTtsLoading(String loadingKey) {
+    return _ttsLoadingTokensByKey[loadingKey]?.isNotEmpty == true;
+  }
+
+  void _clearTtsLoadingUiState() {
+    _ttsLoadingTokensByKey.clear();
   }
 
   void _selectAnswer(int index) {
@@ -193,6 +277,7 @@ class _EncyclopediaPageState extends State<EncyclopediaPage> {
         );
         _lastFetchAt = null;
       });
+      _prefetchExplanationTts();
       return;
     }
 
@@ -217,8 +302,10 @@ class _EncyclopediaPageState extends State<EncyclopediaPage> {
       _isLoadingExplanation = false;
       _cooldownSeconds = 0;
       _lastFetchAt = null;
+      _clearTtsLoadingUiState();
     });
     _cooldownTimer?.cancel();
+    _prefetchCurrentQuestionTts();
   }
 
   void _showFinalResult() {
@@ -247,7 +334,9 @@ class _EncyclopediaPageState extends State<EncyclopediaPage> {
                 _correctCount = 0;
                 _explanation = null;
                 _isLoadingExplanation = false;
+                _clearTtsLoadingUiState();
               });
+              _prefetchCurrentQuestionTts();
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
             child: const Text('再来一轮'),
@@ -292,6 +381,7 @@ class _EncyclopediaPageState extends State<EncyclopediaPage> {
         _explanation = result;
         _lastFetchAt = result.fromBuiltIn ? null : DateTime.now();
       });
+      _prefetchExplanationTts();
       if (result.usedFallback) {
         ToastUtils.showWarning(
             result.fromBuiltIn ? 'AI 解析请求失败，已显示题库内置解析' : 'AI 解析请求失败，已显示基础解析');
@@ -890,10 +980,10 @@ class _EncyclopediaPageState extends State<EncyclopediaPage> {
     required String loadingKey,
     double? size,
   }) {
-    final isLoading = _ttsLoadingKey == loadingKey;
+    final isLoading = _isTtsLoading(loadingKey);
     return IconButton(
       tooltip: tooltip,
-      onPressed: onPressed,
+      onPressed: isLoading ? null : onPressed,
       icon: Stack(
         clipBehavior: Clip.none,
         children: [
