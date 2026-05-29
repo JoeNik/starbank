@@ -5,6 +5,7 @@ import '../controllers/user_controller.dart';
 import '../controllers/app_mode_controller.dart';
 import '../theme/app_theme.dart';
 import '../widgets/image_utils.dart';
+import '../widgets/module_background_scene.dart';
 import 'wallet_details_page.dart';
 
 class BankPage extends StatefulWidget {
@@ -56,41 +57,50 @@ class _BankPageState extends State<BankPage> {
           );
         }),
       ),
-      body: SafeArea(
-        child: Obx(() {
-          final baby = controller.currentBaby.value;
-          if (baby == null) return const Center(child: Text("请先在主页选择宝宝"));
+      body: Stack(
+        children: [
+          const Positioned.fill(
+            child: ModuleBackgroundScene(theme: ModuleBackgroundTheme.bank),
+          ),
+          SafeArea(
+            child: Obx(() {
+              final baby = controller.currentBaby.value;
+              if (baby == null) {
+                return const Center(child: Text("请先在主页选择宝宝"));
+              }
 
-          return SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            child: Column(
-              children: [
-                _buildWalletCard(
-                  controller: controller,
-                  modeController: modeController,
-                  title: "存钱罐",
-                  balance: baby.piggyBankBalance,
-                  icon: '🏦', // 使用 emoji 图标
-                  color: Colors.orange.shade300,
-                  isPiggy: true,
-                  subtitle: "年化利率: 5%",
+              return SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  children: [
+                    _buildWalletCard(
+                      controller: controller,
+                      modeController: modeController,
+                      title: "存钱罐",
+                      balance: baby.piggyBankBalance,
+                      icon: '🏦', // 使用 emoji 图标
+                      color: Colors.orange.shade300,
+                      isPiggy: true,
+                      subtitle: "年化利率: 5%",
+                    ),
+                    _buildWalletCard(
+                      controller: controller,
+                      modeController: modeController,
+                      title: "零花钱",
+                      balance: baby.pocketMoneyBalance,
+                      icon: '💰', // 使用 emoji 图标
+                      color: Colors.lightBlue.shade300,
+                      isPiggy: false,
+                      subtitle: "收益计入此钱包",
+                    ),
+                    _buildInterestCalculator(controller),
+                    _buildLogSection(controller),
+                  ],
                 ),
-                _buildWalletCard(
-                  controller: controller,
-                  modeController: modeController,
-                  title: "零花钱",
-                  balance: baby.pocketMoneyBalance,
-                  icon: '💰', // 使用 emoji 图标
-                  color: Colors.lightBlue.shade300,
-                  isPiggy: false,
-                  subtitle: "收益计入此钱包",
-                ),
-                _buildInterestCalculator(controller),
-                _buildLogSection(controller),
-              ],
-            ),
-          );
-        }),
+              );
+            }),
+          ),
+        ],
       ),
     );
   }

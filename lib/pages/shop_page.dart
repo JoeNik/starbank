@@ -8,6 +8,7 @@ import '../controllers/app_mode_controller.dart';
 import '../models/product.dart';
 import '../theme/app_theme.dart';
 import '../widgets/image_utils.dart';
+import '../widgets/module_background_scene.dart';
 
 class ShopPage extends StatelessWidget {
   const ShopPage({super.key});
@@ -77,79 +78,92 @@ class ShopPage extends StatelessWidget {
           SizedBox(width: 8.w),
         ],
       ),
-      body: SafeArea(
-        child: Obx(() {
-          if (shopController.products.isEmpty) {
-            return _buildEmptyState(shopController);
-          }
+      body: Stack(
+        children: [
+          const Positioned.fill(
+            child: ModuleBackgroundScene(theme: ModuleBackgroundTheme.shop),
+          ),
+          SafeArea(
+            child: Obx(() {
+              if (shopController.products.isEmpty) {
+                return _buildEmptyState(shopController);
+              }
 
-          // 分离未兑换和已兑换商品
-          final activeProducts = <Product>[];
-          final redeemedProducts = <Product>[];
-          for (int i = 0; i < shopController.products.length; i++) {
-            final product = shopController.products[i];
-            if (product.isRedeemed) {
-              redeemedProducts.add(product);
-            } else {
-              activeProducts.add(product);
-            }
-          }
+              // 分离未兑换和已兑换商品
+              final activeProducts = <Product>[];
+              final redeemedProducts = <Product>[];
+              for (int i = 0; i < shopController.products.length; i++) {
+                final product = shopController.products[i];
+                if (product.isRedeemed) {
+                  redeemedProducts.add(product);
+                } else {
+                  activeProducts.add(product);
+                }
+              }
 
-          return SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            padding: EdgeInsets.all(16.w),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 心愿商品
-                if (activeProducts.isNotEmpty) ...[
-                  _buildSectionHeader('🎯 心愿清单', '${activeProducts.length}件'),
-                  SizedBox(height: 12.h),
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      childAspectRatio: 0.68, // 更大的图片
-                      crossAxisSpacing: 12.w,
-                      mainAxisSpacing: 12.w,
-                    ),
-                    itemCount: activeProducts.length,
-                    itemBuilder: (context, index) {
-                      final product = activeProducts[index];
-                      final originalIndex =
-                          shopController.products.indexOf(product);
-                      return _buildNiceProductCard(shopController, product,
-                          originalIndex, modeController);
-                    },
-                  ),
-                ],
-                // 已兑换商品
-                if (redeemedProducts.isNotEmpty) ...[
-                  SizedBox(height: 24.h),
-                  _buildSectionHeader('✅ 已兑换', '${redeemedProducts.length}件'),
-                  SizedBox(height: 12.h),
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      childAspectRatio: 0.75,
-                      crossAxisSpacing: 12.w,
-                      mainAxisSpacing: 12.w,
-                    ),
-                    itemCount: redeemedProducts.length,
-                    itemBuilder: (context, index) {
-                      final product = redeemedProducts[index];
-                      return _buildRedeemedProductCard(product);
-                    },
-                  ),
-                ],
-                SizedBox(height: 20.h),
-              ],
-            ),
-          );
-        }),
+              return SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: EdgeInsets.all(16.w),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 心愿商品
+                    if (activeProducts.isNotEmpty) ...[
+                      _buildSectionHeader(
+                        '🎯 心愿清单',
+                        '${activeProducts.length}件',
+                      ),
+                      SizedBox(height: 12.h),
+                      GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          childAspectRatio: 0.68, // 更大的图片
+                          crossAxisSpacing: 12.w,
+                          mainAxisSpacing: 12.w,
+                        ),
+                        itemCount: activeProducts.length,
+                        itemBuilder: (context, index) {
+                          final product = activeProducts[index];
+                          final originalIndex =
+                              shopController.products.indexOf(product);
+                          return _buildNiceProductCard(shopController, product,
+                              originalIndex, modeController);
+                        },
+                      ),
+                    ],
+                    // 已兑换商品
+                    if (redeemedProducts.isNotEmpty) ...[
+                      SizedBox(height: 24.h),
+                      _buildSectionHeader(
+                        '✅ 已兑换',
+                        '${redeemedProducts.length}件',
+                      ),
+                      SizedBox(height: 12.h),
+                      GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          childAspectRatio: 0.75,
+                          crossAxisSpacing: 12.w,
+                          mainAxisSpacing: 12.w,
+                        ),
+                        itemCount: redeemedProducts.length,
+                        itemBuilder: (context, index) {
+                          final product = redeemedProducts[index];
+                          return _buildRedeemedProductCard(product);
+                        },
+                      ),
+                    ],
+                    SizedBox(height: 20.h),
+                  ],
+                ),
+              );
+            }),
+          ),
+        ],
       ),
     );
   }

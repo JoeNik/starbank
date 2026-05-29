@@ -35,6 +35,7 @@ import 'pages/bank_page.dart';
 import 'pages/shop_page.dart';
 import 'pages/entertainment_page.dart';
 import 'pages/record_page.dart';
+import 'navigation/app_route_observer.dart';
 
 // 版本号位置
 // 两个地方需要同步更新：
@@ -227,6 +228,7 @@ class MyApp extends StatelessWidget {
           debugShowCheckedModeBanner: false,
           title: 'StarBank',
           theme: AppTheme.theme,
+          navigatorObservers: [appRouteObserver],
           initialRoute: '/',
           getPages: [
             GetPage(name: '/', page: () => const MainNavigationShell()),
@@ -270,7 +272,13 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,
-        children: _pages,
+        children: List.generate(
+          _pages.length,
+          (index) => TickerMode(
+            enabled: _currentIndex == index,
+            child: _pages[index],
+          ),
+        ),
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,

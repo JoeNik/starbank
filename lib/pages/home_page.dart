@@ -7,6 +7,7 @@ import '../models/log.dart';
 import '../models/action_item.dart';
 import '../theme/app_theme.dart';
 import '../widgets/image_utils.dart';
+import '../widgets/module_background_scene.dart';
 import 'action_settings_page.dart';
 import 'settings_page.dart';
 
@@ -39,25 +40,32 @@ class _HomePageState extends State<HomePage> {
             colors: [Color(0xFFFFF1F2), Colors.white],
           ),
         ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              _buildBabySelector(controller, modeController),
-              Expanded(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  child: Column(
-                    children: [
-                      _buildStarCard(controller, modeController),
-                      _buildActionGrid(controller, modeController),
-                      _buildRecentLogs(controller),
-                      SizedBox(height: 20.h),
-                    ],
+        child: Stack(
+          children: [
+            const Positioned.fill(
+              child: ModuleBackgroundScene(theme: ModuleBackgroundTheme.home),
+            ),
+            SafeArea(
+              child: Column(
+                children: [
+                  _buildBabySelector(controller, modeController),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      child: Column(
+                        children: [
+                          _buildStarCard(controller, modeController),
+                          _buildActionGrid(controller, modeController),
+                          _buildRecentLogs(controller),
+                          SizedBox(height: 20.h),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

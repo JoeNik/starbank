@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../controllers/user_controller.dart';
 import '../theme/app_theme.dart';
+import '../widgets/module_background_scene.dart';
 import 'poop/poop_record_page.dart';
 
 /// 记录模块入口页面
@@ -20,140 +21,148 @@ class RecordPage extends StatelessWidget {
         centerTitle: true,
         elevation: 0,
       ),
-      body: Column(
+      body: Stack(
         children: [
-          // 当前宝宝提示
-          Obx(() {
-            final baby = userController.currentBaby.value;
-            if (baby == null) {
-              return Container(
-                margin: EdgeInsets.all(16.w),
-                padding: EdgeInsets.all(16.w),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(12.r),
-                  border: Border.all(color: Colors.orange.shade200),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.warning_amber,
-                        color: Colors.orange, size: 24.sp),
-                    SizedBox(width: 12.w),
-                    Expanded(
-                      child: Text(
-                        '请先在主页选择或添加宝宝',
-                        style: TextStyle(
-                          fontSize: 14.sp,
-                          color: Colors.orange.shade800,
-                        ),
-                      ),
+          const Positioned.fill(
+            child: ModuleBackgroundScene(theme: ModuleBackgroundTheme.record),
+          ),
+          Column(
+            children: [
+              // 当前宝宝提示
+              Obx(() {
+                final baby = userController.currentBaby.value;
+                if (baby == null) {
+                  return Container(
+                    margin: EdgeInsets.all(16.w),
+                    padding: EdgeInsets.all(16.w),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(12.r),
+                      border: Border.all(color: Colors.orange.shade200),
                     ),
-                  ],
-                ),
-              );
-            }
-            return Container(
-              margin: EdgeInsets.all(16.w),
-              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [AppTheme.primaryLight, AppTheme.primary],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(12.r),
-              ),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 20.r,
-                    backgroundColor: Colors.white,
-                    child: Text(
-                      baby.name.isNotEmpty ? baby.name[0] : '宝',
-                      style: TextStyle(
-                        fontSize: 16.sp,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.primary,
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 12.w),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
                       children: [
-                        Text(
-                          '当前记录：${baby.name}',
-                          style: TextStyle(
-                            fontSize: 16.sp,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        Text(
-                          '所有记录将关联到此宝宝',
-                          style: TextStyle(
-                            fontSize: 12.sp,
-                            color: Colors.white70,
+                        Icon(Icons.warning_amber,
+                            color: Colors.orange, size: 24.sp),
+                        SizedBox(width: 12.w),
+                        Expanded(
+                          child: Text(
+                            '请先在主页选择或添加宝宝',
+                            style: TextStyle(
+                              fontSize: 14.sp,
+                              color: Colors.orange.shade800,
+                            ),
                           ),
                         ),
                       ],
                     ),
+                  );
+                }
+                return Container(
+                  margin: EdgeInsets.all(16.w),
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [AppTheme.primaryLight, AppTheme.primary],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
-                ],
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 20.r,
+                        backgroundColor: Colors.white,
+                        child: Text(
+                          baby.name.isNotEmpty ? baby.name[0] : '宝',
+                          style: TextStyle(
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.primary,
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 12.w),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '当前记录：${baby.name}',
+                              style: TextStyle(
+                                fontSize: 16.sp,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            Text(
+                              '所有记录将关联到此宝宝',
+                              style: TextStyle(
+                                fontSize: 12.sp,
+                                color: Colors.white70,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+
+              // 功能列表
+              Expanded(
+                child: ListView(
+                  padding: EdgeInsets.symmetric(horizontal: 16.w),
+                  children: [
+                    // 便便记录
+                    _buildFeatureCard(
+                      icon: Icons.calendar_month,
+                      iconColor: Colors.brown,
+                      title: '便便记录',
+                      subtitle: '记录宝宝排便情况，AI 智能分析',
+                      onTap: () => Get.to(() => const PoopRecordPage()),
+                    ),
+
+                    SizedBox(height: 12.h),
+
+                    // 其他功能（预留）
+                    _buildFeatureCard(
+                      icon: Icons.restaurant,
+                      iconColor: Colors.orange,
+                      title: '喂养记录',
+                      subtitle: '记录宝宝饮食情况（开发中）',
+                      onTap: () => _showComingSoon('喂养记录'),
+                      enabled: false,
+                    ),
+
+                    SizedBox(height: 12.h),
+
+                    _buildFeatureCard(
+                      icon: Icons.bedtime,
+                      iconColor: Colors.indigo,
+                      title: '睡眠记录',
+                      subtitle: '记录宝宝睡眠情况（开发中）',
+                      onTap: () => _showComingSoon('睡眠记录'),
+                      enabled: false,
+                    ),
+
+                    SizedBox(height: 12.h),
+
+                    _buildFeatureCard(
+                      icon: Icons.height,
+                      iconColor: Colors.green,
+                      title: '生长记录',
+                      subtitle: '记录身高体重变化（开发中）',
+                      onTap: () => _showComingSoon('生长记录'),
+                      enabled: false,
+                    ),
+                  ],
+                ),
               ),
-            );
-          }),
-
-          // 功能列表
-          Expanded(
-            child: ListView(
-              padding: EdgeInsets.symmetric(horizontal: 16.w),
-              children: [
-                // 便便记录
-                _buildFeatureCard(
-                  icon: Icons.calendar_month,
-                  iconColor: Colors.brown,
-                  title: '便便记录',
-                  subtitle: '记录宝宝排便情况，AI 智能分析',
-                  onTap: () => Get.to(() => const PoopRecordPage()),
-                ),
-
-                SizedBox(height: 12.h),
-
-                // 其他功能（预留）
-                _buildFeatureCard(
-                  icon: Icons.restaurant,
-                  iconColor: Colors.orange,
-                  title: '喂养记录',
-                  subtitle: '记录宝宝饮食情况（开发中）',
-                  onTap: () => _showComingSoon('喂养记录'),
-                  enabled: false,
-                ),
-
-                SizedBox(height: 12.h),
-
-                _buildFeatureCard(
-                  icon: Icons.bedtime,
-                  iconColor: Colors.indigo,
-                  title: '睡眠记录',
-                  subtitle: '记录宝宝睡眠情况（开发中）',
-                  onTap: () => _showComingSoon('睡眠记录'),
-                  enabled: false,
-                ),
-
-                SizedBox(height: 12.h),
-
-                _buildFeatureCard(
-                  icon: Icons.height,
-                  iconColor: Colors.green,
-                  title: '生长记录',
-                  subtitle: '记录身高体重变化（开发中）',
-                  onTap: () => _showComingSoon('生长记录'),
-                  enabled: false,
-                ),
-              ],
-            ),
+            ],
           ),
         ],
       ),
