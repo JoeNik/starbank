@@ -24,13 +24,15 @@ class BabyAdapter extends TypeAdapter<Baby> {
       piggyBankBalance: fields[4] as double,
       pocketMoneyBalance: fields[5] as double,
       lastInterestDate: fields[6] as DateTime?,
+      birthDate: fields[7] as DateTime?,
+      gender: fields[8] == null ? 'unknown' : fields[8] as String,
     );
   }
 
   @override
   void write(BinaryWriter writer, Baby obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -44,7 +46,11 @@ class BabyAdapter extends TypeAdapter<Baby> {
       ..writeByte(5)
       ..write(obj.pocketMoneyBalance)
       ..writeByte(6)
-      ..write(obj.lastInterestDate);
+      ..write(obj.lastInterestDate)
+      ..writeByte(7)
+      ..write(obj.birthDate)
+      ..writeByte(8)
+      ..write(obj.gender);
   }
 
   @override

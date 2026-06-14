@@ -345,6 +345,79 @@ class OpenAIService extends GetxService {
     }
   }
 
+  /// 发送带图片的聊天请求，用于 OCR / 视觉理解。
+  Future<String> chatWithImage({
+    required String systemPrompt,
+    required String userMessage,
+    required String imageBase64,
+    String mimeType = 'image/jpeg',
+    OpenAIConfig? config,
+    String? model,
+    int maxTokens = 1500,
+  }) async {
+    final cfg = config ?? currentConfig.value;
+    if (cfg == null) {
+      throw Exception('未配置 OpenAI');
+    }
+
+    try {
+      final uri = Uri.parse('${cfg.baseUrl}/v1/chat/completions');
+      final requestBody = {
+        'model': model ??
+            (cfg.selectedModel.isNotEmpty ? cfg.selectedModel : 'gpt-4o-mini'),
+        'messages': [
+          {'role': 'system', 'content': systemPrompt},
+          {
+            'role': 'user',
+            'content': [
+              {'type': 'text', 'text': userMessage},
+              {
+                'type': 'image_url',
+                'image_url': {
+                  'url': 'data:$mimeType;base64,$imageBase64',
+                },
+              },
+            ],
+          },
+        ],
+        'temperature': 0.1,
+        'max_tokens': maxTokens,
+        'stream': false,
+      };
+
+      final response = await http
+          .post(
+            uri,
+            headers: {
+              'Authorization': 'Bearer ${cfg.apiKey}',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode(requestBody),
+          )
+          .timeout(const Duration(seconds: 180));
+
+      if (response.statusCode != 200) {
+        final errorText = utf8.decode(response.bodyBytes);
+        String message = '请求失败: ${response.statusCode}';
+        try {
+          final error = jsonDecode(errorText);
+          message = error['error']?['message'] ?? error['message'] ?? message;
+        } catch (_) {
+          message = '$message $errorText';
+        }
+        throw Exception(
+          '$message\n当前模型可能不支持图片识别，请切换到支持视觉的模型后重试。',
+        );
+      }
+
+      final data = _parseResponseBody(utf8.decode(response.bodyBytes));
+      return data['choices'][0]['message']['content'] as String;
+    } catch (e) {
+      debugPrint('OpenAI 图片识别请求失败: $e');
+      rethrow;
+    }
+  }
+
   /// 导出配置(用于备份)
   List<Map<String, dynamic>> exportConfigs() {
     return configs.map((c) => c.toJson()).toList();

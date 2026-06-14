@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:async';
+import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -275,6 +276,23 @@ class ImageUtils {
         },
       );
     }
+
+    // 本地文件路径
+    try {
+      final file = File(pathOrBase64);
+      if (file.existsSync()) {
+        return Image.file(
+          file,
+          width: width,
+          height: height,
+          fit: fit,
+          errorBuilder: (context, error, stackTrace) {
+            debugPrint("Local Image Error: $error");
+            return placeholder ?? const Icon(Icons.broken_image);
+          },
+        );
+      }
+    } catch (_) {}
 
     // 如果长度超过 100,可能是 base64
     if (pathOrBase64.length > 100) {

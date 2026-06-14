@@ -187,6 +187,74 @@ class WebDavBackupCancelledException implements Exception {
   String toString() => 'Backup cancelled.';
 }
 
+class V2RemoteOperationException implements Exception {
+  final String operation;
+  final String path;
+  final Object cause;
+
+  const V2RemoteOperationException({
+    required this.operation,
+    required this.path,
+    required this.cause,
+  });
+
+  @override
+  String toString() {
+    final reason = _compactCause(cause);
+    final hint = _hintForCause(cause);
+    return 'WebDAV $operation 失败: $path'
+        '${reason.isEmpty ? '' : '；$reason'}'
+        '${hint.isEmpty ? '' : '；$hint'}';
+  }
+
+  static String _compactCause(Object cause) {
+    final text = cause.toString().trim().replaceAll(RegExp(r'\s+'), ' ');
+    if (text.isEmpty) return '';
+    final lower = text.toLowerCase();
+
+    if (lower.contains('service unavailable') || lower.contains('503')) {
+      return '服务器返回 503 Service Unavailable';
+    }
+    if (lower.contains('too many requests') || lower.contains('429')) {
+      return '服务器返回 429 Too Many Requests';
+    }
+    if (lower.contains('unauthorized') || lower.contains('401')) {
+      return '服务器返回 401 Unauthorized';
+    }
+    if (lower.contains('forbidden') || lower.contains('403')) {
+      return '服务器返回 403 Forbidden';
+    }
+    if (lower.contains('insufficient storage') || lower.contains('507')) {
+      return '服务器返回 507 Insufficient Storage';
+    }
+    if (lower.contains('timed out') || lower.contains('timeout')) {
+      return '请求超时';
+    }
+
+    return text.length > 180 ? '${text.substring(0, 180)}...' : text;
+  }
+
+  static String _hintForCause(Object cause) {
+    final lower = cause.toString().toLowerCase();
+    if (lower.contains('service unavailable') ||
+        lower.contains('503') ||
+        lower.contains('too many requests') ||
+        lower.contains('429')) {
+      return '云端服务繁忙或限流，请稍后重试；必要时可临时切回全量备份';
+    }
+    if (lower.contains('unauthorized') ||
+        lower.contains('401') ||
+        lower.contains('forbidden') ||
+        lower.contains('403')) {
+      return '请检查 WebDAV 地址、账号密码和目录权限';
+    }
+    if (lower.contains('insufficient storage') || lower.contains('507')) {
+      return '请检查 WebDAV 云端剩余空间';
+    }
+    return '';
+  }
+}
+
 class WebDavBackupV2Service {
   WebDavBackupV2Service({
     required StorageService storage,
@@ -703,6 +771,11 @@ class WebDavBackupV2Service {
       backupData['poopRecords'] = [];
     }
 
+    backupData['growthRecords'] =
+        _storage.growthRecordBox.values.map((e) => e.toJson()).toList();
+    backupData['milestoneRecords'] =
+        _storage.milestoneRecordBox.values.map((e) => e.toJson()).toList();
+
     try {
       final chatBox = await Hive.openBox<dynamic>('ai_chats');
       backupData['aiChats'] = chatBox.values
@@ -914,6 +987,33 @@ class WebDavBackupV2Service {
       }
     }
 
+    for (final item in (data['growthRecords'] as List? ?? const [])) {
+      _throwIfCancelled(shouldCancel);
+      if (item is Map) {
+        item['sourceImagePath'] = await media(
+          item['sourceImagePath'],
+          section: 'record.growthRecords',
+          record:
+              item['id']?.toString() ?? item['recordDate']?.toString() ?? '',
+          field: 'sourceImagePath',
+          restoreStyle: 'rawBase64',
+        );
+      }
+    }
+
+    for (final item in (data['milestoneRecords'] as List? ?? const [])) {
+      _throwIfCancelled(shouldCancel);
+      if (item is Map) {
+        item['sourceImagePath'] = await media(
+          item['sourceImagePath'],
+          section: 'record.milestoneRecords',
+          record: item['id']?.toString() ?? item['title']?.toString() ?? '',
+          field: 'sourceImagePath',
+          restoreStyle: 'rawBase64',
+        );
+      }
+    }
+
     for (final item in (data['quizQuestions'] as List? ?? const [])) {
       _throwIfCancelled(shouldCancel);
       if (item is Map) {
@@ -1024,13 +1124,8 @@ class WebDavBackupV2Service {
     dynamic value,
     Map<String, V2BackupObject> objects,
   ) {
-    if (value is List) {
-      return {
-        'kind': 'list',
-        'items':
-            value.map((item) => _jsonRef('$key.item', item, objects)).toList(),
-      };
-    }
+    // WebDAV servers often rate-limit bursts of tiny PUT/PROPFIND requests.
+    // Keep each logical section in one JSON object; media remains de-duplicated.
     return {
       'kind': 'value',
       'object': _jsonRef(key, value, objects),
@@ -1095,14 +1190,40 @@ class WebDavBackupV2Service {
       webDavBackupV2ManifestDir,
       webDavBackupV2ObjectDir,
     ]) {
-      try {
-        await _mkdir(dir);
-      } catch (_) {}
+      await _ensureRemoteDir(dir);
     }
-    for (final hash in hashes) {
-      try {
-        await _mkdir('$webDavBackupV2ObjectDir/${hash.substring(0, 2)}');
-      } catch (_) {}
+
+    final prefixDirs = hashes
+        .map((hash) => '$webDavBackupV2ObjectDir/${hash.substring(0, 2)}')
+        .toSet()
+        .toList()
+      ..sort();
+    for (final dir in prefixDirs) {
+      await _ensureRemoteDir(dir);
+    }
+  }
+
+  Future<void> _ensureRemoteDir(String dir) async {
+    try {
+      await _mkdir(dir);
+    } catch (e) {
+      if (e is WebDavBackupCancelledException) rethrow;
+      if (await _remoteDirExists(dir)) return;
+      if (e is V2RemoteOperationException) rethrow;
+      throw V2RemoteOperationException(
+        operation: '创建目录',
+        path: dir,
+        cause: e,
+      );
+    }
+  }
+
+  Future<bool> _remoteDirExists(String dir) async {
+    try {
+      await _list(dir);
+      return true;
+    } catch (_) {
+      return false;
     }
   }
 
@@ -1116,13 +1237,18 @@ class WebDavBackupV2Service {
   }
 
   Future<void> _ensureRemoteSize(String path, int expectedSize) async {
-    final file = await _remoteFile(path);
+    final file = await _remoteFile(path, ignoreListFailure: false);
     if (file == null || file.size != expectedSize) {
-      throw StateError('远端文件大小校验失败: $path');
+      final actual = file == null ? 'missing' : file.size.toString();
+      throw StateError(
+          '远端文件大小校验失败: $path (期望 $expectedSize, 实际 $actual)');
     }
   }
 
-  Future<V2RemoteFile?> _remoteFile(String path) async {
+  Future<V2RemoteFile?> _remoteFile(
+    String path, {
+    bool ignoreListFailure = true,
+  }) async {
     try {
       final dir = path.substring(0, path.lastIndexOf('/'));
       final files = await _list(dir);
@@ -1130,7 +1256,9 @@ class WebDavBackupV2Service {
         if (file.path == path) return file;
       }
       return null;
-    } catch (_) {
+    } catch (e) {
+      if (!ignoreListFailure) rethrow;
+      debugPrint('跳过远端文件探测 $path: $e');
       return null;
     }
   }
@@ -1201,6 +1329,8 @@ class WebDavBackupV2Service {
       'babyCount': count('babies'),
       'logCount': count('logs'),
       'productCount': count('products'),
+      'growthRecordCount': count('growthRecords'),
+      'milestoneRecordCount': count('milestoneRecords'),
       'storyCount': count('newYearStories'),
       'quizQuestionCount': count('quizQuestions'),
       'jsonObjectCount': jsonCount,

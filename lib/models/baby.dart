@@ -25,6 +25,13 @@ class Baby extends HiveObject {
   @HiveField(6)
   DateTime? lastInterestDate;
 
+  @HiveField(7)
+  DateTime? birthDate;
+
+  /// male / female / unknown
+  @HiveField(8, defaultValue: 'unknown')
+  String gender;
+
   Baby({
     required this.id,
     required this.name,
@@ -33,27 +40,35 @@ class Baby extends HiveObject {
     this.piggyBankBalance = 0.0,
     this.pocketMoneyBalance = 0.0,
     this.lastInterestDate,
+    this.birthDate,
+    this.gender = 'unknown',
   });
 
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'name': name,
-    'avatarPath': avatarPath,
-    'starCount': starCount,
-    'piggyBankBalance': piggyBankBalance,
-    'pocketMoneyBalance': pocketMoneyBalance,
-    'lastInterestDate': lastInterestDate?.toIso8601String(),
-  };
+        'id': id,
+        'name': name,
+        'avatarPath': avatarPath,
+        'starCount': starCount,
+        'piggyBankBalance': piggyBankBalance,
+        'pocketMoneyBalance': pocketMoneyBalance,
+        'lastInterestDate': lastInterestDate?.toIso8601String(),
+        'birthDate': birthDate?.toIso8601String(),
+        'gender': gender,
+      };
 
   factory Baby.fromJson(Map<String, dynamic> json) => Baby(
-    id: json['id'],
-    name: json['name'],
-    avatarPath: json['avatarPath'],
-    starCount: json['starCount'] ?? 0,
-    piggyBankBalance: (json['piggyBankBalance'] ?? 0).toDouble(),
-    pocketMoneyBalance: (json['pocketMoneyBalance'] ?? 0).toDouble(),
-    lastInterestDate: json['lastInterestDate'] != null
-        ? DateTime.parse(json['lastInterestDate'])
-        : null,
-  );
+        id: json['id'],
+        name: json['name'],
+        avatarPath: json['avatarPath'],
+        starCount: json['starCount'] ?? 0,
+        piggyBankBalance: (json['piggyBankBalance'] ?? 0).toDouble(),
+        pocketMoneyBalance: (json['pocketMoneyBalance'] ?? 0).toDouble(),
+        lastInterestDate: json['lastInterestDate'] != null
+            ? DateTime.parse(json['lastInterestDate'])
+            : null,
+        birthDate: json['birthDate'] != null
+            ? DateTime.parse(json['birthDate'])
+            : null,
+        gender: json['gender'] as String? ?? 'unknown',
+      );
 }

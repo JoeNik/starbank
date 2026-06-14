@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:intl/intl.dart';
 import '../controllers/user_controller.dart';
 import '../controllers/app_mode_controller.dart';
 import '../models/log.dart';
@@ -545,6 +546,8 @@ class _HomePageState extends State<HomePage> {
 
     final nameController = TextEditingController(text: baby.name);
     final Rx<String?> selectedAvatar = Rx<String?>(baby.avatarPath);
+    final Rx<DateTime?> selectedBirthDate = Rx<DateTime?>(baby.birthDate);
+    final RxString selectedGender = baby.gender.obs;
 
     Get.defaultDialog(
       title: "编辑宝宝资料",
@@ -589,6 +592,20 @@ class _HomePageState extends State<HomePage> {
               border: OutlineInputBorder(),
             ),
           ),
+          SizedBox(height: 12.h),
+          Obx(
+            () => _buildBirthDatePicker(
+              selectedBirthDate.value,
+              (date) => selectedBirthDate.value = date,
+            ),
+          ),
+          SizedBox(height: 12.h),
+          Obx(
+            () => _buildGenderDropdown(
+              selectedGender.value,
+              (gender) => selectedGender.value = gender ?? 'unknown',
+            ),
+          ),
         ],
       ),
       confirm: SizedBox(
@@ -599,6 +616,8 @@ class _HomePageState extends State<HomePage> {
               controller.editBaby(
                 nameController.text,
                 selectedAvatar.value ?? baby.avatarPath,
+                birthDate: selectedBirthDate.value,
+                gender: selectedGender.value,
               );
               Get.back();
             }
@@ -1270,6 +1289,8 @@ class _HomePageState extends State<HomePage> {
   void _showAddBabyDialog(UserController controller) {
     final nameController = TextEditingController();
     final Rx<String?> selectedAvatar = Rx<String?>(null);
+    final Rx<DateTime?> selectedBirthDate = Rx<DateTime?>(null);
+    final RxString selectedGender = 'unknown'.obs;
 
     Get.defaultDialog(
       title: "添加宝宝",
@@ -1309,6 +1330,20 @@ class _HomePageState extends State<HomePage> {
               border: OutlineInputBorder(),
             ),
           ),
+          SizedBox(height: 12.h),
+          Obx(
+            () => _buildBirthDatePicker(
+              selectedBirthDate.value,
+              (date) => selectedBirthDate.value = date,
+            ),
+          ),
+          SizedBox(height: 12.h),
+          Obx(
+            () => _buildGenderDropdown(
+              selectedGender.value,
+              (gender) => selectedGender.value = gender ?? 'unknown',
+            ),
+          ),
         ],
       ),
       confirm: SizedBox(
@@ -1319,6 +1354,8 @@ class _HomePageState extends State<HomePage> {
               controller.addBaby(
                 nameController.text,
                 selectedAvatar.value ?? '', // 使用默认 emoji 头像
+                birthDate: selectedBirthDate.value,
+                gender: selectedGender.value,
               );
               Get.back();
             }
@@ -1326,6 +1363,54 @@ class _HomePageState extends State<HomePage> {
           child: const Text("添加"),
         ),
       ),
+    );
+  }
+
+  Widget _buildBirthDatePicker(
+    DateTime? value,
+    ValueChanged<DateTime?> onChanged,
+  ) {
+    return InkWell(
+      onTap: () async {
+        final now = DateTime.now();
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: value ?? DateTime(now.year - 3, now.month, now.day),
+          firstDate: DateTime(now.year - 18),
+          lastDate: now,
+        );
+        if (picked != null) onChanged(picked);
+      },
+      child: InputDecorator(
+        decoration: const InputDecoration(
+          labelText: '生日',
+          border: OutlineInputBorder(),
+          prefixIcon: Icon(Icons.cake_outlined),
+        ),
+        child: Text(
+          value == null ? '未设置' : DateFormat('yyyy-MM-dd').format(value),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGenderDropdown(
+    String value,
+    ValueChanged<String?> onChanged,
+  ) {
+    return DropdownButtonFormField<String>(
+      value: value,
+      decoration: const InputDecoration(
+        labelText: '性别',
+        border: OutlineInputBorder(),
+        prefixIcon: Icon(Icons.child_care),
+      ),
+      items: const [
+        DropdownMenuItem(value: 'unknown', child: Text('未设置')),
+        DropdownMenuItem(value: 'male', child: Text('男孩')),
+        DropdownMenuItem(value: 'female', child: Text('女孩')),
+      ],
+      onChanged: onChanged,
     );
   }
 }

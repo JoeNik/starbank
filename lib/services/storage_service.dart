@@ -14,6 +14,12 @@ import '../models/quiz_config.dart';
 import '../models/encyclopedia_question.dart';
 import '../models/encyclopedia_config.dart';
 import '../models/encyclopedia_explanation_cache.dart';
+import '../models/growth_record.dart';
+import '../models/milestone_record.dart';
+import '../models/baby_cloud_source.dart';
+import '../models/baby_cloud_media.dart';
+import '../models/baby_cloud_upload_task.dart';
+import '../models/baby_cloud_entry.dart';
 
 class StorageService extends GetxService {
   late Box<UserProfile> userBox;
@@ -22,6 +28,12 @@ class StorageService extends GetxService {
   late Box<Product> productBox;
   late Box<Baby> babyBox;
   late Box<Playlist> playlistBox;
+  late Box<GrowthRecord> growthRecordBox;
+  late Box<MilestoneRecord> milestoneRecordBox;
+  late Box<BabyCloudSource> babyCloudSourceBox;
+  late Box<BabyCloudMedia> babyCloudMediaBox;
+  late Box<BabyCloudEntry> babyCloudEntryBox;
+  late Box<BabyCloudUploadTask> babyCloudUploadTaskBox;
   Box get settingsBox => Hive.box('settings');
 
   dynamic getValue(String key) => settingsBox.get(key);
@@ -33,13 +45,13 @@ class StorageService extends GetxService {
     // 重复初始化会导致之前注册的适配器失效
     debugPrint('📦 StorageService.init() 开始...');
 
-    Hive.registerAdapter(UserProfileAdapter());
-    Hive.registerAdapter(ActionItemAdapter());
-    Hive.registerAdapter(LogAdapter());
-    Hive.registerAdapter(ProductAdapter());
-    Hive.registerAdapter(BabyAdapter());
-    Hive.registerAdapter(MusicTrackAdapter());
-    Hive.registerAdapter(PlaylistAdapter());
+    _registerAdapter(UserProfileAdapter(), 'UserProfileAdapter');
+    _registerAdapter(ActionItemAdapter(), 'ActionItemAdapter');
+    _registerAdapter(LogAdapter(), 'LogAdapter');
+    _registerAdapter(ProductAdapter(), 'ProductAdapter');
+    _registerAdapter(BabyAdapter(), 'BabyAdapter');
+    _registerAdapter(MusicTrackAdapter(), 'MusicTrackAdapter');
+    _registerAdapter(PlaylistAdapter(), 'PlaylistAdapter');
     debugPrint('✅ 基础适配器注册完成');
 
     // Quiz and Story Adapters (安全注册,避免重复)
@@ -85,6 +97,36 @@ class StorageService extends GetxService {
       debugPrint(
           '⏭️ StorageService: EncyclopediaExplanationCacheAdapter 已注册,跳过');
     }
+    if (!Hive.isAdapterRegistered(46)) {
+      Hive.registerAdapter(GrowthRecordAdapter());
+      debugPrint(
+          '✅ StorageService: GrowthRecordAdapter registered (typeId: 46)');
+    }
+    if (!Hive.isAdapterRegistered(47)) {
+      Hive.registerAdapter(MilestoneRecordAdapter());
+      debugPrint(
+          '✅ StorageService: MilestoneRecordAdapter registered (typeId: 47)');
+    }
+    if (!Hive.isAdapterRegistered(48)) {
+      Hive.registerAdapter(BabyCloudSourceAdapter());
+      debugPrint(
+          '✅ StorageService: BabyCloudSourceAdapter registered (typeId: 48)');
+    }
+    if (!Hive.isAdapterRegistered(49)) {
+      Hive.registerAdapter(BabyCloudMediaAdapter());
+      debugPrint(
+          '✅ StorageService: BabyCloudMediaAdapter registered (typeId: 49)');
+    }
+    if (!Hive.isAdapterRegistered(50)) {
+      Hive.registerAdapter(BabyCloudUploadTaskAdapter());
+      debugPrint(
+          '✅ StorageService: BabyCloudUploadTaskAdapter registered (typeId: 50)');
+    }
+    if (!Hive.isAdapterRegistered(51)) {
+      Hive.registerAdapter(BabyCloudEntryAdapter());
+      debugPrint(
+          '✅ StorageService: BabyCloudEntryAdapter registered (typeId: 51)');
+    }
 
     userBox = await Hive.openBox<UserProfile>('userBox');
     actionBox = await Hive.openBox<ActionItem>('actionBox');
@@ -93,12 +135,61 @@ class StorageService extends GetxService {
     babyBox = await Hive.openBox<Baby>('babyBox');
     playlistBox = await Hive.openBox<Playlist>('playlistBox');
 
-    // Generic settings box
+    // Generic settings box must be available before optional feature boxes,
+    // because optional boxes can switch to a recovered box name if old local
+    // test data is unreadable after model changes.
     await Hive.openBox('settings');
+
+    growthRecordBox = await _openRecoverableBox<GrowthRecord>('growth_records');
+    milestoneRecordBox =
+        await _openRecoverableBox<MilestoneRecord>('milestone_records');
+    babyCloudSourceBox =
+        await _openRecoverableBox<BabyCloudSource>('baby_cloud_sources');
+    babyCloudMediaBox =
+        await _openRecoverableBox<BabyCloudMedia>('baby_cloud_media');
+    babyCloudEntryBox =
+        await _openRecoverableBox<BabyCloudEntry>('baby_cloud_entries');
+    babyCloudUploadTaskBox = await _openRecoverableBox<BabyCloudUploadTask>(
+      'baby_cloud_upload_tasks',
+    );
 
     await _initDefaultData();
 
     return this;
+  }
+
+  void _registerAdapter<T>(TypeAdapter<T> adapter, String label) {
+    if (!Hive.isAdapterRegistered(adapter.typeId)) {
+      Hive.registerAdapter<T>(adapter);
+      debugPrint(
+          '✅ StorageService: $label registered (typeId: ${adapter.typeId})');
+    } else {
+      debugPrint('⏭️ StorageService: $label 已注册,跳过');
+    }
+  }
+
+  Future<Box<T>> _openRecoverableBox<T>(String boxName) async {
+    final key = 'active_recovered_box_$boxName';
+    final recoveredName = settingsBox.get(key) as String?;
+    if (recoveredName != null && recoveredName.isNotEmpty) {
+      try {
+        return await Hive.openBox<T>(recoveredName);
+      } catch (e, stack) {
+        debugPrint('恢复盒子 $recoveredName 打开失败，将重新创建: $e');
+        debugPrint('Stack: $stack');
+      }
+    }
+
+    try {
+      return await Hive.openBox<T>(boxName);
+    } catch (e, stack) {
+      debugPrint('可选盒子 $boxName 打开失败，保留原数据并切换到新盒子: $e');
+      debugPrint('Stack: $stack');
+      final fallbackName =
+          '${boxName}_recovered_${DateTime.now().millisecondsSinceEpoch}';
+      await settingsBox.put(key, fallbackName);
+      return Hive.openBox<T>(fallbackName);
+    }
   }
 
   Future<void> _initDefaultData() async {

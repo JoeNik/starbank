@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -27,6 +28,7 @@ import 'models/encyclopedia_question.dart';
 import 'models/encyclopedia_config.dart';
 import 'models/encyclopedia_explanation_cache.dart';
 import 'services/hanzi_learning_service.dart';
+import 'services/baby_cloud_service.dart';
 // import 'package:just_audio_background/just_audio_background.dart';
 
 import 'pages/home_page.dart';
@@ -104,37 +106,59 @@ void main() async {
 
   debugPrint('📦 准备初始化 StorageService...');
 
+  Object? startupError;
+  StackTrace? startupStack;
+
   try {
-    // 1. Initialize Storage Service (Essential)
     final storageService = StorageService();
     await storageService.init();
-    Get.put(storageService);
+    Get.put(storageService, permanent: true);
 
-    // 2. Initialize TTS Service (Crucial for some features)
-    final ttsService = TtsService();
-    await ttsService.init();
-    Get.put(ttsService);
+    ensureCoreBindingsForStartup();
+    debugPrint('Core services and controllers initialized');
+  } catch (e, stack) {
+    startupError = e;
+    startupStack = stack;
+    debugPrint('Critical core initialization error: $e');
+    debugPrint('Stack trace: $stack');
+  }
 
-    final pinyinAudioService = PinyinAudioService();
-    await pinyinAudioService.init();
-    Get.put(pinyinAudioService);
-
-    // 3. Initialize Other Services and Controllers
-    Get.put(WebDavService());
-    Get.put(UpdateService());
-    Get.put(UserController());
-    Get.put(ShopController());
-    Get.put(AppModeController());
-    Get.put(TuneHubService());
-
-    // Initialize Quiz and Story Services (with error handling)
+  if (startupError == null) {
     try {
-      // 先初始化并注册 OpenAIService
+      final ttsService = TtsService();
+      await ttsService.init();
+      Get.put(ttsService);
+    } catch (e, stack) {
+      debugPrint('TtsService init failed: $e');
+      debugPrint('Stack: $stack');
+    }
+
+    try {
+      final pinyinAudioService = PinyinAudioService();
+      await pinyinAudioService.init();
+      Get.put(pinyinAudioService);
+    } catch (e, stack) {
+      debugPrint('PinyinAudioService init failed: $e');
+      debugPrint('Stack: $stack');
+    }
+
+    try {
+      final babyCloudService = BabyCloudService();
+      Get.put(babyCloudService, permanent: true);
+      await babyCloudService.init();
+    } catch (e, stack) {
+      debugPrint('BabyCloudService init failed: $e');
+      debugPrint('Stack: $stack');
+      if (!Get.isRegistered<BabyCloudService>()) {
+        Get.put(BabyCloudService(), permanent: true);
+      }
+    }
+
+    try {
       final openAIService = OpenAIService();
-      Get.put(openAIService); // 必须先 put，QuizService 构造时需要
+      Get.put(openAIService);
       await openAIService.init();
 
-      // QuizService 依赖 OpenAIService，所以必须在其后创建
       final quizService = QuizService();
       Get.put(quizService);
       await quizService.init();
@@ -146,10 +170,8 @@ void main() async {
       final storyManagementService = StoryManagementService.instance;
       await storyManagementService.init();
 
-      // 初始化 AI 生成服务 (Singleton)
       Get.put(AIGenerationService());
 
-      // 初始化汉字学习服务
       final hanziService = HanziLearningService();
       Get.put(hanziService);
       await hanziService.init();
@@ -160,25 +182,18 @@ void main() async {
       debugPrint('Stack: $stack');
     }
 
-    // Core Music Engine (Singleton) - Solves "Multiple Player Instance" crash
-    // Initialize AudioService for Android 14 Background support
-    await Get.put(MusicService(), permanent: true).init();
+    try {
+      await Get.put(MusicService(), permanent: true).init();
 
-    // Initialize Music Cache Service
-    final musicCacheService = Get.put(MusicCacheService(), permanent: true);
-    await musicCacheService.initialize();
+      final musicCacheService = Get.put(MusicCacheService(), permanent: true);
+      await musicCacheService.initialize();
 
-    // Initialize MusicPlayerController as a permanent singleton.
-    // This ensures it is always available and persists across navigation,
-    // which is critical for a music player that plays in the background.
-    Get.put(MusicPlayerController(), permanent: true);
-
-    debugPrint('All services initialized successfully');
-  } catch (e, stack) {
-    debugPrint('Critical initialization error: $e');
-    debugPrint('Stack trace: $stack');
-    // We still try to run the app, but some features might be broken.
-    // However, if Storage fails, most likely anything touching UI will crash.
+      Get.put(MusicPlayerController(), permanent: true);
+      debugPrint('Music services initialized');
+    } catch (e, stack) {
+      debugPrint('Music services init failed: $e');
+      debugPrint('Stack: $stack');
+    }
   }
 
   // 4. Global Error Handling for Release Mode
@@ -211,11 +226,42 @@ void main() async {
     );
   };
 
-  runApp(const MyApp());
+  runApp(MyApp(startupError: startupError, startupStack: startupStack));
+}
+
+void ensureCoreBindingsForStartup() {
+  if (!Get.isRegistered<StorageService>()) {
+    throw StateError('StorageService 未注册，无法启动核心控制器');
+  }
+  if (!Get.isRegistered<WebDavService>()) {
+    Get.put(WebDavService(), permanent: true);
+  }
+  if (!Get.isRegistered<UpdateService>()) {
+    Get.put(UpdateService(), permanent: true);
+  }
+  if (!Get.isRegistered<UserController>()) {
+    Get.put(UserController(), permanent: true);
+  }
+  if (!Get.isRegistered<ShopController>()) {
+    Get.put(ShopController(), permanent: true);
+  }
+  if (!Get.isRegistered<AppModeController>()) {
+    Get.put(AppModeController(), permanent: true);
+  }
+  if (!Get.isRegistered<TuneHubService>()) {
+    Get.put(TuneHubService(), permanent: true);
+  }
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({
+    super.key,
+    this.startupError,
+    this.startupStack,
+  });
+
+  final Object? startupError;
+  final StackTrace? startupStack;
 
   @override
   Widget build(BuildContext context) {
@@ -228,13 +274,78 @@ class MyApp extends StatelessWidget {
           debugShowCheckedModeBanner: false,
           title: 'StarBank',
           theme: AppTheme.theme,
+          locale: const Locale('zh', 'CN'),
+          supportedLocales: const [
+            Locale('zh', 'CN'),
+            Locale('en', 'US'),
+          ],
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
           navigatorObservers: [appRouteObserver],
           initialRoute: '/',
           getPages: [
-            GetPage(name: '/', page: () => const MainNavigationShell()),
+            GetPage(
+              name: '/',
+              page: () => startupError == null
+                  ? const MainNavigationShell()
+                  : StartupFailurePage(
+                      error: startupError!,
+                      stack: startupStack,
+                    ),
+            ),
           ],
         );
       },
+    );
+  }
+}
+
+class StartupFailurePage extends StatelessWidget {
+  const StartupFailurePage({
+    super.key,
+    required this.error,
+    this.stack,
+  });
+
+  final Object error;
+  final StackTrace? stack;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.red, size: 48),
+              const SizedBox(height: 12),
+              const Text(
+                '启动初始化失败',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                error.toString(),
+                style: const TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const Divider(height: 28),
+              Text(
+                stack?.toString() ?? '无堆栈信息',
+                style: const TextStyle(fontSize: 12, color: Colors.black54),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -249,15 +360,6 @@ class MainNavigationShell extends StatefulWidget {
 class _MainNavigationShellState extends State<MainNavigationShell> {
   int _currentIndex = 0;
 
-  // 导航栏页面：主页、银行、商店、娱乐、记录（设置移到主页右上角）
-  final List<Widget> _pages = [
-    const HomePage(),
-    const BankPage(),
-    const ShopPage(),
-    const EntertainmentPage(),
-    const RecordPage(),
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -269,14 +371,23 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
 
   @override
   Widget build(BuildContext context) {
+    ensureCoreBindingsForStartup();
+    final pages = [
+      const HomePage(),
+      const BankPage(),
+      RecordPage(isActive: _currentIndex == 2),
+      const EntertainmentPage(),
+      const ShopPage(),
+    ];
+
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,
         children: List.generate(
-          _pages.length,
+          pages.length,
           (index) => TickerMode(
             enabled: _currentIndex == index,
-            child: _pages[index],
+            child: pages[index],
           ),
         ),
       ),
@@ -290,10 +401,10 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
           BottomNavigationBarItem(icon: Icon(Icons.home), label: '主页'),
           BottomNavigationBarItem(
               icon: Icon(Icons.account_balance), label: '银行'),
-          BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: '商店'),
+          BottomNavigationBarItem(icon: Icon(Icons.photo_album), label: '亲宝宝'),
           BottomNavigationBarItem(
               icon: Icon(Icons.sports_esports), label: '娱乐'),
-          BottomNavigationBarItem(icon: Icon(Icons.edit_note), label: '记录'),
+          BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: '商店'),
         ],
       ),
     );

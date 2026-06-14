@@ -59,11 +59,18 @@ class UserController extends GetxController {
     _loadBabySpecificData();
   }
 
-  void addBaby(String name, String avatar) {
+  void addBaby(
+    String name,
+    String avatar, {
+    DateTime? birthDate,
+    String gender = 'unknown',
+  }) {
     final newBaby = Baby(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       name: name,
       avatarPath: avatar,
+      birthDate: birthDate,
+      gender: gender,
     );
     _storage.babyBox.add(newBaby);
     babies.add(newBaby);
@@ -72,10 +79,17 @@ class UserController extends GetxController {
     }
   }
 
-  void editBaby(String name, String avatar) {
+  void editBaby(
+    String name,
+    String avatar, {
+    DateTime? birthDate,
+    String gender = 'unknown',
+  }) {
     if (currentBaby.value == null) return;
     currentBaby.value!.name = name;
     currentBaby.value!.avatarPath = avatar;
+    currentBaby.value!.birthDate = birthDate;
+    currentBaby.value!.gender = gender;
     currentBaby.value!.save();
     currentBaby.refresh();
     babies.refresh();

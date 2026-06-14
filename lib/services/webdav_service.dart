@@ -34,6 +34,8 @@ import '../services/encyclopedia_service.dart';
 import '../models/encyclopedia_question.dart';
 import '../models/encyclopedia_config.dart';
 import '../models/encyclopedia_explanation_cache.dart';
+import '../models/growth_record.dart';
+import '../models/milestone_record.dart';
 
 /// 备份文件信息
 class BackupFileInfo {
@@ -75,6 +77,8 @@ class WebDavService extends GetxService {
   final RxBool isOperationRunning = false.obs;
   final RxBool isBackupRunning = false.obs;
   bool _backupCancelRequested = false;
+  static const int _v2RemoteMaxAttempts = 3;
+  static const Duration _v2RemoteMutationPause = Duration(milliseconds: 120);
   late final WebDavBackupV2Service _v2 = WebDavBackupV2Service(
     storage: _storage,
     read: _readRemoteV2,
@@ -233,6 +237,16 @@ class WebDavService extends GetxService {
       } catch (e) {
         debugPrint('备份便便记录失败: $e');
         ToastUtils.showError('备份便便记录失败: $e');
+      }
+
+      // 备份生长记录和大事记（主应用结构化数据，使用主备份逻辑）
+      try {
+        backupData['growthRecords'] =
+            _storage.growthRecordBox.values.map((e) => e.toJson()).toList();
+        backupData['milestoneRecords'] =
+            _storage.milestoneRecordBox.values.map((e) => e.toJson()).toList();
+      } catch (e) {
+        print('备份宝宝记录失败: $e');
       }
 
       // 备份 AI 聊天记录
@@ -591,23 +605,45 @@ class WebDavService extends GetxService {
   }
 
   Future<Uint8List> _readRemoteV2(String path) async {
-    return Uint8List.fromList(await _client!.read(path));
+    return _runRemoteV2(
+      operation: '读取',
+      path: path,
+      action: () async => Uint8List.fromList(await _client!.read(path)),
+    );
   }
 
   Future<void> _writeRemoteV2(String path, Uint8List bytes) async {
-    await _client!.write(path, bytes);
+    await _runRemoteV2(
+      operation: '上传',
+      path: path,
+      action: () => _client!.write(path, bytes),
+    );
+    await Future.delayed(_v2RemoteMutationPause);
   }
 
   Future<void> _removeRemoteV2(String path) async {
-    await _client!.remove(path);
+    await _runRemoteV2(
+      operation: '删除',
+      path: path,
+      action: () => _client!.remove(path),
+    );
   }
 
   Future<void> _mkdirRemoteV2(String path) async {
-    await _client!.mkdir(path);
+    await _runRemoteV2(
+      operation: '创建目录',
+      path: path,
+      action: () => _client!.mkdir(path),
+    );
+    await Future.delayed(_v2RemoteMutationPause);
   }
 
   Future<List<V2RemoteFile>> _listRemoteV2(String path) async {
-    final files = await _client!.readDir(path);
+    final files = await _runRemoteV2(
+      operation: '列目录',
+      path: path,
+      action: () => _client!.readDir(path),
+    );
     return files
         .map((f) => V2RemoteFile(
               path: f.path ?? '',
@@ -615,6 +651,56 @@ class WebDavService extends GetxService {
               modifiedAt: _remoteModifiedAt(f),
             ))
         .toList();
+  }
+
+  Future<T> _runRemoteV2<T>({
+    required String operation,
+    required String path,
+    required Future<T> Function() action,
+  }) async {
+    Object? lastError;
+    for (var attempt = 1; attempt <= _v2RemoteMaxAttempts; attempt++) {
+      try {
+        _throwIfBackupCancelled();
+        return await action();
+      } on WebDavBackupCancelledException {
+        rethrow;
+      } catch (e) {
+        lastError = e;
+        if (!_isRetryableV2RemoteError(e) ||
+            attempt == _v2RemoteMaxAttempts) {
+          break;
+        }
+        final delay = Duration(milliseconds: 450 * attempt);
+        debugPrint(
+          'WebDAV v2 $operation failed for $path '
+          '(attempt $attempt/$_v2RemoteMaxAttempts): $e; retrying...',
+        );
+        await Future.delayed(delay);
+      }
+    }
+
+    throw V2RemoteOperationException(
+      operation: operation,
+      path: path,
+      cause: lastError ?? '未知错误',
+    );
+  }
+
+  bool _isRetryableV2RemoteError(Object error) {
+    final lower = error.toString().toLowerCase();
+    return lower.contains('service unavailable') ||
+        lower.contains('too many requests') ||
+        lower.contains('timed out') ||
+        lower.contains('timeout') ||
+        lower.contains('connection reset') ||
+        lower.contains('connection refused') ||
+        lower.contains('connection closed') ||
+        lower.contains('network') ||
+        lower.contains('429') ||
+        lower.contains('502') ||
+        lower.contains('503') ||
+        lower.contains('504');
   }
 
   DateTime? _remoteModifiedAt(dynamic file) {
@@ -967,6 +1053,40 @@ class WebDavService extends GetxService {
         } catch (e) {
           debugPrint('恢复便便记录失败: $e');
           ToastUtils.showWarning('便便记录恢复失败: $e');
+        }
+      }
+
+      if (backupData['growthRecords'] != null) {
+        try {
+          await _storage.growthRecordBox.clear();
+          for (var item in (backupData['growthRecords'] as List)) {
+            if (item is Map) {
+              final record =
+                  GrowthRecord.fromJson(Map<String, dynamic>.from(item));
+              await _storage.growthRecordBox.put(record.id, record);
+            }
+          }
+          await _storage.growthRecordBox.flush();
+        } catch (e) {
+          debugPrint('恢复生长记录失败: $e');
+          ToastUtils.showWarning('生长记录恢复失败: $e');
+        }
+      }
+
+      if (backupData['milestoneRecords'] != null) {
+        try {
+          await _storage.milestoneRecordBox.clear();
+          for (var item in (backupData['milestoneRecords'] as List)) {
+            if (item is Map) {
+              final record =
+                  MilestoneRecord.fromJson(Map<String, dynamic>.from(item));
+              await _storage.milestoneRecordBox.put(record.id, record);
+            }
+          }
+          await _storage.milestoneRecordBox.flush();
+        } catch (e) {
+          debugPrint('恢复大事记失败: $e');
+          ToastUtils.showWarning('大事记恢复失败: $e');
         }
       }
 
@@ -1539,6 +1659,14 @@ class WebDavService extends GetxService {
     // EncyclopediaExplanationCache (45)
     if (!Hive.isAdapterRegistered(45)) {
       Hive.registerAdapter(EncyclopediaExplanationCacheAdapter());
+    }
+    // GrowthRecord (46)
+    if (!Hive.isAdapterRegistered(46)) {
+      Hive.registerAdapter(GrowthRecordAdapter());
+    }
+    // MilestoneRecord (47)
+    if (!Hive.isAdapterRegistered(47)) {
+      Hive.registerAdapter(MilestoneRecordAdapter());
     }
   }
 }
