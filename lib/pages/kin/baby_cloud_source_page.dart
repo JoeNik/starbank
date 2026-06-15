@@ -156,224 +156,30 @@ class _BabyCloudSourcePageState extends State<BabyCloudSourcePage> {
   }
 
   Future<void> _showSourceEditor({BabyCloudSource? source}) async {
-    final name = TextEditingController(text: source?.name ?? '亲宝宝 WebDAV');
-    final externalUrl = TextEditingController(text: source?.webDavUrl ?? '');
-    final lanUrl = TextEditingController(text: source?.webDavLanUrl ?? '');
-    final user = TextEditingController(text: source?.webDavUsername ?? '');
-    final pwd = TextEditingController(text: source?.webDavPassword ?? '');
-    final root =
-        TextEditingController(text: source?.rootPath ?? 'starbank_baby_cloud');
-
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) => AnimatedPadding(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOutCubic,
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
-        ),
-        child: Container(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(sheetContext).height * 0.9,
-          ),
-          padding: EdgeInsets.fromLTRB(20.w, 14.h, 20.w, 18.h),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
-          ),
-          child: SingleChildScrollView(
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Center(
-                  child: Container(
-                    width: 42.w,
-                    height: 4.h,
-                    decoration: BoxDecoration(
-                      color: Colors.black12,
-                      borderRadius: BorderRadius.circular(99),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 14.h),
-                Text(
-                  source == null ? '添加亲宝宝 WebDAV' : '编辑亲宝宝 WebDAV',
-                  style: TextStyle(
-                    fontSize: 22.sp,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                SizedBox(height: 6.h),
-                Text(
-                  '这套配置只服务亲宝宝云相册，不会影响设置里的主 WebDAV 备份。',
-                  style: TextStyle(
-                    fontSize: 12.sp,
-                    color: Colors.grey.shade700,
-                    height: 1.35,
-                  ),
-                ),
-                SizedBox(height: 18.h),
-                TextField(
-                  controller: name,
-                  textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    labelText: '名称',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                SizedBox(height: 12.h),
-                TextField(
-                  controller: externalUrl,
-                  keyboardType: TextInputType.url,
-                  textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    labelText: '外网 WebDAV 地址',
-                    hintText:
-                        'http://example.com/dav 或 https://example.com/dav',
-                    helperText: '离开家里 WiFi 时使用，支持 HTTP 和 HTTPS',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                SizedBox(height: 12.h),
-                TextField(
-                  controller: lanUrl,
-                  keyboardType: TextInputType.url,
-                  textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    labelText: '内网 WebDAV 地址（可选）',
-                    hintText: 'http://192.168.1.10:5005/dav',
-                    helperText: '连接局域网时优先检测，支持非 HTTPS',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                SizedBox(height: 12.h),
-                TextField(
-                  controller: user,
-                  textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    labelText: '用户名',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                SizedBox(height: 12.h),
-                TextField(
-                  controller: pwd,
-                  obscureText: true,
-                  textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    labelText: '密码',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                SizedBox(height: 12.h),
-                TextField(
-                  controller: root,
-                  textInputAction: TextInputAction.done,
-                  decoration: InputDecoration(
-                    labelText: '亲宝宝云端根目录',
-                    helperText: '不同宝宝会自动放到这个目录下的不同子目录',
-                    border: const OutlineInputBorder(),
-                    suffixIcon: IconButton(
-                      tooltip: '选择云端目录',
-                      icon: const Icon(Icons.folder_open_outlined),
-                      onPressed: () async {
-                        final temp = _sourceFromInput(
-                          source,
-                          name: name.text,
-                          externalUrl: externalUrl.text,
-                          lanUrl: lanUrl.text,
-                          user: user.text,
-                          password: pwd.text,
-                          rootPath: root.text,
-                        );
-                        if (!_hasEndpointInput(temp)) {
-                          ToastUtils.showWarning('请先填写至少一个 WebDAV 地址');
-                          return;
-                        }
-                        final picked = await _showDirectoryPicker(
-                          temp,
-                          initialPath: _pickerPathFromRoot(root.text),
-                          persistCheck: false,
-                        );
-                        if (picked != null) {
-                          root.text = _rootTextFromPickedPath(picked);
-                        }
-                      },
-                    ),
-                  ),
-                ),
-                SizedBox(height: 18.h),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.of(sheetContext).pop(),
-                        child: const Text('取消'),
-                      ),
-                    ),
-                    SizedBox(width: 12.w),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          final item = _sourceFromInput(
-                            source,
-                            name: name.text,
-                            externalUrl: externalUrl.text,
-                            lanUrl: lanUrl.text,
-                            user: user.text,
-                            password: pwd.text,
-                            rootPath: root.text,
-                          );
-                          if (!_hasEndpointInput(item)) {
-                            ToastUtils.showWarning('请至少填写外网或内网 WebDAV 地址');
-                            return;
-                          }
-                          await _cloud.saveSource(item);
-                          if (sheetContext.mounted) {
-                            Navigator.of(sheetContext).pop();
-                          }
-                          await _manualCheckSource(item);
-                        },
-                        child: const Text('保存并检测'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+    final item = await Navigator.of(context).push<BabyCloudSource>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => _BabyCloudSourceEditorPage(
+          source: source,
+          onPickRoot: (editorContext, temp, rootText) async {
+            if (!_hasEndpointInput(temp)) {
+              ToastUtils.showWarning('请先填写至少一个 WebDAV 地址');
+              return null;
+            }
+            final picked = await _showDirectoryPicker(
+              temp,
+              initialPath: _pickerPathFromRoot(rootText),
+              persistCheck: false,
+              hostContext: editorContext,
+            );
+            return picked == null ? null : _rootTextFromPickedPath(picked);
+          },
         ),
       ),
     );
-  }
-
-  BabyCloudSource _sourceFromInput(
-    BabyCloudSource? source, {
-    required String name,
-    required String externalUrl,
-    required String lanUrl,
-    required String user,
-    required String password,
-    required String rootPath,
-  }) {
-    return BabyCloudSource(
-      id: source?.id ?? DateTime.now().microsecondsSinceEpoch.toString(),
-      name: name.trim().isEmpty ? '亲宝宝 WebDAV' : name.trim(),
-      type: 'webdav',
-      status: 'notInitialized',
-      rootPath:
-          rootPath.trim().isEmpty ? 'starbank_baby_cloud' : rootPath.trim(),
-      webDavUrl: externalUrl.trim(),
-      webDavLanUrl: lanUrl.trim(),
-      webDavUsername: user.trim(),
-      webDavPassword: password,
-      createdAt: source?.createdAt,
-    );
+    if (item == null || !mounted) return;
+    await _cloud.saveSource(item);
+    await _manualCheckSource(item);
   }
 
   bool _hasEndpointInput(BabyCloudSource source) {
@@ -405,9 +211,10 @@ class _BabyCloudSourcePageState extends State<BabyCloudSourcePage> {
     BabyCloudSource source, {
     required String initialPath,
     bool persistCheck = true,
+    BuildContext? hostContext,
   }) {
     return showModalBottomSheet<String>(
-      context: context,
+      context: hostContext ?? context,
       isScrollControlled: true,
       useSafeArea: true,
       backgroundColor: Colors.transparent,
@@ -454,7 +261,255 @@ class _BabyCloudSourcePageState extends State<BabyCloudSourcePage> {
       ToastUtils.showError('读取云端目录失败: $e');
     }
   }
+}
 
+typedef _PickBabyCloudRoot = Future<String?> Function(
+  BuildContext context,
+  BabyCloudSource temp,
+  String rootText,
+);
+
+class _BabyCloudSourceEditorPage extends StatefulWidget {
+  const _BabyCloudSourceEditorPage({
+    required this.source,
+    required this.onPickRoot,
+  });
+
+  final BabyCloudSource? source;
+  final _PickBabyCloudRoot onPickRoot;
+
+  @override
+  State<_BabyCloudSourceEditorPage> createState() =>
+      _BabyCloudSourceEditorPageState();
+}
+
+class _BabyCloudSourceEditorPageState
+    extends State<_BabyCloudSourceEditorPage> {
+  late final TextEditingController _name;
+  late final TextEditingController _externalUrl;
+  late final TextEditingController _lanUrl;
+  late final TextEditingController _user;
+  late final TextEditingController _password;
+  late final TextEditingController _root;
+
+  final _nameFocus = FocusNode();
+  final _externalFocus = FocusNode();
+  final _lanFocus = FocusNode();
+  final _userFocus = FocusNode();
+  final _passwordFocus = FocusNode();
+  final _rootFocus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    final source = widget.source;
+    _name = TextEditingController(text: source?.name ?? '亲宝宝 WebDAV');
+    _externalUrl = TextEditingController(text: source?.webDavUrl ?? '');
+    _lanUrl = TextEditingController(text: source?.webDavLanUrl ?? '');
+    _user = TextEditingController(text: source?.webDavUsername ?? '');
+    _password = TextEditingController(text: source?.webDavPassword ?? '');
+    _root = TextEditingController(
+      text: source?.rootPath ?? 'starbank_baby_cloud',
+    );
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _externalUrl.dispose();
+    _lanUrl.dispose();
+    _user.dispose();
+    _password.dispose();
+    _root.dispose();
+    _nameFocus.dispose();
+    _externalFocus.dispose();
+    _lanFocus.dispose();
+    _userFocus.dispose();
+    _passwordFocus.dispose();
+    _rootFocus.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      resizeToAvoidBottomInset: true,
+      appBar: AppBar(
+        title: Text(widget.source == null ? '添加亲宝宝 WebDAV' : '编辑亲宝宝 WebDAV'),
+        actions: [
+          TextButton(
+            onPressed: _submit,
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: AutofillGroup(
+          child: ListView(
+            padding: EdgeInsets.fromLTRB(20.w, 14.h, 20.w, 24.h),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
+            children: [
+              Text(
+                '这套配置只服务亲宝宝云相册，不会影响设置里的主 WebDAV 备份。',
+                style: TextStyle(
+                  fontSize: 12.sp,
+                  color: Colors.grey.shade700,
+                  height: 1.35,
+                ),
+              ),
+              SizedBox(height: 18.h),
+              TextField(
+                controller: _name,
+                focusNode: _nameFocus,
+                textInputAction: TextInputAction.next,
+                onSubmitted: (_) => _externalFocus.requestFocus(),
+                decoration: const InputDecoration(
+                  labelText: '名称',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              SizedBox(height: 12.h),
+              TextField(
+                controller: _externalUrl,
+                focusNode: _externalFocus,
+                keyboardType: TextInputType.url,
+                textInputAction: TextInputAction.next,
+                onSubmitted: (_) => _lanFocus.requestFocus(),
+                decoration: const InputDecoration(
+                  labelText: '外网 WebDAV 地址',
+                  hintText: 'http://example.com/dav 或 https://example.com/dav',
+                  helperText: '离开家里 WiFi 时使用，支持 HTTP 和 HTTPS',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              SizedBox(height: 12.h),
+              TextField(
+                controller: _lanUrl,
+                focusNode: _lanFocus,
+                keyboardType: TextInputType.url,
+                textInputAction: TextInputAction.next,
+                onSubmitted: (_) => _userFocus.requestFocus(),
+                decoration: const InputDecoration(
+                  labelText: '内网 WebDAV 地址（可选）',
+                  hintText: 'http://192.168.1.10:5005/dav',
+                  helperText: '连接局域网时优先检测，支持非 HTTPS',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              SizedBox(height: 12.h),
+              TextField(
+                controller: _user,
+                focusNode: _userFocus,
+                textInputAction: TextInputAction.next,
+                autofillHints: const [AutofillHints.username],
+                onSubmitted: (_) => _passwordFocus.requestFocus(),
+                decoration: const InputDecoration(
+                  labelText: '用户名',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              SizedBox(height: 12.h),
+              TextField(
+                controller: _password,
+                focusNode: _passwordFocus,
+                obscureText: true,
+                enableSuggestions: false,
+                autocorrect: false,
+                keyboardType: TextInputType.visiblePassword,
+                textInputAction: TextInputAction.next,
+                autofillHints: const [AutofillHints.password],
+                onSubmitted: (_) => _rootFocus.requestFocus(),
+                decoration: const InputDecoration(
+                  labelText: '密码',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              SizedBox(height: 12.h),
+              TextField(
+                controller: _root,
+                focusNode: _rootFocus,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _submit(),
+                decoration: InputDecoration(
+                  labelText: '亲宝宝云端根目录',
+                  helperText: '不同宝宝会自动放到这个目录下的不同子目录',
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    tooltip: '选择云端目录',
+                    icon: const Icon(Icons.folder_open_outlined),
+                    onPressed: _pickRoot,
+                  ),
+                ),
+              ),
+              SizedBox(height: 18.h),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('取消'),
+                    ),
+                  ),
+                  SizedBox(width: 12.w),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _submit,
+                      child: const Text('保存并检测'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickRoot() async {
+    final temp = _sourceFromInput();
+    if (!_hasEndpointInput(temp)) {
+      ToastUtils.showWarning('请先填写至少一个 WebDAV 地址');
+      return;
+    }
+    final picked = await widget.onPickRoot(context, temp, _root.text);
+    if (picked == null || !mounted) return;
+    _root.value = TextEditingValue(
+      text: picked,
+      selection: TextSelection.collapsed(offset: picked.length),
+    );
+  }
+
+  void _submit() {
+    final item = _sourceFromInput();
+    if (!_hasEndpointInput(item)) {
+      ToastUtils.showWarning('请至少填写外网或内网 WebDAV 地址');
+      return;
+    }
+    Navigator.of(context).pop(item);
+  }
+
+  BabyCloudSource _sourceFromInput() {
+    final source = widget.source;
+    final rootText = _root.text.trim();
+    return BabyCloudSource(
+      id: source?.id ?? DateTime.now().microsecondsSinceEpoch.toString(),
+      name: _name.text.trim().isEmpty ? '亲宝宝 WebDAV' : _name.text.trim(),
+      type: 'webdav',
+      status: 'notInitialized',
+      rootPath: rootText.isEmpty ? 'starbank_baby_cloud' : rootText,
+      webDavUrl: _externalUrl.text.trim(),
+      webDavLanUrl: _lanUrl.text.trim(),
+      webDavUsername: _user.text.trim(),
+      webDavPassword: _password.text,
+      createdAt: source?.createdAt,
+    );
+  }
+
+  bool _hasEndpointInput(BabyCloudSource source) {
+    return (source.webDavUrl?.trim().isNotEmpty ?? false) ||
+        (source.webDavLanUrl?.trim().isNotEmpty ?? false);
+  }
 }
 
 class _SourceCard extends StatelessWidget {
