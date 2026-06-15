@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -80,6 +81,17 @@ class UpdateService extends GetxService {
   // GitHub 仓库信息
   static const String owner = 'JoeNik';
   static const String repo = 'starbank';
+  static const String _mirrorDetectorUrl = 'https://ghproxy.link/';
+  static const String _mirrorCacheKey = 'github_mirror_base';
+  static const List<String> _fallbackMirrorBases = [
+    'https://gh-proxy.com/',
+    'https://ghproxy.net/',
+    'https://ghproxy.cc/',
+    'https://gh.llkk.cc/',
+    'https://gh.ddlc.top/',
+    'https://ghfast.top/',
+    'https://ghproxy.com/',
+  ];
 
   final RxBool isChecking = false.obs;
   final Rx<ReleaseInfo?> latestRelease = Rx<ReleaseInfo?>(null);
@@ -326,25 +338,10 @@ class UpdateService extends GetxService {
             ListTile(
               leading: const Icon(Icons.open_in_browser, color: Colors.orange),
               title: const Text('在浏览器中下载'),
-              subtitle: const Text('跳转到浏览器下载'),
+              subtitle: const Text('自动检测可用 GitHub 加速站'),
               onTap: () async {
                 Navigator.of(ctx).pop();
-                try {
-                  // 使用镜像加速链接
-                  final mirrorUrl =
-                      'https://ghproxy.com/${release.downloadUrl}';
-                  final uri = Uri.parse(mirrorUrl);
-                  // 强制使用外部浏览器打开
-                  final launched = await launchUrl(
-                    uri,
-                    mode: LaunchMode.externalApplication,
-                  );
-                  if (!launched) {
-                    ToastUtils.showError('无法打开浏览器');
-                  }
-                } catch (e) {
-                  ToastUtils.showError('无法打开浏览器: $e');
-                }
+                await _openBrowserDownload(release);
               },
             ),
 
@@ -415,14 +412,10 @@ class UpdateService extends GetxService {
                         child: const Text('取消'),
                       ),
                       TextButton(
-                        onPressed: () {
+                        onPressed: () async {
                           isDownloading.value = false;
                           Get.back();
-                          launchUrl(
-                              Uri.parse(useMirror
-                                  ? 'https://ghproxy.com/${release.downloadUrl}'
-                                  : release.downloadUrl),
-                              mode: LaunchMode.externalApplication);
+                          await _openBrowserDownload(release);
                         },
                         child: const Text('浏览器下载'),
                       ),
@@ -455,7 +448,12 @@ class UpdateService extends GetxService {
       // 构建下载链接
       String downloadUrl = release.downloadUrl;
       if (useMirror) {
-        downloadUrl = 'https://ghproxy.com/$downloadUrl';
+        status.value = '正在检测可用加速站...';
+        downloadUrl = (await _resolveDownloadUri(
+          release.downloadUrl,
+          onStatus: (message) => status.value = message,
+        ))
+            .toString();
       }
 
       status.value = '正在连接服务器...';
@@ -576,6 +574,178 @@ class UpdateService extends GetxService {
       status.value = '下载失败: $e';
       debugPrint('下载更新失败: $e');
     }
+  }
+
+  Future<void> _openBrowserDownload(ReleaseInfo release) async {
+    try {
+      ToastUtils.showInfo('正在检测可用加速站...');
+      final uri = await _resolveDownloadUri(release.downloadUrl);
+      final usingMirror = uri.toString() != release.downloadUrl;
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched) {
+        ToastUtils.showError('无法打开浏览器');
+        return;
+      }
+      if (usingMirror) {
+        ToastUtils.showSuccess('已使用 ${uri.host} 加速下载');
+      } else {
+        ToastUtils.showWarning('未检测到可用加速站，已打开原始下载链接');
+      }
+    } catch (e) {
+      ToastUtils.showError('无法打开浏览器: $e');
+    }
+  }
+
+  Future<Uri> _resolveDownloadUri(
+    String originalUrl, {
+    ValueChanged<String>? onStatus,
+  }) async {
+    final mirror = await _findAvailableMirror(originalUrl, onStatus: onStatus);
+    if (mirror == null) return Uri.parse(originalUrl);
+    return Uri.parse(_mirrorDownloadUrl(mirror, originalUrl));
+  }
+
+  Future<String?> _findAvailableMirror(
+    String originalUrl, {
+    ValueChanged<String>? onStatus,
+  }) async {
+    final candidates = await _mirrorCandidates();
+    for (final base in candidates) {
+      onStatus?.call('正在检测加速站 ${_mirrorLabel(base)}...');
+      final ok = await _isMirrorAvailable(base, originalUrl);
+      if (ok) {
+        await _settingsBox?.put(_mirrorCacheKey, base);
+        return base;
+      }
+    }
+    await _settingsBox?.delete(_mirrorCacheKey);
+    return null;
+  }
+
+  Future<List<String>> _mirrorCandidates() async {
+    if (_settingsBox == null) await _initBox();
+    final candidates = <String>{};
+    final cachedValue = _settingsBox?.get(_mirrorCacheKey);
+    final cached = cachedValue is String ? cachedValue : null;
+    if (cached?.trim().isNotEmpty == true) {
+      candidates.add(_normalizeMirrorBase(cached!.trim()));
+    }
+
+    try {
+      final response = await http
+          .get(Uri.parse(_mirrorDetectorUrl))
+          .timeout(const Duration(seconds: 8));
+      if (response.statusCode == 200) {
+        candidates.addAll(_extractMirrorBases(response.body));
+      }
+    } catch (e) {
+      debugPrint('获取 GitHub 加速站列表失败: $e');
+    }
+
+    candidates.addAll(_fallbackMirrorBases.map(_normalizeMirrorBase));
+    return candidates.where((base) => base.trim().isNotEmpty).toList();
+  }
+
+  Iterable<String> _extractMirrorBases(String html) {
+    final result = <String>{};
+    final urlPattern = RegExp(r'''https?://[^\s"'<>，。)）\]]+''');
+    for (final match in urlPattern.allMatches(html)) {
+      var value = match.group(0)?.trim() ?? '';
+      if (value.isEmpty) continue;
+      value = value.replaceAll('&amp;', '&');
+      final hadGithubUrl = value.contains('https://github.com');
+      final githubIndex = value.indexOf('https://github.com');
+      if (githubIndex > 0) {
+        value = value.substring(0, githubIndex);
+      }
+      final uri = Uri.tryParse(value);
+      if (uri == null || !uri.hasScheme || uri.host.isEmpty) continue;
+      final host = uri.host.toLowerCase();
+      if (host.contains('github.com') ||
+          host.contains('githubusercontent.com')) {
+        continue;
+      }
+      final likelyMirror = value.contains('github.com') ||
+          host.contains('gh') ||
+          host.contains('proxy');
+      if (!likelyMirror) continue;
+      final detectorHost = Uri.parse(_mirrorDetectorUrl).host;
+      if (host == detectorHost && !hadGithubUrl) continue;
+      if (host == detectorHost && uri.path == '/') {
+        result.add(_normalizeMirrorBase(value));
+        continue;
+      }
+      result.add(_normalizeMirrorBase('${uri.scheme}://${uri.host}/'));
+    }
+    return result;
+  }
+
+  Future<bool> _isMirrorAvailable(String mirrorBase, String originalUrl) async {
+    final url = _mirrorDownloadUrl(mirrorBase, originalUrl);
+    final uri = Uri.tryParse(url);
+    if (uri == null) return false;
+    if (await _probeMirror(uri, method: 'HEAD')) return true;
+    return _probeMirror(uri, method: 'GET');
+  }
+
+  Future<bool> _probeMirror(Uri uri, {required String method}) async {
+    final client = http.Client();
+    try {
+      final request = http.Request(method, uri)
+        ..followRedirects = false
+        ..headers['User-Agent'] = 'StarBank-Updater'
+        ..headers['Accept'] = '*/*';
+      if (method == 'GET') {
+        request.headers['Range'] = 'bytes=0-0';
+      }
+      final response =
+          await client.send(request).timeout(const Duration(seconds: 6));
+      final ok = _isUsableMirrorResponse(response);
+      if (method == 'GET') {
+        await response.stream
+            .take(1)
+            .drain<void>()
+            .timeout(const Duration(seconds: 2), onTimeout: () {});
+      } else {
+        await response.stream
+            .drain<void>()
+            .timeout(const Duration(seconds: 2), onTimeout: () {});
+      }
+      return ok;
+    } on TimeoutException {
+      return false;
+    } catch (e) {
+      debugPrint('检测加速站失败: ${uri.host} $method $e');
+      return false;
+    } finally {
+      client.close();
+    }
+  }
+
+  bool _isUsableMirrorResponse(http.StreamedResponse response) {
+    final status = response.statusCode;
+    if (status >= 300 && status < 400) return true;
+    if (status != 200 && status != 206) return false;
+    final contentType = response.headers['content-type']?.toLowerCase() ?? '';
+    if (contentType.contains('text/html')) return false;
+    return true;
+  }
+
+  String _mirrorDownloadUrl(String mirrorBase, String originalUrl) {
+    return '${_normalizeMirrorBase(mirrorBase)}$originalUrl';
+  }
+
+  String _normalizeMirrorBase(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return '';
+    return trimmed.endsWith('/') ? trimmed : '$trimmed/';
+  }
+
+  String _mirrorLabel(String mirrorBase) {
+    return Uri.tryParse(mirrorBase)?.host ?? mirrorBase;
   }
 
   /// 安装 APK
