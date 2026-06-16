@@ -583,30 +583,32 @@ class _BabyCloudPageState extends State<BabyCloudPage> {
               fit: BoxFit.cover,
             ),
             if (showCount)
-              Material(
-                color: Colors.black.withValues(alpha: 0.46),
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '${items.length}张',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20.sp,
-                          fontWeight: FontWeight.w900,
+              IgnorePointer(
+                child: Container(
+                  color: Colors.black.withValues(alpha: 0.46),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '${items.length}张',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20.sp,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
-                      ),
-                      SizedBox(height: 2.h),
-                      Text(
-                        '查看动态',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.92),
-                          fontSize: 11.sp,
-                          fontWeight: FontWeight.w800,
+                        SizedBox(height: 2.h),
+                        Text(
+                          '查看动态',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.92),
+                            fontSize: 11.sp,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
