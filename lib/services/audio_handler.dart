@@ -6,17 +6,16 @@ import 'package:audio_session/audio_session.dart';
 Future<AudioHandler> initAudioService() async {
   return await AudioService.init(
     builder: () => MusicHandler(),
-    config: AudioServiceConfig(
-      androidNotificationChannelId:
-          'com.starbank.app.channel.audio.v5', // Force fresh channel settings.
-      androidNotificationChannelName: 'StarBank 音乐播放器',
-      androidNotificationChannelDescription: '提供后台播放和通知栏控制',
-      androidNotificationOngoing: false,
-      androidStopForegroundOnPause: false, // 非常重要：暂停时不移除通知栏，防止被系统杀死
+    config: const AudioServiceConfig(
+      androidNotificationChannelId: 'com.starbank.app.channel.audio.v6',
+      androidNotificationChannelName: 'StarBank 音乐播放',
+      androidNotificationChannelDescription: '音乐播放控制',
+      androidNotificationOngoing: false, // 修复：与 androidStopForegroundOnPause=false 冲突
+      androidStopForegroundOnPause: false, // 暂停时保持前台服务
       androidNotificationClickStartsActivity: true,
-      androidResumeOnClick: true,
+      androidShowNotificationBadge: true,
+      notificationColor: Color(0xFFFFB27D),
       androidNotificationIcon: 'drawable/ic_stat_music_note',
-      notificationColor: const Color(0xFFFFB27D),
     ),
   );
 }
@@ -26,12 +25,13 @@ Future<AudioHandler> initAudioService() async {
 class MusicHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   final _player = AudioPlayer();
   int _queueIndex = 0;
+  late final Future<void> ready;
 
   // 暴露给 Service/Controller 以便监听进度流等
   AudioPlayer get player => _player;
 
   MusicHandler() {
-    _init();
+    ready = _init();
   }
 
   Future<void> _init() async {
@@ -47,15 +47,14 @@ class MusicHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       _broadcastState(_player.playbackEvent);
     });
 
-    // 3. 初始广播，确保通知栏能立即占位
-    // 参考 Harmonoid: 使用简洁的初始 MediaItem
+    // 3. 初始广播，确保通知栏能立即显示
     mediaItem.add(const MediaItem(
       id: '__INIT__',
-      title: 'StarBank',
-      artist: '',
+      title: 'StarBank 音乐',
+      artist: '准备就绪',
     ));
 
-    // 初始状态：显示播放按钮
+    // 初始状态：显示播放按钮（重要：设置 playing=false 但要确保通知能显示）
     playbackState.add(PlaybackState(
       controls: [
         MediaControl.play,
@@ -71,8 +70,22 @@ class MusicHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       queueIndex: _queueIndex,
     ));
 
-    // 4. 处理播放完毕自动下一曲等逻辑通常由 Controller 或 Queue 处理
-    // 这里主要负责状态同步
+    // 4. 延迟一小段时间后再发送一次状态，确保系统注册完成
+    await Future.delayed(const Duration(milliseconds: 100));
+    playbackState.add(PlaybackState(
+      controls: [
+        MediaControl.play,
+      ],
+      processingState: AudioProcessingState.idle,
+      playing: false,
+      systemActions: const {
+        MediaAction.seek,
+        MediaAction.seekForward,
+        MediaAction.seekBackward,
+      },
+      androidCompactActionIndices: const [0],
+      queueIndex: _queueIndex,
+    ));
   }
 
   /// 广播状态给系统（通知栏/锁屏界面）
@@ -81,6 +94,8 @@ class MusicHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     final playing = _player.playing;
     final processingState = _player.processingState;
 
+    debugPrint('🔔 [AudioHandler] Broadcasting state: playing=$playing, state=$processingState');
+
     // 根据播放状态动态调整控制按钮
     final controls = <MediaControl>[
       MediaControl.skipToPrevious,
@@ -88,7 +103,7 @@ class MusicHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       MediaControl.skipToNext,
     ];
 
-    playbackState.add(PlaybackState(
+    final newState = PlaybackState(
       controls: controls,
       systemActions: const {
         MediaAction.seek,
@@ -109,23 +124,42 @@ class MusicHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       bufferedPosition: _player.bufferedPosition,
       speed: _player.speed,
       queueIndex: event.currentIndex ?? _queueIndex,
-    ));
+    );
+
+    playbackState.add(newState);
+    debugPrint('🔔 [AudioHandler] State broadcasted');
   }
 
   @override
-  Future<void> play() => _player.play();
+  Future<void> play() async {
+    await ready;
+    debugPrint('🎵 [AudioHandler] play() called - starting playback');
+    await _player.play();
+    // 强制广播一次状态，确保通知栏更新
+    _broadcastState(_player.playbackEvent);
+  }
 
   @override
-  Future<void> pause() => _player.pause();
+  Future<void> pause() async {
+    await ready;
+    await _player.pause();
+  }
 
   @override
-  Future<void> seek(Duration position) => _player.seek(position);
+  Future<void> seek(Duration position) async {
+    await ready;
+    await _player.seek(position);
+  }
 
   @override
-  Future<void> stop() => _player.stop();
+  Future<void> stop() async {
+    await ready;
+    await _player.stop();
+  }
 
   @override
   Future<void> skipToNext() async {
+    await ready;
     // 由于具体的播放列表逻辑目前在 Controller 中管理（GetX），
     // 这里我们发出一个自定义事件，或者让 Controller 监听标准事件。
     // 为了简单起见，且遵循 Controller 中心化，我们这里的回调主要服务于通知栏点击。
@@ -150,6 +184,7 @@ class MusicHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
   @override
   Future<void> skipToPrevious() async {
+    await ready;
     onSkipToPrevious?.call();
   }
 
@@ -160,14 +195,58 @@ class MusicHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   /// 设置当前播放的媒体信息（通知栏显示用）
   @override
   Future<void> updateMediaItem(MediaItem item) async {
+    await ready;
+    debugPrint('📻 [AudioHandler] Updating MediaItem: ${item.title} - ${item.artist}');
     mediaItem.add(item);
     _broadcastState(_player.playbackEvent);
+  }
+
+  /// 完整的播放流程：设置音源 → 更新 mediaItem → 播放
+  /// 通过 handler 层面的 play() 触发，确保 audio_service 正确启动前台服务
+  Future<Duration?> setAudioSourceAndPlay(
+    AudioSource source,
+    MediaItem item,
+  ) async {
+    await ready;
+
+    // 1. 先更新 mediaItem，让通知栏显示正确的歌曲信息
+    mediaItem.add(item);
+
+    // 2. 立即广播一次 loading 状态，确保通知栏出现
+    playbackState.add(PlaybackState(
+      controls: [
+        MediaControl.skipToPrevious,
+        MediaControl.pause,
+        MediaControl.skipToNext,
+      ],
+      systemActions: const {
+        MediaAction.seek,
+        MediaAction.seekForward,
+        MediaAction.seekBackward,
+      },
+      androidCompactActionIndices: const [0, 1, 2],
+      processingState: AudioProcessingState.loading,
+      playing: false,
+      updatePosition: Duration.zero,
+      bufferedPosition: Duration.zero,
+      speed: 1.0,
+      queueIndex: _queueIndex,
+    ));
+
+    // 3. 设置音源
+    final duration = await _player.setAudioSource(source);
+
+    // 4. 通过 handler 的 play() 启动播放（触发 audio_service 前台服务）
+    await play();
+
+    return duration;
   }
 
   Future<void> updateQueueAndMediaItem(
     List<MediaItem> items,
     int currentIndex,
   ) async {
+    await ready;
     queue.add(items);
     if (items.isEmpty) return;
     _queueIndex = currentIndex.clamp(0, items.length - 1).toInt();

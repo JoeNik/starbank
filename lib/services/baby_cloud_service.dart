@@ -46,12 +46,15 @@ class BabyCloudSourceCheckResult {
 const int _generatedThumbnailSize = 520;
 
 class _CachedSourceCheck {
-  const _CachedSourceCheck(this.result, this.checkedAt);
+  const _CachedSourceCheck(this.result, this.checkedAt, this.lookedLocal);
 
   final BabyCloudSourceCheckResult result;
   final DateTime checkedAt;
+  final bool lookedLocal;
 
-  bool get isFresh {
+  bool isFresh(bool currentLooksLocal) {
+    // 网络环境变了，缓存无效（如内外网切换时能立刻切过来）
+    if (lookedLocal != currentLooksLocal) return false;
     final ttl =
         result.ok ? const Duration(seconds: 45) : const Duration(seconds: 5);
     return DateTime.now().difference(checkedAt) < ttl;
@@ -1416,8 +1419,11 @@ class BabyCloudService extends GetxService {
 
     if (!initializeRoot && persist) {
       final cacheKey = _sourceCheckCacheKey(source);
+      final currentLooksLocal = await _looksLikeLocalNetwork();
       final cached = _sourceCheckCache[cacheKey];
-      if (cached != null && cached.isFresh) return cached.result;
+      if (cached != null && cached.isFresh(currentLooksLocal)) {
+        return cached.result;
+      }
 
       final pending = _sourceCheckFutures[cacheKey];
       if (pending != null) return pending;
@@ -1431,7 +1437,7 @@ class BabyCloudService extends GetxService {
       try {
         final result = await future;
         _sourceCheckCache[cacheKey] =
-            _CachedSourceCheck(result, DateTime.now());
+            _CachedSourceCheck(result, DateTime.now(), currentLooksLocal);
         return result;
       } finally {
         _sourceCheckFutures.remove(cacheKey);
@@ -1790,15 +1796,25 @@ class BabyCloudService extends GetxService {
     required bool initializeRoot,
   }) async {
     final candidateErrors = <String>[];
+    final looksLocal = await _looksLikeLocalNetwork();
     for (final candidate in await _orderedWebDavCandidates(source)) {
       try {
         final client = _webDavClient(source, endpointUrl: candidate.url);
+        // 与外网网络类型不匹配的候选，缩短超时时间，避免等待过久
+        final mismatch = looksLocal
+            ? candidate.endpoint == 'external'
+            : candidate.endpoint == 'lan';
+        final checkTimeout = initializeRoot
+            ? const Duration(seconds: 8)
+            : mismatch
+                ? const Duration(seconds: 2)
+                : const Duration(seconds: 4);
+        final endpointLabel = candidate.endpoint == 'lan' ? '内网' : '外网';
         final rootWarning = initializeRoot
             ? await _checkWebDavRoot(client, source)
-                .timeout(const Duration(seconds: 8))
+                .timeout(checkTimeout)
             : await _quickCheckWebDav(client)
-                .timeout(const Duration(seconds: 4));
-        final endpointLabel = candidate.endpoint == 'lan' ? '内网' : '外网';
+                .timeout(checkTimeout);
         final notes = [
           if (candidate.note?.isNotEmpty == true) candidate.note!,
           if (rootWarning?.isNotEmpty == true) rootWarning!,
@@ -4292,11 +4308,20 @@ class BabyCloudService extends GetxService {
     }
 
     if (active.isNotEmpty) {
-      add(
-        endpointForUrl(active, source.activeWebDavEndpoint),
-        active,
-        note: '优先复用上次可用地址',
-      );
+      // 只在 active 地址与当前网络环境匹配时才优先复用，否则由网络排序决定
+      final activeMatchesLocal = looksLocal &&
+          (source.activeWebDavEndpoint == 'lan' ||
+              _normalizeEndpointUrl(active) == _normalizeEndpointUrl(lan));
+      final activeMatchesExternal = !looksLocal &&
+          (source.activeWebDavEndpoint == 'external' ||
+              _normalizeEndpointUrl(active) == _normalizeEndpointUrl(external));
+      if (activeMatchesLocal || activeMatchesExternal) {
+        add(
+          endpointForUrl(active, source.activeWebDavEndpoint),
+          active,
+          note: '复用上次可用地址',
+        );
+      }
     }
 
     if (looksLocal) {

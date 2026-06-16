@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:audio_service/audio_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'audio_handler.dart';
 
@@ -37,6 +38,7 @@ class MusicService extends GetxService {
       // 2. 初始化 AudioService
       final handler = await initAudioService();
       if (handler is MusicHandler) {
+        await handler.ready;
         _audioHandler = handler;
         initErrorMessage.value = ''; // Clear error on success
       } else {
@@ -69,6 +71,61 @@ class MusicService extends GetxService {
   }
 
   Future<void> ensureNotificationPermission() => _requestPermissions();
+
+  // === 播放控制便捷方法 ===
+  // 优先通过 AudioHandler 执行（确保通知栏正常），fallback 时直接操作 AudioPlayer
+
+  /// 播放（通过 handler 触发，确保前台服务启动）
+  Future<void> play() async {
+    if (_audioHandler != null) {
+      await _audioHandler!.play();
+    } else {
+      await _fallbackPlayer?.play();
+    }
+  }
+
+  /// 暂停
+  Future<void> pause() async {
+    if (_audioHandler != null) {
+      await _audioHandler!.pause();
+    } else {
+      await _fallbackPlayer?.pause();
+    }
+  }
+
+  /// 跳转进度
+  Future<void> seek(Duration position) async {
+    if (_audioHandler != null) {
+      await _audioHandler!.seek(position);
+    } else {
+      await _fallbackPlayer?.seek(position);
+    }
+  }
+
+  /// 停止播放
+  Future<void> stop() async {
+    if (_audioHandler != null) {
+      await _audioHandler!.stop();
+    } else {
+      await _fallbackPlayer?.stop();
+    }
+  }
+
+  /// 完整播放流程：设置音源 + 更新 mediaItem + 播放
+  /// 返回音频时长（可能为 null）
+  Future<Duration?> setSourceAndPlay(
+    AudioSource source,
+    MediaItem mediaItem,
+    Map<String, String>? headers,
+  ) async {
+    if (_audioHandler != null) {
+      return await _audioHandler!.setAudioSourceAndPlay(source, mediaItem);
+    }
+    // Fallback: 直接用 player（无通知栏）
+    final duration = await _fallbackPlayer?.setAudioSource(source);
+    await _fallbackPlayer?.play();
+    return duration;
+  }
 
   // 兼容旧方法，但现在总是返回已初始化的 player（因为 init 在 main 做了）
   Future<AudioPlayer?> getOrInitPlayer() async {

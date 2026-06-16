@@ -154,15 +154,27 @@ class MusicCacheService extends GetxService {
         debugPrint('✅ [MusicCacheService] 缓存目录已存在');
       }
 
-      // 验证目录是否可写
+      // 验证目录是否可写 - 简化逻辑，避免文件删除问题
       try {
-        final testFile = File('${_cacheDir!.path}/.test');
-        await testFile.writeAsString('test');
-        await testFile.delete();
+        final testFile = File(
+          '${_cacheDir!.path}/.write_test',
+        );
+        await testFile.writeAsString('test', flush: true);
+
+        // 验证文件是否真的写入成功
+        if (await testFile.exists()) {
+          await testFile.delete().catchError((e) {
+            // 删除失败不影响判断，只要能写入就说明目录可用
+            debugPrint('⚠️ [MusicCacheService] 测试文件删除失败（不影响功能）: $e');
+          });
+        }
+
         debugPrint('✅ [MusicCacheService] 缓存目录可写');
       } catch (e) {
         debugPrint('❌ [MusicCacheService] 缓存目录不可写: $e');
-        throw Exception('缓存目录不可写');
+        // 降级处理：不抛出异常，而是禁用缓存功能
+        cacheEnabled.value = false;
+        debugPrint('⚠️ [MusicCacheService] 已自动禁用缓存功能');
       }
 
       // 加载缓存索引

@@ -29,6 +29,7 @@ class BabyCloudMediaDetailPage extends StatefulWidget {
 class _BabyCloudMediaDetailPageState extends State<BabyCloudMediaDetailPage> {
   late PageController _controller;
   late int _index;
+  bool _isZoomed = false; // 跟踪是否处于缩放状态
 
   @override
   void initState() {
@@ -69,6 +70,9 @@ class _BabyCloudMediaDetailPageState extends State<BabyCloudMediaDetailPage> {
             child: PageView.builder(
               controller: _controller,
               itemCount: widget.items.length,
+              physics: _isZoomed
+                  ? const NeverScrollableScrollPhysics() // 缩放时禁用滑动
+                  : const PageScrollPhysics(),
               onPageChanged: (index) => setState(() => _index = index),
               itemBuilder: (_, index) {
                 final current = widget.items[index];
@@ -76,6 +80,30 @@ class _BabyCloudMediaDetailPageState extends State<BabyCloudMediaDetailPage> {
                 if (current.isVideo) return _VideoPreview(item: current);
                 return Center(
                   child: InteractiveViewer(
+                    minScale: 0.5,
+                    maxScale: 4.0,
+                    onInteractionStart: (details) {
+                      // 当开始交互时，如果是多指操作，禁用 PageView
+                      if (details.pointerCount >= 2) {
+                        setState(() => _isZoomed = true);
+                      }
+                    },
+                    onInteractionUpdate: (details) {
+                      // 持续检测缩放状态
+                      final scale = details.scale;
+                      final shouldDisable = scale != 1.0 || details.pointerCount >= 2;
+                      if (shouldDisable != _isZoomed) {
+                        setState(() => _isZoomed = shouldDisable);
+                      }
+                    },
+                    onInteractionEnd: (details) {
+                      // 交互结束后延迟重新启用 PageView（防止误触）
+                      Future.delayed(const Duration(milliseconds: 300), () {
+                        if (mounted && details.velocity.pixelsPerSecond.distance < 50) {
+                          setState(() => _isZoomed = false);
+                        }
+                      });
+                    },
                     child: BabyCloudMediaThumbnail(
                       item: current,
                       fit: BoxFit.contain,

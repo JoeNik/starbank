@@ -119,9 +119,11 @@ class _BabyCloudMediaPickerPageState extends State<BabyCloudMediaPickerPage> {
     _loadingMore = false;
     _safeSetState(() {});
 
-    final visibleWarmups = next.take(18).toList();
+    // 优化：加载第一页时预检测更多图片，后续页面只检测可见部分
+    final warmupCount = _page == 1 ? 40 : 18;
+    final visibleWarmups = next.take(warmupCount).toList();
     unawaited(
-      Future<void>.delayed(const Duration(milliseconds: 350))
+      Future<void>.delayed(const Duration(milliseconds: 200))
           .then((_) => _warmUploadedMarks(visibleWarmups)),
     );
   }

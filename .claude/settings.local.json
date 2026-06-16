@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find D:gitstarBankstar_bankandroidappsrcmainres -name ic_stat_music_note*)",
+      "Bash(flutter clean:*)",
+      "Bash(flutter pub:*)"
+    ]
+  }
+}

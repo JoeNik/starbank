@@ -223,8 +223,8 @@ class MusicPlayerController extends GetxController {
         // 处理单曲循环
         if (playMode.value == PlayMode.single) {
           debugPrint('🎵 [PlayerState] 单曲循环模式，重新播放当前歌曲');
-          audioPlayer!.seek(Duration.zero).then((_) {
-            audioPlayer!.play();
+          _musicService.seek(Duration.zero).then((_) {
+            _musicService.play();
             // seek+play 完成后立即重置
             _isTransitioning = false;
             _transitionSafetyTimer?.cancel();
@@ -374,8 +374,8 @@ class MusicPlayerController extends GetxController {
 
     // 2. 播放音频
     try {
-      final player = await _ensurePlayer();
-      if (player == null || !isTaskValid()) {
+      await _ensurePlayer();
+      if (audioPlayer == null || !isTaskValid()) {
         debugPrint('🔄 [PlayTrack #$taskId] 任务已取消(获取播放器后)');
         _isTransitioning = false;
         return;
@@ -386,7 +386,7 @@ class MusicPlayerController extends GetxController {
 
       // 重置播放器状态 (忽略任何中断异常)
       try {
-        await player.stop();
+        await _musicService.stop();
       } catch (_) {}
 
       // 重置进度显示
@@ -402,20 +402,23 @@ class MusicPlayerController extends GetxController {
 
       final mediaItem = _toMediaItem(track);
 
-      // 设置音频源
+      // 通过 MusicService 设置音源并播放（走 AudioHandler，触发通知栏）
       final Map<String, String> headers = _getHeaders(track);
-      await player.setAudioSource(AudioSource.uri(
+      final source = AudioSource.uri(
         Uri.parse(playUrl),
         headers: headers,
-        tag: mediaItem,
-      ));
+      );
+      final resolvedDuration = await _musicService.setSourceAndPlay(
+        source,
+        mediaItem,
+        headers,
+      );
 
       // 最后一次检查
       if (!isTaskValid()) {
-        debugPrint('🔄 [PlayTrack #$taskId] 任务已取消(设置源后)');
         _isTransitioning = false;
         try {
-          await player.stop();
+          await _musicService.stop();
         } catch (_) {}
         return;
       }
@@ -436,14 +439,11 @@ class MusicPlayerController extends GetxController {
         }
       }
 
-      final resolvedDuration = player.duration;
       if (resolvedDuration != null) {
         track.durationMs = resolvedDuration.inMilliseconds;
       }
       _syncAudioServiceQueue(currentDuration: resolvedDuration);
 
-      // 开始播放
-      await player.play();
       addToHistory(track);
       debugPrint(
           '✅ [PlayTrack #$taskId] 播放成功: ${track.title} ${fromCache ? "(缓存)" : "(在线)"}');
@@ -493,8 +493,8 @@ class MusicPlayerController extends GetxController {
 
     // 如果处于单曲循环模式且是自动播放（非手动点下一首），则继续播放当前
     if (isAuto && playMode.value == PlayMode.single) {
-      audioPlayer?.seek(Duration.zero);
-      audioPlayer?.play();
+      _musicService.seek(Duration.zero);
+      _musicService.play();
       return;
     }
 
@@ -541,15 +541,15 @@ class MusicPlayerController extends GetxController {
   }
 
   void togglePlay() {
-    if (audioPlayer != null && isPlaying.value) {
-      audioPlayer!.pause();
-    } else if (audioPlayer != null) {
-      audioPlayer!.play();
+    if (isPlaying.value) {
+      _musicService.pause();
+    } else {
+      _musicService.play();
     }
   }
 
   void seek(Duration pos) {
-    audioPlayer?.seek(pos);
+    _musicService.seek(pos);
   }
 
   // Timer logic
@@ -558,7 +558,7 @@ class MusicPlayerController extends GetxController {
     sleepTimerMinutes.value = minutes;
     if (minutes > 0) {
       _sleepTimer = Timer(Duration(minutes: minutes), () {
-        audioPlayer?.pause();
+        _musicService.pause();
         sleepTimerMinutes.value = 0;
         Get.snackbar('定时关闭', '音乐已停止');
       });
