@@ -390,6 +390,7 @@ class WebDavService extends GetxService {
       // 备份密码哈希
       try {
         final modeController = Get.find<AppModeController>();
+        await modeController.ensureInitialized(); // 🔧 确保初始化完成
         if (modeController.hasPassword) {
           backupData['passwordHash'] = modeController.passwordHash;
         }
@@ -1336,6 +1337,7 @@ class WebDavService extends GetxService {
       if (backupData['passwordHash'] != null) {
         try {
           final modeController = Get.find<AppModeController>();
+          await modeController.ensureInitialized(); // 🔧 确保初始化完成
           await modeController.restorePasswordHash(backupData['passwordHash']);
         } catch (_) {}
       }

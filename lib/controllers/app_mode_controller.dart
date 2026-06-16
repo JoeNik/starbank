@@ -28,7 +28,7 @@ class AppModeController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    _initSettings();
+    _initSettings(); // 异步初始化，不阻塞
   }
 
   Future<void> _initSettings() async {
@@ -36,6 +36,12 @@ class AppModeController extends GetxController {
     final savedMode = _settingsBox.get(_modeKey, defaultValue: 'parent');
     currentMode.value = savedMode == 'child' ? AppMode.child : AppMode.parent;
     _isInitialized = true;
+  }
+
+  /// 确保初始化完成（公开方法，供外部调用）
+  Future<void> ensureInitialized() async {
+    if (_isInitialized) return;
+    await _initSettings();
   }
 
   /// 是否是家长模式
@@ -51,7 +57,10 @@ class AppModeController extends GetxController {
   }
 
   /// 获取密码哈希（用于云端备份）
-  String? get passwordHash => _settingsBox.get(_passwordKey);
+  String? get passwordHash {
+    if (!_isInitialized) return null;  // 🔧 修复：防止访问未初始化的 box
+    return _settingsBox.get(_passwordKey);
+  }
 
   /// 设置密码（SHA256 加密）
   Future<void> setPassword(String password) async {
