@@ -36,6 +36,28 @@ jobs:
       
       - name: Get dependencies
         run: flutter pub get
+
+      - name: Configure Android release signing
+        env:
+          STAR_BANK_UPLOAD_KEYSTORE_BASE64: ${{ secrets.STAR_BANK_UPLOAD_KEYSTORE_BASE64 }}
+          STAR_BANK_STORE_PASSWORD: ${{ secrets.STAR_BANK_STORE_PASSWORD }}
+          STAR_BANK_KEY_PASSWORD: ${{ secrets.STAR_BANK_KEY_PASSWORD }}
+          STAR_BANK_KEY_ALIAS: ${{ secrets.STAR_BANK_KEY_ALIAS }}
+        run: |
+          if [ -z "$STAR_BANK_UPLOAD_KEYSTORE_BASE64" ] || \
+             [ -z "$STAR_BANK_STORE_PASSWORD" ] || \
+             [ -z "$STAR_BANK_KEY_PASSWORD" ] || \
+             [ -z "$STAR_BANK_KEY_ALIAS" ]; then
+            echo "::error::Missing Android release signing secrets. Use the same keystore as the GitHub Action release APKs."
+            exit 1
+          fi
+          echo "$STAR_BANK_UPLOAD_KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
+          {
+            echo "storeFile=upload-keystore.jks"
+            echo "storePassword=$STAR_BANK_STORE_PASSWORD"
+            echo "keyPassword=$STAR_BANK_KEY_PASSWORD"
+            echo "keyAlias=$STAR_BANK_KEY_ALIAS"
+          } > android/key.properties
       
       - name: Build APK
         run: flutter build apk --release
