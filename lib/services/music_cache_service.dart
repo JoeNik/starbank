@@ -7,6 +7,7 @@ import 'package:crypto/crypto.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import '../models/music/music_track.dart';
+import 'android_background_network_service.dart';
 
 /// 缓存元数据模型
 class CacheMetadata {
@@ -133,15 +134,14 @@ class MusicCacheService extends GetxService {
       if (_customCacheDir != null && _customCacheDir!.isNotEmpty) {
         // 使用自定义目录
         _cacheDir = Directory(_customCacheDir!);
-        debugPrint('📂 [MusicCacheService] 使用自定义目录: $_customCacheDir');
+        debugPrint('📂 [MusicCacheService] 使用自定义缓存目录');
       } else {
         // 使用应用支撑目录，防止某些 Android 上的 documents directory 权限问题
         final appDir = await getApplicationSupportDirectory();
         _cacheDir = Directory('${appDir.path}/music_cache');
-        debugPrint('📂 [MusicCacheService] 应用支撑目录: ${appDir.path}');
+        debugPrint('📂 [MusicCacheService] 使用应用支撑目录缓存');
       }
 
-      debugPrint('📂 [MusicCacheService] 缓存目录路径: ${_cacheDir!.path}');
       debugPrint(
           '🔧 [MusicCacheService] 缓存开关状态: ${cacheEnabled.value ? "已启用" : "已禁用"}');
 
@@ -149,9 +149,9 @@ class MusicCacheService extends GetxService {
       if (!await _cacheDir!.exists()) {
         debugPrint('📁 [MusicCacheService] 缓存目录不存在,创建中...');
         await _cacheDir!.create(recursive: true);
-        debugPrint('✅ [MusicCacheService] 缓存目录已创建: ${_cacheDir!.path}');
+        debugPrint('✅ [MusicCacheService] 缓存目录已创建');
       } else {
-        debugPrint('✅ [MusicCacheService] 缓存目录已存在: ${_cacheDir!.path}');
+        debugPrint('✅ [MusicCacheService] 缓存目录已存在');
       }
 
       // 验证目录是否可写
@@ -172,7 +172,6 @@ class MusicCacheService extends GetxService {
 
       debugPrint('✅ [MusicCacheService] 缓存服务初始化完成！');
       debugPrint('📊 [MusicCacheService] 已缓存歌曲数: ${_cacheIndex.length}');
-      debugPrint('📁 [MusicCacheService] 缓存位置: ${_cacheDir!.path}');
     } catch (e, stackTrace) {
       debugPrint('❌ [MusicCacheService] 初始化失败: $e');
       debugPrint('❌ [MusicCacheService] 错误堆栈: $stackTrace');
@@ -245,7 +244,7 @@ class MusicCacheService extends GetxService {
     final cacheFile = File(cacheFilePath);
 
     if (!await cacheFile.exists()) {
-      debugPrint('⚠️ [MusicCacheService] 缓存文件不存在: $cacheFilePath');
+      debugPrint('⚠️ [MusicCacheService] 缓存文件不存在');
       _cacheIndex.remove(cacheKey);
       await _saveCacheIndex();
       return null;
@@ -267,7 +266,7 @@ class MusicCacheService extends GetxService {
       // 如果临时文件已存在且大小合理，直接复用（可选优化）
       if (await tempFile.exists()) {
         // 这里可以加一个简单的校验，比如文件修改时间，暂且直接复用
-        debugPrint('♻️ [MusicCacheService] 复用已解密文件: $tempFilePath');
+        debugPrint('♻️ [MusicCacheService] 复用已解密文件');
         return tempFilePath;
       }
 
@@ -366,7 +365,12 @@ class MusicCacheService extends GetxService {
           '💾 [MusicCacheService] 开始缓存: ${track.title} (${track.platform})');
 
       // 下载音频数据
-      final response = await http.get(Uri.parse(audioUrl));
+      final response = await AndroidBackgroundNetworkService.protect(
+        'music_cache_$cacheKey',
+        () => http.get(Uri.parse(audioUrl)),
+        title: 'StarBank 音乐缓存',
+        text: '正在缓存 ${track.title}',
+      );
       if (response.statusCode != 200) {
         debugPrint('❌ [MusicCacheService] 下载失败: ${response.statusCode}');
         return false;
@@ -422,7 +426,7 @@ class MusicCacheService extends GetxService {
       final cacheFile = File(cacheFilePath);
       await cacheFile.writeAsBytes(starmusicFile.toBytes());
 
-      debugPrint('🔒 [MusicCacheService] 保存缓存文件: $cacheFilePath');
+      debugPrint('🔒 [MusicCacheService] 保存缓存文件');
       debugPrint(
           '📊 [MusicCacheService] 文件大小: ${starmusicFile.length} bytes (元数据: $metadataLength bytes)');
 

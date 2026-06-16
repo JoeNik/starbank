@@ -36,7 +36,7 @@ class BabyCloudUploadTaskAdapter extends TypeAdapter<BabyCloudUploadTask> {
       description: fields[18] as String?,
       tags: (fields[19] as List?)?.cast<String>(),
       locationName: fields[20] as String?,
-      visibility: fields[21] as String,
+      visibility: fields[21] == null ? 'family' : fields[21] as String,
       taskType: fields[22] == null ? 'upload' : fields[22] as String,
       targetId: fields[23] as String?,
       actorRole: fields[24] as String?,

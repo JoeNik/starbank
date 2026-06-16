@@ -73,13 +73,13 @@ class BabyCloudMedia extends HiveObject {
   @HiveField(22)
   String? locationName;
 
-  @HiveField(23)
+  @HiveField(23, defaultValue: 'family')
   String visibility;
 
-  @HiveField(24)
+  @HiveField(24, defaultValue: '')
   String libraryId;
 
-  @HiveField(25)
+  @HiveField(25, defaultValue: '')
   String cloudBabyId;
 
   /// singleFileDeleted / entryDeleted / replaced

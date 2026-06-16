@@ -1,18 +1,25 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../models/baby.dart';
 import '../models/baby_cloud_entry.dart';
 import '../models/baby_cloud_media.dart';
 import '../models/baby_cloud_source.dart';
 import '../models/baby_cloud_upload_task.dart';
+import '../services/android_background_network_service.dart';
 import '../services/storage_service.dart';
 import '../widgets/toast_utils.dart';
 
@@ -36,6 +43,21 @@ class BabyCloudSourceCheckResult {
   }
 }
 
+const int _generatedThumbnailSize = 520;
+
+class _CachedSourceCheck {
+  const _CachedSourceCheck(this.result, this.checkedAt);
+
+  final BabyCloudSourceCheckResult result;
+  final DateTime checkedAt;
+
+  bool get isFresh {
+    final ttl =
+        result.ok ? const Duration(seconds: 45) : const Duration(seconds: 5);
+    return DateTime.now().difference(checkedAt) < ttl;
+  }
+}
+
 class _WebDavEndpointCandidate {
   const _WebDavEndpointCandidate(this.endpoint, this.url, {this.note});
 
@@ -44,8 +66,26 @@ class _WebDavEndpointCandidate {
   final String? note;
 }
 
-class _BabyWebDavEntry {
-  const _BabyWebDavEntry({
+abstract class _BabyCloudRemoteClient {
+  Future<void> statDir(String remotePath);
+
+  Future<void> stat(String remotePath);
+
+  Future<List<_BabyCloudRemoteEntry>> readDir(String remotePath);
+
+  Future<void> mkdir(String remotePath);
+
+  Future<List<int>> read(String remotePath);
+
+  Future<void> write(String remotePath, List<int> bytes, {String? mimeType});
+
+  Future<void> remove(String remotePath);
+
+  Future<void> move(String fromPath, String toPath);
+}
+
+class _BabyCloudRemoteEntry {
+  const _BabyCloudRemoteEntry({
     required this.path,
     required this.isDir,
     this.size,
@@ -56,7 +96,7 @@ class _BabyWebDavEntry {
   final int? size;
 }
 
-class _BabyWebDavClient {
+class _BabyWebDavClient implements _BabyCloudRemoteClient {
   _BabyWebDavClient({
     required String endpointUrl,
     required String username,
@@ -69,10 +109,12 @@ class _BabyWebDavClient {
   final String _username;
   final String _password;
 
+  @override
   Future<void> statDir(String remotePath) async {
     await _propFind(remotePath, depth: '0');
   }
 
+  @override
   Future<void> stat(String remotePath) async {
     await _request(
       'PROPFIND',
@@ -91,7 +133,8 @@ class _BabyWebDavClient {
     );
   }
 
-  Future<List<_BabyWebDavEntry>> readDir(String remotePath) async {
+  @override
+  Future<List<_BabyCloudRemoteEntry>> readDir(String remotePath) async {
     final response = await _propFind(remotePath, depth: '1');
     return _parseMultiStatus(response.bodyText);
   }
@@ -118,6 +161,7 @@ class _BabyWebDavClient {
     );
   }
 
+  @override
   Future<void> mkdir(String remotePath) async {
     final attempts = <_BabyWebDavResponse>[];
     _BabyWebDavResponse? existingResponse;
@@ -146,6 +190,7 @@ class _BabyWebDavClient {
     );
   }
 
+  @override
   Future<List<int>> read(String remotePath) async {
     final response = await _request(
       'GET',
@@ -155,16 +200,26 @@ class _BabyWebDavClient {
     return response.bodyBytes;
   }
 
-  Future<void> write(String remotePath, List<int> bytes) async {
+  @override
+  Future<void> write(
+    String remotePath,
+    List<int> bytes, {
+    String? mimeType,
+  }) async {
     await _request(
       'PUT',
       remotePath,
       body: bytes,
-      headers: const {'Content-Type': 'application/octet-stream'},
+      headers: {
+        'Content-Type': mimeType?.trim().isNotEmpty == true
+            ? mimeType!.trim()
+            : 'application/octet-stream',
+      },
       expectedStatuses: const {200, 201, 204},
     );
   }
 
+  @override
   Future<void> remove(String remotePath) async {
     await _request(
       'DELETE',
@@ -173,6 +228,7 @@ class _BabyWebDavClient {
     );
   }
 
+  @override
   Future<void> move(String fromPath, String toPath) async {
     await _request(
       'MOVE',
@@ -292,7 +348,7 @@ class _BabyWebDavClient {
     ];
   }
 
-  List<_BabyWebDavEntry> _parseMultiStatus(String xml) {
+  List<_BabyCloudRemoteEntry> _parseMultiStatus(String xml) {
     final responses = RegExp(
       r'<(?:[A-Za-z0-9_]+:)?response\b[^>]*>(.*?)</(?:[A-Za-z0-9_]+:)?response>',
       caseSensitive: false,
@@ -317,13 +373,13 @@ class _BabyWebDavClient {
             caseSensitive: false,
             dotAll: true,
           ).firstMatch(block)?.group(1);
-          return _BabyWebDavEntry(
+          return _BabyCloudRemoteEntry(
             path: path,
             isDir: isDir,
             size: int.tryParse(sizeText?.trim() ?? ''),
           );
         })
-        .whereType<_BabyWebDavEntry>()
+        .whereType<_BabyCloudRemoteEntry>()
         .toList();
   }
 
@@ -444,12 +500,503 @@ class _BabyWebDavRequestException implements Exception {
   }
 }
 
+typedef _AliyunAccessTokenProvider = Future<String> Function(
+  BabyCloudSource source, {
+  bool force,
+});
+
+class _AliyunFileInfo {
+  const _AliyunFileInfo({
+    required this.id,
+    required this.path,
+    required this.name,
+    required this.isFolder,
+    this.size,
+  });
+
+  final String id;
+  final String path;
+  final String name;
+  final bool isFolder;
+  final int? size;
+}
+
+class _AliyunPathNotFoundException implements Exception {
+  const _AliyunPathNotFoundException(this.path);
+
+  final String path;
+
+  @override
+  String toString() => '阿里云盘路径不存在: $path';
+}
+
+class _AliyunDriveClient implements _BabyCloudRemoteClient {
+  _AliyunDriveClient({
+    required BabyCloudSource source,
+    required _AliyunAccessTokenProvider accessTokenProvider,
+    required Future<void> Function(BabyCloudSource source) onSourceChanged,
+  })  : _source = source,
+        _accessTokenProvider = accessTokenProvider,
+        _onSourceChanged = onSourceChanged;
+
+  static const String _apiBase = 'https://openapi.alipan.com/adrive/v1.0';
+  static const int _uploadPartSize = 10 * 1024 * 1024;
+
+  final BabyCloudSource _source;
+  final _AliyunAccessTokenProvider _accessTokenProvider;
+  final Future<void> Function(BabyCloudSource source) _onSourceChanged;
+  final Map<String, _AliyunFileInfo> _pathCache = {
+    '/': const _AliyunFileInfo(
+      id: 'root',
+      path: '/',
+      name: '/',
+      isFolder: true,
+    ),
+  };
+
+  @override
+  Future<void> statDir(String remotePath) async {
+    await _resolve(remotePath, requireFolder: true);
+  }
+
+  @override
+  Future<void> stat(String remotePath) async {
+    await _resolve(remotePath);
+  }
+
+  @override
+  Future<List<_BabyCloudRemoteEntry>> readDir(String remotePath) async {
+    final dir = await _resolve(remotePath, requireFolder: true);
+    final children = await _listChildren(dir);
+    return children
+        .map(
+          (item) => _BabyCloudRemoteEntry(
+            path: item.path,
+            isDir: item.isFolder,
+            size: item.size,
+          ),
+        )
+        .toList();
+  }
+
+  @override
+  Future<void> mkdir(String remotePath) async {
+    final normalized = _normalizePath(remotePath);
+    if (normalized == '/') return;
+    final parentPath = _parentPath(normalized);
+    final parent = await _resolve(parentPath, requireFolder: true);
+    final name = _nameFromPath(normalized);
+    try {
+      final existing = await _resolve(normalized, requireFolder: true);
+      _pathCache[normalized] = existing;
+      return;
+    } on _AliyunPathNotFoundException {
+      // Not found: create below.
+    }
+
+    try {
+      final payload = await _post('/openFile/create', {
+        'drive_id': await _driveId(),
+        'parent_file_id': parent.id,
+        'name': name,
+        'type': 'folder',
+        'check_name_mode': 'refuse',
+      });
+      final fileId = _firstNonEmpty(payload, const ['file_id']);
+      if (fileId == null) throw Exception('创建目录响应缺少 file_id');
+      _pathCache[normalized] = _AliyunFileInfo(
+        id: fileId,
+        path: normalized,
+        name: name,
+        isFolder: true,
+      );
+    } catch (e) {
+      final existing = await _tryResolve(normalized, requireFolder: true);
+      if (existing != null) return;
+      rethrow;
+    }
+  }
+
+  @override
+  Future<List<int>> read(String remotePath) async {
+    final file = await _resolve(remotePath);
+    if (file.isFolder) throw Exception('阿里云盘路径是目录，不能读取为文件: $remotePath');
+    final payload = await _post('/openFile/getDownloadUrl', {
+      'drive_id': await _driveId(),
+      'file_id': file.id,
+      'expire_sec': 900,
+    });
+    final url = _firstNonEmpty(payload, const ['url', 'download_url']);
+    if (url == null) throw Exception('下载地址响应缺少 url');
+
+    final headers = <String, String>{};
+    final rawHeaders = payload['headers'];
+    if (rawHeaders is Map) {
+      rawHeaders.forEach((key, value) {
+        if (key != null && value != null) {
+          headers[key.toString()] = value.toString();
+        }
+      });
+    }
+    final response = await http
+        .get(Uri.parse(url), headers: headers)
+        .timeout(const Duration(seconds: 60));
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('下载阿里云盘文件失败 HTTP ${response.statusCode}');
+    }
+    return response.bodyBytes;
+  }
+
+  @override
+  Future<void> write(
+    String remotePath,
+    List<int> bytes, {
+    String? mimeType,
+  }) async {
+    final normalized = _normalizePath(remotePath);
+    if (normalized == '/') throw Exception('不能把文件写到阿里云盘根目录');
+    final parentPath = _parentPath(normalized);
+    final parent = await _resolve(parentPath, requireFolder: true);
+    final name = _nameFromPath(normalized);
+
+    final existing = await _tryResolve(normalized);
+    if (existing != null) {
+      await _deleteByFileId(existing.id);
+      _pathCache.remove(normalized);
+    }
+
+    final partCount = max(1, (bytes.length / _uploadPartSize).ceil());
+    final payload = await _post('/openFile/create', {
+      'drive_id': await _driveId(),
+      'parent_file_id': parent.id,
+      'name': name,
+      'type': 'file',
+      'check_name_mode': 'refuse',
+      'size': bytes.length,
+      'part_info_list': [
+        for (var i = 1; i <= partCount; i++) {'part_number': i},
+      ],
+    });
+    final fileId = _firstNonEmpty(payload, const ['file_id']);
+    final uploadId = _firstNonEmpty(payload, const ['upload_id']);
+    if (fileId == null || uploadId == null) {
+      throw Exception('创建上传任务响应缺少 file_id 或 upload_id');
+    }
+
+    final rawParts = payload['part_info_list'];
+    if (rawParts is! List || rawParts.isEmpty) {
+      throw Exception('创建上传任务响应缺少 part_info_list');
+    }
+    final uploadUrls = <int, String>{};
+    for (final raw in rawParts) {
+      if (raw is! Map) continue;
+      final partNumber = _intFromJson(raw['part_number']);
+      final uploadUrl = _firstNonEmpty(
+        Map<String, dynamic>.from(raw),
+        const ['upload_url', 'internal_upload_url'],
+      );
+      if (partNumber != null && uploadUrl != null) {
+        uploadUrls[partNumber] = uploadUrl;
+      }
+    }
+
+    for (var partNumber = 1; partNumber <= partCount; partNumber++) {
+      final uploadUrl = uploadUrls[partNumber];
+      if (uploadUrl == null) {
+        throw Exception('第 $partNumber 分片缺少上传地址');
+      }
+      final start = (partNumber - 1) * _uploadPartSize;
+      final end = min(start + _uploadPartSize, bytes.length);
+      final chunk = bytes.sublist(start, end);
+      await _uploadPart(uploadUrl, chunk, mimeType: mimeType);
+    }
+
+    await _post('/openFile/complete', {
+      'drive_id': await _driveId(),
+      'file_id': fileId,
+      'upload_id': uploadId,
+    });
+
+    _pathCache[normalized] = _AliyunFileInfo(
+      id: fileId,
+      path: normalized,
+      name: name,
+      isFolder: false,
+      size: bytes.length,
+    );
+  }
+
+  @override
+  Future<void> remove(String remotePath) async {
+    final normalized = _normalizePath(remotePath);
+    if (normalized == '/') return;
+    final file = await _tryResolve(normalized);
+    if (file == null) return;
+    await _deleteByFileId(file.id);
+    _pathCache.removeWhere((path, _) {
+      return path == normalized || path.startsWith('$normalized/');
+    });
+  }
+
+  @override
+  Future<void> move(String fromPath, String toPath) async {
+    final from = await _resolve(fromPath);
+    final targetPath = _normalizePath(toPath);
+    if (targetPath == '/') throw Exception('不能移动到阿里云盘根目录');
+    final targetParent = await _resolve(
+      _parentPath(targetPath),
+      requireFolder: true,
+    );
+    await _post('/openFile/move', {
+      'drive_id': await _driveId(),
+      'file_id': from.id,
+      'to_parent_file_id': targetParent.id,
+      'new_name': _nameFromPath(targetPath),
+    });
+    _pathCache.removeWhere((path, _) {
+      final normalizedFrom = _normalizePath(fromPath);
+      return path == normalizedFrom || path.startsWith('$normalizedFrom/');
+    });
+  }
+
+  Future<String> _driveId() async {
+    final existing = _source.aliyunDriveDriveId?.trim() ?? '';
+    if (existing.isNotEmpty) return existing;
+
+    final payload = await _post('/user/getDriveInfo', const {});
+    final driveId = _firstNonEmpty(payload, const [
+      'default_drive_id',
+      'drive_id',
+      'resource_drive_id',
+      'backup_drive_id',
+    ]);
+    if (driveId == null) throw Exception('阿里云盘账号信息缺少 drive_id');
+    _source.aliyunDriveDriveId = driveId;
+    _source.aliyunDriveUserId ??= _firstNonEmpty(payload, const ['user_id']);
+    _source.aliyunDriveNickName ??= _firstNonEmpty(
+      payload,
+      const ['nick_name', 'nickname', 'name', 'user_name'],
+    );
+    await _onSourceChanged(_source);
+    return driveId;
+  }
+
+  Future<_AliyunFileInfo?> _tryResolve(
+    String remotePath, {
+    bool requireFolder = false,
+  }) async {
+    try {
+      return await _resolve(remotePath, requireFolder: requireFolder);
+    } on _AliyunPathNotFoundException {
+      return null;
+    }
+  }
+
+  Future<_AliyunFileInfo> _resolve(
+    String remotePath, {
+    bool requireFolder = false,
+  }) async {
+    final normalized = _normalizePath(remotePath);
+    final cached = _pathCache[normalized];
+    if (cached != null) {
+      if (requireFolder && !cached.isFolder) {
+        throw Exception('阿里云盘路径不是目录: $normalized');
+      }
+      return cached;
+    }
+    if (normalized == '/') return _pathCache['/']!;
+
+    var current = _pathCache['/']!;
+    var currentPath = '';
+    final parts = normalized.split('/').where((part) => part.isNotEmpty);
+    for (final part in parts) {
+      final children = await _listChildren(current);
+      final next = children.firstWhereOrNull((item) => item.name == part);
+      if (next == null) throw _AliyunPathNotFoundException(normalized);
+      current = next;
+      currentPath = currentPath.isEmpty ? '/$part' : '$currentPath/$part';
+      _pathCache[currentPath] = current;
+    }
+    if (requireFolder && !current.isFolder) {
+      throw Exception('阿里云盘路径不是目录: $normalized');
+    }
+    return current;
+  }
+
+  Future<List<_AliyunFileInfo>> _listChildren(_AliyunFileInfo parent) async {
+    if (!parent.isFolder) throw Exception('阿里云盘路径不是目录: ${parent.path}');
+    final result = <_AliyunFileInfo>[];
+    String? marker;
+    do {
+      final payload = await _post('/openFile/list', {
+        'drive_id': await _driveId(),
+        'parent_file_id': parent.id,
+        'limit': 100,
+        if (marker?.isNotEmpty == true) 'marker': marker,
+        'order_by': 'name',
+        'order_direction': 'ASC',
+      });
+      final rawItems = payload['items'];
+      if (rawItems is List) {
+        for (final raw in rawItems) {
+          if (raw is! Map) continue;
+          final item = Map<String, dynamic>.from(raw);
+          final fileId = _firstNonEmpty(item, const ['file_id']);
+          final name = _firstNonEmpty(item, const ['name']);
+          if (fileId == null || name == null) continue;
+          final childPath = _joinPath(parent.path, name);
+          final child = _AliyunFileInfo(
+            id: fileId,
+            path: childPath,
+            name: name,
+            isFolder: item['type']?.toString() == 'folder',
+            size: _intFromJson(item['size']),
+          );
+          result.add(child);
+          _pathCache[childPath] = child;
+        }
+      }
+      marker = _firstNonEmpty(payload, const ['next_marker']);
+    } while (marker != null && marker.isNotEmpty);
+    return result;
+  }
+
+  Future<void> _deleteByFileId(String fileId) async {
+    await _post('/openFile/delete', {
+      'drive_id': await _driveId(),
+      'file_id': fileId,
+    });
+  }
+
+  Future<void> _uploadPart(
+    String uploadUrl,
+    List<int> chunk, {
+    String? mimeType,
+  }) async {
+    final response = await http
+        .put(
+          Uri.parse(uploadUrl),
+          body: chunk,
+        )
+        .timeout(const Duration(minutes: 2));
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('上传阿里云盘分片失败 HTTP ${response.statusCode}');
+    }
+  }
+
+  Future<Map<String, dynamic>> _post(
+    String path,
+    Map<String, dynamic> body, {
+    bool retryOnUnauthorized = true,
+  }) async {
+    final token = await _accessTokenProvider(_source);
+    final response = await http
+        .post(
+          Uri.parse('$_apiBase$path'),
+          headers: {
+            HttpHeaders.authorizationHeader: 'Bearer $token',
+            HttpHeaders.contentTypeHeader: 'application/json',
+          },
+          body: jsonEncode(body),
+        )
+        .timeout(const Duration(seconds: 30));
+    if (response.statusCode == 401 && retryOnUnauthorized) {
+      await _accessTokenProvider(_source, force: true);
+      return _post(path, body, retryOnUnauthorized: false);
+    }
+
+    final text = utf8.decode(response.bodyBytes, allowMalformed: true);
+    final raw = _jsonMapOrNull(text) ?? <String, dynamic>{};
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final message = (raw['message'] ??
+              raw['error_description'] ??
+              raw['error'] ??
+              raw['code'] ??
+              text)
+          .toString();
+      throw Exception('阿里云盘 API $path HTTP ${response.statusCode}: $message');
+    }
+    return raw;
+  }
+
+  Map<String, dynamic>? _jsonMapOrNull(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return <String, dynamic>{};
+    try {
+      final raw = jsonDecode(trimmed);
+      return raw is Map ? Map<String, dynamic>.from(raw) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static int? _intFromJson(Object? value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
+  }
+
+  static String? _firstNonEmpty(Map<String, dynamic> map, List<String> keys) {
+    for (final key in keys) {
+      final value = map[key]?.toString().trim();
+      if (value?.isNotEmpty == true) return value;
+    }
+    return null;
+  }
+
+  static String _normalizePath(String path) {
+    var normalized = path.trim().replaceAll('\\', '/');
+    if (normalized.isEmpty) return '/';
+    while (normalized.contains('//')) {
+      normalized = normalized.replaceAll('//', '/');
+    }
+    if (!normalized.startsWith('/')) normalized = '/$normalized';
+    if (normalized.length > 1 && normalized.endsWith('/')) {
+      normalized = normalized.substring(0, normalized.length - 1);
+    }
+    return normalized;
+  }
+
+  static String _parentPath(String path) {
+    final normalized = _normalizePath(path);
+    if (normalized == '/') return '/';
+    final index = normalized.lastIndexOf('/');
+    if (index <= 0) return '/';
+    return normalized.substring(0, index);
+  }
+
+  static String _nameFromPath(String path) {
+    final normalized = _normalizePath(path);
+    if (normalized == '/') return '/';
+    return normalized.split('/').where((part) => part.isNotEmpty).last;
+  }
+
+  static String _joinPath(String parent, String name) {
+    final normalizedParent = _normalizePath(parent);
+    if (normalizedParent == '/') return '/$name';
+    return '$normalizedParent/$name';
+  }
+}
+
 class BabyCloudService extends GetxService {
   static const int _albumIndexFormat = 3;
   static const String _albumIndexType = 'starbank.baby_cloud.album_index';
   static const int _libraryManifestFormat = 1;
   static const String _libraryManifestType = 'starbank.baby_cloud.library';
   static const int _maxUploadRetries = 3;
+  static const Duration _automaticSyncFreshness = Duration(minutes: 10);
+  static const String aliyunDriveDefaultRedirectUri =
+      'starbank://aliyundrive/oauth';
+  static const String aliyunDriveDefaultScope =
+      'user:base,file:all:read,file:all:write';
+  static const String aliyunDriveDefaultAuthUrl =
+      'https://www.alipan.com/o/oauth/authorize';
+  static const String aliyunDriveDefaultTokenUrl =
+      'https://openapi.alipan.com/oauth/access_token';
+  static const MethodChannel _aliyunOAuthChannel =
+      MethodChannel('star_bank/aliyun_oauth');
+  static const bool _debugMediaCache = false;
 
   final StorageService _storage = Get.find<StorageService>();
 
@@ -461,21 +1008,38 @@ class BabyCloudService extends GetxService {
   final RxBool isSyncing = false.obs;
 
   bool _queueRunning = false;
+  bool _aliyunOAuthChannelInitialized = false;
   Future<void>? _activeSync;
   final Map<String, Future<String?>> _localFileFutures = {};
+  final Map<String, Future<String?>> _localThumbnailFutures = {};
+  final Set<String> _thumbnailAutoFailedKeys = <String>{};
   final Map<String, String> _manifestBabyDirs = {};
   final Map<String, String> _manifestCloudBabyIds = {};
+  final Map<String, _CachedSourceCheck> _sourceCheckCache = {};
+  final Map<String, Future<BabyCloudSourceCheckResult>> _sourceCheckFutures =
+      {};
   final Set<String> _deletedTaskIds = <String>{};
+  Directory? _appDocumentsDir;
 
   bool get hasUsableCurrentSource {
     final source = currentSource.value;
-    return source != null && source.isWebDav && _hasAnyWebDavEndpoint(source);
+    if (source == null) return false;
+    if (source.isWebDav) return _hasAnyWebDavEndpoint(source);
+    if (source.isAliyunDrive) {
+      return _hasAliyunDriveToken(source);
+    }
+    return false;
   }
 
   String get currentSourceSetupMessage {
     final source = currentSource.value;
-    if (source == null) return '请先配置亲宝宝 WebDAV 数据源';
-    if (!source.isWebDav) return '阿里云盘入口已预留，第一版请使用亲宝宝 WebDAV';
+    if (source == null) return '请先配置亲宝宝云相册数据源';
+    if (source.isAliyunDrive) {
+      if (!_hasAliyunDriveToken(source)) {
+        return '请先完成阿里云盘 OAuth 授权，或填写可用的 Access Token';
+      }
+      return '';
+    }
     if (!_hasAnyWebDavEndpoint(source)) {
       return '亲宝宝 WebDAV 外网/内网地址至少填写一个，请先完善数据源配置';
     }
@@ -483,8 +1047,21 @@ class BabyCloudService extends GetxService {
   }
 
   Future<BabyCloudService> init() async {
+    await _warmAppDocumentsDir();
     _loadLocal();
+    _initAliyunOAuthChannel();
+    unawaited(_consumeInitialAliyunOAuthUri());
+    await _recoverInterruptedTasks();
+    unawaited(processQueue());
     return this;
+  }
+
+  Future<void> _warmAppDocumentsDir() async {
+    try {
+      _appDocumentsDir = await getApplicationDocumentsDirectory();
+    } catch (e) {
+      debugPrint('BabyCloudCache: 初始化本地缓存目录失败: $e');
+    }
   }
 
   String _entryTypeForMedia(List<BabyCloudMedia> items) {
@@ -509,6 +1086,58 @@ class BabyCloudService extends GetxService {
         sources.firstWhereOrNull((s) => s.id == savedId) ?? sources.firstOrNull;
     _refreshEntries();
     _refreshMedia();
+  }
+
+  Future<void> _recoverInterruptedTasks() async {
+    var changed = false;
+    for (final task in _storage.babyCloudUploadTaskBox.values) {
+      if (task.status == 'running' && task.progress < 1) {
+        task
+          ..status = 'queued'
+          ..errorMessage = null
+          ..updatedAt = DateTime.now();
+        await task.save();
+        changed = true;
+      }
+    }
+    if (changed) {
+      _reloadTasks();
+    }
+  }
+
+  void _initAliyunOAuthChannel() {
+    if (_aliyunOAuthChannelInitialized) return;
+    _aliyunOAuthChannelInitialized = true;
+    _aliyunOAuthChannel.setMethodCallHandler((call) async {
+      if (call.method == 'oauthRedirect') {
+        final url = call.arguments?.toString() ?? '';
+        if (url.trim().isEmpty) return false;
+        final result = await handleAliyunOAuthRedirect(url);
+        if (result.ok) {
+          ToastUtils.showSuccess('阿里云盘授权成功');
+        } else {
+          ToastUtils.showError(result.message);
+        }
+        return result.ok;
+      }
+      return null;
+    });
+  }
+
+  Future<void> _consumeInitialAliyunOAuthUri() async {
+    try {
+      final url = await _aliyunOAuthChannel.invokeMethod<String>(
+        'getInitialUri',
+      );
+      if (url?.trim().isNotEmpty == true) {
+        final result = await handleAliyunOAuthRedirect(url!);
+        if (result.ok) ToastUtils.showSuccess('阿里云盘授权成功');
+      }
+    } on MissingPluginException {
+      // Desktop/tests do not provide the Android deep-link bridge.
+    } catch (e) {
+      debugPrint('读取阿里云盘 OAuth 回调失败: $e');
+    }
   }
 
   void _refreshEntries() {
@@ -617,15 +1246,162 @@ class BabyCloudService extends GetxService {
     _refreshMedia();
   }
 
+  Uri aliyunDriveAuthorizationUri(
+    BabyCloudSource source, {
+    required String state,
+  }) {
+    final clientId = source.aliyunDriveClientId?.trim() ?? '';
+    final redirectUri = _aliyunRedirectUri(source);
+    final scope = _aliyunScope(source);
+    final authBase = _aliyunAuthUrl(source);
+    if (clientId.isEmpty) {
+      throw Exception('请先填写阿里云盘开放平台 Client ID');
+    }
+    final base = Uri.parse(authBase);
+    return base.replace(
+      queryParameters: {
+        ...base.queryParameters,
+        'client_id': clientId,
+        'redirect_uri': redirectUri,
+        'response_type': 'code',
+        'scope': scope,
+        'state': state,
+      },
+    );
+  }
+
+  Future<void> startAliyunDriveOAuth(BabyCloudSource source) async {
+    _validateAliyunOAuthConfig(source);
+    await saveSource(source);
+    final state = _newAliyunOAuthState(source.id);
+    await _storage.settingsBox.put('baby_cloud_aliyun_oauth_state', state);
+    await _storage.settingsBox
+        .put('baby_cloud_aliyun_oauth_source_id', source.id);
+    await _storage.settingsBox.put(
+      'baby_cloud_aliyun_oauth_created_at',
+      DateTime.now().toIso8601String(),
+    );
+
+    final uri = aliyunDriveAuthorizationUri(source, state: state);
+    try {
+      final launched =
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!launched) {
+        throw Exception('无法打开浏览器，请检查系统是否有可用浏览器');
+      }
+    } catch (_) {
+      await _clearAliyunOAuthPending();
+      rethrow;
+    }
+  }
+
+  Future<BabyCloudSourceCheckResult> completeAliyunOAuthWithInput(
+    BabyCloudSource source,
+    String input,
+  ) async {
+    _validateAliyunOAuthConfig(source);
+    final code = _extractAliyunOAuthCode(input);
+    if (code == null || code.isEmpty) {
+      return const BabyCloudSourceCheckResult(
+        ok: false,
+        message: '没有从输入内容中识别到授权 code',
+      );
+    }
+    await saveSource(source);
+    final stored =
+        sources.firstWhereOrNull((item) => item.id == source.id) ?? source;
+    return _finishAliyunOAuthCode(stored, code, clearPending: true);
+  }
+
+  Future<BabyCloudSourceCheckResult> handleAliyunOAuthRedirect(
+    String rawUrl,
+  ) async {
+    final uri = Uri.tryParse(rawUrl.trim());
+    if (uri == null) {
+      return const BabyCloudSourceCheckResult(
+        ok: false,
+        message: '阿里云盘 OAuth 回调地址无法解析',
+      );
+    }
+    final error = uri.queryParameters['error'];
+    if (error?.isNotEmpty == true) {
+      final description = uri.queryParameters['error_description'] ??
+          uri.queryParameters['errorMessage'] ??
+          '';
+      return BabyCloudSourceCheckResult(
+        ok: false,
+        message: '阿里云盘授权失败：$error${description.isEmpty ? '' : '，$description'}',
+      );
+    }
+
+    final code = uri.queryParameters['code']?.trim() ?? '';
+    final state = uri.queryParameters['state']?.trim() ?? '';
+    if (code.isEmpty) {
+      return const BabyCloudSourceCheckResult(
+        ok: false,
+        message: '阿里云盘 OAuth 回调缺少 code',
+      );
+    }
+    if (state.isEmpty) {
+      return const BabyCloudSourceCheckResult(
+        ok: false,
+        message: '阿里云盘 OAuth 回调缺少 state',
+      );
+    }
+
+    final pendingState =
+        _storage.settingsBox.get('baby_cloud_aliyun_oauth_state') as String?;
+    if (pendingState?.isNotEmpty == true && pendingState != state) {
+      return const BabyCloudSourceCheckResult(
+        ok: false,
+        message: '阿里云盘 OAuth state 不匹配，请重新发起授权',
+      );
+    }
+
+    final pendingSourceId = _storage.settingsBox
+        .get('baby_cloud_aliyun_oauth_source_id') as String?;
+    final stateSourceId = _sourceIdFromAliyunOAuthState(state);
+    final sourceId = pendingSourceId?.trim().isNotEmpty == true
+        ? pendingSourceId!.trim()
+        : stateSourceId;
+    if (sourceId == null || sourceId.isEmpty) {
+      return const BabyCloudSourceCheckResult(
+        ok: false,
+        message: '无法定位阿里云盘授权对应的数据源',
+      );
+    }
+    final source = sources.firstWhereOrNull((item) => item.id == sourceId) ??
+        _storage.babyCloudSourceBox.get(sourceId);
+    if (source == null) {
+      return const BabyCloudSourceCheckResult(
+        ok: false,
+        message: '阿里云盘授权对应的数据源已不存在',
+      );
+    }
+    return _finishAliyunOAuthCode(source, code, clearPending: true);
+  }
+
   Future<BabyCloudSourceCheckResult> checkSource(
     BabyCloudSource source, {
     bool persist = true,
+    bool initializeRoot = false,
   }) async {
-    if (!source.isWebDav) {
-      return const BabyCloudSourceCheckResult(
-        ok: false,
-        message: '阿里云盘入口已预留，第一版请使用亲宝宝 WebDAV',
+    if (source.isAliyunDrive) {
+      return _checkAliyunDriveSource(
+        source,
+        persist: persist,
+        initializeRoot: initializeRoot,
       );
+    }
+    if (!source.isWebDav) {
+      final message = '暂不支持的数据源类型：${source.type}';
+      await _recordSourceCheck(
+        source,
+        ok: false,
+        message: message,
+        persist: persist,
+      );
+      return BabyCloudSourceCheckResult(ok: false, message: message);
     }
     if (!_hasAnyWebDavEndpoint(source)) {
       const message = '亲宝宝 WebDAV 外网/内网地址至少填写一个';
@@ -638,12 +1414,390 @@ class BabyCloudService extends GetxService {
       return const BabyCloudSourceCheckResult(ok: false, message: message);
     }
 
+    if (!initializeRoot && persist) {
+      final cacheKey = _sourceCheckCacheKey(source);
+      final cached = _sourceCheckCache[cacheKey];
+      if (cached != null && cached.isFresh) return cached.result;
+
+      final pending = _sourceCheckFutures[cacheKey];
+      if (pending != null) return pending;
+
+      final future = _checkWebDavSource(
+        source,
+        persist: persist,
+        initializeRoot: initializeRoot,
+      );
+      _sourceCheckFutures[cacheKey] = future;
+      try {
+        final result = await future;
+        _sourceCheckCache[cacheKey] =
+            _CachedSourceCheck(result, DateTime.now());
+        return result;
+      } finally {
+        _sourceCheckFutures.remove(cacheKey);
+      }
+    }
+
+    return _checkWebDavSource(
+      source,
+      persist: persist,
+      initializeRoot: initializeRoot,
+    );
+  }
+
+  Future<BabyCloudSourceCheckResult> _checkAliyunDriveSource(
+    BabyCloudSource source, {
+    required bool persist,
+    bool initializeRoot = false,
+  }) async {
+    if (!_hasAliyunDriveToken(source)) {
+      const message = '阿里云盘需要先完成 OAuth 授权，或填写可用的 Access Token';
+      await _recordSourceCheck(
+        source,
+        ok: false,
+        message: message,
+        persist: persist,
+        status: 'notInitialized',
+      );
+      return const BabyCloudSourceCheckResult(ok: false, message: message);
+    }
+
+    try {
+      await _refreshAliyunDriveTokenIfNeeded(source, force: false);
+      final client = _aliyunDriveClient(
+        source,
+        persistSourceChanges: persist,
+      );
+      await client.readDir('/').timeout(const Duration(seconds: 8));
+      if (initializeRoot) {
+        final root = _normalizeRoot(source.rootPath);
+        if (root != '/') await _ensureRemoteDir(client, root);
+      }
+      final name = source.aliyunDriveNickName?.trim();
+      final drive = source.aliyunDriveDriveId?.trim();
+      final message = [
+        '阿里云盘授权有效',
+        if (name?.isNotEmpty == true) '账号：$name',
+        if (drive?.isNotEmpty == true) 'Drive ID：$drive',
+      ].join('；');
+      await _recordSourceCheck(
+        source,
+        ok: true,
+        message: message,
+        persist: persist,
+      );
+      return BabyCloudSourceCheckResult(
+        ok: true,
+        message: message,
+        endpoint: 'aliyunDrive',
+      );
+    } catch (e) {
+      final message = '阿里云盘授权不可用，请重新登录：$e';
+      await _recordSourceCheck(
+        source,
+        ok: false,
+        message: message,
+        persist: persist,
+      );
+      return BabyCloudSourceCheckResult(ok: false, message: message);
+    }
+  }
+
+  Future<BabyCloudSourceCheckResult> _finishAliyunOAuthCode(
+    BabyCloudSource source,
+    String code, {
+    required bool clearPending,
+  }) async {
+    try {
+      final payload = await _requestAliyunDriveToken(source, {
+        'grant_type': 'authorization_code',
+        'code': code,
+        'redirect_uri': _aliyunRedirectUri(source),
+      });
+      _applyAliyunDriveTokenPayload(source, payload);
+      await _recordSourceCheck(
+        source,
+        ok: true,
+        message: '阿里云盘授权成功',
+        persist: true,
+      );
+      if (clearPending) await _clearAliyunOAuthPending();
+      return const BabyCloudSourceCheckResult(
+        ok: true,
+        message: '阿里云盘授权成功',
+        endpoint: 'aliyunDrive',
+      );
+    } catch (e) {
+      final message = '阿里云盘授权换取 token 失败：$e';
+      await _recordSourceCheck(
+        source,
+        ok: false,
+        message: message,
+        persist: true,
+      );
+      return BabyCloudSourceCheckResult(ok: false, message: message);
+    }
+  }
+
+  Future<void> _refreshAliyunDriveTokenIfNeeded(
+    BabyCloudSource source, {
+    required bool force,
+  }) async {
+    final refreshToken = source.aliyunDriveRefreshToken?.trim() ?? '';
+    final expiresAt = source.aliyunDriveTokenExpiresAt;
+    final accessToken = source.aliyunDriveAccessToken?.trim() ?? '';
+    if (refreshToken.isEmpty) {
+      if (accessToken.isNotEmpty && !force) return;
+      throw Exception('Access Token 不可用，请重新填写或完成 OAuth 授权');
+    }
+    final shouldRefresh = force ||
+        accessToken.isEmpty ||
+        expiresAt == null ||
+        expiresAt.isBefore(DateTime.now().add(const Duration(minutes: 3)));
+    if (!shouldRefresh) return;
+    final payload = await _requestAliyunDriveToken(source, {
+      'grant_type': 'refresh_token',
+      'refresh_token': refreshToken,
+    });
+    _applyAliyunDriveTokenPayload(source, payload);
+  }
+
+  Future<Map<String, dynamic>> _requestAliyunDriveToken(
+    BabyCloudSource source,
+    Map<String, dynamic> fields,
+  ) async {
+    _validateAliyunOAuthConfig(source);
+    final body = <String, dynamic>{
+      'client_id': source.aliyunDriveClientId!.trim(),
+      if (source.aliyunDriveClientSecret?.trim().isNotEmpty == true)
+        'client_secret': source.aliyunDriveClientSecret!.trim(),
+      ...fields,
+    };
+    final response = await http
+        .post(
+          Uri.parse(_aliyunTokenUrl(source)),
+          headers: const {'Content-Type': 'application/json'},
+          body: jsonEncode(body),
+        )
+        .timeout(const Duration(seconds: 20));
+    final text = utf8.decode(response.bodyBytes, allowMalformed: true);
+    final raw = _jsonMapOrNull(text);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final message = raw != null
+          ? (raw['message'] ?? raw['error_description'] ?? raw['error'] ?? text)
+              .toString()
+          : text;
+      throw Exception('HTTP ${response.statusCode}: $message');
+    }
+    if (raw == null) throw Exception('token 响应格式不是 JSON 对象: $text');
+    return raw;
+  }
+
+  Map<String, dynamic>? _jsonMapOrNull(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return <String, dynamic>{};
+    try {
+      final raw = jsonDecode(trimmed);
+      return raw is Map ? Map<String, dynamic>.from(raw) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  void _applyAliyunDriveTokenPayload(
+    BabyCloudSource source,
+    Map<String, dynamic> payload,
+  ) {
+    final accessToken = payload['access_token']?.toString().trim() ?? '';
+    if (accessToken.isEmpty) throw Exception('token 响应缺少 access_token');
+    final refreshToken = payload['refresh_token']?.toString().trim();
+    final expiresIn = _intFromJson(payload['expires_in']) ??
+        _intFromJson(payload['expire_time']) ??
+        7200;
+    source
+      ..aliyunDriveAccessToken = accessToken
+      ..aliyunDriveRefreshToken = refreshToken?.isNotEmpty == true
+          ? refreshToken
+          : source.aliyunDriveRefreshToken
+      ..aliyunDriveTokenExpiresAt = DateTime.now().add(
+        Duration(seconds: expiresIn > 120 ? expiresIn - 60 : expiresIn),
+      )
+      ..aliyunDriveDriveId = _firstNonEmpty(
+            payload,
+            const ['default_drive_id', 'drive_id', 'resource_drive_id'],
+          ) ??
+          source.aliyunDriveDriveId
+      ..aliyunDriveUserId =
+          _firstNonEmpty(payload, const ['user_id']) ?? source.aliyunDriveUserId
+      ..aliyunDriveNickName = _firstNonEmpty(
+            payload,
+            const ['nick_name', 'nickname', 'name', 'user_name'],
+          ) ??
+          source.aliyunDriveNickName;
+  }
+
+  void _validateAliyunOAuthConfig(BabyCloudSource source) {
+    if ((source.aliyunDriveClientId?.trim() ?? '').isEmpty) {
+      throw Exception('请填写阿里云盘开放平台 Client ID');
+    }
+    if (_aliyunRedirectUri(source).trim().isEmpty) {
+      throw Exception('请填写 OAuth Redirect URI');
+    }
+    if (_aliyunAuthUrl(source).trim().isEmpty) {
+      throw Exception('请填写 OAuth 授权地址');
+    }
+    if (_aliyunTokenUrl(source).trim().isEmpty) {
+      throw Exception('请填写 OAuth Token 地址');
+    }
+  }
+
+  String? _extractAliyunOAuthCode(String input) {
+    final value = input.trim();
+    if (value.isEmpty) return null;
+    final uri = Uri.tryParse(value);
+    final code = uri?.queryParameters['code']?.trim();
+    if (code?.isNotEmpty == true) return code;
+    return value;
+  }
+
+  String _newAliyunOAuthState(String sourceId) {
+    final random = Random.secure();
+    final bytes = List<int>.generate(18, (_) => random.nextInt(256));
+    final token = base64Url.encode(bytes).replaceAll('=', '');
+    return '$sourceId.$token';
+  }
+
+  String? _sourceIdFromAliyunOAuthState(String state) {
+    final index = state.indexOf('.');
+    if (index <= 0) return null;
+    return state.substring(0, index);
+  }
+
+  Future<void> _clearAliyunOAuthPending() async {
+    await _storage.settingsBox.delete('baby_cloud_aliyun_oauth_state');
+    await _storage.settingsBox.delete('baby_cloud_aliyun_oauth_source_id');
+    await _storage.settingsBox.delete('baby_cloud_aliyun_oauth_created_at');
+  }
+
+  String _aliyunRedirectUri(BabyCloudSource source) {
+    final value = source.aliyunDriveRedirectUri?.trim() ?? '';
+    return value.isEmpty ? aliyunDriveDefaultRedirectUri : value;
+  }
+
+  String _aliyunScope(BabyCloudSource source) {
+    final value = source.aliyunDriveScope?.trim() ?? '';
+    return value.isEmpty ? aliyunDriveDefaultScope : value;
+  }
+
+  String _aliyunAuthUrl(BabyCloudSource source) {
+    final value = source.aliyunDriveAuthUrl?.trim() ?? '';
+    return value.isEmpty ? aliyunDriveDefaultAuthUrl : value;
+  }
+
+  String _aliyunTokenUrl(BabyCloudSource source) {
+    final value = source.aliyunDriveTokenUrl?.trim() ?? '';
+    return value.isEmpty ? aliyunDriveDefaultTokenUrl : value;
+  }
+
+  bool _hasAliyunDriveToken(BabyCloudSource source) {
+    return source.aliyunDriveAccessToken?.trim().isNotEmpty == true ||
+        source.aliyunDriveRefreshToken?.trim().isNotEmpty == true;
+  }
+
+  int? _intFromJson(Object? value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
+  }
+
+  String? _firstNonEmpty(Map<String, dynamic> map, List<String> keys) {
+    for (final key in keys) {
+      final value = map[key]?.toString().trim();
+      if (value?.isNotEmpty == true) return value;
+    }
+    return null;
+  }
+
+  Future<String> _aliyunAccessTokenFor(
+    BabyCloudSource source, {
+    required bool force,
+    required bool persist,
+  }) async {
+    await _refreshAliyunDriveTokenIfNeeded(source, force: force);
+    final token = source.aliyunDriveAccessToken?.trim() ?? '';
+    if (token.isEmpty) throw Exception('阿里云盘 access token 为空');
+    if (persist) await _persistSourceSilently(source);
+    return token;
+  }
+
+  _AliyunDriveClient _aliyunDriveClient(
+    BabyCloudSource source, {
+    bool persistSourceChanges = true,
+  }) {
+    return _AliyunDriveClient(
+      source: source,
+      accessTokenProvider: (source, {force = false}) => _aliyunAccessTokenFor(
+        source,
+        force: force,
+        persist: persistSourceChanges,
+      ),
+      onSourceChanged: persistSourceChanges
+          ? _persistSourceSilently
+          : (_) async {},
+    );
+  }
+
+  Future<_BabyCloudRemoteClient> _remoteClientForSource(
+    BabyCloudSource source, {
+    BabyCloudSourceCheckResult? check,
+    bool persistSourceChanges = true,
+  }) async {
+    if (source.isAliyunDrive) {
+      await _refreshAliyunDriveTokenIfNeeded(source, force: false);
+      if (persistSourceChanges) await _persistSourceSilently(source);
+      return _aliyunDriveClient(
+        source,
+        persistSourceChanges: persistSourceChanges,
+      );
+    }
+    if (source.isWebDav) {
+      final endpointUrl = check?.url ?? _effectiveWebDavUrl(source);
+      if (endpointUrl == null || endpointUrl.isEmpty) {
+        throw Exception('亲宝宝 WebDAV 地址不可用');
+      }
+      return _webDavClient(source, endpointUrl: endpointUrl);
+    }
+    throw Exception('暂不支持的数据源类型：${source.type}');
+  }
+
+  Future<void> _persistSourceSilently(BabyCloudSource source) async {
+    source.updatedAt = DateTime.now();
+    await _storage.babyCloudSourceBox.put(source.id, source);
+    final index = sources.indexWhere((item) => item.id == source.id);
+    if (index >= 0) {
+      sources[index] = source;
+      sources.refresh();
+    }
+    if (currentSource.value?.id == source.id) {
+      currentSource.value = source;
+    }
+  }
+
+  Future<BabyCloudSourceCheckResult> _checkWebDavSource(
+    BabyCloudSource source, {
+    required bool persist,
+    required bool initializeRoot,
+  }) async {
     final candidateErrors = <String>[];
     for (final candidate in await _orderedWebDavCandidates(source)) {
       try {
         final client = _webDavClient(source, endpointUrl: candidate.url);
-        final rootWarning = await _checkWebDavRoot(client, source)
-            .timeout(const Duration(seconds: 8));
+        final rootWarning = initializeRoot
+            ? await _checkWebDavRoot(client, source)
+                .timeout(const Duration(seconds: 8))
+            : await _quickCheckWebDav(client)
+                .timeout(const Duration(seconds: 4));
         final endpointLabel = candidate.endpoint == 'lan' ? '内网' : '外网';
         final notes = [
           if (candidate.note?.isNotEmpty == true) candidate.note!,
@@ -683,15 +1837,29 @@ class BabyCloudService extends GetxService {
     return BabyCloudSourceCheckResult(ok: false, message: message);
   }
 
+  String _sourceCheckCacheKey(BabyCloudSource source) {
+    return [
+      source.id,
+      source.type,
+      source.webDavUrl?.trim() ?? '',
+      source.webDavLanUrl?.trim() ?? '',
+      source.webDavUsername?.trim() ?? '',
+      source.webDavPassword ?? '',
+    ].join('\u001f');
+  }
+
   Future<List<Map<String, dynamic>>> listRemoteDirectories(
     BabyCloudSource source,
     String path, {
     bool persistCheck = true,
   }) async {
-    if (!source.isWebDav) return const [];
     final check = await checkSource(source, persist: persistCheck);
     if (!check.ok) throw Exception(check.message);
-    final client = _webDavClient(source, endpointUrl: check.url);
+    final client = await _remoteClientForSource(
+      source,
+      check: check,
+      persistSourceChanges: persistCheck,
+    );
     final dir = _normalizeRemoteDir(path);
     if (dir != '/') {
       await _ensureRemoteDir(client, dir);
@@ -721,7 +1889,11 @@ class BabyCloudService extends GetxService {
     if (cleanName.isEmpty) throw Exception('目录名不能为空');
     final check = await checkSource(source, persist: persistCheck);
     if (!check.ok) throw Exception(check.message);
-    final client = _webDavClient(source, endpointUrl: check.url);
+    final client = await _remoteClientForSource(
+      source,
+      check: check,
+      persistSourceChanges: persistCheck,
+    );
     final path = _joinRemoteDir(parentPath, cleanName);
     await _ensureRemoteDir(client, path);
     return path;
@@ -735,17 +1907,33 @@ class BabyCloudService extends GetxService {
   }) async {
     final current = _normalizeRemoteDir(path);
     final cleanName = _cleanRemoteDirName(newName);
-    if (current == '/') throw Exception('不能重命名 WebDAV 根目录');
+    if (current == '/') throw Exception('不能重命名云端根目录');
     if (cleanName.isEmpty) throw Exception('目录名不能为空');
     final check = await checkSource(source, persist: persistCheck);
     if (!check.ok) throw Exception(check.message);
     final parent = _parentRemoteDir(current);
     final target = _joinRemoteDir(parent, cleanName);
-    final client = _webDavClient(source, endpointUrl: check.url);
+    final client = await _remoteClientForSource(
+      source,
+      check: check,
+      persistSourceChanges: persistCheck,
+    );
     await client.move(current, target);
   }
 
-  Future<void> syncBaby(Baby baby, {bool showErrors = true}) {
+  Future<void> syncBaby(
+    Baby baby, {
+    bool showErrors = true,
+    bool forceRemote = false,
+  }) {
+    final source = currentSource.value;
+    if (source == null) return Future<void>.value();
+    if (!forceRemote && _hasFreshBabySyncCache(source, baby)) {
+      _refreshEntries();
+      _refreshMedia();
+      return Future<void>.value();
+    }
+
     final active = _activeSync;
     if (active != null) return active;
 
@@ -758,15 +1946,29 @@ class BabyCloudService extends GetxService {
     });
   }
 
+  bool _hasFreshBabySyncCache(BabyCloudSource source, Baby baby) {
+    final raw = _storage.settingsBox.get(_babySyncCacheKey(source.id, baby.id));
+    final syncedAt = raw is DateTime
+        ? raw
+        : DateTime.tryParse(raw?.toString() ?? '');
+    if (syncedAt == null) return false;
+    return DateTime.now().difference(syncedAt) < _automaticSyncFreshness;
+  }
+
+  Future<void> _markBabySyncCacheFresh(String sourceId, String babyId) {
+    return _storage.settingsBox.put(
+      _babySyncCacheKey(sourceId, babyId),
+      DateTime.now().toIso8601String(),
+    );
+  }
+
+  String _babySyncCacheKey(String sourceId, String babyId) {
+    return 'baby_cloud_last_sync_${_safeFileSegment(sourceId)}_${_safeFileSegment(babyId)}';
+  }
+
   Future<void> _syncBabyInternal(Baby baby, {bool showErrors = true}) async {
     final source = currentSource.value;
     if (source == null) return;
-    if (!source.isWebDav) {
-      if (showErrors) {
-        ToastUtils.showInfo('阿里云盘数据源已预留，第一版请先使用亲宝宝 WebDAV');
-      }
-      return;
-    }
 
     isSyncing.value = true;
     try {
@@ -775,7 +1977,7 @@ class BabyCloudService extends GetxService {
         if (showErrors) ToastUtils.showError(check.message);
         return;
       }
-      final client = _webDavClient(source, endpointUrl: check.url);
+      final client = await _remoteClientForSource(source, check: check);
       await _prepareBabyCloudStructure(client, source, baby);
       final remote = await _readRemoteIndexAt(client, _indexPath(source, baby));
       if (remote != null) {
@@ -846,6 +2048,13 @@ class BabyCloudService extends GetxService {
       ToastUtils.showInfo('$fileName 已在当前宝宝的当前数据源中存在');
       return false;
     }
+    final preparedThumbnailPath = await _prepareLocalThumbnailPath(
+      localPath: localPath,
+      fileName: fileName,
+      mediaType: mediaType,
+      cacheKey: sha256Hash ?? DateTime.now().microsecondsSinceEpoch.toString(),
+      existingThumbnailPath: localThumbnailPath,
+    );
     final task = BabyCloudUploadTask(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
       babyId: baby.id,
@@ -857,7 +2066,7 @@ class BabyCloudService extends GetxService {
       sizeBytes: await file.length(),
       sha256: sha256Hash,
       takenAt: takenAt,
-      localThumbnailPath: localThumbnailPath,
+      localThumbnailPath: preparedThumbnailPath,
       entryId: entryId,
       description: description,
       tags: tags,
@@ -1061,14 +2270,188 @@ class BabyCloudService extends GetxService {
 
   Future<String?> ensureLocalMediaFile(BabyCloudMedia item) {
     final existing = _readableMediaPath(item);
-    if (existing != null) return Future.value(existing);
-    return _localFileFutures.putIfAbsent(item.ref, () async {
+    if (existing != null) {
+      _logMediaCache('原图已记录且可读', item, existing);
+      return Future.value(existing);
+    }
+    final cachedFile = _localMediaCacheFile(item);
+    if (cachedFile != null && cachedFile.existsSync()) {
+      _logMediaCache('原图磁盘命中', item, cachedFile.path);
+      return _rememberLocalMediaPath(item, cachedFile.path);
+    }
+    final stored = _storage.babyCloudMediaBox.get(item.id);
+    if (stored != null) {
+      final storedPath = _readableMediaPath(stored);
+      if (storedPath != null) {
+        item
+          ..localPath = storedPath
+          ..updatedAt = stored.updatedAt;
+        _logMediaCache('原图从Hive记录命中', item, storedPath);
+        return Future.value(storedPath);
+      }
+      final storedCachedFile = _localMediaCacheFile(stored);
+      if (storedCachedFile != null && storedCachedFile.existsSync()) {
+        item.localPath = storedCachedFile.path;
+        _logMediaCache('原图从Hive记录推导磁盘命中', item, storedCachedFile.path);
+        return _rememberLocalMediaPath(stored, storedCachedFile.path);
+      }
+    }
+    final futureKey = _localMediaCacheKey(item);
+    if (_localFileFutures.containsKey(futureKey)) {
+      _logMediaCache('原图复用下载任务', item, futureKey);
+    } else {
+      _logMediaCache('原图准备远程下载', item, item.remotePath);
+    }
+    return _localFileFutures.putIfAbsent(futureKey, () async {
       try {
         return await _downloadMediaToLocalCache(item);
       } catch (_) {
         return null;
       } finally {
-        _localFileFutures.remove(item.ref);
+        _localFileFutures.remove(futureKey);
+      }
+    });
+  }
+
+  Future<String?> ensureLocalThumbnailFile(
+    BabyCloudMedia item, {
+    bool forceRemote = false,
+  }) {
+    final existing = _readableThumbnailPath(item);
+    if (existing != null) {
+      _logMediaCache('缩略图已记录且可读', item, existing);
+      return Future<String?>.value(existing);
+    }
+    if (!item.isVideo) {
+      final original = _readableMediaPath(item);
+      if (original != null) {
+        final generated = _prepareLocalThumbnailPath(
+          localPath: original,
+          fileName: item.fileName,
+          mediaType: item.mediaType,
+          cacheKey: item.sha256,
+          existingThumbnailPath: item.localThumbnailPath,
+        ).then((path) {
+          if (path != null && path != original) {
+            _logMediaCache('缩略图从本地原图生成', item, path);
+            return _rememberLocalThumbnailPath(item, path);
+          }
+          _logMediaCache('缩略图使用本地原图替代', item, original);
+          return Future<String?>.value(original);
+        });
+        return generated;
+      }
+      final originalCachedFile = _localMediaCacheFile(item);
+      if (originalCachedFile != null && originalCachedFile.existsSync()) {
+        final generated = _prepareLocalThumbnailPath(
+          localPath: originalCachedFile.path,
+          fileName: item.fileName,
+          mediaType: item.mediaType,
+          cacheKey: item.sha256,
+          existingThumbnailPath: item.localThumbnailPath,
+        ).then((path) async {
+          await _rememberLocalMediaPath(item, originalCachedFile.path);
+          if (path != null && path != originalCachedFile.path) {
+            _logMediaCache('缩略图从原图磁盘缓存生成', item, path);
+            return _rememberLocalThumbnailPath(item, path);
+          }
+          _logMediaCache('缩略图从原图磁盘缓存替代', item, originalCachedFile.path);
+          return originalCachedFile.path;
+        });
+        return generated;
+      }
+    }
+    final cachedFile = _localThumbnailCacheFile(item);
+    if (cachedFile != null && cachedFile.existsSync()) {
+      _logMediaCache('缩略图磁盘命中', item, cachedFile.path);
+      return _rememberLocalThumbnailPath(item, cachedFile.path);
+    }
+    final stored = _storage.babyCloudMediaBox.get(item.id);
+    final storedPath = stored == null ? null : _readableThumbnailPath(stored);
+    if (storedPath != null) {
+      item.localThumbnailPath = storedPath;
+      _logMediaCache('缩略图从Hive记录命中', item, storedPath);
+      return Future<String?>.value(storedPath);
+    }
+    if (stored != null) {
+      if (!stored.isVideo) {
+        final storedOriginal = _readableMediaPath(stored);
+        if (storedOriginal != null) {
+          item.localPath = storedOriginal;
+          final generated = _prepareLocalThumbnailPath(
+            localPath: storedOriginal,
+            fileName: stored.fileName,
+            mediaType: stored.mediaType,
+            cacheKey: stored.sha256,
+            existingThumbnailPath: stored.localThumbnailPath,
+          ).then((path) {
+            if (path != null && path != storedOriginal) {
+              item.localThumbnailPath = path;
+              _logMediaCache('缩略图从Hive原图记录生成', item, path);
+              return _rememberLocalThumbnailPath(stored, path);
+            }
+            _logMediaCache('缩略图从Hive原图记录替代', item, storedOriginal);
+            return Future<String?>.value(storedOriginal);
+          });
+          return generated;
+        }
+        final storedOriginalCachedFile = _localMediaCacheFile(stored);
+        if (storedOriginalCachedFile != null &&
+            storedOriginalCachedFile.existsSync()) {
+          item.localPath = storedOriginalCachedFile.path;
+          final generated = _prepareLocalThumbnailPath(
+            localPath: storedOriginalCachedFile.path,
+            fileName: stored.fileName,
+            mediaType: stored.mediaType,
+            cacheKey: stored.sha256,
+            existingThumbnailPath: stored.localThumbnailPath,
+          ).then((path) async {
+            await _rememberLocalMediaPath(stored, storedOriginalCachedFile.path);
+            if (path != null && path != storedOriginalCachedFile.path) {
+              item.localThumbnailPath = path;
+              _logMediaCache('缩略图从Hive原图磁盘缓存生成', item, path);
+              return _rememberLocalThumbnailPath(stored, path);
+            }
+            _logMediaCache(
+              '缩略图从Hive原图磁盘缓存替代',
+              item,
+              storedOriginalCachedFile.path,
+            );
+            return storedOriginalCachedFile.path;
+          });
+          return generated;
+        }
+      }
+      final storedCachedFile = _localThumbnailCacheFile(stored);
+      if (storedCachedFile != null && storedCachedFile.existsSync()) {
+        item.localThumbnailPath = storedCachedFile.path;
+        _logMediaCache('缩略图从Hive记录推导磁盘命中', item, storedCachedFile.path);
+        return _rememberLocalThumbnailPath(stored, storedCachedFile.path);
+      }
+    }
+    if (item.thumbnailRemotePath?.trim().isNotEmpty != true) {
+      return Future<String?>.value(null);
+    }
+
+    final futureKey = _localMediaCacheKey(item);
+    if (!forceRemote && _thumbnailAutoFailedKeys.contains(futureKey)) {
+      return Future<String?>.value(null);
+    }
+    if (_localThumbnailFutures.containsKey(futureKey)) {
+      _logMediaCache('缩略图复用下载任务', item, futureKey);
+    } else {
+      _logMediaCache('缩略图准备远程下载', item, item.thumbnailRemotePath ?? '');
+    }
+    return _localThumbnailFutures.putIfAbsent(futureKey, () async {
+      try {
+        final path = await _downloadThumbnailToLocalCache(item);
+        if (path != null) _thumbnailAutoFailedKeys.remove(futureKey);
+        return path;
+      } catch (_) {
+        _thumbnailAutoFailedKeys.add(futureKey);
+        return null;
+      } finally {
+        _localThumbnailFutures.remove(futureKey);
       }
     });
   }
@@ -1076,6 +2459,7 @@ class BabyCloudService extends GetxService {
   Future<void> processQueue() async {
     if (_queueRunning) return;
     _queueRunning = true;
+    var keepAliveStarted = false;
     try {
       while (true) {
         final runnable = _storage.babyCloudUploadTaskBox.values
@@ -1085,6 +2469,8 @@ class BabyCloudService extends GetxService {
             .take(2)
             .toList();
         if (runnable.isEmpty) break;
+        await _startUploadKeepAlive(activeCount: runnable.length);
+        keepAliveStarted = true;
         await Future.wait(
           runnable.map(_runBackgroundTask),
         );
@@ -1092,7 +2478,22 @@ class BabyCloudService extends GetxService {
       }
     } finally {
       _queueRunning = false;
+      if (keepAliveStarted) {
+        await _stopUploadKeepAlive();
+      }
     }
+  }
+
+  Future<void> _startUploadKeepAlive({required int activeCount}) async {
+    await AndroidBackgroundNetworkService.startOperation(
+      'baby_cloud_queue',
+      title: 'StarBank 亲宝宝',
+      text: activeCount > 1 ? '正在处理云相册后台任务' : '正在上传云相册内容',
+    );
+  }
+
+  Future<void> _stopUploadKeepAlive() async {
+    await AndroidBackgroundNetworkService.stopOperation('baby_cloud_queue');
   }
 
   Future<void> _runBackgroundTask(BabyCloudUploadTask task) {
@@ -1116,6 +2517,19 @@ class BabyCloudService extends GetxService {
     _reloadTasks();
   }
 
+  Future<void> pauseTasks(Iterable<BabyCloudUploadTask> tasks) async {
+    var changed = false;
+    for (final task in tasks) {
+      if (task.status != 'queued' && task.status != 'running') continue;
+      task
+        ..status = 'paused'
+        ..updatedAt = DateTime.now();
+      await task.save();
+      changed = true;
+    }
+    if (changed) _reloadTasks();
+  }
+
   Future<void> resumeTask(BabyCloudUploadTask task) async {
     if (task.status != 'paused' && task.status != 'failed') return;
     _deletedTaskIds.remove(task.id);
@@ -1128,6 +2542,31 @@ class BabyCloudService extends GetxService {
     unawaited(processQueue());
   }
 
+  Future<void> resumeTasks(Iterable<BabyCloudUploadTask> tasks) async {
+    var changed = false;
+    for (final task in tasks) {
+      if (task.status != 'paused' && task.status != 'failed') continue;
+      _deletedTaskIds.remove(task.id);
+      task
+        ..status = 'queued'
+        ..errorMessage = null
+        ..retryCount = 0
+        ..updatedAt = DateTime.now();
+      await task.save();
+      changed = true;
+    }
+    if (!changed) return;
+    _reloadTasks();
+    unawaited(processQueue());
+  }
+
+  Future<void> retryFailedTasks([Iterable<BabyCloudUploadTask>? tasks]) {
+    final failed = (tasks ?? _storage.babyCloudUploadTaskBox.values)
+        .where((task) => task.status == 'failed')
+        .toList();
+    return resumeTasks(failed);
+  }
+
   Future<void> cancelTask(BabyCloudUploadTask task) async {
     task.status = 'cancelled';
     task.updatedAt = DateTime.now();
@@ -1136,6 +2575,7 @@ class BabyCloudService extends GetxService {
   }
 
   Future<void> deleteTask(BabyCloudUploadTask task) async {
+    if (task.isActive) return;
     _deletedTaskIds.add(task.id);
     task.status = 'cancelled';
     task.updatedAt = DateTime.now();
@@ -1148,14 +2588,29 @@ class BabyCloudService extends GetxService {
   }
 
   Future<void> clearCompletedTasks() async {
-    final completed = _storage.babyCloudUploadTaskBox.values
-        .where((t) => t.status == 'completed' || t.status == 'cancelled')
+    await clearSuccessfulTasks();
+  }
+
+  Future<int> clearSuccessfulTasks() async {
+    return _clearTasksWhere((task) => task.status == 'completed');
+  }
+
+  Future<int> clearFailedTasks() async {
+    return _clearTasksWhere((task) => task.status == 'failed');
+  }
+
+  Future<int> _clearTasksWhere(
+    bool Function(BabyCloudUploadTask task) test,
+  ) async {
+    final targets = _storage.babyCloudUploadTaskBox.values
+        .where((task) => !task.isActive && test(task))
         .toList();
-    for (final task in completed) {
+    for (final task in targets) {
       _deletedTaskIds.add(task.id);
       await task.delete();
     }
     _reloadTasks();
+    return targets.length;
   }
 
   Future<bool> queueHardDeleteMedia(BabyCloudMedia item) {
@@ -1346,10 +2801,10 @@ class BabyCloudService extends GetxService {
 
   Future<void> _purgeMediaNow(BabyCloudMedia item) async {
     final source = sources.firstWhereOrNull((s) => s.id == item.dataSourceId);
-    if (source?.isWebDav == true) {
-      final check = await checkSource(source!);
+    if (source != null) {
+      final check = await checkSource(source);
       if (check.ok) {
-        final client = _webDavClient(source, endpointUrl: check.url);
+        final client = await _remoteClientForSource(source, check: check);
         if (item.remotePath.trim().isNotEmpty) {
           try {
             await client.remove(item.remotePath);
@@ -1384,10 +2839,10 @@ class BabyCloudService extends GetxService {
             item.babyId == entry.babyId &&
             item.purgedAt == null)
         .toList();
-    if (source?.isWebDav == true) {
-      final check = await checkSource(source!);
+    if (source != null) {
+      final check = await checkSource(source);
       if (check.ok) {
-        final client = _webDavClient(source, endpointUrl: check.url);
+        final client = await _remoteClientForSource(source, check: check);
         for (final item in items) {
           if (item.remotePath.trim().isNotEmpty) {
             try {
@@ -1434,10 +2889,10 @@ class BabyCloudService extends GetxService {
       await _waitForActiveSync();
     }
     final source = sources.firstWhereOrNull((s) => s.id == sourceId);
-    if (source == null || !source.isWebDav) return;
+    if (source == null) return;
     final check = await checkSource(source);
     if (!check.ok) return;
-    final client = _webDavClient(source, endpointUrl: check.url);
+    final client = await _remoteClientForSource(source, check: check);
     final babyName = _babySafeName(babyId);
     final baby = Baby(id: babyId, name: babyName, avatarPath: '');
     await _prepareBabyCloudStructure(client, source, baby);
@@ -1472,6 +2927,7 @@ class BabyCloudService extends GetxService {
       'media': items,
     };
     await client.write(indexPath, utf8.encode(jsonEncode(payload)));
+    await _markBabySyncCacheFresh(sourceId, babyId);
     await _storage.babyCloudSourceBox.put(source.id, source);
     _refreshEntries();
     _refreshMedia();
@@ -1479,10 +2935,9 @@ class BabyCloudService extends GetxService {
 
   Future<List<Map<String, dynamic>>> listRemoteBabyDirs(
       BabyCloudSource source) async {
-    if (!source.isWebDav) return const [];
     final check = await checkSource(source);
     if (!check.ok) throw Exception(check.message);
-    final client = _webDavClient(source, endpointUrl: check.url);
+    final client = await _remoteClientForSource(source, check: check);
     final manifest = await _readLibraryManifest(client, source);
     if (manifest == null) return const [];
     final libraryId = manifest['libraryId']?.toString().trim() ?? '';
@@ -1522,6 +2977,7 @@ class BabyCloudService extends GetxService {
   void _reloadTasks() {
     uploadTasks.assignAll(_storage.babyCloudUploadTaskBox.values.toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt)));
+    uploadTasks.refresh();
   }
 
   Future<void> _runMetadataTask(BabyCloudUploadTask task) async {
@@ -1530,6 +2986,7 @@ class BabyCloudService extends GetxService {
       task
         ..status = 'running'
         ..progress = 0.2
+        ..errorMessage = null
         ..updatedAt = DateTime.now();
       if (!await _saveTaskIfAlive(task)) return;
 
@@ -1538,6 +2995,7 @@ class BabyCloudService extends GetxService {
       task
         ..status = 'completed'
         ..progress = 1
+        ..errorMessage = null
         ..updatedAt = DateTime.now();
       await _saveTaskIfAlive(task);
     } catch (e) {
@@ -1551,6 +3009,7 @@ class BabyCloudService extends GetxService {
       task
         ..status = 'running'
         ..progress = 0.12
+        ..errorMessage = null
         ..updatedAt = DateTime.now();
       if (!await _saveTaskIfAlive(task)) return;
 
@@ -1562,6 +3021,7 @@ class BabyCloudService extends GetxService {
       task
         ..status = 'completed'
         ..progress = 1
+        ..errorMessage = null
         ..updatedAt = DateTime.now();
       await _saveTaskIfAlive(task);
     } catch (e) {
@@ -1575,6 +3035,7 @@ class BabyCloudService extends GetxService {
       task
         ..status = 'running'
         ..progress = 0.12
+        ..errorMessage = null
         ..updatedAt = DateTime.now();
       if (!await _saveTaskIfAlive(task)) return;
 
@@ -1586,6 +3047,7 @@ class BabyCloudService extends GetxService {
       task
         ..status = 'completed'
         ..progress = 1
+        ..errorMessage = null
         ..updatedAt = DateTime.now();
       await _saveTaskIfAlive(task);
     } catch (e) {
@@ -1595,8 +3057,14 @@ class BabyCloudService extends GetxService {
 
   Future<void> _runUploadTask(BabyCloudUploadTask task) async {
     if (!_shouldContinueTask(task)) return;
+    if (task.errorMessage?.isNotEmpty == true) {
+      task
+        ..errorMessage = null
+        ..updatedAt = DateTime.now();
+      if (!await _saveTaskIfAlive(task)) return;
+    }
     final source = sources.firstWhereOrNull((s) => s.id == task.dataSourceId);
-    if (source == null || !source.isWebDav) {
+    if (source == null) {
       await _failTask(task, '当前数据源不可用或暂不支持上传');
       return;
     }
@@ -1624,6 +3092,7 @@ class BabyCloudService extends GetxService {
       task
         ..status = 'running'
         ..progress = 0.05
+        ..errorMessage = null
         ..updatedAt = DateTime.now();
       if (!await _saveTaskIfAlive(task)) return;
 
@@ -1636,7 +3105,7 @@ class BabyCloudService extends GetxService {
         ..updatedAt = DateTime.now();
       if (!await _saveTaskIfAlive(task)) return;
 
-      final client = _webDavClient(source, endpointUrl: check.url);
+      final client = await _remoteClientForSource(source, check: check);
       await _prepareBabyCloudStructure(client, source, baby);
       await _normalizeLocalCloudIdentity(source, baby);
 
@@ -1650,10 +3119,22 @@ class BabyCloudService extends GetxService {
               );
       if (duplicate != null) {
         if (!await _checkpointTask(task)) return;
+        final thumbnailRemotePath =
+            duplicate.thumbnailRemotePath?.trim().isNotEmpty == true
+                ? duplicate.thumbnailRemotePath
+                : await _uploadTaskThumbnailIfAvailable(
+                    client: client,
+                    source: source,
+                    baby: baby,
+                    task: task,
+                    hash: hash,
+                  );
+        if (!await _checkpointTask(task)) return;
         duplicate
           ..dataSourceId = source.id
           ..libraryId = _libraryScopeForSource(source)
           ..cloudBabyId = _cloudBabyId(source, baby)
+          ..thumbnailRemotePath = thumbnailRemotePath
           ..localThumbnailPath =
               duplicate.localThumbnailPath ?? task.localThumbnailPath
           ..description = task.description ?? duplicate.description
@@ -1671,6 +3152,7 @@ class BabyCloudService extends GetxService {
           ..status = 'completed'
           ..progress = 1
           ..remotePath = duplicate.remotePath
+          ..errorMessage = null
           ..retryCount = 0
           ..updatedAt = DateTime.now();
         await _saveTaskIfAlive(task);
@@ -1709,7 +3191,7 @@ class BabyCloudService extends GetxService {
       if (!await _checkpointTask(task)) return;
       if (task.progress < 0.85) {
         await _ensureRemoteDir(client, _parentRemoteDir(remotePath));
-        await client.write(remotePath, bytes);
+        await client.write(remotePath, bytes, mimeType: task.mimeType);
       }
       if (!await _checkpointTask(task)) return;
       task
@@ -1717,6 +3199,15 @@ class BabyCloudService extends GetxService {
         ..remotePath = remotePath
         ..updatedAt = DateTime.now();
       if (!await _saveTaskIfAlive(task)) return;
+
+      final thumbnailRemotePath = await _uploadTaskThumbnailIfAvailable(
+        client: client,
+        source: source,
+        baby: baby,
+        task: task,
+        hash: hash,
+      );
+      if (!await _checkpointTask(task)) return;
 
       final item = BabyCloudMedia(
         id: '${DateTime.now().microsecondsSinceEpoch}_$hash',
@@ -1729,6 +3220,7 @@ class BabyCloudService extends GetxService {
         mediaType: task.mediaType,
         mimeType: task.mimeType,
         remotePath: remotePath,
+        thumbnailRemotePath: thumbnailRemotePath,
         localPath: task.localPath,
         localThumbnailPath: task.localThumbnailPath,
         sizeBytes: bytes.length,
@@ -1750,6 +3242,7 @@ class BabyCloudService extends GetxService {
       task
         ..status = 'completed'
         ..progress = 1
+        ..errorMessage = null
         ..retryCount = 0
         ..updatedAt = DateTime.now();
       await _saveTaskIfAlive(task);
@@ -1777,6 +3270,9 @@ class BabyCloudService extends GetxService {
 
   Future<bool> _saveTaskIfAlive(BabyCloudUploadTask task) async {
     if (_deletedTaskIds.contains(task.id) || !task.isInBox) return false;
+    if (task.status == 'completed' && task.errorMessage?.isNotEmpty == true) {
+      task.errorMessage = null;
+    }
     await task.save();
     _reloadTasks();
     return true;
@@ -1821,16 +3317,141 @@ class BabyCloudService extends GetxService {
     }
   }
 
+  String? _readableThumbnailPath(BabyCloudMedia item) {
+    final path = item.localThumbnailPath;
+    if (path == null || path.trim().isEmpty) return null;
+    if (!item.isVideo &&
+        !item.isAudio &&
+        item.localPath != null &&
+        item.localPath!.trim().isNotEmpty &&
+        path == item.localPath) {
+      return null;
+    }
+    try {
+      return File(path).existsSync() ? path : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<String?> _prepareLocalThumbnailPath({
+    required String localPath,
+    required String fileName,
+    required String mediaType,
+    required String cacheKey,
+    String? existingThumbnailPath,
+  }) async {
+    final existing = existingThumbnailPath?.trim();
+    final existingIsOriginal = existing == localPath;
+    if (existing != null && existing.isNotEmpty) {
+      try {
+        if (await File(existing).exists() && !existingIsOriginal) {
+          return existing;
+        }
+      } catch (_) {}
+    }
+    if (mediaType != 'photo') {
+      return existingIsOriginal ? null : existingThumbnailPath;
+    }
+    final generated = await _generatePhotoThumbnail(
+      sourcePath: localPath,
+      cacheKey: cacheKey,
+    );
+    return generated ?? (existingIsOriginal ? null : existingThumbnailPath);
+  }
+
+  Future<String?> _generatePhotoThumbnail({
+    required String sourcePath,
+    required String cacheKey,
+  }) async {
+    final source = File(sourcePath);
+    if (!await source.exists()) return null;
+    ui.Codec? codec;
+    ui.Image? image;
+    try {
+      final base = _appDocumentsDir ?? await getApplicationDocumentsDirectory();
+      _appDocumentsDir ??= base;
+      final dir = Directory(
+        [
+          base.path,
+          'baby_cloud_thumbnails',
+        ].join(Platform.pathSeparator),
+      );
+      await dir.create(recursive: true);
+      final file = File(
+        [
+          dir.path,
+          '${_safeFileSegment(cacheKey)}_${_generatedThumbnailSize}.png',
+        ].join(Platform.pathSeparator),
+      );
+      if (await file.exists() && await file.length() > 0) return file.path;
+
+      final bytes = await source.readAsBytes();
+      codec = await ui.instantiateImageCodec(
+        bytes,
+        targetWidth: _generatedThumbnailSize,
+      );
+      final frame = await codec.getNextFrame();
+      image = frame.image;
+      final data = await image.toByteData(format: ui.ImageByteFormat.png);
+      final Uint8List? thumbnailBytes = data?.buffer.asUint8List();
+      if (thumbnailBytes == null || thumbnailBytes.isEmpty) return null;
+      await file.writeAsBytes(thumbnailBytes, flush: true);
+      return file.path;
+    } catch (_) {
+      return null;
+    } finally {
+      image?.dispose();
+      codec?.dispose();
+    }
+  }
+
   Future<String?> _downloadMediaToLocalCache(BabyCloudMedia item) async {
     if (item.remotePath.trim().isEmpty) return null;
     final source = sources.firstWhereOrNull((s) => s.id == item.dataSourceId);
-    if (source == null || !source.isWebDav) return null;
+    if (source == null) return null;
 
-    final endpointUrl = _effectiveWebDavUrl(source);
-    if (endpointUrl == null || endpointUrl.isEmpty) return null;
-    final client = _webDavClient(source, endpointUrl: endpointUrl);
-    final bytes = await client.read(item.remotePath);
     final dir = await _localMediaCacheDir(item);
+    final file = _localMediaCacheFileInDir(item, dir.path);
+    if (await file.exists()) {
+      _logMediaCache('原图下载前磁盘命中', item, file.path);
+      return _rememberLocalMediaPath(item, file.path);
+    }
+    _logMediaCache('原图开始远程下载', item, item.remotePath);
+    final client = await _remoteClientForSource(source);
+    final bytes = await client.read(item.remotePath);
+    await file.writeAsBytes(bytes, flush: true);
+    _logMediaCache('原图远程下载完成', item, file.path);
+    return _rememberLocalMediaPath(item, file.path);
+  }
+
+  Future<String?> _downloadThumbnailToLocalCache(BabyCloudMedia item) async {
+    final remotePath = item.thumbnailRemotePath?.trim();
+    if (remotePath == null || remotePath.isEmpty) return null;
+    final source = sources.firstWhereOrNull((s) => s.id == item.dataSourceId);
+    if (source == null) return null;
+
+    final dir = await _localMediaCacheDir(item);
+    final file = _localThumbnailCacheFileInDir(item, dir.path);
+    if (await file.exists()) {
+      _logMediaCache('缩略图下载前磁盘命中', item, file.path);
+      return _rememberLocalThumbnailPath(item, file.path);
+    }
+    _logMediaCache('缩略图开始远程下载', item, remotePath);
+    final client = await _remoteClientForSource(source);
+    final bytes = await client.read(remotePath);
+    await file.writeAsBytes(bytes, flush: true);
+    _logMediaCache('缩略图远程下载完成', item, file.path);
+    return _rememberLocalThumbnailPath(item, file.path);
+  }
+
+  File? _localMediaCacheFile(BabyCloudMedia item) {
+    final dirPath = _localMediaCacheDirPath(item);
+    if (dirPath == null) return null;
+    return _localMediaCacheFileInDir(item, dirPath);
+  }
+
+  File _localMediaCacheFileInDir(BabyCloudMedia item, String dirPath) {
     final ext = _extension(item.fileName).isNotEmpty
         ? _extension(item.fileName)
         : item.isVideo
@@ -1838,19 +3459,119 @@ class BabyCloudService extends GetxService {
             : item.isAudio
                 ? '.m4a'
                 : '.jpg';
-    final file = File(
-      '${dir.path}${Platform.pathSeparator}${_safeFileSegment(item.sha256)}$ext',
+    return File(
+      [
+        dirPath,
+        '${_safeFileSegment(item.sha256)}$ext',
+      ].join(Platform.pathSeparator),
     );
-    await file.writeAsBytes(bytes, flush: true);
-    item
-      ..localPath = file.path
-      ..updatedAt = DateTime.now();
-    await item.save();
-    return file.path;
+  }
+
+  File? _localThumbnailCacheFile(BabyCloudMedia item) {
+    final dirPath = _localMediaCacheDirPath(item);
+    if (dirPath == null) return null;
+    return _localThumbnailCacheFileInDir(item, dirPath);
+  }
+
+  File _localThumbnailCacheFileInDir(BabyCloudMedia item, String dirPath) {
+    final remotePath = item.thumbnailRemotePath?.trim() ?? '';
+    final ext = _extension(remotePath).isNotEmpty
+        ? _extension(remotePath)
+        : _extension(item.fileName).isNotEmpty
+            ? _extension(item.fileName)
+            : '.jpg';
+    return File(
+      [
+        dirPath,
+        '${_safeFileSegment(item.sha256)}_thumb$ext',
+      ].join(Platform.pathSeparator),
+    );
+  }
+
+  String? _localMediaCacheDirPath(BabyCloudMedia item) {
+    final base = _appDocumentsDir?.path;
+    if (base == null) return null;
+    return [
+      base,
+      'baby_cloud_cache',
+      _safeFileSegment(item.dataSourceId),
+      _safeFileSegment(item.babyId),
+    ].join(Platform.pathSeparator);
+  }
+
+  String _localMediaCacheKey(BabyCloudMedia item) {
+    return [
+      item.dataSourceId,
+      item.babyId,
+      item.sha256,
+    ].map(_safeFileSegment).join('|');
+  }
+
+  Future<String?> _rememberLocalMediaPath(
+    BabyCloudMedia item,
+    String path,
+  ) async {
+    item.localPath = path;
+    final generatedThumbnail = !item.isVideo && !item.isAudio
+        ? await _prepareLocalThumbnailPath(
+            localPath: path,
+            fileName: item.fileName,
+            mediaType: item.mediaType,
+            cacheKey: item.sha256,
+            existingThumbnailPath: item.localThumbnailPath,
+          )
+        : null;
+    if (!item.isVideo &&
+        !item.isAudio &&
+        generatedThumbnail != null &&
+        generatedThumbnail != path &&
+        _readableThumbnailPath(item) == null) {
+      item.localThumbnailPath = generatedThumbnail;
+    }
+    final stored = _storage.babyCloudMediaBox.get(item.id);
+    if (stored != null && !identical(stored, item)) {
+      stored.localPath = path;
+      final storedGeneratedThumbnail = !stored.isVideo && !stored.isAudio
+          ? await _prepareLocalThumbnailPath(
+              localPath: path,
+              fileName: stored.fileName,
+              mediaType: stored.mediaType,
+              cacheKey: stored.sha256,
+              existingThumbnailPath: stored.localThumbnailPath,
+            )
+          : null;
+      if (!stored.isVideo &&
+          !stored.isAudio &&
+          storedGeneratedThumbnail != null &&
+          storedGeneratedThumbnail != path &&
+          _readableThumbnailPath(stored) == null) {
+        stored.localThumbnailPath = storedGeneratedThumbnail;
+      }
+      await stored.save();
+    } else if (item.isInBox) {
+      await item.save();
+    }
+    return path;
+  }
+
+  Future<String?> _rememberLocalThumbnailPath(
+    BabyCloudMedia item,
+    String path,
+  ) async {
+    item.localThumbnailPath = path;
+    final stored = _storage.babyCloudMediaBox.get(item.id);
+    if (stored != null && !identical(stored, item)) {
+      stored.localThumbnailPath = path;
+      await stored.save();
+    } else if (item.isInBox) {
+      await item.save();
+    }
+    return path;
   }
 
   Future<Directory> _localMediaCacheDir(BabyCloudMedia item) async {
-    final base = await getApplicationDocumentsDirectory();
+    final base = _appDocumentsDir ?? await getApplicationDocumentsDirectory();
+    _appDocumentsDir ??= base;
     final dir = Directory(
       [
         base.path,
@@ -1863,8 +3584,18 @@ class BabyCloudService extends GetxService {
     return dir;
   }
 
+  void _logMediaCache(String event, BabyCloudMedia item, String path) {
+    if (!_debugMediaCache) return;
+    debugPrint(
+      'BabyCloudCache: $event '
+      'id=${item.id} type=${item.mediaType} '
+      'hash=${item.sha256.length > 12 ? item.sha256.substring(0, 12) : item.sha256} '
+      'entry=${item.entryId} path=$path',
+    );
+  }
+
   Future<void> _prepareBabyCloudStructure(
-    _BabyWebDavClient client,
+    _BabyCloudRemoteClient client,
     BabyCloudSource source,
     Baby baby,
   ) async {
@@ -1919,7 +3650,7 @@ class BabyCloudService extends GetxService {
   }
 
   Future<Map<String, dynamic>> _readOrCreateLibraryManifest(
-    _BabyWebDavClient client,
+    _BabyCloudRemoteClient client,
     BabyCloudSource source,
   ) async {
     final root = _normalizeRoot(source.rootPath);
@@ -1951,7 +3682,7 @@ class BabyCloudService extends GetxService {
   }
 
   Future<Map<String, dynamic>?> _readLibraryManifest(
-    _BabyWebDavClient client,
+    _BabyCloudRemoteClient client,
     BabyCloudSource source,
   ) async {
     try {
@@ -1970,7 +3701,7 @@ class BabyCloudService extends GetxService {
   }
 
   Future<void> _writeLibraryManifest(
-    _BabyWebDavClient client,
+    _BabyCloudRemoteClient client,
     BabyCloudSource source,
     Map<String, dynamic> manifest,
   ) async {
@@ -2001,7 +3732,7 @@ class BabyCloudService extends GetxService {
   }
 
   Future<void> _bindBabyInManifest(
-    _BabyWebDavClient client,
+    _BabyCloudRemoteClient client,
     BabyCloudSource source,
     Baby baby,
     Map<String, dynamic> manifest,
@@ -2371,7 +4102,7 @@ class BabyCloudService extends GetxService {
   }
 
   Future<Map<String, dynamic>?> _readRemoteIndexAt(
-    _BabyWebDavClient client,
+    _BabyCloudRemoteClient client,
     String indexPath,
   ) async {
     try {
@@ -2390,7 +4121,7 @@ class BabyCloudService extends GetxService {
   }
 
   Future<void> _ensureBabyDirs(
-    _BabyWebDavClient client,
+    _BabyCloudRemoteClient client,
     BabyCloudSource source,
     Baby baby,
   ) async {
@@ -2403,6 +4134,7 @@ class BabyCloudService extends GetxService {
       '${_babyDir(source, baby)}/album/photos',
       '${_babyDir(source, baby)}/album/videos',
       '${_babyDir(source, baby)}/album/audios',
+      '${_babyDir(source, baby)}/album/thumbnails',
       '${_babyDir(source, baby)}/index',
       '${_babyDir(source, baby)}/trash',
     ];
@@ -2412,7 +4144,7 @@ class BabyCloudService extends GetxService {
   }
 
   Future<bool> _ensureRemoteDir(
-    _BabyWebDavClient client,
+    _BabyCloudRemoteClient client,
     String path,
   ) async {
     final normalized = _normalizeRemoteDir(path);
@@ -2435,7 +4167,7 @@ class BabyCloudService extends GetxService {
         await client.mkdir(current);
         await client.statDir(current);
       } catch (e) {
-        throw Exception('创建 WebDAV 目录 $current 失败；读取尝试：$readError；创建尝试：$e');
+        throw Exception('创建云端目录 $current 失败；读取尝试：$readError；创建尝试：$e');
       }
       created = true;
     }
@@ -2487,14 +4219,20 @@ class BabyCloudService extends GetxService {
     }
   }
 
+  Future<String?> _quickCheckWebDav(_BabyWebDavClient client) async {
+    await client.statDir('/');
+    return '快速检测';
+  }
+
   Future<void> _recordSourceCheck(
     BabyCloudSource source, {
     required bool ok,
     required String message,
     required bool persist,
+    String? status,
   }) async {
     source
-      ..status = ok ? 'normal' : 'invalid'
+      ..status = status ?? (ok ? 'normal' : 'invalid')
       ..lastCheckedAt = DateTime.now()
       ..lastCheckMessage = message;
     if (!ok) {
@@ -2512,6 +4250,7 @@ class BabyCloudService extends GetxService {
   ) async {
     final external = source.webDavUrl?.trim() ?? '';
     final lan = source.webDavLanUrl?.trim() ?? '';
+    final active = source.activeWebDavUrl?.trim() ?? '';
     final looksLocal = await _looksLikeLocalNetwork();
     final result = <_WebDavEndpointCandidate>[];
 
@@ -2534,6 +4273,29 @@ class BabyCloudService extends GetxService {
         endpoint,
         origin,
         note: '原地址路径 ${path.isEmpty ? '/' : path} 不可用，已自动改用同主机根地址 $origin',
+      );
+    }
+
+    String endpointForUrl(String url, String fallback) {
+      final normalized = _normalizeEndpointUrl(url);
+      if (normalized.isEmpty) return fallback;
+      if (lan.trim().isNotEmpty && normalized == _normalizeEndpointUrl(lan)) {
+        return 'lan';
+      }
+      if (external.trim().isNotEmpty &&
+          normalized == _normalizeEndpointUrl(external)) {
+        return 'external';
+      }
+      return fallback == 'lan' || fallback == 'external'
+          ? fallback
+          : 'external';
+    }
+
+    if (active.isNotEmpty) {
+      add(
+        endpointForUrl(active, source.activeWebDavEndpoint),
+        active,
+        note: '优先复用上次可用地址',
       );
     }
 
@@ -2669,6 +4431,47 @@ class BabyCloudService extends GetxService {
   String _manifestBabyKey(BabyCloudSource source, String babyId) =>
       '${_libraryScopeForSource(source)}|$babyId';
 
+  Future<String?> _uploadTaskThumbnailIfAvailable({
+    required _BabyCloudRemoteClient client,
+    required BabyCloudSource source,
+    required Baby baby,
+    required BabyCloudUploadTask task,
+    required String hash,
+  }) async {
+    final preparedPath = await _prepareLocalThumbnailPath(
+      localPath: task.localPath,
+      fileName: task.fileName,
+      mediaType: task.mediaType,
+      cacheKey: hash,
+      existingThumbnailPath: task.localThumbnailPath,
+    );
+    if (preparedPath != task.localThumbnailPath) {
+      task
+        ..localThumbnailPath = preparedPath
+        ..updatedAt = DateTime.now();
+      await _saveTaskIfAlive(task);
+    }
+    final localPath = task.localThumbnailPath;
+    if (localPath == null || localPath.trim().isEmpty) return null;
+    final file = File(localPath);
+    if (!await file.exists()) return null;
+
+    final remotePath = _thumbnailPath(
+      source,
+      baby,
+      file.path,
+      hash,
+      task.takenAt ?? file.lastModifiedSync(),
+    );
+    await _ensureRemoteDir(client, _parentRemoteDir(remotePath));
+    await client.write(
+      remotePath,
+      await file.readAsBytes(),
+      mimeType: _mimeFromName(file.path, 'photo'),
+    );
+    return remotePath;
+  }
+
   String _mediaPath(
     BabyCloudSource source,
     Baby baby,
@@ -2687,6 +4490,23 @@ class BabyCloudService extends GetxService {
             ? 'audios'
             : 'photos';
     return '${_babyDir(source, baby)}/album/$bucket/$year/$month/${ts}_${hash.substring(0, 12)}$ext';
+  }
+
+  String _thumbnailPath(
+    BabyCloudSource source,
+    Baby baby,
+    String fileName,
+    String hash,
+    DateTime takenAt,
+  ) {
+    final rawExt = _extension(fileName);
+    final ext = rawExt.isEmpty || rawExt.toLowerCase() == '.heic'
+        ? '.jpg'
+        : rawExt;
+    final year = DateFormat('yyyy').format(takenAt);
+    final month = DateFormat('MM').format(takenAt);
+    final ts = DateFormat('yyyyMMdd_HHmmss').format(takenAt);
+    return '${_babyDir(source, baby)}/album/thumbnails/$year/$month/${ts}_${hash.substring(0, 12)}_thumb$ext';
   }
 
   String _indexPath(BabyCloudSource source, Baby baby) =>

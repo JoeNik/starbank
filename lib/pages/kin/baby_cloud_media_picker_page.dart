@@ -177,7 +177,7 @@ class _BabyCloudMediaPickerPageState extends State<BabyCloudMediaPickerPage> {
                   ElevatedButton.icon(
                     onPressed: () => Get.off(() => const BabyCloudSourcePage()),
                     icon: const Icon(Icons.settings_outlined),
-                    label: const Text('配置亲宝宝 WebDAV'),
+                    label: const Text('配置亲宝宝数据源'),
                   ),
                 ],
               ],
@@ -495,19 +495,22 @@ class _AssetTileState extends State<_AssetTile> {
             Positioned(
               left: 4.w,
               bottom: 4.w,
-              child: Material(
-                color: Colors.black.withValues(alpha: 0.54),
-                borderRadius: BorderRadius.circular(99),
-                child: InkWell(
-                  onTap: widget.onPreview,
-                  borderRadius: BorderRadius.circular(99),
-                  child: SizedBox.square(
-                    dimension: 28.w,
-                    child: Icon(
-                      Icons.visibility_outlined,
-                      size: 17.sp,
-                      color: Colors.white,
-                    ),
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: widget.onPreview,
+                child: SizedBox.square(
+                  dimension: 28.w,
+                  child: Icon(
+                    Icons.visibility,
+                    size: 20.sp,
+                    color: Colors.white,
+                    shadows: const [
+                      Shadow(
+                        color: Colors.black54,
+                        blurRadius: 4,
+                        offset: Offset(0, 1),
+                      ),
+                    ],
                   ),
                 ),
               ),

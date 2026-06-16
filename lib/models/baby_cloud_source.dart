@@ -77,6 +77,39 @@ class BabyCloudSource extends HiveObject {
   @HiveField(17)
   String? libraryName;
 
+  @HiveField(18)
+  String? aliyunDriveClientId;
+
+  @HiveField(19)
+  String? aliyunDriveClientSecret;
+
+  @HiveField(20)
+  String? aliyunDriveRedirectUri;
+
+  @HiveField(21)
+  String? aliyunDriveScope;
+
+  @HiveField(22)
+  String? aliyunDriveAuthUrl;
+
+  @HiveField(23)
+  String? aliyunDriveTokenUrl;
+
+  @HiveField(24)
+  String? aliyunDriveAccessToken;
+
+  @HiveField(25)
+  DateTime? aliyunDriveTokenExpiresAt;
+
+  @HiveField(26)
+  String? aliyunDriveDriveId;
+
+  @HiveField(27)
+  String? aliyunDriveUserId;
+
+  @HiveField(28)
+  String? aliyunDriveNickName;
+
   BabyCloudSource({
     required this.id,
     required this.name,
@@ -94,6 +127,17 @@ class BabyCloudSource extends HiveObject {
     this.lastCheckMessage,
     this.libraryId,
     this.libraryName,
+    this.aliyunDriveClientId,
+    this.aliyunDriveClientSecret,
+    this.aliyunDriveRedirectUri,
+    this.aliyunDriveScope,
+    this.aliyunDriveAuthUrl,
+    this.aliyunDriveTokenUrl,
+    this.aliyunDriveAccessToken,
+    this.aliyunDriveTokenExpiresAt,
+    this.aliyunDriveDriveId,
+    this.aliyunDriveUserId,
+    this.aliyunDriveNickName,
     DateTime? createdAt,
     DateTime? updatedAt,
   })  : createdAt = createdAt ?? DateTime.now(),
@@ -119,6 +163,18 @@ class BabyCloudSource extends HiveObject {
         'lastCheckMessage': lastCheckMessage,
         'libraryId': libraryId,
         'libraryName': libraryName,
+        'aliyunDriveClientId': aliyunDriveClientId,
+        'aliyunDriveClientSecret': aliyunDriveClientSecret,
+        'aliyunDriveRedirectUri': aliyunDriveRedirectUri,
+        'aliyunDriveScope': aliyunDriveScope,
+        'aliyunDriveAuthUrl': aliyunDriveAuthUrl,
+        'aliyunDriveTokenUrl': aliyunDriveTokenUrl,
+        'aliyunDriveAccessToken': aliyunDriveAccessToken,
+        'aliyunDriveTokenExpiresAt':
+            aliyunDriveTokenExpiresAt?.toIso8601String(),
+        'aliyunDriveDriveId': aliyunDriveDriveId,
+        'aliyunDriveUserId': aliyunDriveUserId,
+        'aliyunDriveNickName': aliyunDriveNickName,
         'createdAt': createdAt.toIso8601String(),
         'updatedAt': updatedAt.toIso8601String(),
       };
@@ -143,6 +199,19 @@ class BabyCloudSource extends HiveObject {
         lastCheckMessage: json['lastCheckMessage'] as String?,
         libraryId: json['libraryId'] as String?,
         libraryName: json['libraryName'] as String?,
+        aliyunDriveClientId: json['aliyunDriveClientId'] as String?,
+        aliyunDriveClientSecret: json['aliyunDriveClientSecret'] as String?,
+        aliyunDriveRedirectUri: json['aliyunDriveRedirectUri'] as String?,
+        aliyunDriveScope: json['aliyunDriveScope'] as String?,
+        aliyunDriveAuthUrl: json['aliyunDriveAuthUrl'] as String?,
+        aliyunDriveTokenUrl: json['aliyunDriveTokenUrl'] as String?,
+        aliyunDriveAccessToken: json['aliyunDriveAccessToken'] as String?,
+        aliyunDriveTokenExpiresAt: json['aliyunDriveTokenExpiresAt'] != null
+            ? DateTime.parse(json['aliyunDriveTokenExpiresAt'] as String)
+            : null,
+        aliyunDriveDriveId: json['aliyunDriveDriveId'] as String?,
+        aliyunDriveUserId: json['aliyunDriveUserId'] as String?,
+        aliyunDriveNickName: json['aliyunDriveNickName'] as String?,
         createdAt: json['createdAt'] != null
             ? DateTime.parse(json['createdAt'] as String)
             : DateTime.now(),

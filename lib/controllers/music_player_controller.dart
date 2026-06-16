@@ -53,6 +53,7 @@ class MusicPlayerController extends GetxController {
     _cacheService = Get.find<MusicCacheService>();
     _loadFavorites();
     _loadHistory();
+    unawaited(_musicService.ensureNotificationPermission());
 
     // 异步初始化播放器监听，防止因 Service 未就绪导致的阻塞或 Crash
     _initControllerAsync();
@@ -319,7 +320,7 @@ class MusicPlayerController extends GetxController {
           return;
         }
         if (cachedPath != null) {
-          debugPrint('✅ [PlayTrack #$taskId] 从缓存播放: $cachedPath');
+          debugPrint('✅ [PlayTrack #$taskId] 从缓存播放');
           playUrl = 'file://$cachedPath';
           fromCache = true;
         } else {
@@ -399,17 +400,7 @@ class MusicPlayerController extends GetxController {
         return;
       }
 
-      // 更新系统媒体信息
-      final mediaItem = MediaItem(
-        id: track.id,
-        title: track.title,
-        artist: track.artist,
-        album: track.album ?? '',
-        artUri: track.coverUrl != null && track.coverUrl!.isNotEmpty
-            ? Uri.parse(track.coverUrl!)
-            : null,
-      );
-      _musicService.audioHandler?.updateMediaItem(mediaItem);
+      final mediaItem = _toMediaItem(track);
 
       // 设置音频源
       final Map<String, String> headers = _getHeaders(track);
@@ -444,6 +435,12 @@ class MusicPlayerController extends GetxController {
           currentIndex.value = index;
         }
       }
+
+      final resolvedDuration = player.duration;
+      if (resolvedDuration != null) {
+        track.durationMs = resolvedDuration.inMilliseconds;
+      }
+      _syncAudioServiceQueue(currentDuration: resolvedDuration);
 
       // 开始播放
       await player.play();
@@ -628,6 +625,41 @@ class MusicPlayerController extends GetxController {
     }
 
     return headers;
+  }
+
+  MediaItem _toMediaItem(MusicTrack track, {Duration? duration}) {
+    return MediaItem(
+      id: '${track.platform}:${track.id}',
+      title: track.title,
+      artist: track.artist,
+      album: track.album ?? '',
+      duration: duration ??
+          (track.durationMs != null
+              ? Duration(milliseconds: track.durationMs!)
+              : null),
+      artUri: track.coverUrl != null && track.coverUrl!.isNotEmpty
+          ? Uri.tryParse(track.coverUrl!)
+          : null,
+      extras: {
+        'platform': track.platform,
+        'trackId': track.id,
+      },
+    );
+  }
+
+  void _syncAudioServiceQueue({Duration? currentDuration}) {
+    final handler = _musicService.audioHandler;
+    if (handler == null || playlist.isEmpty) return;
+    final items = <MediaItem>[];
+    for (var i = 0; i < playlist.length; i++) {
+      items.add(
+        _toMediaItem(
+          playlist[i],
+          duration: i == currentIndex.value ? currentDuration : null,
+        ),
+      );
+    }
+    unawaited(handler.updateQueueAndMediaItem(items, currentIndex.value));
   }
 }
 

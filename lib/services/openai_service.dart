@@ -4,17 +4,36 @@ import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
 import '../models/openai_config.dart';
+import 'android_background_network_service.dart';
 
 /// OpenAI 服务
 /// 封装对 OpenAI 兼容 API 的调用
 class OpenAIService extends GetxService {
   late Box<OpenAIConfig> _configBox;
+  int _backgroundRequestSeq = 0;
 
   // 当前配置
   final Rx<OpenAIConfig?> currentConfig = Rx<OpenAIConfig?>(null);
 
   // 所有配置列表
   final RxList<OpenAIConfig> configs = <OpenAIConfig>[].obs;
+
+  Future<http.Response> _postWithBackgroundKeepAlive(
+    Uri uri, {
+    required Map<String, String> headers,
+    required Object body,
+    required Duration timeout,
+    String text = '正在请求 AI 服务',
+  }) {
+    final operationId =
+        'openai_${DateTime.now().microsecondsSinceEpoch}_${_backgroundRequestSeq++}';
+    return AndroidBackgroundNetworkService.protect(
+      operationId,
+      () => http.post(uri, headers: headers, body: body).timeout(timeout),
+      title: 'StarBank AI',
+      text: text,
+    );
+  }
 
   Future<OpenAIService> init() async {
     // 注册适配器
@@ -160,9 +179,12 @@ class OpenAIService extends GetxService {
         ];
       }
 
-      var response = await http
-          .post(uri, headers: headers, body: jsonEncode(requestBody))
-          .timeout(const Duration(seconds: 180));
+      var response = await _postWithBackgroundKeepAlive(
+        uri,
+        headers: headers,
+        body: jsonEncode(requestBody),
+        timeout: const Duration(seconds: 180),
+      );
 
       if (response.statusCode != 200) {
         final error = jsonDecode(response.body);
@@ -201,9 +223,12 @@ class OpenAIService extends GetxService {
         requestBody['messages'] = messages;
         requestBody.remove('tools'); // 必须移除 tools 这里的简单实现防止多轮
 
-        response = await http
-            .post(uri, headers: headers, body: jsonEncode(requestBody))
-            .timeout(const Duration(seconds: 180));
+        response = await _postWithBackgroundKeepAlive(
+          uri,
+          headers: headers,
+          body: jsonEncode(requestBody),
+          timeout: const Duration(seconds: 180),
+        );
 
         if (response.statusCode != 200) {
           throw Exception('Tool response failed');
@@ -285,9 +310,12 @@ class OpenAIService extends GetxService {
         ];
       }
 
-      var response = await http
-          .post(uri, headers: headers, body: jsonEncode(requestBody))
-          .timeout(const Duration(seconds: 180));
+      var response = await _postWithBackgroundKeepAlive(
+        uri,
+        headers: headers,
+        body: jsonEncode(requestBody),
+        timeout: const Duration(seconds: 180),
+      );
 
       if (response.statusCode != 200) {
         final error = jsonDecode(response.body);
@@ -326,9 +354,12 @@ class OpenAIService extends GetxService {
         requestBody['messages'] = chatMessages;
         requestBody.remove('tools'); // 必须移除 tools 这里的简单实现防止多轮
 
-        response = await http
-            .post(uri, headers: headers, body: jsonEncode(requestBody))
-            .timeout(const Duration(seconds: 180));
+        response = await _postWithBackgroundKeepAlive(
+          uri,
+          headers: headers,
+          body: jsonEncode(requestBody),
+          timeout: const Duration(seconds: 180),
+        );
 
         if (response.statusCode != 200) {
           throw Exception('Tool response failed');
@@ -385,16 +416,16 @@ class OpenAIService extends GetxService {
         'stream': false,
       };
 
-      final response = await http
-          .post(
-            uri,
-            headers: {
-              'Authorization': 'Bearer ${cfg.apiKey}',
-              'Content-Type': 'application/json',
-            },
-            body: jsonEncode(requestBody),
-          )
-          .timeout(const Duration(seconds: 180));
+      final response = await _postWithBackgroundKeepAlive(
+        uri,
+        headers: {
+          'Authorization': 'Bearer ${cfg.apiKey}',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(requestBody),
+        timeout: const Duration(seconds: 180),
+        text: '正在进行图片识别',
+      );
 
       if (response.statusCode != 200) {
         final errorText = utf8.decode(response.bodyBytes);
@@ -718,16 +749,16 @@ class OpenAIService extends GetxService {
 
           debugPrint('📤 请求体: ${jsonEncode(requestBody)}');
 
-          final response = await http
-              .post(
-                uri,
-                headers: {
-                  'Authorization': 'Bearer ${cfg.apiKey}',
-                  'Content-Type': 'application/json',
-                },
-                body: jsonEncode(requestBody),
-              )
-              .timeout(const Duration(seconds: 300));
+          final response = await _postWithBackgroundKeepAlive(
+            uri,
+            headers: {
+              'Authorization': 'Bearer ${cfg.apiKey}',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode(requestBody),
+            timeout: const Duration(seconds: 300),
+            text: '正在生成图片',
+          );
 
           debugPrint('📥 响应状态码: ${response.statusCode}');
           debugPrint('📥 响应头: ${response.headers}');
@@ -798,16 +829,16 @@ class OpenAIService extends GetxService {
 
         debugPrint('📤 请求体: ${jsonEncode(requestBody)}');
 
-        final response = await http
-            .post(
-              uri,
-              headers: {
-                'Authorization': 'Bearer ${cfg.apiKey}',
-                'Content-Type': 'application/json',
-              },
-              body: jsonEncode(requestBody),
-            )
-            .timeout(const Duration(seconds: 300));
+        final response = await _postWithBackgroundKeepAlive(
+          uri,
+          headers: {
+            'Authorization': 'Bearer ${cfg.apiKey}',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode(requestBody),
+          timeout: const Duration(seconds: 300),
+          text: '正在生成图片',
+        );
 
         debugPrint('📥 响应状态码: ${response.statusCode}');
         debugPrint('📥 响应头: ${response.headers}');
@@ -893,6 +924,8 @@ class OpenAIService extends GetxService {
       throw Exception('未配置 OpenAI');
     }
 
+    final operationId =
+        'openai_stream_${DateTime.now().microsecondsSinceEpoch}_${_backgroundRequestSeq++}';
     try {
       final uri = Uri.parse('${cfg.baseUrl}/v1/chat/completions');
       final modelName = model ??
@@ -931,6 +964,11 @@ class OpenAIService extends GetxService {
       });
       request.body = jsonEncode(requestBody);
 
+      await AndroidBackgroundNetworkService.startOperation(
+        operationId,
+        title: 'StarBank AI',
+        text: '正在流式生成图片',
+      );
       final streamedResponse = await request.send().timeout(
             const Duration(seconds: 300),
           );
@@ -999,6 +1037,8 @@ class OpenAIService extends GetxService {
       debugPrint('错误: $e');
       debugPrint('堆栈: $stackTrace');
       rethrow;
+    } finally {
+      await AndroidBackgroundNetworkService.stopOperation(operationId);
     }
   }
 

@@ -32,7 +32,7 @@ class BabyCloudEntryAdapter extends TypeAdapter<BabyCloudEntry> {
       updatedAt: fields[12] as DateTime?,
       deletedAt: fields[13] as DateTime?,
       deleteReason: fields[14] as String?,
-      mediaIds: (fields[15] as List?)?.cast<String>(),
+      mediaIds: fields[15] == null ? [] : (fields[15] as List?)?.cast<String>(),
       purgedAt: fields[16] as DateTime?,
       actorRole: fields[17] as String?,
     );

@@ -255,7 +255,7 @@ class BabyCloudEntryDetailPage extends StatelessWidget {
     final width = item.width;
     final height = item.height;
     if (width != null && height != null && width > 0 && height > 0) {
-      return (width / height).clamp(0.72, 1.78).toDouble();
+      return (width / height).clamp(0.48, 1.78).toDouble();
     }
     if (item.isVideo) return 16 / 9;
     if (item.isAudio) return 2.8;
@@ -275,15 +275,17 @@ class BabyCloudEntryDetailPage extends StatelessWidget {
         borderRadius: BorderRadius.circular(6.r),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
-          onTap: () => Get.to(
-            () => BabyCloudMediaDetailPage(
-              items: allMedia,
-              initialIndex: index,
-            ),
-          ),
+          onTap: () async {
+            await Get.to(
+              () => BabyCloudMediaDetailPage(
+                items: allMedia,
+                initialIndex: index,
+              ),
+            );
+          },
           child: BabyCloudMediaThumbnail(
             item: item,
-            fit: BoxFit.cover,
+            fit: BoxFit.contain,
           ),
         ),
       ),

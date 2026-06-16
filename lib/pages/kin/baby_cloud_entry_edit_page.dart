@@ -674,8 +674,6 @@ class _BabyCloudEntryEditPageState extends State<BabyCloudEntryEditPage> {
       mediaType: widget.localMediaType ?? 'photo',
       takenAt: _recordTime,
       sha256Hash: hash,
-      localThumbnailPath:
-          widget.localMediaType == 'video' ? null : (cachedPath ?? file.path),
       entryId: entryId,
       description: description,
       tags: tags,

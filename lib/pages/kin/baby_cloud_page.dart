@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 
 import '../../controllers/user_controller.dart';
+import '../../models/baby_cloud_entry.dart';
 import '../../models/baby_cloud_media.dart';
 import '../../services/baby_cloud_service.dart';
 import '../../theme/app_theme.dart';
@@ -14,6 +15,7 @@ import '../../widgets/baby_cloud_media_thumbnail.dart';
 import '../../widgets/image_utils.dart';
 import '../../widgets/module_background_scene.dart';
 import '../../widgets/toast_utils.dart';
+import 'baby_cloud_entry_detail_page.dart';
 import 'baby_cloud_media_detail_page.dart';
 import 'baby_cloud_media_picker_page.dart';
 import 'baby_cloud_recycle_bin_page.dart';
@@ -37,10 +39,10 @@ class _BabyCloudPageState extends State<BabyCloudPage> {
     Future.microtask(_syncCurrent);
   }
 
-  Future<void> _syncCurrent() async {
+  Future<void> _syncCurrent({bool forceRemote = false}) async {
     final baby = _user.currentBaby.value;
     if (baby != null && _cloud.currentSource.value != null) {
-      await _cloud.syncBaby(baby);
+      await _cloud.syncBaby(baby, forceRemote: forceRemote);
     }
   }
 
@@ -63,7 +65,10 @@ class _BabyCloudPageState extends State<BabyCloudPage> {
                       return const Center(child: Text('请先在主页选择宝宝'));
                     }
                     return RefreshIndicator(
-                      onRefresh: () => _cloud.syncBaby(baby),
+                      onRefresh: () => _cloud.syncBaby(
+                        baby,
+                        forceRemote: true,
+                      ),
                       child: CustomScrollView(
                         physics: const AlwaysScrollableScrollPhysics(),
                         slivers: [
@@ -179,7 +184,10 @@ class _BabyCloudPageState extends State<BabyCloudPage> {
                     )
                   : const Icon(Icons.sync),
             ),
-            onPressed: () => _cloud.syncBaby(baby),
+            onPressed: () => _cloud.syncBaby(
+              baby,
+              forceRemote: true,
+            ),
           ),
         ],
       ),
@@ -241,14 +249,15 @@ class _BabyCloudPageState extends State<BabyCloudPage> {
 
   Widget _buildTimeline(String babyId) {
     return Obx(() {
-      final items = _cloud.mediaForBaby(babyId);
+      final allMedia = _cloud.mediaForBaby(babyId);
+      final timelineEntries = _timelineEntries(babyId, allMedia);
       if (_cloud.currentSource.value == null) {
         return SliverFillRemaining(
           hasScrollBody: false,
           child: _emptyBlock('先配置亲宝宝数据源，再开始备份照片和视频'),
         );
       }
-      if (items.isEmpty) {
+      if (timelineEntries.isEmpty) {
         final tasks = _cloud.uploadTasks
             .where((task) =>
                 task.babyId == babyId &&
@@ -282,10 +291,10 @@ class _BabyCloudPageState extends State<BabyCloudPage> {
           child: _emptyBlock('还没有上传照片或视频'),
         );
       }
-      final groups = <String, List<BabyCloudMedia>>{};
-      for (final item in items) {
-        final key = DateFormat('yyyy-MM-dd').format(item.takenAt);
-        groups.putIfAbsent(key, () => []).add(item);
+      final groups = <String, List<_BabyCloudTimelineEntry>>{};
+      for (final entry in timelineEntries) {
+        final key = DateFormat('yyyy-MM-dd').format(entry.takenAt);
+        groups.putIfAbsent(key, () => []).add(entry);
       }
       final entries = groups.entries.toList();
       return SliverPadding(
@@ -302,7 +311,65 @@ class _BabyCloudPageState extends State<BabyCloudPage> {
     });
   }
 
-  Widget _buildDayGroup(DateTime date, List<BabyCloudMedia> items) {
+  List<_BabyCloudTimelineEntry> _timelineEntries(
+    String babyId,
+    List<BabyCloudMedia> allMedia,
+  ) {
+    final result = <_BabyCloudTimelineEntry>[];
+    final usedMediaIds = <String>{};
+    final entries = _cloud.entriesForBaby(babyId);
+
+    for (final entry in entries) {
+      final mediaItems = _mediaForEntry(allMedia, entry);
+      usedMediaIds.addAll(mediaItems.map((item) => item.id));
+      final hasText = entry.description?.trim().isNotEmpty == true;
+      if (mediaItems.isEmpty && !hasText) continue;
+      result.add(
+        _BabyCloudTimelineEntry(
+          entry: entry,
+          mediaItems: mediaItems,
+          takenAt: entry.takenAt,
+        ),
+      );
+    }
+
+    final orphanGroups = <String, List<BabyCloudMedia>>{};
+    for (final item in allMedia) {
+      if (usedMediaIds.contains(item.id)) continue;
+      orphanGroups.putIfAbsent(item.entryId, () => []).add(item);
+    }
+    for (final mediaItems in orphanGroups.values) {
+      if (mediaItems.isEmpty) continue;
+      mediaItems.sort((a, b) => b.takenAt.compareTo(a.takenAt));
+      result.add(
+        _BabyCloudTimelineEntry(
+          entry: null,
+          mediaItems: mediaItems,
+          takenAt: mediaItems.first.takenAt,
+        ),
+      );
+    }
+
+    result.sort((a, b) => b.takenAt.compareTo(a.takenAt));
+    return result;
+  }
+
+  List<BabyCloudMedia> _mediaForEntry(
+    List<BabyCloudMedia> allMedia,
+    BabyCloudEntry entry,
+  ) {
+    final mediaIds = entry.mediaIds.toSet();
+    final mediaItems = allMedia
+        .where((item) => item.entryId == entry.id || mediaIds.contains(item.id))
+        .toList()
+      ..sort((a, b) => b.takenAt.compareTo(a.takenAt));
+    return mediaItems;
+  }
+
+  Widget _buildDayGroup(
+    DateTime date,
+    List<_BabyCloudTimelineEntry> entries,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -328,31 +395,157 @@ class _BabyCloudPageState extends State<BabyCloudPage> {
                 ),
               ),
               SizedBox(width: 8.w),
-              Text('${items.length}项',
+              Text('${entries.length}条动态',
                   style: TextStyle(color: Colors.grey.shade600)),
             ],
           ),
         ),
-        _buildMediaWrap(items),
+        for (final entry in entries) ...[
+          _buildTimelineEntryCard(entry),
+          SizedBox(height: 10.h),
+        ],
         SizedBox(height: 12.h),
       ],
     );
   }
 
-  Widget _buildMediaWrap(List<BabyCloudMedia> items) {
+  Widget _buildTimelineEntryCard(_BabyCloudTimelineEntry entry) {
+    final firstMedia = entry.mediaItems.isNotEmpty
+        ? entry.mediaItems.first
+        : null;
+    final description =
+        (entry.entry?.description ?? firstMedia?.description ?? '').trim();
+    final actorRole = (entry.entry?.actorRole ?? firstMedia?.actorRole ?? '家人')
+        .trim();
+    final locationName = entry.entry?.locationName ?? firstMedia?.locationName;
+    final media = entry.mediaItems.where((item) => !item.isDiary).toList();
+
+    return Material(
+      color: const Color(0xFFFFFCF4),
+      borderRadius: BorderRadius.circular(8.r),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => _openEntryDetail(entry),
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: const Color(0xFFE9DFCC)),
+            borderRadius: BorderRadius.circular(8.r),
+          ),
+          padding: EdgeInsets.all(12.w),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 16.r,
+                    backgroundColor: const Color(0xFFFFF4D0),
+                    child: Icon(
+                      Icons.supervisor_account_outlined,
+                      color: const Color(0xFFE09B00),
+                      size: 18.sp,
+                    ),
+                  ),
+                  SizedBox(width: 8.w),
+                  Expanded(
+                    child: Text(
+                      actorRole.isEmpty ? '家人' : actorRole,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 15.sp,
+                        fontWeight: FontWeight.w900,
+                        color: AppTheme.textMain,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    DateFormat('HH:mm').format(entry.takenAt),
+                    style: TextStyle(
+                      color: const Color(0xFF756B5C),
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+              if (locationName?.trim().isNotEmpty == true) ...[
+                SizedBox(height: 7.h),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.location_on_outlined,
+                      size: 14.sp,
+                      color: const Color(0xFF8D8170),
+                    ),
+                    SizedBox(width: 3.w),
+                    Expanded(
+                      child: Text(
+                        locationName!.trim(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: const Color(0xFF756B5C),
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              if (description.isNotEmpty) ...[
+                SizedBox(height: 10.h),
+                Text(
+                  description,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 14.sp,
+                    height: 1.45,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textMain,
+                  ),
+                ),
+              ],
+              if (media.isNotEmpty) ...[
+                SizedBox(height: 10.h),
+                _buildEntryMediaGrid(entry, media),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEntryMediaGrid(
+    _BabyCloudTimelineEntry entry,
+    List<BabyCloudMedia> media,
+  ) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final gap = 5.w;
-        final tileSize = (constraints.maxWidth - gap * 2) / 3;
+        final maxVisible = media.length == 1 ? 1 : 4;
+        final visibleCount =
+            media.length > maxVisible ? maxVisible : media.length;
+        final columns = media.length == 1 ? 1 : 2;
+        final tileSize = (constraints.maxWidth - gap * (columns - 1)) / columns;
         return Wrap(
           spacing: gap,
           runSpacing: gap,
           children: [
-            for (var index = 0; index < items.length; index++)
+            for (var index = 0; index < visibleCount; index++)
               SizedBox(
                 width: tileSize,
-                height: tileSize,
-                child: _buildMediaTile(items, index),
+                height: media.length == 1 ? tileSize * 0.72 : tileSize,
+                child: _buildMediaTile(
+                  media,
+                  index,
+                  showCount: media.length > maxVisible &&
+                      index == visibleCount - 1,
+                  onCountTap: () => _openEntryDetail(entry),
+                ),
               ),
           ],
         );
@@ -360,23 +553,74 @@ class _BabyCloudPageState extends State<BabyCloudPage> {
     );
   }
 
-  Widget _buildMediaTile(List<BabyCloudMedia> items, int index) {
+  Widget _buildMediaTile(
+    List<BabyCloudMedia> items,
+    int index, {
+    bool showCount = false,
+    VoidCallback? onCountTap,
+  }) {
     final item = items[index];
     return Material(
       color: Colors.grey.shade200,
       borderRadius: BorderRadius.circular(8.r),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => Get.to(
-          () => BabyCloudMediaDetailPage(
-            items: items,
-            initialIndex: index,
-          ),
+        onTap: showCount
+            ? onCountTap
+            : () async {
+                await Get.to(
+                  () => BabyCloudMediaDetailPage(
+                    items: items,
+                    initialIndex: index,
+                  ),
+                );
+              },
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            BabyCloudMediaThumbnail(
+              item: item,
+              fit: BoxFit.cover,
+            ),
+            if (showCount)
+              Material(
+                color: Colors.black.withValues(alpha: 0.46),
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '${items.length}张',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20.sp,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      SizedBox(height: 2.h),
+                      Text(
+                        '查看动态',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.92),
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
         ),
-        child: BabyCloudMediaThumbnail(
-          item: item,
-          fit: BoxFit.cover,
-        ),
+      ),
+    );
+  }
+
+  void _openEntryDetail(_BabyCloudTimelineEntry entry) {
+    Get.to(
+      () => BabyCloudEntryDetailPage(
+        entry: entry.entry,
+        mediaItems: entry.mediaItems,
       ),
     );
   }
@@ -537,4 +781,16 @@ class _BabyCloudPageState extends State<BabyCloudPage> {
       ),
     );
   }
+}
+
+class _BabyCloudTimelineEntry {
+  const _BabyCloudTimelineEntry({
+    required this.entry,
+    required this.mediaItems,
+    required this.takenAt,
+  });
+
+  final BabyCloudEntry? entry;
+  final List<BabyCloudMedia> mediaItems;
+  final DateTime takenAt;
 }

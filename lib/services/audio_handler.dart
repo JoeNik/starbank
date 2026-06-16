@@ -1,6 +1,5 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:audio_session/audio_session.dart';
 
@@ -9,15 +8,15 @@ Future<AudioHandler> initAudioService() async {
     builder: () => MusicHandler(),
     config: AudioServiceConfig(
       androidNotificationChannelId:
-          'com.starbank.app.channel.audio.v4', // New ID to force fresh settings
+          'com.starbank.app.channel.audio.v5', // Force fresh channel settings.
       androidNotificationChannelName: 'StarBank 音乐播放器',
       androidNotificationChannelDescription: '提供后台播放和通知栏控制',
-      androidNotificationOngoing: true,
+      androidNotificationOngoing: false,
       androidStopForegroundOnPause: false, // 非常重要：暂停时不移除通知栏，防止被系统杀死
       androidNotificationClickStartsActivity: true,
       androidResumeOnClick: true,
-      androidNotificationIcon: 'mipmap/ic_launcher', // 使用标准应用图标
-      notificationColor: Color(0xFFFFB27D),
+      androidNotificationIcon: 'drawable/ic_stat_music_note',
+      notificationColor: const Color(0xFFFFB27D),
     ),
   );
 }
@@ -26,6 +25,7 @@ Future<AudioHandler> initAudioService() async {
 /// 这是解决 Android 14 后台播放问题的核心类
 class MusicHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   final _player = AudioPlayer();
+  int _queueIndex = 0;
 
   // 暴露给 Service/Controller 以便监听进度流等
   AudioPlayer get player => _player;
@@ -68,6 +68,7 @@ class MusicHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         MediaAction.seekBackward,
       },
       androidCompactActionIndices: const [0],
+      queueIndex: _queueIndex,
     ));
 
     // 4. 处理播放完毕自动下一曲等逻辑通常由 Controller 或 Queue 处理
@@ -107,7 +108,7 @@ class MusicHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       updatePosition: _player.position,
       bufferedPosition: _player.bufferedPosition,
       speed: _player.speed,
-      queueIndex: event.currentIndex,
+      queueIndex: event.currentIndex ?? _queueIndex,
     ));
   }
 
@@ -157,7 +158,20 @@ class MusicHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   VoidCallback? onSkipToPrevious;
 
   /// 设置当前播放的媒体信息（通知栏显示用）
+  @override
   Future<void> updateMediaItem(MediaItem item) async {
     mediaItem.add(item);
+    _broadcastState(_player.playbackEvent);
+  }
+
+  Future<void> updateQueueAndMediaItem(
+    List<MediaItem> items,
+    int currentIndex,
+  ) async {
+    queue.add(items);
+    if (items.isEmpty) return;
+    _queueIndex = currentIndex.clamp(0, items.length - 1).toInt();
+    mediaItem.add(items[_queueIndex]);
+    _broadcastState(_player.playbackEvent);
   }
 }

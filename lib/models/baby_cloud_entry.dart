@@ -13,14 +13,14 @@ class BabyCloudEntry extends HiveObject {
   @HiveField(2)
   String dataSourceId;
 
-  @HiveField(3)
+  @HiveField(3, defaultValue: '')
   String libraryId;
 
-  @HiveField(4)
+  @HiveField(4, defaultValue: '')
   String cloudBabyId;
 
   /// media / diary / mixed / audio
-  @HiveField(5)
+  @HiveField(5, defaultValue: 'media')
   String entryType;
 
   @HiveField(6)
@@ -32,7 +32,7 @@ class BabyCloudEntry extends HiveObject {
   @HiveField(8)
   String? locationName;
 
-  @HiveField(9)
+  @HiveField(9, defaultValue: 'family')
   String visibility;
 
   @HiveField(10)
@@ -51,7 +51,7 @@ class BabyCloudEntry extends HiveObject {
   @HiveField(14)
   String? deleteReason;
 
-  @HiveField(15)
+  @HiveField(15, defaultValue: [])
   List<String> mediaIds;
 
   /// After explicit permanent cloud deletion. Kept as a marker so another

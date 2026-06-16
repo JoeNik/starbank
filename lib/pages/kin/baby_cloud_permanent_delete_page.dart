@@ -113,7 +113,7 @@ class _BabyCloudPermanentDeletePageState
         borderRadius: BorderRadius.circular(8.r),
       ),
       child: Text(
-        '这里才会真正删除 WebDAV 上的原文件。普通回收站删除只做标记，不会碰云端原文件。',
+        '这里才会真正删除云端原文件。普通回收站删除只做标记，不会碰云端原文件。',
         style: TextStyle(
           fontSize: 13.sp,
           height: 1.35,
@@ -365,7 +365,7 @@ class _BabyCloudPermanentDeletePageState
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('确认永久删除'),
-        content: const Text('将删除所选项目的 WebDAV 原文件和缩略图。这个动作无法从回收站恢复。'),
+        content: const Text('将删除所选项目的云端原文件和缩略图。这个动作无法从回收站恢复。'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),

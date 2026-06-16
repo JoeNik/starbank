@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import '../models/music/music_track.dart';
 import '../models/music/tunehub_method.dart';
+import 'android_background_network_service.dart';
 import 'storage_service.dart';
 
 class TuneHubService extends GetxService {
@@ -425,13 +426,18 @@ class TuneHubService extends GetxService {
         debugPrint('Thinking Parse: $uri');
         debugPrint('Body: $body');
 
-        final response = await http.post(
-          uri,
-          headers: {
-            'Content-Type': 'application/json',
-            'X-API-Key': _randomApiKey, // 使用轮询 Key
-          },
-          body: body,
+        final response = await AndroidBackgroundNetworkService.protect(
+          'music_parse_${platform}_$id',
+          () => http.post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'X-API-Key': _randomApiKey, // 使用轮询 Key
+            },
+            body: body,
+          ),
+          title: 'StarBank 音乐',
+          text: '正在解析播放链接',
         );
 
         final resStr = _safeGetBody(response);

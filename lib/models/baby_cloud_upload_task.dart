@@ -67,11 +67,11 @@ class BabyCloudUploadTask extends HiveObject {
   @HiveField(20)
   String? locationName;
 
-  @HiveField(21)
+  @HiveField(21, defaultValue: 'family')
   String visibility;
 
   /// upload / metadata / purgeMedia / purgeEntry
-  @HiveField(22)
+  @HiveField(22, defaultValue: 'upload')
   String taskType;
 
   @HiveField(23)
@@ -80,7 +80,7 @@ class BabyCloudUploadTask extends HiveObject {
   @HiveField(24)
   String? actorRole;
 
-  @HiveField(25)
+  @HiveField(25, defaultValue: 0)
   int retryCount;
 
   BabyCloudUploadTask({

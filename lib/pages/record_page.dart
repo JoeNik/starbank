@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -46,6 +47,110 @@ class _TimelineEntryData {
     if (entryTime != null) return entryTime;
     if (mediaItems.isNotEmpty) return mediaItems.first.takenAt;
     return DateTime.fromMillisecondsSinceEpoch(0);
+  }
+}
+
+ImageProvider? _recordHeroImageProvider(String? source) {
+  final value = source?.trim();
+  if (value == null || value.isEmpty) return null;
+  if (value.startsWith('assets/')) return AssetImage(value);
+  if (value.startsWith('http')) return NetworkImage(value);
+  if (_looksLikeRecordHeroFilePath(value)) {
+    try {
+      final file = File(value);
+      return file.existsSync() ? FileImage(file) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+  if (value.length > 100) {
+    try {
+      return MemoryImage(base64Decode(value.replaceAll(RegExp(r'\s+'), '')));
+    } catch (_) {
+      return null;
+    }
+  }
+  return null;
+}
+
+bool _looksLikeRecordHeroFilePath(String source) {
+  if (source.startsWith('/') || source.startsWith('\\')) return true;
+  return RegExp(r'^[A-Za-z]:[\\/]').hasMatch(source);
+}
+
+class _HeroBackgroundImage extends StatefulWidget {
+  const _HeroBackgroundImage({required this.path});
+
+  final String path;
+
+  @override
+  State<_HeroBackgroundImage> createState() => _HeroBackgroundImageState();
+}
+
+class _HeroBackgroundImageState extends State<_HeroBackgroundImage> {
+  ImageProvider? _provider;
+
+  @override
+  void initState() {
+    super.initState();
+    _resolveProvider();
+  }
+
+  @override
+  void didUpdateWidget(covariant _HeroBackgroundImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.path != widget.path) _resolveProvider();
+  }
+
+  void _resolveProvider() {
+    _provider = _recordHeroImageProvider(widget.path);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = _provider;
+    if (provider == null) return const SizedBox.shrink();
+    return Image(
+      image: provider,
+      fit: BoxFit.cover,
+      gaplessPlayback: true,
+      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+    );
+  }
+}
+
+class _HeroBabyAvatar extends StatelessWidget {
+  const _HeroBabyAvatar({
+    required this.path,
+    required this.radius,
+    required this.imageSize,
+    required this.iconSize,
+    required this.hasAvatar,
+  });
+
+  final String path;
+  final double radius;
+  final double imageSize;
+  final double iconSize;
+  final bool hasAvatar;
+
+  @override
+  Widget build(BuildContext context) {
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: Colors.white.withValues(alpha: 0.88),
+      child: ClipOval(
+        child: ImageUtils.displayImage(
+          hasAvatar ? path : '',
+          width: imageSize,
+          height: imageSize,
+          fit: BoxFit.cover,
+          placeholder: Center(
+            child: Text('👶', style: TextStyle(fontSize: iconSize)),
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -144,19 +249,32 @@ class _RecordPageState extends State<RecordPage> {
     }
   }
 
-  void _scheduleCurrentBabySync({bool showErrors = false}) {
+  void _scheduleCurrentBabySync({
+    bool showErrors = false,
+    bool forceRemote = false,
+  }) {
     WidgetsBinding.instance.addPostFrameCallback(
-      (_) => _syncCurrentBaby(showErrors: showErrors),
+      (_) => _syncCurrentBaby(
+        showErrors: showErrors,
+        forceRemote: forceRemote,
+      ),
     );
   }
 
-  Future<void> _syncCurrentBaby({bool showErrors = false}) async {
+  Future<void> _syncCurrentBaby({
+    bool showErrors = false,
+    bool forceRemote = false,
+  }) async {
     if (_visibleSyncRunning) return;
     final baby = _user.currentBaby.value;
     if (baby == null || _cloud.currentSource.value == null) return;
     _visibleSyncRunning = true;
     try {
-      await _cloud.syncBaby(baby, showErrors: showErrors);
+      await _cloud.syncBaby(
+        baby,
+        showErrors: showErrors,
+        forceRemote: forceRemote,
+      );
       unawaited(_cloud.processQueue());
     } finally {
       _visibleSyncRunning = false;
@@ -257,18 +375,11 @@ class _RecordPageState extends State<RecordPage> {
               ),
             ),
           ),
-          if (coverPath != null)
-            Image.file(
-              File(coverPath),
-              key: ValueKey(coverPath),
-              fit: BoxFit.cover,
-              gaplessPlayback: true,
-              errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-            )
-          else if (hasAvatar)
-            ImageUtils.displayImage(
-              baby.avatarPath,
-              fit: BoxFit.cover,
+          if (coverPath != null || hasAvatar)
+            RepaintBoundary(
+              child: _HeroBackgroundImage(
+                path: coverPath ?? baby.avatarPath,
+              ),
             ),
           DecoratedBox(
             decoration: BoxDecoration(
@@ -509,23 +620,12 @@ class _RecordPageState extends State<RecordPage> {
     required double iconSize,
     required bool hasAvatar,
   }) {
-    return CircleAvatar(
+    return _HeroBabyAvatar(
+      path: baby.avatarPath,
       radius: radius,
-      backgroundColor: Colors.white.withOpacity(0.88),
-      child: ClipOval(
-        child: hasAvatar
-            ? ImageUtils.displayImage(
-                baby.avatarPath,
-                width: imageSize,
-                height: imageSize,
-                fit: BoxFit.cover,
-              )
-            : Icon(
-                Icons.child_care,
-                color: Colors.grey.shade400,
-                size: iconSize,
-              ),
-      ),
+      imageSize: imageSize,
+      iconSize: iconSize,
+      hasAvatar: hasAvatar,
     );
   }
 
@@ -534,7 +634,10 @@ class _RecordPageState extends State<RecordPage> {
       valueListenable: _filterRevision,
       builder: (context, _, __) {
         return RefreshIndicator(
-          onRefresh: () => _syncCurrentBaby(showErrors: true),
+          onRefresh: () => _syncCurrentBaby(
+            showErrors: true,
+            forceRemote: true,
+          ),
           child: CustomScrollView(
             controller: _albumScrollController,
             physics: const AlwaysScrollableScrollPhysics(),
@@ -1155,7 +1258,11 @@ class _RecordPageState extends State<RecordPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (mediaItems.isNotEmpty) _buildMediaWrap(mediaItems),
+                if (mediaItems.isNotEmpty)
+                  _buildMediaWrap(
+                    mediaItems,
+                    onOverflowTap: () => _openEntryDetail(timelineEntry),
+                  ),
                 if (description.isNotEmpty) ...[
                   SizedBox(height: 10.h),
                   InkWell(
@@ -1335,6 +1442,7 @@ class _RecordPageState extends State<RecordPage> {
   Widget _buildMediaWrap(
     List<BabyCloudMedia> items, {
     VoidCallback? onTileTap,
+    VoidCallback? onOverflowTap,
   }) {
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -1353,6 +1461,7 @@ class _RecordPageState extends State<RecordPage> {
                   items,
                   index,
                   onTap: onTileTap,
+                  onOverflowTap: onOverflowTap,
                   overflowCount:
                       index == 8 && items.length > 9 ? items.length - 8 : 0,
                 ),
@@ -1367,6 +1476,7 @@ class _RecordPageState extends State<RecordPage> {
     List<BabyCloudMedia> items,
     int index, {
     VoidCallback? onTap,
+    VoidCallback? onOverflowTap,
     int overflowCount = 0,
   }) {
     final item = items[index];
@@ -1390,15 +1500,19 @@ class _RecordPageState extends State<RecordPage> {
               fit: BoxFit.cover,
             ),
             if (overflowCount > 0)
-              Container(
-                color: Colors.black.withValues(alpha: 0.28),
-                child: Center(
-                  child: Text(
-                    '+$overflowCount',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 24.sp,
-                      fontWeight: FontWeight.w900,
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: onOverflowTap,
+                child: Container(
+                  color: Colors.black.withValues(alpha: 0.28),
+                  child: Center(
+                    child: Text(
+                      '+$overflowCount',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24.sp,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
                 ),

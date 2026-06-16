@@ -65,7 +65,7 @@ class _BabyCloudSourcePageState extends State<BabyCloudSourcePage> {
                   ),
                   SizedBox(height: 8.h),
                   Text(
-                    '配置独立的 WebDAV 后，云相册会把照片和视频加入后台上传队列。',
+                    '配置 WebDAV 或阿里云盘数据源后，云相册会把照片和视频加入后台任务队列。',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 13.sp,
@@ -77,7 +77,7 @@ class _BabyCloudSourcePageState extends State<BabyCloudSourcePage> {
                   ElevatedButton.icon(
                     onPressed: () => _showSourceEditor(),
                     icon: const Icon(Icons.add),
-                    label: const Text('添加亲宝宝 WebDAV'),
+                    label: const Text('添加数据源'),
                   ),
                 ],
               ),
@@ -120,7 +120,11 @@ class _BabyCloudSourcePageState extends State<BabyCloudSourcePage> {
     try {
       final result = await _cloud.checkSource(source);
       if (result.ok) {
-        ToastUtils.showSuccess('已连接${result.endpointLabel} WebDAV');
+        if (source.isWebDav) {
+          ToastUtils.showSuccess('已连接${result.endpointLabel} WebDAV');
+        } else {
+          ToastUtils.showSuccess('${source.name} 可用');
+        }
       } else {
         ToastUtils.showError(result.message);
       }
@@ -151,7 +155,11 @@ class _BabyCloudSourcePageState extends State<BabyCloudSourcePage> {
       ),
     );
     if (sync == true) {
-      await _cloud.syncBaby(baby, showErrors: true);
+      await _cloud.syncBaby(
+        baby,
+        showErrors: true,
+        forceRemote: true,
+      );
     }
   }
 
@@ -162,8 +170,8 @@ class _BabyCloudSourcePageState extends State<BabyCloudSourcePage> {
         builder: (_) => _BabyCloudSourceEditorPage(
           source: source,
           onPickRoot: (editorContext, temp, rootText) async {
-            if (!_hasEndpointInput(temp)) {
-              ToastUtils.showWarning('请先填写至少一个 WebDAV 地址');
+            if (!_hasRequiredSourceInput(temp)) {
+              ToastUtils.showWarning('请先完善数据源连接信息');
               return null;
             }
             final picked = await _showDirectoryPicker(
@@ -182,7 +190,12 @@ class _BabyCloudSourcePageState extends State<BabyCloudSourcePage> {
     await _manualCheckSource(item);
   }
 
-  bool _hasEndpointInput(BabyCloudSource source) {
+  bool _hasRequiredSourceInput(BabyCloudSource source) {
+    if (source.isAliyunDrive) {
+      return source.aliyunDriveClientId?.trim().isNotEmpty == true ||
+          source.aliyunDriveAccessToken?.trim().isNotEmpty == true ||
+          source.aliyunDriveRefreshToken?.trim().isNotEmpty == true;
+    }
     return (source.webDavUrl?.trim().isNotEmpty ?? false) ||
         (source.webDavLanUrl?.trim().isNotEmpty ?? false);
   }
@@ -285,11 +298,23 @@ class _BabyCloudSourceEditorPage extends StatefulWidget {
 
 class _BabyCloudSourceEditorPageState
     extends State<_BabyCloudSourceEditorPage> {
+  final _cloud = Get.find<BabyCloudService>();
+
+  late final String _sourceId;
+  late String _type;
   late final TextEditingController _name;
   late final TextEditingController _externalUrl;
   late final TextEditingController _lanUrl;
   late final TextEditingController _user;
   late final TextEditingController _password;
+  late final TextEditingController _aliyunClientId;
+  late final TextEditingController _aliyunClientSecret;
+  late final TextEditingController _aliyunRedirectUri;
+  late final TextEditingController _aliyunScope;
+  late final TextEditingController _aliyunAuthUrl;
+  late final TextEditingController _aliyunTokenUrl;
+  late final TextEditingController _aliyunRefreshToken;
+  late final TextEditingController _aliyunAccessToken;
   late final TextEditingController _root;
 
   final _nameFocus = FocusNode();
@@ -297,17 +322,50 @@ class _BabyCloudSourceEditorPageState
   final _lanFocus = FocusNode();
   final _userFocus = FocusNode();
   final _passwordFocus = FocusNode();
+  final _aliyunClientIdFocus = FocusNode();
+  final _aliyunFocus = FocusNode();
   final _rootFocus = FocusNode();
+  bool _aliyunAuthorizing = false;
 
   @override
   void initState() {
     super.initState();
     final source = widget.source;
+    _sourceId = source?.id ?? DateTime.now().microsecondsSinceEpoch.toString();
+    _type = source?.type ?? 'webdav';
     _name = TextEditingController(text: source?.name ?? '亲宝宝 WebDAV');
     _externalUrl = TextEditingController(text: source?.webDavUrl ?? '');
     _lanUrl = TextEditingController(text: source?.webDavLanUrl ?? '');
     _user = TextEditingController(text: source?.webDavUsername ?? '');
     _password = TextEditingController(text: source?.webDavPassword ?? '');
+    _aliyunClientId = TextEditingController(
+      text: source?.aliyunDriveClientId ?? '',
+    );
+    _aliyunClientSecret = TextEditingController(
+      text: source?.aliyunDriveClientSecret ?? '',
+    );
+    _aliyunRedirectUri = TextEditingController(
+      text: source?.aliyunDriveRedirectUri ??
+          BabyCloudService.aliyunDriveDefaultRedirectUri,
+    );
+    _aliyunScope = TextEditingController(
+      text:
+          source?.aliyunDriveScope ?? BabyCloudService.aliyunDriveDefaultScope,
+    );
+    _aliyunAuthUrl = TextEditingController(
+      text: source?.aliyunDriveAuthUrl ??
+          BabyCloudService.aliyunDriveDefaultAuthUrl,
+    );
+    _aliyunTokenUrl = TextEditingController(
+      text: source?.aliyunDriveTokenUrl ??
+          BabyCloudService.aliyunDriveDefaultTokenUrl,
+    );
+    _aliyunRefreshToken = TextEditingController(
+      text: source?.aliyunDriveRefreshToken ?? '',
+    );
+    _aliyunAccessToken = TextEditingController(
+      text: source?.aliyunDriveAccessToken ?? '',
+    );
     _root = TextEditingController(
       text: source?.rootPath ?? 'starbank_baby_cloud',
     );
@@ -320,12 +378,22 @@ class _BabyCloudSourceEditorPageState
     _lanUrl.dispose();
     _user.dispose();
     _password.dispose();
+    _aliyunClientId.dispose();
+    _aliyunClientSecret.dispose();
+    _aliyunRedirectUri.dispose();
+    _aliyunScope.dispose();
+    _aliyunAuthUrl.dispose();
+    _aliyunTokenUrl.dispose();
+    _aliyunRefreshToken.dispose();
+    _aliyunAccessToken.dispose();
     _root.dispose();
     _nameFocus.dispose();
     _externalFocus.dispose();
     _lanFocus.dispose();
     _userFocus.dispose();
     _passwordFocus.dispose();
+    _aliyunClientIdFocus.dispose();
+    _aliyunFocus.dispose();
     _rootFocus.dispose();
     super.dispose();
   }
@@ -335,7 +403,7 @@ class _BabyCloudSourceEditorPageState
     return Scaffold(
       resizeToAvoidBottomInset: true,
       appBar: AppBar(
-        title: Text(widget.source == null ? '添加亲宝宝 WebDAV' : '编辑亲宝宝 WebDAV'),
+        title: Text(widget.source == null ? '添加数据源' : '编辑数据源'),
         actions: [
           TextButton(
             onPressed: _submit,
@@ -358,89 +426,24 @@ class _BabyCloudSourceEditorPageState
                 ),
               ),
               SizedBox(height: 18.h),
+              _buildTypeSelector(),
+              SizedBox(height: 12.h),
               TextField(
                 controller: _name,
                 focusNode: _nameFocus,
                 textInputAction: TextInputAction.next,
-                onSubmitted: (_) => _externalFocus.requestFocus(),
+                onSubmitted: (_) => _type == 'webdav'
+                    ? _externalFocus.requestFocus()
+                    : _aliyunClientIdFocus.requestFocus(),
                 decoration: const InputDecoration(
                   labelText: '名称',
                   border: OutlineInputBorder(),
                 ),
               ),
               SizedBox(height: 12.h),
-              TextField(
-                controller: _externalUrl,
-                focusNode: _externalFocus,
-                keyboardType: TextInputType.url,
-                textInputAction: TextInputAction.next,
-                onSubmitted: (_) => _lanFocus.requestFocus(),
-                decoration: const InputDecoration(
-                  labelText: '外网 WebDAV 地址',
-                  hintText: 'http://example.com/dav 或 https://example.com/dav',
-                  helperText: '离开家里 WiFi 时使用，支持 HTTP 和 HTTPS',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              SizedBox(height: 12.h),
-              TextField(
-                controller: _lanUrl,
-                focusNode: _lanFocus,
-                keyboardType: TextInputType.url,
-                textInputAction: TextInputAction.next,
-                onSubmitted: (_) => _userFocus.requestFocus(),
-                decoration: const InputDecoration(
-                  labelText: '内网 WebDAV 地址（可选）',
-                  hintText: 'http://192.168.1.10:5005/dav',
-                  helperText: '连接局域网时优先检测，支持非 HTTPS',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              SizedBox(height: 12.h),
-              TextField(
-                controller: _user,
-                focusNode: _userFocus,
-                textInputAction: TextInputAction.next,
-                autofillHints: const [AutofillHints.username],
-                onSubmitted: (_) => _passwordFocus.requestFocus(),
-                decoration: const InputDecoration(
-                  labelText: '用户名',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              SizedBox(height: 12.h),
-              TextField(
-                controller: _password,
-                focusNode: _passwordFocus,
-                obscureText: true,
-                enableSuggestions: false,
-                autocorrect: false,
-                keyboardType: TextInputType.visiblePassword,
-                textInputAction: TextInputAction.next,
-                autofillHints: const [AutofillHints.password],
-                onSubmitted: (_) => _rootFocus.requestFocus(),
-                decoration: const InputDecoration(
-                  labelText: '密码',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              SizedBox(height: 12.h),
-              TextField(
-                controller: _root,
-                focusNode: _rootFocus,
-                textInputAction: TextInputAction.done,
-                onSubmitted: (_) => _submit(),
-                decoration: InputDecoration(
-                  labelText: '亲宝宝云端根目录',
-                  helperText: '不同宝宝会自动放到这个目录下的不同子目录',
-                  border: const OutlineInputBorder(),
-                  suffixIcon: IconButton(
-                    tooltip: '选择云端目录',
-                    icon: const Icon(Icons.folder_open_outlined),
-                    onPressed: _pickRoot,
-                  ),
-                ),
-              ),
+              if (_type == 'webdav') ..._buildWebDavFields(),
+              if (_type == 'aliyunDrive') ..._buildAliyunDriveFields(),
+              _buildRootField(),
               SizedBox(height: 18.h),
               Row(
                 children: [
@@ -466,10 +469,416 @@ class _BabyCloudSourceEditorPageState
     );
   }
 
+  Widget _buildTypeSelector() {
+    final locked = widget.source != null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '数据源类型',
+          style: TextStyle(
+            fontSize: 12.sp,
+            color: Colors.grey.shade700,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        SizedBox(height: 8.h),
+        Wrap(
+          spacing: 8.w,
+          runSpacing: 8.h,
+          children: [
+            ChoiceChip(
+              label: const Text('WebDAV'),
+              avatar: const Icon(Icons.cloud_queue, size: 18),
+              selected: _type == 'webdav',
+              onSelected: locked ? null : (_) => _setType('webdav'),
+            ),
+            ChoiceChip(
+              label: const Text('阿里云盘'),
+              avatar: const Icon(Icons.cloud_outlined, size: 18),
+              selected: _type == 'aliyunDrive',
+              onSelected: locked ? null : (_) => _setType('aliyunDrive'),
+            ),
+          ],
+        ),
+        if (locked) ...[
+          SizedBox(height: 6.h),
+          Text(
+            '已有数据源类型不可直接切换，请新建对应类型的数据源。',
+            style: TextStyle(fontSize: 11.sp, color: Colors.grey.shade600),
+          ),
+        ],
+      ],
+    );
+  }
+
+  List<Widget> _buildWebDavFields() {
+    return [
+      TextField(
+        controller: _externalUrl,
+        focusNode: _externalFocus,
+        keyboardType: TextInputType.url,
+        textInputAction: TextInputAction.next,
+        onSubmitted: (_) => _lanFocus.requestFocus(),
+        decoration: const InputDecoration(
+          labelText: '外网 WebDAV 地址',
+          hintText: 'http://example.com/dav 或 https://example.com/dav',
+          helperText: '离开家里 WiFi 时使用，支持 HTTP 和 HTTPS',
+          border: OutlineInputBorder(),
+        ),
+      ),
+      SizedBox(height: 12.h),
+      TextField(
+        controller: _lanUrl,
+        focusNode: _lanFocus,
+        keyboardType: TextInputType.url,
+        textInputAction: TextInputAction.next,
+        onSubmitted: (_) => _userFocus.requestFocus(),
+        decoration: const InputDecoration(
+          labelText: '内网 WebDAV 地址（可选）',
+          hintText: 'http://192.168.1.10:5005/dav',
+          helperText: '连接局域网时优先检测，支持非 HTTPS',
+          border: OutlineInputBorder(),
+        ),
+      ),
+      SizedBox(height: 12.h),
+      TextField(
+        controller: _user,
+        focusNode: _userFocus,
+        textInputAction: TextInputAction.next,
+        autofillHints: const [AutofillHints.username],
+        onSubmitted: (_) => _passwordFocus.requestFocus(),
+        decoration: const InputDecoration(
+          labelText: '用户名',
+          border: OutlineInputBorder(),
+        ),
+      ),
+      SizedBox(height: 12.h),
+      TextField(
+        controller: _password,
+        focusNode: _passwordFocus,
+        obscureText: true,
+        enableSuggestions: false,
+        autocorrect: false,
+        keyboardType: TextInputType.visiblePassword,
+        textInputAction: TextInputAction.next,
+        autofillHints: const [AutofillHints.password],
+        onSubmitted: (_) => _rootFocus.requestFocus(),
+        decoration: const InputDecoration(
+          labelText: '密码',
+          border: OutlineInputBorder(),
+        ),
+      ),
+      SizedBox(height: 12.h),
+    ];
+  }
+
+  List<Widget> _buildAliyunDriveFields() {
+    return [
+      Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(12.w),
+        decoration: BoxDecoration(
+          color: Colors.blueGrey.shade50,
+          borderRadius: BorderRadius.circular(8.r),
+          border: Border.all(color: Colors.blueGrey.shade100),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'OAuth 登录',
+              style: TextStyle(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w800,
+                color: Colors.blueGrey.shade900,
+              ),
+            ),
+            SizedBox(height: 6.h),
+            Text(
+              '必填要素是 Client ID 和回调地址。登录会打开浏览器，成功后通过回调地址回到 App；没有自动回跳时可粘贴 code。',
+              style: TextStyle(
+                fontSize: 12.sp,
+                color: Colors.blueGrey.shade700,
+                height: 1.35,
+              ),
+            ),
+          ],
+        ),
+      ),
+      SizedBox(height: 12.h),
+      TextField(
+        controller: _aliyunClientId,
+        focusNode: _aliyunClientIdFocus,
+        textInputAction: TextInputAction.next,
+        onSubmitted: (_) => _aliyunFocus.requestFocus(),
+        decoration: const InputDecoration(
+          labelText: 'Client ID',
+          helperText: '阿里云盘开放平台应用的 Client ID',
+          border: OutlineInputBorder(),
+        ),
+      ),
+      SizedBox(height: 12.h),
+      TextField(
+        controller: _aliyunRedirectUri,
+        keyboardType: TextInputType.url,
+        textInputAction: TextInputAction.next,
+        decoration: const InputDecoration(
+          labelText: 'Redirect URI',
+          helperText: '开放平台里配置同样的地址，默认可回跳 App',
+          border: OutlineInputBorder(),
+        ),
+      ),
+      SizedBox(height: 12.h),
+      Row(
+        children: [
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: _aliyunAuthorizing ? null : _startAliyunOAuth,
+              icon: _aliyunAuthorizing
+                  ? SizedBox(
+                      width: 16.w,
+                      height: 16.w,
+                      child: const CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.open_in_browser),
+              label: const Text('浏览器授权'),
+            ),
+          ),
+          SizedBox(width: 10.w),
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: _aliyunAuthorizing ? null : _pasteAliyunOAuthCode,
+              icon: const Icon(Icons.content_paste),
+              label: const Text('粘贴 code'),
+            ),
+          ),
+        ],
+      ),
+      SizedBox(height: 16.h),
+      Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(12.w),
+        decoration: BoxDecoration(
+          color: Colors.green.shade50,
+          borderRadius: BorderRadius.circular(8.r),
+          border: Border.all(color: Colors.green.shade100),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '令牌登录',
+              style: TextStyle(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w800,
+                color: Colors.green.shade900,
+              ),
+            ),
+            SizedBox(height: 6.h),
+            Text(
+              '可像 OpenList 一样直接填写令牌。Access Token 可立即校验和使用；Refresh Token 可自动换新，但通常仍需要 Client ID。',
+              style: TextStyle(
+                fontSize: 12.sp,
+                color: Colors.green.shade900,
+                height: 1.35,
+              ),
+            ),
+          ],
+        ),
+      ),
+      SizedBox(height: 12.h),
+      TextField(
+        controller: _aliyunAccessToken,
+        keyboardType: TextInputType.visiblePassword,
+        textInputAction: TextInputAction.next,
+        obscureText: true,
+        enableSuggestions: false,
+        autocorrect: false,
+        decoration: const InputDecoration(
+          labelText: 'Access Token',
+          helperText: '直接使用当前令牌；过期后需要重新填写或改用 OAuth',
+          border: OutlineInputBorder(),
+        ),
+      ),
+      SizedBox(height: 12.h),
+      TextField(
+        controller: _aliyunRefreshToken,
+        focusNode: _aliyunFocus,
+        keyboardType: TextInputType.visiblePassword,
+        textInputAction: TextInputAction.next,
+        obscureText: true,
+        enableSuggestions: false,
+        autocorrect: false,
+        onSubmitted: (_) => _rootFocus.requestFocus(),
+        decoration: const InputDecoration(
+          labelText: 'Refresh Token',
+          helperText: 'OAuth 成功后自动写入；也可粘贴已有 refresh token',
+          border: OutlineInputBorder(),
+        ),
+      ),
+      SizedBox(height: 12.h),
+      ExpansionTile(
+        tilePadding: EdgeInsets.zero,
+        title: const Text('高级设置'),
+        subtitle: const Text('Client Secret、scope 和 OAuth 端点'),
+        childrenPadding: EdgeInsets.zero,
+        children: [
+          TextField(
+            controller: _aliyunClientSecret,
+            keyboardType: TextInputType.visiblePassword,
+            textInputAction: TextInputAction.next,
+            obscureText: true,
+            enableSuggestions: false,
+            autocorrect: false,
+            decoration: const InputDecoration(
+              labelText: 'Client Secret（可选）',
+              helperText: '移动端不建议硬编码密钥；开放平台要求时再填写',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          SizedBox(height: 12.h),
+          TextField(
+            controller: _aliyunScope,
+            textInputAction: TextInputAction.next,
+            decoration: const InputDecoration(
+              labelText: 'Scope',
+              helperText: '按开放平台审核结果填写，多个 scope 用逗号分隔',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          SizedBox(height: 12.h),
+          TextField(
+            controller: _aliyunAuthUrl,
+            keyboardType: TextInputType.url,
+            textInputAction: TextInputAction.next,
+            decoration: const InputDecoration(
+              labelText: '授权地址',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          SizedBox(height: 12.h),
+          TextField(
+            controller: _aliyunTokenUrl,
+            keyboardType: TextInputType.url,
+            textInputAction: TextInputAction.next,
+            decoration: const InputDecoration(
+              labelText: 'Token 地址',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          SizedBox(height: 12.h),
+        ],
+      ),
+      SizedBox(height: 12.h),
+    ];
+  }
+
+  Widget _buildRootField() {
+    return TextField(
+      controller: _root,
+      focusNode: _rootFocus,
+      textInputAction: TextInputAction.done,
+      onSubmitted: (_) => _submit(),
+      decoration: InputDecoration(
+        labelText: _type == 'webdav' ? '亲宝宝云端根目录' : '云端根目录名',
+        helperText: _type == 'webdav'
+            ? '不同宝宝会自动放到这个目录下的不同子目录'
+            : '会在阿里云盘中创建或定位这个应用目录',
+        border: const OutlineInputBorder(),
+        suffixIcon: IconButton(
+          tooltip: '选择云端目录',
+          icon: const Icon(Icons.folder_open_outlined),
+          onPressed: _pickRoot,
+        ),
+      ),
+    );
+  }
+
+  void _setType(String type) {
+    if (_type == type) return;
+    final oldDefault = _type == 'webdav' ? '亲宝宝 WebDAV' : '阿里云盘';
+    setState(() {
+      _type = type;
+      if (_name.text.trim().isEmpty || _name.text.trim() == oldDefault) {
+        _name.text = type == 'webdav' ? '亲宝宝 WebDAV' : '阿里云盘';
+      }
+    });
+  }
+
+  Future<void> _startAliyunOAuth() async {
+    final source = _sourceFromInput();
+    setState(() => _aliyunAuthorizing = true);
+    try {
+      await _cloud.startAliyunDriveOAuth(source);
+      ToastUtils.showInfo('已打开浏览器，登录授权后会自动回到 App');
+    } catch (e) {
+      ToastUtils.showError('启动阿里云盘授权失败: $e');
+    } finally {
+      if (mounted) setState(() => _aliyunAuthorizing = false);
+    }
+  }
+
+  Future<void> _pasteAliyunOAuthCode() async {
+    final controller = TextEditingController();
+    final input = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('粘贴授权 code'),
+        content: TextField(
+          controller: controller,
+          minLines: 2,
+          maxLines: 4,
+          decoration: const InputDecoration(
+            hintText: '可粘贴完整回调链接，或只粘贴 code',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('取消'),
+          ),
+          ElevatedButton(
+            onPressed: () =>
+                Navigator.of(dialogContext).pop(controller.text.trim()),
+            child: const Text('确认'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (input == null || input.trim().isEmpty) return;
+
+    final source = _sourceFromInput();
+    setState(() => _aliyunAuthorizing = true);
+    try {
+      final result = await _cloud.completeAliyunOAuthWithInput(source, input);
+      if (result.ok) {
+        final stored = _storedSource();
+        _aliyunRefreshToken.text =
+            stored?.aliyunDriveRefreshToken ?? _aliyunRefreshToken.text;
+        _aliyunAccessToken.text =
+            stored?.aliyunDriveAccessToken ?? _aliyunAccessToken.text;
+        ToastUtils.showSuccess('阿里云盘授权成功');
+      } else {
+        ToastUtils.showError(result.message);
+      }
+    } catch (e) {
+      ToastUtils.showError('完成阿里云盘授权失败: $e');
+    } finally {
+      if (mounted) setState(() => _aliyunAuthorizing = false);
+    }
+  }
+
   Future<void> _pickRoot() async {
     final temp = _sourceFromInput();
-    if (!_hasEndpointInput(temp)) {
-      ToastUtils.showWarning('请先填写至少一个 WebDAV 地址');
+    if (!_hasRequiredSourceInput(temp)) {
+      ToastUtils.showWarning(
+        temp.isAliyunDrive
+            ? '请先完成阿里云盘授权，或填写 Access Token'
+            : '请先填写至少一个 WebDAV 地址',
+      );
       return;
     }
     final picked = await widget.onPickRoot(context, temp, _root.text);
@@ -482,8 +891,12 @@ class _BabyCloudSourceEditorPageState
 
   void _submit() {
     final item = _sourceFromInput();
-    if (!_hasEndpointInput(item)) {
-      ToastUtils.showWarning('请至少填写外网或内网 WebDAV 地址');
+    if (!_hasRequiredSourceInput(item)) {
+      ToastUtils.showWarning(
+        item.isAliyunDrive
+            ? '请先填写阿里云盘 Client ID 或可用令牌'
+            : '请至少填写外网或内网 WebDAV 地址',
+      );
       return;
     }
     Navigator.of(context).pop(item);
@@ -491,22 +904,69 @@ class _BabyCloudSourceEditorPageState
 
   BabyCloudSource _sourceFromInput() {
     final source = widget.source;
+    final stored = _storedSource();
     final rootText = _root.text.trim();
+    final typedRefreshToken = _aliyunRefreshToken.text.trim();
+    final typedAccessToken = _aliyunAccessToken.text.trim();
+    final accessTokenChanged =
+        typedAccessToken != (stored?.aliyunDriveAccessToken?.trim() ?? '');
     return BabyCloudSource(
-      id: source?.id ?? DateTime.now().microsecondsSinceEpoch.toString(),
-      name: _name.text.trim().isEmpty ? '亲宝宝 WebDAV' : _name.text.trim(),
-      type: 'webdav',
+      id: _sourceId,
+      name: _name.text.trim().isEmpty ? _defaultName : _name.text.trim(),
+      type: _type,
       status: 'notInitialized',
       rootPath: rootText.isEmpty ? 'starbank_baby_cloud' : rootText,
-      webDavUrl: _externalUrl.text.trim(),
-      webDavLanUrl: _lanUrl.text.trim(),
-      webDavUsername: _user.text.trim(),
-      webDavPassword: _password.text,
-      createdAt: source?.createdAt,
+      webDavUrl: _type == 'webdav' ? _externalUrl.text.trim() : null,
+      webDavLanUrl: _type == 'webdav' ? _lanUrl.text.trim() : null,
+      webDavUsername: _type == 'webdav' ? _user.text.trim() : null,
+      webDavPassword: _type == 'webdav' ? _password.text : null,
+      aliyunDriveClientId:
+          _type == 'aliyunDrive' ? _aliyunClientId.text.trim() : null,
+      aliyunDriveClientSecret:
+          _type == 'aliyunDrive' ? _aliyunClientSecret.text.trim() : null,
+      aliyunDriveRedirectUri:
+          _type == 'aliyunDrive' ? _aliyunRedirectUri.text.trim() : null,
+      aliyunDriveScope:
+          _type == 'aliyunDrive' ? _aliyunScope.text.trim() : null,
+      aliyunDriveAuthUrl:
+          _type == 'aliyunDrive' ? _aliyunAuthUrl.text.trim() : null,
+      aliyunDriveTokenUrl:
+          _type == 'aliyunDrive' ? _aliyunTokenUrl.text.trim() : null,
+      aliyunDriveRefreshToken: _type == 'aliyunDrive'
+          ? typedRefreshToken.isNotEmpty
+              ? typedRefreshToken
+              : stored?.aliyunDriveRefreshToken
+          : null,
+      aliyunDriveAccessToken: _type == 'aliyunDrive'
+          ? typedAccessToken.isNotEmpty
+              ? typedAccessToken
+              : null
+          : null,
+      aliyunDriveTokenExpiresAt: _type == 'aliyunDrive' && !accessTokenChanged
+          ? stored?.aliyunDriveTokenExpiresAt
+          : null,
+      aliyunDriveDriveId:
+          _type == 'aliyunDrive' ? stored?.aliyunDriveDriveId : null,
+      aliyunDriveUserId:
+          _type == 'aliyunDrive' ? stored?.aliyunDriveUserId : null,
+      aliyunDriveNickName:
+          _type == 'aliyunDrive' ? stored?.aliyunDriveNickName : null,
+      createdAt: source?.createdAt ?? stored?.createdAt,
     );
   }
 
-  bool _hasEndpointInput(BabyCloudSource source) {
+  BabyCloudSource? _storedSource() {
+    return _cloud.sources.firstWhereOrNull((item) => item.id == _sourceId);
+  }
+
+  String get _defaultName => _type == 'webdav' ? '亲宝宝 WebDAV' : '阿里云盘';
+
+  bool _hasRequiredSourceInput(BabyCloudSource source) {
+    if (source.isAliyunDrive) {
+      return source.aliyunDriveClientId?.trim().isNotEmpty == true ||
+          source.aliyunDriveAccessToken?.trim().isNotEmpty == true ||
+          source.aliyunDriveRefreshToken?.trim().isNotEmpty == true;
+    }
     return (source.webDavUrl?.trim().isNotEmpty ?? false) ||
         (source.webDavLanUrl?.trim().isNotEmpty ?? false);
   }
@@ -551,12 +1011,12 @@ class _SourceCard extends StatelessWidget {
                     width: 42.w,
                     height: 42.w,
                     decoration: BoxDecoration(
-                      color: Colors.pink.shade50,
+                      color: _typeColor(source).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10.r),
                     ),
                     child: Icon(
-                      Icons.cloud_queue,
-                      color: Colors.pink.shade400,
+                      _typeIcon(source),
+                      color: _typeColor(source),
                     ),
                   ),
                   SizedBox(width: 12.w),
@@ -579,10 +1039,15 @@ class _SourceCard extends StatelessWidget {
                           runSpacing: 6.h,
                           children: [
                             _StatusChip(
+                              label: _typeLabel(source),
+                              color: _typeColor(source),
+                            ),
+                            _StatusChip(
                               label: _statusLabel(source.status),
                               color: _statusColor(source.status),
                             ),
-                            if (source.activeWebDavEndpoint != 'none')
+                            if (source.isWebDav &&
+                                source.activeWebDavEndpoint != 'none')
                               _StatusChip(
                                 label:
                                     '当前${_endpointLabel(source.activeWebDavEndpoint)}',
@@ -620,16 +1085,16 @@ class _SourceCard extends StatelessWidget {
                             break;
                         }
                       },
-                      itemBuilder: (_) => const [
-                        PopupMenuItem(
+                      itemBuilder: (_) => [
+                        const PopupMenuItem(
                           value: 'check',
                           child: Text('检查可用性'),
                         ),
-                        PopupMenuItem(
+                        const PopupMenuItem(
                           value: 'edit',
                           child: Text('编辑数据源'),
                         ),
-                        PopupMenuItem(
+                        const PopupMenuItem(
                           value: 'directory',
                           child: Text('选择云端目录'),
                         ),
@@ -638,10 +1103,33 @@ class _SourceCard extends StatelessWidget {
                 ],
               ),
               SizedBox(height: 12.h),
-              _DetailLine(label: '外网', value: source.webDavUrl),
-              SizedBox(height: 4.h),
-              _DetailLine(label: '内网', value: source.webDavLanUrl),
-              SizedBox(height: 4.h),
+              if (source.isWebDav) ...[
+                _DetailLine(label: '外网', value: source.webDavUrl),
+                SizedBox(height: 4.h),
+                _DetailLine(label: '内网', value: source.webDavLanUrl),
+                SizedBox(height: 4.h),
+              ] else ...[
+                _DetailLine(label: '接口', value: '阿里云盘官方开放接口'),
+                SizedBox(height: 4.h),
+                _DetailLine(
+                  label: '授权',
+                  value: source.aliyunDriveRefreshToken?.trim().isNotEmpty ==
+                          true
+                      ? '已保存 refresh token'
+                      : source.aliyunDriveAccessToken?.trim().isNotEmpty == true
+                          ? '已保存 access token'
+                          : '待授权或填写令牌',
+                ),
+                SizedBox(height: 4.h),
+                if (source.aliyunDriveNickName?.trim().isNotEmpty == true) ...[
+                  _DetailLine(label: '账号', value: source.aliyunDriveNickName),
+                  SizedBox(height: 4.h),
+                ],
+                if (source.aliyunDriveDriveId?.trim().isNotEmpty == true) ...[
+                  _DetailLine(label: '盘ID', value: source.aliyunDriveDriveId),
+                  SizedBox(height: 4.h),
+                ],
+              ],
               _DetailLine(label: '根目录', value: source.rootPath),
               if (source.lastCheckMessage?.isNotEmpty == true) ...[
                 SizedBox(height: 8.h),
@@ -688,6 +1176,21 @@ class _SourceCard extends StatelessWidget {
     if (endpoint == 'lan') return '内网';
     if (endpoint == 'external') return '外网';
     return '未选择';
+  }
+
+  static String _typeLabel(BabyCloudSource source) {
+    if (source.isAliyunDrive) return '阿里云盘';
+    return 'WebDAV';
+  }
+
+  static IconData _typeIcon(BabyCloudSource source) {
+    if (source.isAliyunDrive) return Icons.cloud_outlined;
+    return Icons.cloud_queue;
+  }
+
+  static Color _typeColor(BabyCloudSource source) {
+    if (source.isAliyunDrive) return Colors.blue.shade600;
+    return Colors.pink.shade400;
   }
 }
 
@@ -794,7 +1297,7 @@ class _StatusChip extends StatelessWidget {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(99),
       ),
       child: Text(
@@ -910,7 +1413,7 @@ class _WebDavDirectoryPickerState extends State<_WebDavDirectoryPicker> {
             children: [
               Expanded(
                 child: Text(
-                  '选择 WebDAV 目录',
+                  widget.source.isWebDav ? '选择 WebDAV 目录' : '选择阿里云盘目录',
                   style: TextStyle(
                     fontSize: 20.sp,
                     fontWeight: FontWeight.w900,
@@ -947,7 +1450,7 @@ class _WebDavDirectoryPickerState extends State<_WebDavDirectoryPicker> {
                 icon: Icons.arrow_upward,
                 label: '上级',
                 onPressed: _path == '/'
-                    ? () => ToastUtils.showInfo('已经在 WebDAV 根目录')
+                    ? () => ToastUtils.showInfo('已经在云端根目录')
                     : _goParent,
               ),
               SizedBox(width: 8.w),
@@ -1157,7 +1660,7 @@ class _WebDavDirectoryPickerState extends State<_WebDavDirectoryPicker> {
 
   void _goParent() {
     if (_path == '/') {
-      ToastUtils.showInfo('已经在 WebDAV 根目录');
+      ToastUtils.showInfo('已经在云端根目录');
       return;
     }
     final index = _path.lastIndexOf('/');
@@ -1166,7 +1669,7 @@ class _WebDavDirectoryPickerState extends State<_WebDavDirectoryPicker> {
   }
 
   void _busyTip() {
-    ToastUtils.showInfo('正在处理 WebDAV 目录，请稍等');
+    ToastUtils.showInfo('正在处理云端目录，请稍等');
   }
 
   String _normalizePath(String path) {
@@ -1247,8 +1750,8 @@ class _RemoteBabyDirPageState extends State<_RemoteBabyDirPage> {
                     dir['babyId']?.toString().isNotEmpty == true) {
                   remoteLocalIds.add(dir['babyId'].toString());
                 }
-                final linked =
-                    remoteLocalIds.any((id) => widget.localBabyIds.contains(id));
+                final linked = remoteLocalIds
+                    .any((id) => widget.localBabyIds.contains(id));
                 final cloudBabyId = dir['cloudBabyId']?.toString() ?? '';
                 return Card(
                   child: ListTile(

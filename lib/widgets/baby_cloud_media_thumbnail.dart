@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -28,15 +29,29 @@ class BabyCloudMediaThumbnail extends StatefulWidget {
       _BabyCloudMediaThumbnailState();
 }
 
-class _BabyCloudMediaThumbnailState extends State<BabyCloudMediaThumbnail> {
+class _BabyCloudMediaThumbnailState extends State<BabyCloudMediaThumbnail>
+    with SingleTickerProviderStateMixin {
   final _cloud = Get.find<BabyCloudService>();
+  late final AnimationController _retryController;
   Future<String?>? _downloadFuture;
   Object? _lastError;
+  bool _manualOriginalFallback = false;
+  bool _forceThumbnailRetry = false;
 
   @override
   void initState() {
     super.initState();
+    _retryController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 460),
+    );
     _prepare();
+  }
+
+  @override
+  void dispose() {
+    _retryController.dispose();
+    super.dispose();
   }
 
   @override
@@ -46,14 +61,38 @@ class _BabyCloudMediaThumbnailState extends State<BabyCloudMediaThumbnail> {
         oldWidget.item.localPath != widget.item.localPath ||
         oldWidget.item.localThumbnailPath != widget.item.localThumbnailPath ||
         oldWidget.preferOriginal != widget.preferOriginal) {
+      _manualOriginalFallback = false;
       _prepare();
     }
   }
 
   void _prepare() {
+    final forceThumbnailRetry = _forceThumbnailRetry;
+    _forceThumbnailRetry = false;
     _downloadFuture = null;
     _lastError = null;
-    if (widget.item.isVideo && !widget.preferOriginal) return;
+    if (!widget.preferOriginal) {
+      if (widget.item.isAudio || widget.item.isDiary) {
+        return;
+      }
+      if (_readableThumbnailPath() != null) return;
+      if (!widget.item.isVideo && _readableOriginalPath() != null) {
+        _downloadFuture = _cloud.ensureLocalThumbnailFile(
+          widget.item,
+          forceRemote: forceThumbnailRetry,
+        );
+        return;
+      }
+      if (_manualOriginalFallback && !widget.item.isVideo) {
+        _downloadFuture = _cloud.ensureLocalMediaFile(widget.item);
+        return;
+      }
+      _downloadFuture = _cloud.ensureLocalThumbnailFile(
+        widget.item,
+        forceRemote: forceThumbnailRetry,
+      );
+      return;
+    }
     if (_readableOriginalPath() != null) return;
     _downloadFuture = _cloud.ensureLocalMediaFile(widget.item);
   }
@@ -101,7 +140,10 @@ class _BabyCloudMediaThumbnailState extends State<BabyCloudMediaThumbnail> {
     return Image.file(
       File(path),
       fit: widget.fit,
+      cacheWidth: _decodeCacheWidth(),
       excludeFromSemantics: true,
+      gaplessPlayback: true,
+      filterQuality: FilterQuality.low,
       frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
         if (wasSynchronouslyLoaded || frame != null) return child;
         return Stack(
@@ -117,6 +159,18 @@ class _BabyCloudMediaThumbnailState extends State<BabyCloudMediaThumbnail> {
         return _fallback(failed: true);
       },
     );
+  }
+
+  int? _decodeCacheWidth() {
+    final media = MediaQuery.maybeOf(context);
+    final dpr = media?.devicePixelRatio ?? 1;
+    final logicalWidth = widget.preferOriginal
+        ? media?.size.width ?? 360
+        : media?.size.shortestSide ?? 180;
+    final target = (logicalWidth * dpr * (widget.preferOriginal ? 2.0 : 1.25))
+        .round();
+    final maxWidth = widget.preferOriginal ? 2200 : 900;
+    return math.min(math.max(target, 240), maxWidth);
   }
 
   Widget _withVideoBadge(Widget child) {
@@ -191,65 +245,171 @@ class _BabyCloudMediaThumbnailState extends State<BabyCloudMediaThumbnail> {
   }
 
   Widget _fallback({bool loading = false, bool failed = false}) {
+    final canRetry = failed || _lastError != null;
     return Container(
       color: widget.backgroundColor ?? Colors.grey.shade200,
-      child: Center(
-        child: loading
-            ? const CircularProgressIndicator(strokeWidth: 2)
-            : Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    widget.item.isVideo
-                        ? Icons.videocam_outlined
-                        : widget.item.isAudio
-                            ? Icons.mic_none_outlined
-                            : widget.item.isDiary
-                                ? Icons.notes_outlined
-                                : Icons.image_not_supported_outlined,
-                    color: widget.backgroundColor == Colors.black
-                        ? Colors.white54
-                        : Colors.grey.shade500,
-                    size: 28.sp,
-                  ),
-                  if (failed || _lastError != null) ...[
-                    SizedBox(height: 4.h),
-                    Text(
-                      '无法加载',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Center(
+            child: loading
+                ? const CircularProgressIndicator(strokeWidth: 2)
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        widget.item.isVideo
+                            ? Icons.videocam_outlined
+                            : widget.item.isAudio
+                                ? Icons.mic_none_outlined
+                                : widget.item.isDiary
+                                    ? Icons.notes_outlined
+                                    : Icons.image_not_supported_outlined,
                         color: widget.backgroundColor == Colors.black
                             ? Colors.white54
-                            : Colors.grey.shade600,
-                        fontSize: 10.sp,
-                        fontWeight: FontWeight.w700,
+                            : Colors.grey.shade500,
+                        size: 28.sp,
                       ),
-                    ),
-                  ],
-                ],
-              ),
+                      if (failed || _lastError != null) ...[
+                        SizedBox(height: 4.h),
+                        Text(
+                          '无法加载',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: widget.backgroundColor == Colors.black
+                                ? Colors.white54
+                                : Colors.grey.shade600,
+                            fontSize: 10.sp,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+          ),
+          if (canRetry)
+            Positioned(
+              right: 6.w,
+              bottom: 6.w,
+              child: _retryButton(),
+            ),
+        ],
       ),
     );
   }
 
+  Widget _retryButton() {
+    final loadOriginal = !widget.preferOriginal &&
+        !widget.item.isVideo &&
+        widget.item.thumbnailRemotePath?.trim().isNotEmpty != true;
+    return Tooltip(
+      message: loadOriginal ? '加载原图' : '重新加载缩略图',
+      child: InkWell(
+        onTap: _retryLoad,
+        borderRadius: BorderRadius.circular(999),
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+          decoration: BoxDecoration(
+            color: widget.backgroundColor == Colors.black
+                ? Colors.white.withValues(alpha: 0.14)
+                : Colors.white.withValues(alpha: 0.9),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: widget.backgroundColor == Colors.black
+                  ? Colors.white24
+                  : Colors.grey.shade300,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedBuilder(
+                animation: _retryController,
+                builder: (context, child) {
+                  final eased = Curves.easeOutBack.transform(
+                    _retryController.value.clamp(0.0, 1.0).toDouble(),
+                  );
+                  return Transform.rotate(
+                    angle: _retryController.value * math.pi * 2,
+                    child: Transform.scale(
+                      scale: 1 + eased * 0.16,
+                      child: child,
+                    ),
+                  );
+                },
+                child: Icon(
+                  loadOriginal ? Icons.image_search_outlined : Icons.refresh,
+                  size: 13.sp,
+                  color: widget.backgroundColor == Colors.black
+                      ? Colors.white70
+                      : Colors.grey.shade700,
+                ),
+              ),
+              SizedBox(width: 3.w),
+              Text(
+                loadOriginal ? '原图' : '重试',
+                style: TextStyle(
+                  fontSize: 10.sp,
+                  height: 1,
+                  fontWeight: FontWeight.w800,
+                  color: widget.backgroundColor == Colors.black
+                      ? Colors.white70
+                      : Colors.grey.shade700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _retryLoad() {
+    _retryController.forward(from: 0);
+    setState(() {
+      _lastError = null;
+      if (!widget.preferOriginal &&
+          !widget.item.isVideo &&
+          widget.item.thumbnailRemotePath?.trim().isNotEmpty != true) {
+        _manualOriginalFallback = true;
+      } else {
+        _forceThumbnailRetry = true;
+      }
+      _prepare();
+    });
+  }
+
   String? _bestImagePath() {
     if (!widget.preferOriginal) {
-      final thumb = widget.item.localThumbnailPath;
-      if (thumb != null && _exists(thumb)) return thumb;
+      final thumb = _readableThumbnailPath();
+      if (thumb != null) return thumb;
     }
 
     final original = _readableOriginalPath();
     if (original != null && !widget.item.isVideo) return original;
 
-    final thumb = widget.item.localThumbnailPath;
-    if (thumb != null && _exists(thumb)) return thumb;
+    final thumb = _readableThumbnailPath();
+    if (thumb != null) return thumb;
     return null;
   }
 
   String? _readableOriginalPath() {
     final path = widget.item.localPath;
     if (path == null || path.trim().isEmpty) return null;
+    return _exists(path) ? path : null;
+  }
+
+  String? _readableThumbnailPath() {
+    final path = widget.item.localThumbnailPath;
+    if (path == null || path.trim().isEmpty) return null;
+    final original = widget.item.localPath;
+    if (!widget.item.isVideo &&
+        original != null &&
+        original.trim().isNotEmpty &&
+        path == original) {
+      return null;
+    }
     return _exists(path) ? path : null;
   }
 

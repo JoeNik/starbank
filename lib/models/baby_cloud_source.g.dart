@@ -33,6 +33,17 @@ class BabyCloudSourceAdapter extends TypeAdapter<BabyCloudSource> {
       lastCheckMessage: fields[15] as String?,
       libraryId: fields[16] as String?,
       libraryName: fields[17] as String?,
+      aliyunDriveClientId: fields[18] as String?,
+      aliyunDriveClientSecret: fields[19] as String?,
+      aliyunDriveRedirectUri: fields[20] as String?,
+      aliyunDriveScope: fields[21] as String?,
+      aliyunDriveAuthUrl: fields[22] as String?,
+      aliyunDriveTokenUrl: fields[23] as String?,
+      aliyunDriveAccessToken: fields[24] as String?,
+      aliyunDriveTokenExpiresAt: fields[25] as DateTime?,
+      aliyunDriveDriveId: fields[26] as String?,
+      aliyunDriveUserId: fields[27] as String?,
+      aliyunDriveNickName: fields[28] as String?,
       createdAt: fields[9] as DateTime?,
       updatedAt: fields[10] as DateTime?,
     );
@@ -41,7 +52,7 @@ class BabyCloudSourceAdapter extends TypeAdapter<BabyCloudSource> {
   @override
   void write(BinaryWriter writer, BabyCloudSource obj) {
     writer
-      ..writeByte(18)
+      ..writeByte(29)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -77,7 +88,29 @@ class BabyCloudSourceAdapter extends TypeAdapter<BabyCloudSource> {
       ..writeByte(16)
       ..write(obj.libraryId)
       ..writeByte(17)
-      ..write(obj.libraryName);
+      ..write(obj.libraryName)
+      ..writeByte(18)
+      ..write(obj.aliyunDriveClientId)
+      ..writeByte(19)
+      ..write(obj.aliyunDriveClientSecret)
+      ..writeByte(20)
+      ..write(obj.aliyunDriveRedirectUri)
+      ..writeByte(21)
+      ..write(obj.aliyunDriveScope)
+      ..writeByte(22)
+      ..write(obj.aliyunDriveAuthUrl)
+      ..writeByte(23)
+      ..write(obj.aliyunDriveTokenUrl)
+      ..writeByte(24)
+      ..write(obj.aliyunDriveAccessToken)
+      ..writeByte(25)
+      ..write(obj.aliyunDriveTokenExpiresAt)
+      ..writeByte(26)
+      ..write(obj.aliyunDriveDriveId)
+      ..writeByte(27)
+      ..write(obj.aliyunDriveUserId)
+      ..writeByte(28)
+      ..write(obj.aliyunDriveNickName);
   }
 
   @override

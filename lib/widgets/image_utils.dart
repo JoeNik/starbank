@@ -277,6 +277,20 @@ class ImageUtils {
       );
     }
 
+    final memoryBytes = _tryDecodeImageBytes(pathOrBase64);
+    if (memoryBytes != null) {
+      return Image.memory(
+        memoryBytes,
+        width: width,
+        height: height,
+        fit: fit,
+        errorBuilder: (context, error, stackTrace) {
+          debugPrint("Base64 Image Error: ${error.runtimeType}");
+          return placeholder ?? const Icon(Icons.broken_image);
+        },
+      );
+    }
+
     // 本地文件路径
     try {
       final file = File(pathOrBase64);
@@ -287,35 +301,38 @@ class ImageUtils {
           height: height,
           fit: fit,
           errorBuilder: (context, error, stackTrace) {
-            debugPrint("Local Image Error: $error");
+            debugPrint("Local Image Error: ${error.runtimeType}");
             return placeholder ?? const Icon(Icons.broken_image);
           },
         );
       }
     } catch (_) {}
 
-    // 如果长度超过 100,可能是 base64
-    if (pathOrBase64.length > 100) {
-      try {
-        final cleanBase64 = pathOrBase64.replaceAll(RegExp(r'\s+'), '');
-        return Image.memory(
-          base64Decode(cleanBase64),
-          width: width,
-          height: height,
-          fit: fit,
-          errorBuilder: (context, error, stackTrace) {
-            debugPrint("Base64 Image Error: $error");
-            return placeholder ?? const Icon(Icons.broken_image);
-          },
-        );
-      } catch (e) {
-        debugPrint("Image Decode Error: $e");
-        return placeholder ?? const Icon(Icons.error);
-      }
-    }
-
     // 其他情况(如 emoji 或无效字符串),返回 placeholder
     return placeholder ?? const Icon(Icons.image);
+  }
+
+  static Uint8List? _tryDecodeImageBytes(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return null;
+
+    var raw = trimmed;
+    if (trimmed.startsWith('data:image/')) {
+      final commaIndex = trimmed.indexOf(',');
+      if (commaIndex < 0) return null;
+      raw = trimmed.substring(commaIndex + 1);
+    } else {
+      final maybeLocalPath = trimmed.contains('\\') ||
+          RegExp(r'^[A-Za-z]:[\\/]').hasMatch(trimmed) ||
+          RegExp(r'^/[^A-Za-z0-9+/=]').hasMatch(trimmed);
+      if (trimmed.length < 100 || maybeLocalPath) return null;
+    }
+
+    try {
+      return base64Decode(raw.replaceAll(RegExp(r'\s+'), ''));
+    } catch (_) {
+      return null;
+    }
   }
 
   /// 显示大图预览对话框

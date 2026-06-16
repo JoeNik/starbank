@@ -11,11 +11,13 @@
 - 「记录」改为「亲宝宝」，云相册作为主页面，便便记录、生长记录、宝宝大事记放到后续 tab。
 - 云相册页面参考亲宝宝截图设计，包含时间轴、可折叠头图/头像/tab、数据源控件、上传入口、搜索和筛选。
 - 自定义 Android 媒体选择器按时间倒序展示，减少大量照片时的卡顿；已上传媒体按 SHA-256 识别后置灰。
-- 没有配置亲宝宝 WebDAV 时，上传必须提示用户，不能创建假任务。
+- 没有配置亲宝宝云相册数据源时，上传必须提示用户，不能创建假任务。
 - 上传后应关闭媒体选择器/编辑页，任务进入后台队列执行，并展示进度。
 - WebDAV 需要支持 HTTP 和 HTTPS，支持内网/外网地址；在局域网时优先检测内网地址，内网不可用再尝试外网。
 - WebDAV 连接失败时，要展示完整错误信息；根目录不存在时要自动创建。
 - WebDAV 目录选择需要支持新增目录、重命名目录。
+- 阿里云盘数据源支持两种登录方式：官方开放接口 OAuth 授权码模式，以及类似 OpenList/AList 的令牌登录。OAuth 浏览器登录后应能通过 `starbank://aliyundrive/oauth` 回跳 App，也支持粘贴回调链接或 code 手动完成授权；令牌登录允许直接填写 Access Token，或填写 Refresh Token 后按开放接口刷新。
+- WebDAV 和阿里云盘只能替换底层远端文件客户端，上层 `library_manifest.json`、`album_index.json`、队列、软删除/永久删除规则必须共用同一套逻辑。
 - 相册和视频需要分开目录存储，并按月份归档：`album/photos/2026/06`、`album/videos/2026/06`、`album/audios/2026/06`。
 - 上传成功后相册不能空白，图片、视频、录音应能正常展示/播放。
 - 时间轴上的视频/录音标识要明显，不显示文件名水印。
@@ -73,6 +75,7 @@
 - `lib/pages/kin/baby_cloud_source_page.dart`
   - 亲宝宝独立数据源配置页。
   - 支持 WebDAV 内网/外网地址、HTTP/HTTPS、手动检测、目录选择、新建目录、重命名目录。
+  - 支持阿里云盘官方开放接口数据源。首屏只保留 OAuth 必填要素（Client ID、Redirect URI）和令牌登录（Access Token、Refresh Token）；Client Secret、scope、OAuth 端点放在高级设置里。
   - 切换数据源后会提示是否立即同步远端。
   - 旧的「物理删除云端宝宝目录」入口已移除，避免误删整个目录树。
 
@@ -103,6 +106,7 @@
   - 新增字段：
     - `libraryId`
     - `libraryName`
+    - 阿里云盘 OAuth / token / drive 信息字段：`aliyunDriveClientId`、`aliyunDriveClientSecret`、`aliyunDriveRedirectUri`、`aliyunDriveScope`、`aliyunDriveAuthUrl`、`aliyunDriveTokenUrl`、`aliyunDriveAccessToken`、`aliyunDriveRefreshToken`、`aliyunDriveTokenExpiresAt`、`aliyunDriveDriveId`、`aliyunDriveUserId`、`aliyunDriveNickName`
   - 本地 `dataSourceId` 只代表一个本地配置，不代表云端库身份。
 
 - `lib/models/baby_cloud_upload_task.dart`
@@ -154,7 +158,7 @@ babies/
 
 同步流程：
 
-1. 检测亲宝宝 WebDAV 数据源可用性。
+1. 检测亲宝宝数据源可用性。WebDAV 走 `PROPFIND/MKCOL/PUT/GET/DELETE/MOVE`；阿里云盘走开放接口 token 刷新、文件列表、建目录、上传、下载、删除、移动。
 2. 读取或创建 `library_manifest.json`。
 3. 从 manifest 恢复当前宝宝的云端目录映射和 `cloudBabyId`。
 4. 按 manifest 的 `babyDir` 读取最新版 `index/album_index.json`。
@@ -204,7 +208,7 @@ babies/
 
 - 不要在回收站列表里直接放 `DELETE` 云端文件按钮。
 - 不要在数据源页提供「删除云端宝宝目录」这类目录树删除入口。
-- 不要在同步、切换数据源、清理任务、恢复数据时自动删除 WebDAV 原文件。
+- 不要在同步、切换数据源、清理任务、恢复数据时自动删除云端原文件。
 
 ### 数据源切换规则
 
@@ -230,6 +234,17 @@ babies/
 - WebDAV 根目录不存在时应自动创建。
 - 错误信息需要尽量包含完整请求尝试，尤其是 `PROPFIND/MKCOL/PUT/GET/DELETE` 的 URL、状态码和响应摘要。
 - 用户已经反馈过 `/dav` 404、第二次请求路径不清晰、错误显示不完整等问题，后续改 WebDAV 时要特别小心路径拼接。
+
+### 阿里云盘规则
+
+- OAuth 授权必须先保存 source，再生成带 source id 的 state，回跳时校验 state 后把 token 写回同一个 source。
+- 移动端不能假定一定能自动回跳；保留「粘贴 code」兜底入口。
+- 支持自定义 Access Token 登录：没有 refresh token 时，服务层直接拿 access token 调开放接口校验；如果 401 或过期，提示用户重新填写或改用 OAuth。
+- Refresh Token 更适合长期使用，但刷新 token 通常仍需要 Client ID；页面应把这个差异讲清楚。
+- 阿里云盘底层客户端负责把远端路径解析成 `file_id`，上层仍只传 `/starbank_baby_cloud/...` 这类路径。
+- 可用性检查要真实调用开放接口读取根目录或 drive 信息，不能只看本地 access token 是否过期。
+- 路径不存在可以按不存在处理；token、权限、网络、API 错误必须向上传递，不能在删除或覆盖时被吞掉。
+- 上传沿用分片上传：`openFile/create` 获取 `upload_url`，PUT 分片后 `openFile/complete`。
 
 ### 上传和目录规则
 
@@ -264,6 +279,7 @@ album/audios/yyyy/MM
 - `BabyCloudEntry`：typeId `51`
 - `BabyCloudMedia`：新增字段 24-28
 - `BabyCloudSource`：新增字段 16-17
+- `BabyCloudSource`：阿里云盘新增字段 18-28
 - `BabyCloudUploadTask`：新增字段 22-23（`taskType`、`targetId`）
 
 正常应运行：

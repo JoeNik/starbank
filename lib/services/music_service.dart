@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:audio_service/audio_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'audio_handler.dart';
 
@@ -68,6 +67,8 @@ class MusicService extends GetxService {
       debugPrint('Permission request error: $e');
     }
   }
+
+  Future<void> ensureNotificationPermission() => _requestPermissions();
 
   // 兼容旧方法，但现在总是返回已初始化的 player（因为 init 在 main 做了）
   Future<AudioPlayer?> getOrInitPlayer() async {
