@@ -7,7 +7,7 @@ Future<AudioHandler> initAudioService() async {
   return await AudioService.init(
     builder: () => MusicHandler(),
     config: const AudioServiceConfig(
-      androidNotificationChannelId: 'com.starbank.app.channel.audio.v6',
+      androidNotificationChannelId: 'com.starbank.app.channel.audio.v7',
       androidNotificationChannelName: 'StarBank 音乐播放',
       androidNotificationChannelDescription: '音乐播放控制',
       androidNotificationOngoing: false, // 修复：与 androidStopForegroundOnPause=false 冲突
@@ -16,6 +16,12 @@ Future<AudioHandler> initAudioService() async {
       androidShowNotificationBadge: true,
       notificationColor: Color(0xFFFFB27D),
       androidNotificationIcon: 'drawable/ic_stat_music_note',
+      // ColorOS 优化：提升通知优先级，确保下拉通知栏显示
+      preloadArtwork: true,
+      artDownscaleWidth: 512,
+      artDownscaleHeight: 512,
+      fastForwardInterval: Duration(seconds: 10),
+      rewindInterval: Duration(seconds: 10),
     ),
   );
 }

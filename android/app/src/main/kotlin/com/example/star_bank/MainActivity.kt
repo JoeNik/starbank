@@ -10,6 +10,9 @@ class MainActivity : AudioServiceActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        // ColorOS 通知栏优化：确保音乐通知能正常显示
+        ColorOSNotificationHelper.ensureAudioServiceChannel(this)
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             BACKGROUND_NETWORK_CHANNEL,
