@@ -13,6 +13,11 @@ class MainActivity : AudioServiceActivity() {
 
         // ColorOS 通知栏优化：确保音乐通知能正常显示
         ColorOSNotificationHelper.ensureAudioServiceChannel(this)
+
+        // ColorOS 特殊处理：延迟再次确认渠道配置
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            ColorOSNotificationHelper.ensureAudioServiceChannel(this)
+        }, 1000)
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             BACKGROUND_NETWORK_CHANNEL,

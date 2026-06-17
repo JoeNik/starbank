@@ -1865,7 +1865,7 @@ class BabyCloudService extends GetxService {
               ? const Duration(milliseconds: 1500) // 不匹配：1.5秒
               : (candidate.endpoint == 'lan'
                   ? const Duration(seconds: 3) // 内网：3秒（成功则立即返回）
-                  : const Duration(seconds: 3));      // 外网：3秒
+                  : const Duration(seconds: 10));      // 外网：10秒（网络可能较慢）
 
       final endpointLabel = candidate.endpoint == 'lan' ? '内网' : '外网';
       final rootWarning = initializeRoot
