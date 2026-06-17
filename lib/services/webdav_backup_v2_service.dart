@@ -811,6 +811,7 @@ class WebDavBackupV2Service {
     }
     try {
       final modeController = Get.find<AppModeController>();
+      await modeController.ensureInitialized();
       if (modeController.hasPassword) {
         backupData['passwordHash'] = modeController.passwordHash;
       }

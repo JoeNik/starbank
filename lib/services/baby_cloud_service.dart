@@ -3,13 +3,13 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
-import 'dart:ui' as ui;
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
+import 'package:image/image.dart' as img;
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -43,7 +43,8 @@ class BabyCloudSourceCheckResult {
   }
 }
 
-const int _generatedThumbnailSize = 520;
+const int _generatedThumbnailSize = 360;
+const int _generatedThumbnailJpegQuality = 62;
 
 class _CachedSourceCheck {
   const _CachedSourceCheck(
@@ -3564,8 +3565,6 @@ class BabyCloudService extends GetxService {
   }) async {
     final source = File(sourcePath);
     if (!await source.exists()) return null;
-    ui.Codec? codec;
-    ui.Image? image;
     try {
       final base = _appDocumentsDir ?? await getApplicationDocumentsDirectory();
       _appDocumentsDir ??= base;
@@ -3579,28 +3578,34 @@ class BabyCloudService extends GetxService {
       final file = File(
         [
           dir.path,
-          '${_safeFileSegment(cacheKey)}_${_generatedThumbnailSize}.png',
+          '${_safeFileSegment(cacheKey)}_${_generatedThumbnailSize}_q$_generatedThumbnailJpegQuality.jpg',
         ].join(Platform.pathSeparator),
       );
       if (await file.exists() && await file.length() > 0) return file.path;
 
       final bytes = await source.readAsBytes();
-      codec = await ui.instantiateImageCodec(
-        bytes,
-        targetWidth: _generatedThumbnailSize,
+      final decoded = img.decodeImage(bytes);
+      if (decoded == null) return null;
+      final oriented = img.bakeOrientation(decoded);
+      final resized = img.copyResize(
+        oriented,
+        width: oriented.width >= oriented.height
+            ? _generatedThumbnailSize
+            : null,
+        height: oriented.height > oriented.width
+            ? _generatedThumbnailSize
+            : null,
+        interpolation: img.Interpolation.average,
       );
-      final frame = await codec.getNextFrame();
-      image = frame.image;
-      final data = await image.toByteData(format: ui.ImageByteFormat.png);
-      final Uint8List? thumbnailBytes = data?.buffer.asUint8List();
-      if (thumbnailBytes == null || thumbnailBytes.isEmpty) return null;
+      final thumbnailBytes = img.encodeJpg(
+        resized,
+        quality: _generatedThumbnailJpegQuality,
+      );
+      if (thumbnailBytes.isEmpty) return null;
       await file.writeAsBytes(thumbnailBytes, flush: true);
       return file.path;
     } catch (_) {
       return null;
-    } finally {
-      image?.dispose();
-      codec?.dispose();
     }
   }
 

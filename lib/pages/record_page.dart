@@ -10,6 +10,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../controllers/app_mode_controller.dart';
 import '../controllers/user_controller.dart';
 import '../models/baby_cloud_entry.dart';
 import '../models/baby_cloud_media.dart';
@@ -178,6 +179,7 @@ class _RecordPageState extends State<RecordPage> {
 
   final _user = Get.find<UserController>();
   final _cloud = Get.find<BabyCloudService>();
+  final _mode = Get.find<AppModeController>();
   final _storage = Get.find<StorageService>();
   final _albumScrollController = ScrollController();
   final _searchController = TextEditingController();
@@ -1404,6 +1406,9 @@ class _RecordPageState extends State<RecordPage> {
   }
 
   Future<void> _editEntry(_TimelineEntryData entry) async {
+    if (!_ensureParentMode('请先切换到家长模式后再编辑亲宝宝动态')) {
+      return;
+    }
     if (entry.mediaItems.isEmpty) {
       ToastUtils.showWarning('这条动态暂无可编辑的媒体记录');
       return;
@@ -1415,6 +1420,9 @@ class _RecordPageState extends State<RecordPage> {
   }
 
   Future<void> _confirmDeleteEntry(_TimelineEntryData entry) async {
+    if (!_ensureParentMode('请先切换到家长模式后再删除亲宝宝动态')) {
+      return;
+    }
     if (entry.mediaItems.isEmpty) {
       ToastUtils.showWarning('这条动态暂无可删除的媒体记录');
       return;
@@ -1540,7 +1548,12 @@ class _RecordPageState extends State<RecordPage> {
             ),
             SizedBox(height: 16.h),
             ElevatedButton.icon(
-              onPressed: _showUploadMenu,
+              onPressed: () {
+                if (!_ensureParentMode('请先切换到家长模式后再上传照片和视频')) {
+                  return;
+                }
+                _showUploadMenu();
+              },
               icon: const Icon(Icons.add_a_photo),
               label: const Text('上传照片/视频'),
             ),
@@ -1754,6 +1767,9 @@ class _RecordPageState extends State<RecordPage> {
   }
 
   void _showUploadMenu() {
+    if (!_ensureParentMode('请先切换到家长模式后再上传照片和视频')) {
+      return;
+    }
     if (_user.currentBaby.value == null) {
       ToastUtils.showWarning('请先在主页选择宝宝');
       return;
@@ -1933,6 +1949,9 @@ class _RecordPageState extends State<RecordPage> {
   }
 
   Future<void> _openMediaPicker() async {
+    if (!_ensureParentMode('请先切换到家长模式后再上传照片和视频')) {
+      return;
+    }
     Get.back();
     await Future<void>.delayed(const Duration(milliseconds: 120));
     final result = await Get.to(() => const BabyCloudMediaPickerPage());
@@ -1943,6 +1962,9 @@ class _RecordPageState extends State<RecordPage> {
   }
 
   Future<void> _openCameraPicker() async {
+    if (!_ensureParentMode('请先切换到家长模式后再上传照片和视频')) {
+      return;
+    }
     final choice = await Get.bottomSheet<String>(
       SafeArea(
         child: Container(
@@ -1985,16 +2007,25 @@ class _RecordPageState extends State<RecordPage> {
   }
 
   void _openAudioRecorder() {
+    if (!_ensureParentMode('请先切换到家长模式后再上传录音')) {
+      return;
+    }
     Get.back();
     Get.to(() => const BabyCloudAudioRecordPage());
   }
 
   void _openDiaryEditor() {
+    if (!_ensureParentMode('请先切换到家长模式后再新增日记')) {
+      return;
+    }
     Get.back();
     Get.to(() => const BabyCloudEntryEditPage(initialDiary: true));
   }
 
   Future<void> _pickAudioFile() async {
+    if (!_ensureParentMode('请先切换到家长模式后再上传录音文件')) {
+      return;
+    }
     Get.back();
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -2048,6 +2079,9 @@ class _RecordPageState extends State<RecordPage> {
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () {
+                      if (!_ensureParentMode('请先切换到家长模式后再配置亲宝宝数据源')) {
+                        return;
+                      }
                       Get.back();
                       Get.to(() => const BabyCloudSourcePage());
                     },
@@ -2061,5 +2095,11 @@ class _RecordPageState extends State<RecordPage> {
         ),
       ),
     );
+  }
+
+  bool _ensureParentMode(String message) {
+    if (_mode.isParentMode) return true;
+    ToastUtils.showWarning(message);
+    return false;
   }
 }

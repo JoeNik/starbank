@@ -454,6 +454,12 @@ class _ParentPasswordDialogState extends State<_ParentPasswordDialog> {
   }
 
   void _submit() {
+    _submitAsync();
+  }
+
+  Future<void> _submitAsync() async {
+    await widget.mode.ensureInitialized();
+    if (!mounted) return;
     if (widget.mode.verifyPassword(_controller.text)) {
       Navigator.of(context).pop(true);
     } else {

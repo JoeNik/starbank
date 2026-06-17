@@ -1,8 +1,12 @@
+import 'dart:async';
 import 'dart:convert';
+
 import 'package:crypto/crypto.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
-import 'package:flutter/material.dart';
+
+import '../services/storage_service.dart';
 import '../theme/app_theme.dart';
 
 /// 应用模式枚举
@@ -14,34 +18,150 @@ enum AppMode {
 /// 应用模式控制器
 /// 管理家长/儿童模式切换，密码验证等
 class AppModeController extends GetxController {
-  // 当前模式
-  final Rx<AppMode> currentMode = AppMode.parent.obs;
+  AppModeController();
 
-  // 存储 box
-  late Box _settingsBox;
-  bool _isInitialized = false;
-
-  // 密码存储的 key
+  static const String _primaryBoxName = 'settings';
+  static const String _legacyBoxName = 'app_settings';
   static const String _passwordKey = 'parent_password_hash';
   static const String _modeKey = 'current_mode';
+  static const String _defaultPasswordMigrationKey =
+      'parent_password_reset_20260617_135790';
+  static const String _defaultRecoveryPassword = '135790';
+
+  final Rx<AppMode> currentMode = AppMode.parent.obs;
+  final RxBool _hasPassword = false.obs;
+  final RxnString _passwordHash = RxnString();
+
+  Box? _settingsBox;
+  Box? _legacySettingsBox;
+  Future<void>? _initFuture;
+  bool _isInitialized = false;
 
   @override
   void onInit() {
     super.onInit();
-    _initSettings(); // 异步初始化，不阻塞
+    _initFuture = _initSettings();
   }
 
   Future<void> _initSettings() async {
-    _settingsBox = await Hive.openBox('app_settings');
-    final savedMode = _settingsBox.get(_modeKey, defaultValue: 'parent');
-    currentMode.value = savedMode == 'child' ? AppMode.child : AppMode.parent;
+    if (_isInitialized) return;
+    _settingsBox = await _openPrimaryBox();
+    _legacySettingsBox = await _openLegacyBox();
+
+    await _migrateLegacySettings();
+    await _applyDefaultPasswordRecoveryIfNeeded();
+    _refreshCachedState();
     _isInitialized = true;
+  }
+
+  Future<Box> _openPrimaryBox() async {
+    if (Get.isRegistered<StorageService>()) {
+      return Get.find<StorageService>().settingsBox;
+    }
+    if (Hive.isBoxOpen(_primaryBoxName)) {
+      return Hive.box(_primaryBoxName);
+    }
+    return Hive.openBox(_primaryBoxName);
+  }
+
+  Future<Box> _openLegacyBox() async {
+    if (Hive.isBoxOpen(_legacyBoxName)) {
+      return Hive.box(_legacyBoxName);
+    }
+    return Hive.openBox(_legacyBoxName);
+  }
+
+  Future<void> _migrateLegacySettings() async {
+    final mergedPassword = _readMergedString(_passwordKey);
+    final mergedMode = _readMergedMode();
+
+    if (mergedPassword != null && mergedPassword.isNotEmpty) {
+      await _writeToBoth(_passwordKey, mergedPassword);
+    }
+    await _writeToBoth(_modeKey, mergedMode.name);
+  }
+
+  Future<void> _applyDefaultPasswordRecoveryIfNeeded() async {
+    final applied = _readMergedBool(_defaultPasswordMigrationKey);
+    if (applied) return;
+    final hasExistingState =
+        (_settingsBox?.containsKey(_passwordKey) ?? false) ||
+            (_legacySettingsBox?.containsKey(_passwordKey) ?? false);
+    if (!hasExistingState) return;
+
+    final hash = _hashPassword(_defaultRecoveryPassword);
+    await _writeToBoth(_passwordKey, hash);
+    await _writeToBoth(_modeKey, AppMode.parent.name);
+    await _writeToBoth(_defaultPasswordMigrationKey, true);
+  }
+
+  void _refreshCachedState() {
+    final password = _readMergedString(_passwordKey);
+    final mode = _readMergedMode();
+    _passwordHash.value = password;
+    _hasPassword.value = password?.isNotEmpty == true;
+    currentMode.value = mode;
+  }
+
+  String? _readMergedString(String key) {
+    final primary = _settingsBox?.get(key);
+    if (primary is String && primary.trim().isNotEmpty) {
+      return primary;
+    }
+    final legacy = _legacySettingsBox?.get(key);
+    if (legacy is String && legacy.trim().isNotEmpty) {
+      return legacy;
+    }
+    return null;
+  }
+
+  bool _readMergedBool(String key) {
+    final primary = _settingsBox?.get(key);
+    if (primary is bool) return primary;
+    final legacy = _legacySettingsBox?.get(key);
+    if (legacy is bool) return legacy;
+    return false;
+  }
+
+  AppMode _readMergedMode() {
+    final raw = _settingsBox?.get(_modeKey) ?? _legacySettingsBox?.get(_modeKey);
+    return raw?.toString() == AppMode.child.name ? AppMode.child : AppMode.parent;
+  }
+
+  Future<void> _writeToBoth(String key, dynamic value) async {
+    final boxes = <Box>{
+      if (_settingsBox != null) _settingsBox!,
+      if (_legacySettingsBox != null) _legacySettingsBox!,
+    };
+    for (final box in boxes) {
+      await box.put(key, value);
+    }
+  }
+
+  Future<void> _persistMode(AppMode mode) async {
+    currentMode.value = mode;
+    await _writeToBoth(_modeKey, mode.name);
+  }
+
+  Future<void> _persistPasswordHash(String? hash) async {
+    final boxes = <Box>{
+      if (_settingsBox != null) _settingsBox!,
+      if (_legacySettingsBox != null) _legacySettingsBox!,
+    };
+    for (final box in boxes) {
+      if (hash == null || hash.isEmpty) {
+        await box.delete(_passwordKey);
+      } else {
+        await box.put(_passwordKey, hash);
+      }
+    }
+    _passwordHash.value = hash;
+    _hasPassword.value = hash?.isNotEmpty == true;
   }
 
   /// 确保初始化完成（公开方法，供外部调用）
   Future<void> ensureInitialized() async {
-    if (_isInitialized) return;
-    await _initSettings();
+    await (_initFuture ??= _initSettings());
   }
 
   /// 是否是家长模式
@@ -51,40 +171,44 @@ class AppModeController extends GetxController {
   bool get isChildMode => currentMode.value == AppMode.child;
 
   /// 是否已设置密码
-  bool get hasPassword {
-    if (!_isInitialized) return false;
-    return _settingsBox.containsKey(_passwordKey);
-  }
+  bool get hasPassword => _hasPassword.value;
 
   /// 获取密码哈希（用于云端备份）
-  String? get passwordHash {
-    if (!_isInitialized) return null;  // 🔧 修复：防止访问未初始化的 box
-    return _settingsBox.get(_passwordKey);
-  }
+  String? get passwordHash => _passwordHash.value ?? _readMergedString(_passwordKey);
 
   /// 设置密码（SHA256 加密）
   Future<void> setPassword(String password) async {
+    await ensureInitialized();
     final hash = _hashPassword(password);
-    await _settingsBox.put(_passwordKey, hash);
+    await _persistPasswordHash(hash);
+  }
+
+  /// 直接重置为恢复密码，并切回家长模式
+  Future<void> resetPasswordToDefault() async {
+    await ensureInitialized();
+    await _persistPasswordHash(_hashPassword(_defaultRecoveryPassword));
+    await _persistMode(AppMode.parent);
+    await _writeToBoth(_defaultPasswordMigrationKey, true);
   }
 
   /// 从云端恢复密码哈希
   Future<void> restorePasswordHash(String hash) async {
-    await _settingsBox.put(_passwordKey, hash);
+    await ensureInitialized();
+    await _persistPasswordHash(hash);
   }
 
   /// 验证密码
   bool verifyPassword(String password) {
-    final storedHash = _settingsBox.get(_passwordKey);
-    if (storedHash == null) return true;
+    final storedHash = passwordHash;
+    if (storedHash == null || storedHash.isEmpty) return true;
     return _hashPassword(password) == storedHash;
   }
 
   /// 切换到家长模式（需要密码验证）
   Future<bool> switchToParentMode(String password) async {
+    await ensureInitialized();
     if (!hasPassword || verifyPassword(password)) {
-      currentMode.value = AppMode.parent;
-      await _settingsBox.put(_modeKey, 'parent');
+      await _persistMode(AppMode.parent);
       return true;
     }
     return false;
@@ -92,8 +216,8 @@ class AppModeController extends GetxController {
 
   /// 切换到儿童模式
   Future<void> switchToChildMode() async {
-    currentMode.value = AppMode.child;
-    await _settingsBox.put(_modeKey, 'child');
+    await ensureInitialized();
+    await _persistMode(AppMode.child);
   }
 
   /// 密码哈希函数
@@ -105,10 +229,14 @@ class AppModeController extends GetxController {
 
   /// 显示切换模式对话框
   void showModeSwitchDialog() {
+    unawaited(_showModeSwitchDialogAsync());
+  }
+
+  Future<void> _showModeSwitchDialogAsync() async {
+    await ensureInitialized();
     final context = Get.overlayContext;
     if (context == null) return;
 
-    // 如果当前是家长模式，准备切换到儿童模式，必须先检查是否设置了密码
     if (!isChildMode && !hasPassword) {
       _showSimpleDialog(
         context: context,
@@ -133,9 +261,13 @@ class AppModeController extends GetxController {
         confirmText: '确定',
         onConfirm: () {
           Navigator.of(context).pop();
-          switchToChildMode();
-          Get.snackbar('👶 儿童模式', '已切换到儿童模式',
-              snackPosition: SnackPosition.BOTTOM);
+          switchToChildMode().then((_) {
+            Get.snackbar(
+              '👶 儿童模式',
+              '已切换到儿童模式',
+              snackPosition: SnackPosition.BOTTOM,
+            );
+          });
         },
       );
     }
@@ -193,20 +325,27 @@ class AppModeController extends GetxController {
             child: const Text('取消'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               final password = controller.text;
-              switchToParentMode(password).then((success) {
-                if (success) {
+              final success = await switchToParentMode(password);
+              if (success) {
+                if (ctx.mounted) {
                   Navigator.of(ctx).pop();
-                  Get.snackbar('👨‍👩‍👧 家长模式', '已切换到家长模式',
-                      snackPosition: SnackPosition.BOTTOM);
-                } else {
-                  Get.snackbar('❌ 密码错误', '请输入正确的密码',
-                      snackPosition: SnackPosition.BOTTOM,
-                      backgroundColor: Colors.red.shade100);
-                  controller.clear();
                 }
-              });
+                Get.snackbar(
+                  '👨‍👩‍👧 家长模式',
+                  '已切换到家长模式',
+                  snackPosition: SnackPosition.BOTTOM,
+                );
+              } else {
+                Get.snackbar(
+                  '❌ 密码错误',
+                  '请输入正确的密码',
+                  snackPosition: SnackPosition.BOTTOM,
+                  backgroundColor: Colors.red.shade100,
+                );
+                controller.clear();
+              }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
             child: const Text('确定'),
@@ -218,6 +357,11 @@ class AppModeController extends GetxController {
 
   /// 显示设置密码对话框（仅家长模式可用）
   void showSetPasswordDialog() {
+    unawaited(_showSetPasswordDialogAsync());
+  }
+
+  Future<void> _showSetPasswordDialogAsync() async {
+    await ensureInitialized();
     if (!isParentMode) {
       Get.snackbar('⚠️ 无权限', '请先切换到家长模式');
       return;
@@ -231,7 +375,7 @@ class AppModeController extends GetxController {
 
     showDialog(
       context: context,
-      barrierDismissible: false, // 防止误触关闭
+      barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         title: Text(hasPassword ? '🔑 修改密码' : '🔑 设置密码'),
         content: SingleChildScrollView(
@@ -269,7 +413,7 @@ class AppModeController extends GetxController {
             child: const Text('取消'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               final pwd = pwdController.text;
               final confirm = confirmController.text;
 
@@ -289,16 +433,24 @@ class AppModeController extends GetxController {
                 return;
               }
 
-              // 使用 then 避免 async 问题
-              setPassword(pwd).then((_) {
-                Navigator.of(ctx).pop();
-                Get.snackbar('✅ 成功', '密码已设置',
-                    snackPosition: SnackPosition.BOTTOM,
-                    backgroundColor: Colors.green.withOpacity(0.1));
-              }).catchError((e) {
-                Get.snackbar('❌ 错误', '密码设置失败: $e',
-                    snackPosition: SnackPosition.BOTTOM);
-              });
+              try {
+                await setPassword(pwd);
+                if (ctx.mounted) {
+                  Navigator.of(ctx).pop();
+                }
+                Get.snackbar(
+                  '✅ 成功',
+                  '密码已设置',
+                  snackPosition: SnackPosition.BOTTOM,
+                  backgroundColor: Colors.green.withValues(alpha: 0.1),
+                );
+              } catch (e) {
+                Get.snackbar(
+                  '❌ 错误',
+                  '密码设置失败: $e',
+                  snackPosition: SnackPosition.BOTTOM,
+                );
+              }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
             child: const Text('保存'),

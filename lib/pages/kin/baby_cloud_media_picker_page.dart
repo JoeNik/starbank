@@ -9,14 +9,23 @@ import 'package:get/get.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../controllers/app_mode_controller.dart';
 import '../../controllers/user_controller.dart';
 import '../../services/baby_cloud_service.dart';
+import '../../services/storage_service.dart';
 import '../../widgets/toast_utils.dart';
 import 'baby_cloud_entry_edit_page.dart';
 import 'baby_cloud_source_page.dart';
 
 class BabyCloudMediaPickerPage extends StatefulWidget {
-  const BabyCloudMediaPickerPage({super.key});
+  const BabyCloudMediaPickerPage({
+    super.key,
+    this.initialAssets = const [],
+    this.returnSelectionOnly = false,
+  });
+
+  final List<AssetEntity> initialAssets;
+  final bool returnSelectionOnly;
 
   @override
   State<BabyCloudMediaPickerPage> createState() =>
@@ -26,16 +35,23 @@ class BabyCloudMediaPickerPage extends StatefulWidget {
 class _BabyCloudMediaPickerPageState extends State<BabyCloudMediaPickerPage> {
   static const _pageSize = 60;
   static const _thumbnailSize = ThumbnailSize.square(180);
+  static const _crossAxisCount = 4;
+  static const _gridSpacing = 4.0;
+  static const _lastAssetIdKey = 'baby_cloud_picker_last_asset_id';
 
   final _cloud = Get.find<BabyCloudService>();
   final _user = Get.find<UserController>();
+  final _mode = Get.find<AppModeController>();
+  final _storage = Get.find<StorageService>();
   final _assets = <AssetEntity>[];
   final _selected = <String>{};
+  final _selectedAssetsById = <String, AssetEntity>{};
   final _uploadedAssetIds = <String>{};
   final _hashCache = <String, String>{};
   final _remoteHashes = <String>{};
   final _warmingAssetIds = <String>{};
   final _checkingAssetIds = <String>{};
+  final _scrollController = ScrollController();
 
   AssetPathEntity? _path;
   int _page = 0;
@@ -45,20 +61,34 @@ class _BabyCloudMediaPickerPageState extends State<BabyCloudMediaPickerPage> {
   bool _queueing = false;
   bool _closing = false;
   String? _blockedMessage;
+  String? _pendingRestoreAssetId;
+  bool _restoringScroll = false;
 
   @override
   void initState() {
     super.initState();
+    for (final asset in widget.initialAssets) {
+      _selected.add(asset.id);
+      _selectedAssetsById[asset.id] = asset;
+    }
     _init();
   }
 
   @override
   void dispose() {
     _closing = true;
+    _scrollController.dispose();
     super.dispose();
   }
 
   Future<void> _init() async {
+    if (!_mode.isParentMode) {
+      _safeSetState(() {
+        _blockedMessage = '请先切换到家长模式后再上传照片和视频';
+        _loading = false;
+      });
+      return;
+    }
     if (!Platform.isAndroid) {
       _safeSetState(() {
         _blockedMessage = '自定义媒体浏览器第一版仅支持 Android';
@@ -97,6 +127,8 @@ class _BabyCloudMediaPickerPageState extends State<BabyCloudMediaPickerPage> {
       return;
     }
 
+    _pendingRestoreAssetId =
+        _storage.settingsBox.get(_lastAssetIdKey) as String?;
     final babyId = _user.currentBaby.value?.id;
     if (babyId != null) {
       _remoteHashes.addAll(
@@ -105,6 +137,7 @@ class _BabyCloudMediaPickerPageState extends State<BabyCloudMediaPickerPage> {
     }
     _path = paths.first;
     await _loadMore();
+    await _restoreLastPositionIfNeeded();
     _safeSetState(() => _loading = false);
   }
 
@@ -115,6 +148,11 @@ class _BabyCloudMediaPickerPageState extends State<BabyCloudMediaPickerPage> {
     _page++;
     _assets.addAll(next);
     _assets.sort((a, b) => b.createDateTime.compareTo(a.createDateTime));
+    for (final asset in next) {
+      if (_selected.contains(asset.id)) {
+        _selectedAssetsById[asset.id] = asset;
+      }
+    }
     _hasMore = next.length == _pageSize;
     _loadingMore = false;
     _safeSetState(() {});
@@ -126,6 +164,45 @@ class _BabyCloudMediaPickerPageState extends State<BabyCloudMediaPickerPage> {
       Future<void>.delayed(const Duration(milliseconds: 200))
           .then((_) => _warmUploadedMarks(visibleWarmups)),
     );
+  }
+
+  Future<void> _restoreLastPositionIfNeeded() async {
+    final targetId = _pendingRestoreAssetId;
+    if (targetId == null || targetId.isEmpty || _restoringScroll) return;
+    _restoringScroll = true;
+    try {
+      var index = _assets.indexWhere((asset) => asset.id == targetId);
+      while (index < 0 && _hasMore) {
+        await _loadMore();
+        index = _assets.indexWhere((asset) => asset.id == targetId);
+      }
+      if (index >= 0 && mounted && !_closing) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _jumpToAssetIndex(index);
+        });
+      }
+      if (index >= 0 || !_hasMore) {
+        _pendingRestoreAssetId = null;
+      }
+    } finally {
+      _restoringScroll = false;
+    }
+  }
+
+  void _jumpToAssetIndex(int index) {
+    if (!_scrollController.hasClients) return;
+    final width = MediaQuery.sizeOf(context).width;
+    final tileWidth =
+        (width - (_gridSpacing * 2) - (_gridSpacing * (_crossAxisCount - 1))) /
+            _crossAxisCount;
+    final row = index ~/ _crossAxisCount;
+    final offset = row * (tileWidth + _gridSpacing);
+    final maxOffset = _scrollController.position.maxScrollExtent;
+    _scrollController.jumpTo(offset.clamp(0.0, maxOffset));
+  }
+
+  Future<void> _rememberAssetPosition(AssetEntity asset) {
+    return _storage.settingsBox.put(_lastAssetIdKey, asset.id);
   }
 
   Future<void> _warmUploadedMarks(List<AssetEntity> assets) async {
@@ -205,7 +282,7 @@ class _BabyCloudMediaPickerPageState extends State<BabyCloudMediaPickerPage> {
               }
               _queueSelected();
             },
-            child: Text('上传 ${_selected.length}'),
+            child: Text('${widget.returnSelectionOnly ? '完成' : '上传'} ${_selected.length}'),
           ),
         ],
       ),
@@ -217,6 +294,7 @@ class _BabyCloudMediaPickerPageState extends State<BabyCloudMediaPickerPage> {
           return false;
         },
         child: GridView.builder(
+          controller: _scrollController,
           padding: EdgeInsets.all(4.w),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 4,
@@ -248,6 +326,8 @@ class _BabyCloudMediaPickerPageState extends State<BabyCloudMediaPickerPage> {
   }
 
   void _openPreview(int index) {
+    final asset = _assets[index];
+    unawaited(_rememberAssetPosition(asset));
     Get.to(
       () => _AssetPreviewPage(
         assets: _assets,
@@ -276,7 +356,7 @@ class _BabyCloudMediaPickerPageState extends State<BabyCloudMediaPickerPage> {
     }
 
     final selectedAssets =
-        _assets.where((asset) => _selected.contains(asset.id)).toList();
+        _orderedSelectedAssets();
     if (selectedAssets.isEmpty) {
       ToastUtils.showInfo('请先选择要上传的照片或视频');
       return;
@@ -292,6 +372,7 @@ class _BabyCloudMediaPickerPageState extends State<BabyCloudMediaPickerPage> {
         duplicateCount++;
         _uploadedAssetIds.add(asset.id);
         _selected.remove(asset.id);
+        _selectedAssetsById.remove(asset.id);
       } else {
         readyAssets.add(asset);
       }
@@ -305,10 +386,15 @@ class _BabyCloudMediaPickerPageState extends State<BabyCloudMediaPickerPage> {
       return;
     }
     _closing = true;
+    if (widget.returnSelectionOnly) {
+      Get.back(result: readyAssets);
+      return;
+    }
     Get.off(() => BabyCloudEntryEditPage(assets: readyAssets));
   }
 
   Future<void> _toggleAssetSelection(AssetEntity asset) async {
+    unawaited(_rememberAssetPosition(asset));
     if (_uploadedAssetIds.contains(asset.id)) {
       ToastUtils.showInfo('已在当前宝宝的当前数据源中存在');
       return;
@@ -318,7 +404,10 @@ class _BabyCloudMediaPickerPageState extends State<BabyCloudMediaPickerPage> {
       return;
     }
     if (_selected.contains(asset.id)) {
-      _safeSetState(() => _selected.remove(asset.id));
+      _safeSetState(() {
+        _selected.remove(asset.id);
+        _selectedAssetsById.remove(asset.id);
+      });
       return;
     }
 
@@ -329,7 +418,26 @@ class _BabyCloudMediaPickerPageState extends State<BabyCloudMediaPickerPage> {
       ToastUtils.showInfo('已在当前宝宝的当前数据源中存在');
       return;
     }
-    _safeSetState(() => _selected.add(asset.id));
+    _safeSetState(() {
+      _selected.add(asset.id);
+      _selectedAssetsById[asset.id] = asset;
+    });
+  }
+
+  List<AssetEntity> _orderedSelectedAssets() {
+    final result = <AssetEntity>[];
+    final seen = <String>{};
+    for (final asset in _assets) {
+      if (_selected.contains(asset.id) && seen.add(asset.id)) {
+        result.add(asset);
+      }
+    }
+    for (final entry in _selectedAssetsById.entries) {
+      if (_selected.contains(entry.key) && seen.add(entry.key)) {
+        result.add(entry.value);
+      }
+    }
+    return result;
   }
 
   Future<String> _hashFile(File file) async {

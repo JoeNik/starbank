@@ -55,7 +55,13 @@ class _BabyCloudSourcePageState extends State<BabyCloudSourcePage> {
           IconButton(
             icon: const Icon(Icons.add),
             tooltip: '添加数据源',
-            onPressed: () => _showSourceEditor(),
+            onPressed: () {
+              if (!_mode.isParentMode) {
+                ToastUtils.showWarning('请先切换到家长模式后再添加数据源');
+                return;
+              }
+              _showSourceEditor();
+            },
           ),
         ],
       ),
@@ -92,7 +98,13 @@ class _BabyCloudSourcePageState extends State<BabyCloudSourcePage> {
                   ),
                   SizedBox(height: 18.h),
                   ElevatedButton.icon(
-                    onPressed: () => _showSourceEditor(),
+                    onPressed: () {
+                      if (!_mode.isParentMode) {
+                        ToastUtils.showWarning('请先切换到家长模式后再添加数据源');
+                        return;
+                      }
+                      _showSourceEditor();
+                    },
                     icon: const Icon(Icons.add),
                     label: const Text('添加数据源'),
                   ),
@@ -116,12 +128,22 @@ class _BabyCloudSourcePageState extends State<BabyCloudSourcePage> {
                   ? (mode) => _changeSourceMode(source, mode)
                   : null,
               onSelect: () async {
+                if (!_mode.isParentMode) {
+                  ToastUtils.showWarning('请先切换到家长模式后再切换数据源');
+                  return;
+                }
                 await _cloud.selectSource(source.id);
                 ToastUtils.showSuccess('已切换到 ${source.name}');
                 await _promptSyncAfterSwitch();
               },
               onCheck: () => _manualCheckSource(source),
-              onEdit: () => _showSourceEditor(source: source),
+              onEdit: () {
+                if (!_mode.isParentMode) {
+                  ToastUtils.showWarning('请先切换到家长模式后再编辑数据源');
+                  return;
+                }
+                _showSourceEditor(source: source);
+              },
               onDirectory: () => _openRootPickerForSource(source),
             );
           },
@@ -131,6 +153,10 @@ class _BabyCloudSourcePageState extends State<BabyCloudSourcePage> {
   }
 
   Future<void> _manualCheckSource(BabyCloudSource source) async {
+    if (!_mode.isParentMode) {
+      ToastUtils.showWarning('请先切换到家长模式后再检测数据源');
+      return;
+    }
     if (_checkingIds.contains(source.id)) {
       ToastUtils.showInfo('正在检测 ${source.name}，请稍等');
       return;
@@ -184,6 +210,10 @@ class _BabyCloudSourcePageState extends State<BabyCloudSourcePage> {
   }
 
   Future<void> _showSourceEditor({BabyCloudSource? source}) async {
+    if (!_mode.isParentMode) {
+      ToastUtils.showWarning('请先切换到家长模式后再修改数据源');
+      return;
+    }
     final item = await Navigator.of(context).push<BabyCloudSource>(
       MaterialPageRoute(
         fullscreenDialog: true,
@@ -214,6 +244,10 @@ class _BabyCloudSourcePageState extends State<BabyCloudSourcePage> {
     BabyCloudSource source,
     String mode,
   ) async {
+    if (!_mode.isParentMode) {
+      ToastUtils.showWarning('请先切换到家长模式后再切换检测方式');
+      return;
+    }
     final normalizedMode = _normalizeWebDavEndpointMode(mode);
     if (!source.isWebDav ||
         _normalizeWebDavEndpointMode(source.webDavEndpointMode) ==

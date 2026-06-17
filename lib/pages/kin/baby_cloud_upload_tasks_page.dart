@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 
+import '../../controllers/app_mode_controller.dart';
 import '../../models/baby_cloud_upload_task.dart';
 import '../../services/baby_cloud_service.dart';
 import '../../widgets/toast_utils.dart';
@@ -16,6 +17,7 @@ class BabyCloudUploadTasksPage extends StatefulWidget {
 
 class _BabyCloudUploadTasksPageState extends State<BabyCloudUploadTasksPage> {
   final _selectedIds = <String>{};
+  final _mode = Get.find<AppModeController>();
 
   BabyCloudService get _cloud => Get.find<BabyCloudService>();
 
@@ -35,19 +37,21 @@ class _BabyCloudUploadTasksPageState extends State<BabyCloudUploadTasksPage> {
               IconButton(
                 tooltip: '全选',
                 icon: const Icon(Icons.select_all),
-                onPressed: () => _selectAll(tasks),
+                onPressed: _mode.isParentMode ? () => _selectAll(tasks) : null,
               ),
             IconButton(
               tooltip: '清理已成功',
               icon: const Icon(Icons.done_all_outlined),
-              onPressed: tasks.any((task) => task.status == 'completed')
+              onPressed: _mode.isParentMode &&
+                      tasks.any((task) => task.status == 'completed')
                   ? _clearSuccessful
                   : null,
             ),
             IconButton(
               tooltip: '清理失败',
               icon: const Icon(Icons.error_outline),
-              onPressed: tasks.any((task) => task.status == 'failed')
+              onPressed: _mode.isParentMode &&
+                      tasks.any((task) => task.status == 'failed')
                   ? _clearFailed
                   : null,
             ),
@@ -91,6 +95,7 @@ class _BabyCloudUploadTasksPageState extends State<BabyCloudUploadTasksPage> {
           canPauseSelected: _selectedTasks(tasks, selectedIds).any(
             (task) => task.status == 'queued' || task.status == 'running',
           ),
+          enabled: _mode.isParentMode,
           onSelectAll: () => _selectAll(tasks),
           onInvert: () => _invertSelection(tasks),
           onRetryFailed: () => _retryFailed(tasks),
@@ -108,6 +113,7 @@ class _BabyCloudUploadTasksPageState extends State<BabyCloudUploadTasksPage> {
                 task: task,
                 selected: selectedIds.contains(task.id),
                 selectionActive: selectedIds.isNotEmpty,
+                editable: _mode.isParentMode,
                 onSelectedChanged: (_) => _toggleSelection(task.id),
               );
             },
@@ -125,6 +131,10 @@ class _BabyCloudUploadTasksPageState extends State<BabyCloudUploadTasksPage> {
   }
 
   void _toggleSelection(String taskId) {
+    if (!_mode.isParentMode) {
+      ToastUtils.showWarning('请先切换到家长模式');
+      return;
+    }
     setState(() {
       if (!_selectedIds.add(taskId)) {
         _selectedIds.remove(taskId);
@@ -133,6 +143,10 @@ class _BabyCloudUploadTasksPageState extends State<BabyCloudUploadTasksPage> {
   }
 
   void _selectAll(List<BabyCloudUploadTask> tasks) {
+    if (!_mode.isParentMode) {
+      ToastUtils.showWarning('请先切换到家长模式');
+      return;
+    }
     setState(() {
       _selectedIds
         ..clear()
@@ -141,6 +155,10 @@ class _BabyCloudUploadTasksPageState extends State<BabyCloudUploadTasksPage> {
   }
 
   void _invertSelection(List<BabyCloudUploadTask> tasks) {
+    if (!_mode.isParentMode) {
+      ToastUtils.showWarning('请先切换到家长模式');
+      return;
+    }
     final ids = tasks.map((task) => task.id).toSet();
     final current = _selectedIds.intersection(ids);
     final inverted = ids.difference(current);
@@ -152,6 +170,10 @@ class _BabyCloudUploadTasksPageState extends State<BabyCloudUploadTasksPage> {
   }
 
   Future<void> _retryFailed(List<BabyCloudUploadTask> tasks) async {
+    if (!_mode.isParentMode) {
+      ToastUtils.showWarning('请先切换到家长模式');
+      return;
+    }
     final failed = tasks.where((task) => task.status == 'failed').toList();
     if (failed.isEmpty) {
       ToastUtils.showInfo('没有失败任务需要重试');
@@ -165,6 +187,10 @@ class _BabyCloudUploadTasksPageState extends State<BabyCloudUploadTasksPage> {
     List<BabyCloudUploadTask> tasks,
     Set<String> selectedIds,
   ) async {
+    if (!_mode.isParentMode) {
+      ToastUtils.showWarning('请先切换到家长模式');
+      return;
+    }
     final selected = _selectedTasks(tasks, selectedIds)
         .where((task) => task.status == 'paused' || task.status == 'failed')
         .toList();
@@ -180,6 +206,10 @@ class _BabyCloudUploadTasksPageState extends State<BabyCloudUploadTasksPage> {
     List<BabyCloudUploadTask> tasks,
     Set<String> selectedIds,
   ) async {
+    if (!_mode.isParentMode) {
+      ToastUtils.showWarning('请先切换到家长模式');
+      return;
+    }
     final selected = _selectedTasks(tasks, selectedIds)
         .where((task) => task.status == 'queued' || task.status == 'running')
         .toList();
@@ -192,6 +222,10 @@ class _BabyCloudUploadTasksPageState extends State<BabyCloudUploadTasksPage> {
   }
 
   Future<void> _clearSuccessful() async {
+    if (!_mode.isParentMode) {
+      ToastUtils.showWarning('请先切换到家长模式');
+      return;
+    }
     final count = await _cloud.clearSuccessfulTasks();
     _pruneSelection();
     if (count == 0) {
@@ -202,6 +236,10 @@ class _BabyCloudUploadTasksPageState extends State<BabyCloudUploadTasksPage> {
   }
 
   Future<void> _clearFailed() async {
+    if (!_mode.isParentMode) {
+      ToastUtils.showWarning('请先切换到家长模式');
+      return;
+    }
     final count = await _cloud.clearFailedTasks();
     _pruneSelection();
     if (count == 0) {
@@ -225,6 +263,7 @@ class _BulkActionBar extends StatelessWidget {
     required this.hasFailed,
     required this.canStartSelected,
     required this.canPauseSelected,
+    required this.enabled,
     required this.onSelectAll,
     required this.onInvert,
     required this.onRetryFailed,
@@ -237,6 +276,7 @@ class _BulkActionBar extends StatelessWidget {
   final bool hasFailed;
   final bool canStartSelected;
   final bool canPauseSelected;
+  final bool enabled;
   final VoidCallback onSelectAll;
   final VoidCallback onInvert;
   final VoidCallback onRetryFailed;
@@ -268,27 +308,27 @@ class _BulkActionBar extends StatelessWidget {
             _barButton(
               tooltip: '全选',
               icon: Icons.select_all,
-              onPressed: onSelectAll,
+              onPressed: enabled ? onSelectAll : null,
             ),
             _barButton(
               tooltip: '反选',
               icon: Icons.flip_to_back_outlined,
-              onPressed: onInvert,
+              onPressed: enabled ? onInvert : null,
             ),
             _barButton(
               tooltip: '重试失败',
               icon: Icons.refresh,
-              onPressed: hasFailed ? onRetryFailed : null,
+              onPressed: enabled && hasFailed ? onRetryFailed : null,
             ),
             _barButton(
               tooltip: '开始选中',
               icon: Icons.play_circle_outline,
-              onPressed: canStartSelected ? onStartSelected : null,
+              onPressed: enabled && canStartSelected ? onStartSelected : null,
             ),
             _barButton(
               tooltip: '暂停选中',
               icon: Icons.pause_circle_outline,
-              onPressed: canPauseSelected ? onPauseSelected : null,
+              onPressed: enabled && canPauseSelected ? onPauseSelected : null,
             ),
           ],
         ),
@@ -320,12 +360,14 @@ class _TaskTile extends StatelessWidget {
     required this.task,
     required this.selected,
     required this.selectionActive,
+    required this.editable,
     required this.onSelectedChanged,
   });
 
   final BabyCloudUploadTask task;
   final bool selected;
   final bool selectionActive;
+  final bool editable;
   final ValueChanged<bool?> onSelectedChanged;
 
   @override
@@ -341,13 +383,17 @@ class _TaskTile extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(10.r),
         onTap: () {
+          if (!editable) {
+            if (visibleError != null) _showError(context, visibleError);
+            return;
+          }
           if (selectionActive) {
             onSelectedChanged(!selected);
             return;
           }
           if (visibleError != null) _showError(context, visibleError);
         },
-        onLongPress: () => onSelectedChanged(!selected),
+        onLongPress: editable ? () => onSelectedChanged(!selected) : null,
         child: Container(
           padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 9.h),
           decoration: BoxDecoration(
@@ -362,7 +408,7 @@ class _TaskTile extends StatelessWidget {
               Checkbox(
                 value: selected,
                 visualDensity: VisualDensity.compact,
-                onChanged: onSelectedChanged,
+                onChanged: editable ? onSelectedChanged : null,
               ),
               Container(
                 width: 38.w,
@@ -454,10 +500,11 @@ class _TaskTile extends StatelessWidget {
                     : task.status == 'failed'
                         ? Icons.refresh
                         : Icons.pause_circle_outline,
-                enabled: task.status == 'running' ||
-                    task.status == 'queued' ||
-                    task.status == 'paused' ||
-                    task.status == 'failed',
+                enabled: editable &&
+                    (task.status == 'running' ||
+                        task.status == 'queued' ||
+                        task.status == 'paused' ||
+                        task.status == 'failed'),
                 onPressed: () {
                   if (task.status == 'paused' || task.status == 'failed') {
                     cloud.resumeTask(task);
@@ -469,8 +516,8 @@ class _TaskTile extends StatelessWidget {
               _actionButton(
                 tooltip: '清理任务',
                 icon: Icons.delete_outline,
-                enabled: canDelete,
-                disabledTooltip: '正在进行的任务不能清理',
+                enabled: editable && canDelete,
+                disabledTooltip: editable ? '正在进行的任务不能清理' : '儿童模式不可操作',
                 onPressed: () => cloud.deleteTask(task),
               ),
             ],

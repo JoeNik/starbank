@@ -10,6 +10,7 @@ import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:photo_manager/photo_manager.dart';
 
+import '../../controllers/app_mode_controller.dart';
 import '../../controllers/user_controller.dart';
 import '../../models/baby.dart';
 import '../../models/baby_cloud_media.dart';
@@ -17,6 +18,7 @@ import '../../services/baby_cloud_service.dart';
 import '../../services/storage_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/toast_utils.dart';
+import 'baby_cloud_media_picker_page.dart';
 
 class BabyCloudEntryEditPage extends StatefulWidget {
   const BabyCloudEntryEditPage({
@@ -56,11 +58,13 @@ class _BabyCloudEntryEditPageState extends State<BabyCloudEntryEditPage> {
   ];
 
   final _cloud = Get.find<BabyCloudService>();
+  final _mode = Get.find<AppModeController>();
   final _user = Get.find<UserController>();
   final _storage = Get.find<StorageService>();
   final _text = TextEditingController();
   final _tagInput = TextEditingController();
   final _location = TextEditingController();
+  final _draftAssets = <AssetEntity>[];
   final _tags = <String>[];
 
   DateTime _recordTime = DateTime.now();
@@ -73,13 +77,14 @@ class _BabyCloudEntryEditPageState extends State<BabyCloudEntryEditPage> {
   bool get _isDiary =>
       (_isEditing && widget.editingItems.every((item) => item.isDiary)) ||
       (widget.initialDiary &&
-          widget.assets.isEmpty &&
+          _draftAssets.isEmpty &&
           widget.audioPath == null &&
           widget.localMediaPath == null);
 
   @override
   void initState() {
     super.initState();
+    _draftAssets.addAll(widget.assets);
     _actorRole = _defaultActorRole;
     if (_isEditing) {
       final first = widget.editingItems.first;
@@ -104,6 +109,21 @@ class _BabyCloudEntryEditPageState extends State<BabyCloudEntryEditPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_mode.isParentMode) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('编辑动态')),
+        body: Center(
+          child: Padding(
+            padding: EdgeInsets.all(24.w),
+            child: Text(
+              '请先切换到家长模式后再编辑亲宝宝动态',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 15.sp, color: Colors.grey.shade700),
+            ),
+          ),
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -310,22 +330,44 @@ class _BabyCloudEntryEditPageState extends State<BabyCloudEntryEditPage> {
       height: 92.h,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        itemCount: widget.assets.length + 1,
+        itemCount: _draftAssets.length + 1,
         separatorBuilder: (_, __) => SizedBox(width: 10.w),
         itemBuilder: (_, index) {
-          if (index == widget.assets.length) {
-            return Container(
-              width: 92.h,
-              height: 92.h,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF3F3F3),
-                borderRadius: BorderRadius.circular(8.r),
-              ),
-              child: Icon(Icons.camera_alt, color: Colors.grey.shade400),
-            );
+          if (index == _draftAssets.length) {
+            return _buildAddAssetTile();
           }
-          return _AssetPreview(asset: widget.assets[index]);
+          return _AssetPreview(asset: _draftAssets[index]);
         },
+      ),
+    );
+  }
+
+  Widget _buildAddAssetTile() {
+    return Material(
+      color: const Color(0xFFF3F3F3),
+      borderRadius: BorderRadius.circular(8.r),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8.r),
+        onTap: _saving ? null : _pickMoreAssets,
+        child: SizedBox(
+          width: 92.h,
+          height: 92.h,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.add_a_photo_outlined, color: Colors.grey.shade500),
+              SizedBox(height: 6.h),
+              Text(
+                '继续添加',
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 11.sp,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -525,6 +567,21 @@ class _BabyCloudEntryEditPageState extends State<BabyCloudEntryEditPage> {
     });
   }
 
+  Future<void> _pickMoreAssets() async {
+    final result = await Get.to<List<AssetEntity>>(
+      () => BabyCloudMediaPickerPage(
+        initialAssets: _draftAssets,
+        returnSelectionOnly: true,
+      ),
+    );
+    if (!mounted || result == null) return;
+    setState(() {
+      _draftAssets
+        ..clear()
+        ..addAll(result);
+    });
+  }
+
   Future<void> _save() async {
     final baby = _user.currentBaby.value;
     if (baby == null) {
@@ -534,6 +591,13 @@ class _BabyCloudEntryEditPageState extends State<BabyCloudEntryEditPage> {
     final text = _text.text.trim();
     if (_isDiary && text.isEmpty) {
       ToastUtils.showInfo('先写一点日记内容');
+      return;
+    }
+    if (!_isDiary &&
+        widget.audioPath == null &&
+        widget.localMediaPath == null &&
+        _draftAssets.isEmpty) {
+      ToastUtils.showInfo('请先选择照片或视频');
       return;
     }
     setState(() => _saving = true);
@@ -691,7 +755,7 @@ class _BabyCloudEntryEditPageState extends State<BabyCloudEntryEditPage> {
     required String? locationName,
     required String? actorRole,
   }) async {
-    for (final asset in widget.assets) {
+    for (final asset in _draftAssets) {
       final file = await asset.file;
       if (file == null || !await file.exists()) continue;
       final name = asset.title ?? file.uri.pathSegments.last;
@@ -745,8 +809,8 @@ class _BabyCloudEntryEditPageState extends State<BabyCloudEntryEditPage> {
   Future<String?> _saveLocalThumbnail(AssetEntity asset, String hash) async {
     try {
       final bytes = await asset.thumbnailDataWithSize(
-        const ThumbnailSize.square(520),
-        quality: 84,
+        const ThumbnailSize.square(360),
+        quality: 62,
       );
       if (bytes == null || bytes.isEmpty) return null;
       final base = await getApplicationDocumentsDirectory();
@@ -754,7 +818,7 @@ class _BabyCloudEntryEditPageState extends State<BabyCloudEntryEditPage> {
           '${base.path}${Platform.pathSeparator}baby_cloud_thumbnails');
       await dir.create(recursive: true);
       final file = File(
-          '${dir.path}${Platform.pathSeparator}${_safeFileName(hash)}.jpg');
+          '${dir.path}${Platform.pathSeparator}${_safeFileName(hash)}_360_q62.jpg');
       await file.writeAsBytes(bytes, flush: true);
       return file.path;
     } catch (_) {

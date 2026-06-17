@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 
+import '../../controllers/app_mode_controller.dart';
 import '../../controllers/user_controller.dart';
 import '../../models/baby_cloud_entry.dart';
 import '../../models/baby_cloud_media.dart';
@@ -32,6 +33,7 @@ class BabyCloudPage extends StatefulWidget {
 class _BabyCloudPageState extends State<BabyCloudPage> {
   final _user = Get.find<UserController>();
   final _cloud = Get.find<BabyCloudService>();
+  final _mode = Get.find<AppModeController>();
 
   @override
   void initState() {
@@ -105,17 +107,32 @@ class _BabyCloudPageState extends State<BabyCloudPage> {
           IconButton(
             tooltip: '数据源',
             icon: const Icon(Icons.storage_outlined),
-            onPressed: () => Get.to(() => const BabyCloudSourcePage()),
+            onPressed: () {
+              if (!_ensureParentMode('请先切换到家长模式后再管理亲宝宝数据源')) {
+                return;
+              }
+              Get.to(() => const BabyCloudSourcePage());
+            },
           ),
           IconButton(
             tooltip: '回收站',
             icon: const Icon(Icons.delete_outline),
-            onPressed: () => Get.to(() => const BabyCloudRecycleBinPage()),
+            onPressed: () {
+              if (!_ensureParentMode('请先切换到家长模式后再管理回收站')) {
+                return;
+              }
+              Get.to(() => const BabyCloudRecycleBinPage());
+            },
           ),
           IconButton(
             tooltip: '上传',
             icon: const Icon(Icons.add_a_photo),
-            onPressed: _showUploadMenu,
+            onPressed: () {
+              if (!_ensureParentMode('请先切换到家长模式后再上传照片和视频')) {
+                return;
+              }
+              _showUploadMenu();
+            },
           ),
         ],
       ),
@@ -200,7 +217,12 @@ class _BabyCloudPageState extends State<BabyCloudPage> {
         return Padding(
           padding: EdgeInsets.symmetric(horizontal: 16.w),
           child: OutlinedButton.icon(
-            onPressed: () => Get.to(() => const BabyCloudSourcePage()),
+            onPressed: () {
+              if (!_ensureParentMode('请先切换到家长模式后再配置亲宝宝数据源')) {
+                return;
+              }
+              Get.to(() => const BabyCloudSourcePage());
+            },
             icon: const Icon(Icons.add),
             label: const Text('配置亲宝宝数据源'),
           ),
@@ -230,6 +252,9 @@ class _BabyCloudPageState extends State<BabyCloudPage> {
                     .toList(),
                 onChanged: (id) async {
                   if (id == null) return;
+                  if (!_ensureParentMode('请先切换到家长模式后再切换数据源')) {
+                    return;
+                  }
                   await _cloud.selectSource(id);
                   await _syncCurrent();
                 },
@@ -639,7 +664,12 @@ class _BabyCloudPageState extends State<BabyCloudPage> {
             Text(text, style: TextStyle(color: Colors.grey.shade700)),
             SizedBox(height: 16.h),
             ElevatedButton.icon(
-              onPressed: _showUploadMenu,
+              onPressed: () {
+                if (!_ensureParentMode('请先切换到家长模式后再上传照片和视频')) {
+                  return;
+                }
+                _showUploadMenu();
+              },
               icon: const Icon(Icons.add_a_photo),
               label: const Text('上传照片/视频'),
             ),
@@ -690,6 +720,9 @@ class _BabyCloudPageState extends State<BabyCloudPage> {
   }
 
   void _showUploadMenu() {
+    if (!_ensureParentMode('请先切换到家长模式后再上传照片和视频')) {
+      return;
+    }
     if (_user.currentBaby.value == null) {
       ToastUtils.showWarning('请先在主页选择宝宝');
       return;
@@ -769,6 +802,9 @@ class _BabyCloudPageState extends State<BabyCloudPage> {
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () {
+                      if (!_ensureParentMode('请先切换到家长模式后再配置亲宝宝数据源')) {
+                        return;
+                      }
                       Get.back();
                       Get.to(() => const BabyCloudSourcePage());
                     },
@@ -782,6 +818,12 @@ class _BabyCloudPageState extends State<BabyCloudPage> {
         ),
       ),
     );
+  }
+
+  bool _ensureParentMode(String message) {
+    if (_mode.isParentMode) return true;
+    ToastUtils.showWarning(message);
+    return false;
   }
 }
 

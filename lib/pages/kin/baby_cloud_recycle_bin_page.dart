@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 
+import '../../controllers/app_mode_controller.dart';
 import '../../controllers/user_controller.dart';
 import '../../models/baby_cloud_entry.dart';
 import '../../models/baby_cloud_media.dart';
@@ -18,6 +19,7 @@ class BabyCloudRecycleBinPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final cloud = Get.find<BabyCloudService>();
     final babyId = Get.find<UserController>().currentBaby.value?.id;
+    final mode = Get.find<AppModeController>();
     return Scaffold(
       appBar: AppBar(
         title: const Text('亲宝宝回收站'),
@@ -61,6 +63,7 @@ class BabyCloudRecycleBinPage extends StatelessWidget {
                 _EntryRecycleTile(
                   entry: entry,
                   mediaItems: _mediaForEntry(allMedia, entry),
+                  enabled: mode.isParentMode,
                   onRestore: () async {
                     await cloud.restoreEntry(entry);
                     ToastUtils.showSuccess('动态已恢复');
@@ -72,6 +75,7 @@ class BabyCloudRecycleBinPage extends StatelessWidget {
               for (final item in singleFiles)
                 _MediaRecycleTile(
                   item: item,
+                  enabled: mode.isParentMode,
                   onRestore: () async {
                     await cloud.restoreMedia(item);
                     ToastUtils.showSuccess('文件已恢复');
@@ -109,11 +113,13 @@ class _EntryRecycleTile extends StatelessWidget {
   const _EntryRecycleTile({
     required this.entry,
     required this.mediaItems,
+    required this.enabled,
     required this.onRestore,
   });
 
   final BabyCloudEntry entry;
   final List<BabyCloudMedia> mediaItems;
+  final bool enabled;
   final Future<void> Function() onRestore;
 
   @override
@@ -137,13 +143,15 @@ class _EntryRecycleTile extends StatelessWidget {
         trailing: IconButton(
           tooltip: '恢复整条动态',
           icon: const Icon(Icons.restore),
-          onPressed: () async {
-            try {
-              await onRestore();
-            } catch (e) {
-              ToastUtils.showError('恢复失败: $e');
-            }
-          },
+          onPressed: enabled
+              ? () async {
+                  try {
+                    await onRestore();
+                  } catch (e) {
+                    ToastUtils.showError('恢复失败: $e');
+                  }
+                }
+              : () => ToastUtils.showWarning('请先切换到家长模式'),
         ),
       ),
     );
@@ -153,10 +161,12 @@ class _EntryRecycleTile extends StatelessWidget {
 class _MediaRecycleTile extends StatelessWidget {
   const _MediaRecycleTile({
     required this.item,
+    required this.enabled,
     required this.onRestore,
   });
 
   final BabyCloudMedia item;
+  final bool enabled;
   final Future<void> Function() onRestore;
 
   @override
@@ -175,6 +185,10 @@ class _MediaRecycleTile extends StatelessWidget {
           tooltip: '恢复文件',
           icon: const Icon(Icons.restore),
           onPressed: () async {
+            if (!enabled) {
+              ToastUtils.showWarning('请先切换到家长模式');
+              return;
+            }
             try {
               await onRestore();
             } catch (e) {

@@ -7,9 +7,11 @@ import 'package:intl/intl.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../controllers/app_mode_controller.dart';
 import '../../models/baby_cloud_media.dart';
 import '../../services/baby_cloud_service.dart';
 import '../../widgets/baby_cloud_media_thumbnail.dart';
+import '../../widgets/toast_utils.dart';
 
 class BabyCloudMediaDetailPage extends StatefulWidget {
   const BabyCloudMediaDetailPage({
@@ -30,6 +32,7 @@ class _BabyCloudMediaDetailPageState extends State<BabyCloudMediaDetailPage> {
   late PageController _controller;
   late int _index;
   bool _isZoomed = false; // 跟踪是否处于缩放状态
+  final _mode = Get.find<AppModeController>();
 
   @override
   void initState() {
@@ -58,6 +61,10 @@ class _BabyCloudMediaDetailPageState extends State<BabyCloudMediaDetailPage> {
             tooltip: '删除到回收站',
             icon: const Icon(Icons.delete_outline),
             onPressed: () async {
+              if (!_mode.isParentMode) {
+                ToastUtils.showWarning('请先切换到家长模式');
+                return;
+              }
               await Get.find<BabyCloudService>().softDeleteMedia(item);
               Get.back();
             },
@@ -73,45 +80,23 @@ class _BabyCloudMediaDetailPageState extends State<BabyCloudMediaDetailPage> {
               physics: _isZoomed
                   ? const NeverScrollableScrollPhysics() // 缩放时禁用滑动
                   : const PageScrollPhysics(),
-              onPageChanged: (index) => setState(() => _index = index),
+              onPageChanged: (index) => setState(() {
+                _index = index;
+                _isZoomed = false;
+              }),
               itemBuilder: (_, index) {
                 final current = widget.items[index];
                 if (current.isAudio) return _AudioPreview(item: current);
                 if (current.isVideo) return _VideoPreview(item: current);
-                return Center(
-                  child: InteractiveViewer(
-                    minScale: 0.5,
-                    maxScale: 4.0,
-                    onInteractionStart: (details) {
-                      // 当开始交互时，如果是多指操作，禁用 PageView
-                      if (details.pointerCount >= 2) {
-                        setState(() => _isZoomed = true);
-                      }
-                    },
-                    onInteractionUpdate: (details) {
-                      // 持续检测缩放状态
-                      final scale = details.scale;
-                      final shouldDisable = scale != 1.0 || details.pointerCount >= 2;
-                      if (shouldDisable != _isZoomed) {
-                        setState(() => _isZoomed = shouldDisable);
-                      }
-                    },
-                    onInteractionEnd: (details) {
-                      // 交互结束后延迟重新启用 PageView（防止误触）
-                      Future.delayed(const Duration(milliseconds: 300), () {
-                        if (mounted && details.velocity.pixelsPerSecond.distance < 50) {
-                          setState(() => _isZoomed = false);
-                        }
-                      });
-                    },
-                    child: BabyCloudMediaThumbnail(
-                      item: current,
-                      fit: BoxFit.contain,
-                      backgroundColor: Colors.black,
-                      preferOriginal: true,
-                      showVideoBadge: false,
-                    ),
-                  ),
+                return _ZoomableImagePreview(
+                  key: ValueKey(current.id),
+                  item: current,
+                  onZoomChanged: (zoomed) {
+                    if (!mounted || index != _index || _isZoomed == zoomed) {
+                      return;
+                    }
+                    setState(() => _isZoomed = zoomed);
+                  },
                 );
               },
             ),
@@ -138,6 +123,84 @@ class _BabyCloudMediaDetailPageState extends State<BabyCloudMediaDetailPage> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ZoomableImagePreview extends StatefulWidget {
+  const _ZoomableImagePreview({
+    super.key,
+    required this.item,
+    required this.onZoomChanged,
+  });
+
+  final BabyCloudMedia item;
+  final ValueChanged<bool> onZoomChanged;
+
+  @override
+  State<_ZoomableImagePreview> createState() => _ZoomableImagePreviewState();
+}
+
+class _ZoomableImagePreviewState extends State<_ZoomableImagePreview> {
+  final TransformationController _transformationController =
+      TransformationController();
+  bool _gestureLockActive = false;
+  bool _pageLockActive = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _transformationController.addListener(_syncPageLockState);
+  }
+
+  @override
+  void dispose() {
+    _transformationController.removeListener(_syncPageLockState);
+    if (_pageLockActive) {
+      widget.onZoomChanged(false);
+    }
+    _transformationController.dispose();
+    super.dispose();
+  }
+
+  void _syncPageLockState() {
+    final scale = _transformationController.value.getMaxScaleOnAxis();
+    final shouldLock = _gestureLockActive || scale > 1.01;
+    if (shouldLock == _pageLockActive) return;
+    _pageLockActive = shouldLock;
+    widget.onZoomChanged(shouldLock);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return InteractiveViewer(
+          transformationController: _transformationController,
+          minScale: 1,
+          maxScale: 4,
+          onInteractionStart: (details) {
+            if (details.pointerCount < 2) return;
+            _gestureLockActive = true;
+            _syncPageLockState();
+          },
+          onInteractionEnd: (_) {
+            _gestureLockActive = false;
+            _syncPageLockState();
+          },
+          child: SizedBox(
+            width: constraints.maxWidth,
+            height: constraints.maxHeight,
+            child: BabyCloudMediaThumbnail(
+              item: widget.item,
+              fit: BoxFit.contain,
+              backgroundColor: Colors.black,
+              preferOriginal: true,
+              showVideoBadge: false,
+            ),
+          ),
+        );
+      },
     );
   }
 }
