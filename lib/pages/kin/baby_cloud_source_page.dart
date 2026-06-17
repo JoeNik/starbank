@@ -10,6 +10,23 @@ import '../../services/baby_cloud_service.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/toast_utils.dart';
 
+String _normalizeWebDavEndpointMode(String? mode) {
+  final value = mode?.trim().toLowerCase();
+  if (value == 'lan' || value == 'external') return value!;
+  return 'auto';
+}
+
+String _endpointModeLabel(String mode) {
+  switch (_normalizeWebDavEndpointMode(mode)) {
+    case 'lan':
+      return '固定内网';
+    case 'external':
+      return '固定外网';
+    default:
+      return '自动检测';
+  }
+}
+
 class BabyCloudSourcePage extends StatefulWidget {
   const BabyCloudSourcePage({super.key});
 
@@ -95,6 +112,9 @@ class _BabyCloudSourcePageState extends State<BabyCloudSourcePage> {
               source: source,
               selected: selected,
               checking: _checkingIds.contains(source.id),
+              onModeChanged: source.isWebDav
+                  ? (mode) => _changeSourceMode(source, mode)
+                  : null,
               onSelect: () async {
                 await _cloud.selectSource(source.id);
                 ToastUtils.showSuccess('已切换到 ${source.name}');
@@ -190,11 +210,39 @@ class _BabyCloudSourcePageState extends State<BabyCloudSourcePage> {
     await _manualCheckSource(item);
   }
 
+  Future<void> _changeSourceMode(
+    BabyCloudSource source,
+    String mode,
+  ) async {
+    final normalizedMode = _normalizeWebDavEndpointMode(mode);
+    if (!source.isWebDav ||
+        _normalizeWebDavEndpointMode(source.webDavEndpointMode) ==
+            normalizedMode) {
+      return;
+    }
+    source
+      ..webDavEndpointMode = normalizedMode
+      ..activeWebDavUrl = null
+      ..activeWebDavEndpoint = 'none'
+      ..status = 'notInitialized';
+    await _cloud.saveSource(source);
+    if (!mounted) return;
+    ToastUtils.showSuccess('已切换为${_endpointModeLabel(normalizedMode)}，正在重新检测');
+    await _manualCheckSource(source);
+  }
+
   bool _hasRequiredSourceInput(BabyCloudSource source) {
     if (source.isAliyunDrive) {
       return source.aliyunDriveClientId?.trim().isNotEmpty == true ||
           source.aliyunDriveAccessToken?.trim().isNotEmpty == true ||
           source.aliyunDriveRefreshToken?.trim().isNotEmpty == true;
+    }
+    final mode = _normalizeWebDavEndpointMode(source.webDavEndpointMode);
+    if (mode == 'lan') {
+      return source.webDavLanUrl?.trim().isNotEmpty == true;
+    }
+    if (mode == 'external') {
+      return source.webDavUrl?.trim().isNotEmpty == true;
     }
     return (source.webDavUrl?.trim().isNotEmpty ?? false) ||
         (source.webDavLanUrl?.trim().isNotEmpty ?? false);
@@ -326,6 +374,7 @@ class _BabyCloudSourceEditorPageState
   final _aliyunFocus = FocusNode();
   final _rootFocus = FocusNode();
   bool _aliyunAuthorizing = false;
+  late String _webDavEndpointMode;
 
   @override
   void initState() {
@@ -333,6 +382,9 @@ class _BabyCloudSourceEditorPageState
     final source = widget.source;
     _sourceId = source?.id ?? DateTime.now().microsecondsSinceEpoch.toString();
     _type = source?.type ?? 'webdav';
+    _webDavEndpointMode = _normalizeWebDavEndpointMode(
+      source?.webDavEndpointMode,
+    );
     _name = TextEditingController(text: source?.name ?? '亲宝宝 WebDAV');
     _externalUrl = TextEditingController(text: source?.webDavUrl ?? '');
     _lanUrl = TextEditingController(text: source?.webDavLanUrl ?? '');
@@ -514,6 +566,55 @@ class _BabyCloudSourceEditorPageState
 
   List<Widget> _buildWebDavFields() {
     return [
+      Text(
+        '连接模式',
+        style: TextStyle(
+          fontSize: 12.sp,
+          color: Colors.grey.shade700,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      SizedBox(height: 8.h),
+      SegmentedButton<String>(
+        segments: const [
+          ButtonSegment<String>(
+            value: 'auto',
+            label: Text('自动'),
+            icon: Icon(Icons.auto_awesome_outlined),
+          ),
+          ButtonSegment<String>(
+            value: 'lan',
+            label: Text('内网'),
+            icon: Icon(Icons.wifi),
+          ),
+          ButtonSegment<String>(
+            value: 'external',
+            label: Text('外网'),
+            icon: Icon(Icons.public),
+          ),
+        ],
+        selected: {_webDavEndpointMode},
+        onSelectionChanged: (selection) {
+          if (selection.isEmpty) return;
+          setState(() {
+            _webDavEndpointMode = selection.first;
+          });
+        },
+      ),
+      SizedBox(height: 8.h),
+      Text(
+        _webDavEndpointMode == 'auto'
+            ? '默认自动检测当前网络环境，优先选择更合适的地址。'
+            : _webDavEndpointMode == 'lan'
+                ? '手动固定走内网地址，适合家里 WiFi 测试不稳定时使用。'
+                : '手动固定走外网地址，不再自动尝试内网。',
+        style: TextStyle(
+          fontSize: 11.sp,
+          color: Colors.grey.shade600,
+          height: 1.35,
+        ),
+      ),
+      SizedBox(height: 12.h),
       TextField(
         controller: _externalUrl,
         focusNode: _externalFocus,
@@ -895,7 +996,11 @@ class _BabyCloudSourceEditorPageState
       ToastUtils.showWarning(
         item.isAliyunDrive
             ? '请先填写阿里云盘 Client ID 或可用令牌'
-            : '请至少填写外网或内网 WebDAV 地址',
+            : item.webDavEndpointMode == 'lan'
+                ? '固定内网模式下请填写内网 WebDAV 地址'
+                : item.webDavEndpointMode == 'external'
+                    ? '固定外网模式下请填写外网 WebDAV 地址'
+                    : '请至少填写外网或内网 WebDAV 地址',
       );
       return;
     }
@@ -920,6 +1025,7 @@ class _BabyCloudSourceEditorPageState
       webDavLanUrl: _type == 'webdav' ? _lanUrl.text.trim() : null,
       webDavUsername: _type == 'webdav' ? _user.text.trim() : null,
       webDavPassword: _type == 'webdav' ? _password.text : null,
+      webDavEndpointMode: _type == 'webdav' ? _webDavEndpointMode : 'auto',
       aliyunDriveClientId:
           _type == 'aliyunDrive' ? _aliyunClientId.text.trim() : null,
       aliyunDriveClientSecret:
@@ -967,6 +1073,13 @@ class _BabyCloudSourceEditorPageState
           source.aliyunDriveAccessToken?.trim().isNotEmpty == true ||
           source.aliyunDriveRefreshToken?.trim().isNotEmpty == true;
     }
+    final mode = _normalizeWebDavEndpointMode(source.webDavEndpointMode);
+    if (mode == 'lan') {
+      return source.webDavLanUrl?.trim().isNotEmpty == true;
+    }
+    if (mode == 'external') {
+      return source.webDavUrl?.trim().isNotEmpty == true;
+    }
     return (source.webDavUrl?.trim().isNotEmpty ?? false) ||
         (source.webDavLanUrl?.trim().isNotEmpty ?? false);
   }
@@ -977,6 +1090,7 @@ class _SourceCard extends StatelessWidget {
     required this.source,
     required this.selected,
     required this.checking,
+    required this.onModeChanged,
     required this.onSelect,
     required this.onCheck,
     required this.onEdit,
@@ -986,6 +1100,7 @@ class _SourceCard extends StatelessWidget {
   final BabyCloudSource source;
   final bool selected;
   final bool checking;
+  final ValueChanged<String>? onModeChanged;
   final VoidCallback onSelect;
   final VoidCallback onCheck;
   final VoidCallback onEdit;
@@ -1046,6 +1161,13 @@ class _SourceCard extends StatelessWidget {
                               label: _statusLabel(source.status),
                               color: _statusColor(source.status),
                             ),
+                            if (source.isWebDav)
+                              _StatusChip(
+                                label: _endpointModeLabel(
+                                  source.webDavEndpointMode,
+                                ),
+                                color: Colors.indigo,
+                              ),
                             if (source.isWebDav &&
                                 source.activeWebDavEndpoint != 'none')
                               _StatusChip(
@@ -1102,8 +1224,47 @@ class _SourceCard extends StatelessWidget {
                     ),
                 ],
               ),
+              if (source.isWebDav) ...[
+                SizedBox(height: 12.h),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment<String>(
+                        value: 'auto',
+                        label: Text('自动'),
+                        icon: Icon(Icons.auto_awesome_outlined),
+                      ),
+                      ButtonSegment<String>(
+                        value: 'lan',
+                        label: Text('内网'),
+                        icon: Icon(Icons.wifi),
+                      ),
+                      ButtonSegment<String>(
+                        value: 'external',
+                        label: Text('外网'),
+                        icon: Icon(Icons.public),
+                      ),
+                    ],
+                    selected: {
+                      _normalizeWebDavEndpointMode(source.webDavEndpointMode),
+                    },
+                    onSelectionChanged: checking || onModeChanged == null
+                        ? null
+                        : (selection) {
+                            if (selection.isEmpty) return;
+                            onModeChanged!(selection.first);
+                          },
+                  ),
+                ),
+              ],
               SizedBox(height: 12.h),
               if (source.isWebDav) ...[
+                _DetailLine(
+                  label: '模式',
+                  value: _endpointModeLabel(source.webDavEndpointMode),
+                ),
+                SizedBox(height: 4.h),
                 _DetailLine(label: '外网', value: source.webDavUrl),
                 SizedBox(height: 4.h),
                 _DetailLine(label: '内网', value: source.webDavLanUrl),

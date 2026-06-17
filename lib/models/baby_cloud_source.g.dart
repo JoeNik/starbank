@@ -44,6 +44,7 @@ class BabyCloudSourceAdapter extends TypeAdapter<BabyCloudSource> {
       aliyunDriveDriveId: fields[26] as String?,
       aliyunDriveUserId: fields[27] as String?,
       aliyunDriveNickName: fields[28] as String?,
+      webDavEndpointMode: (fields[29] as String?) ?? 'auto',
       createdAt: fields[9] as DateTime?,
       updatedAt: fields[10] as DateTime?,
     );
@@ -52,7 +53,7 @@ class BabyCloudSourceAdapter extends TypeAdapter<BabyCloudSource> {
   @override
   void write(BinaryWriter writer, BabyCloudSource obj) {
     writer
-      ..writeByte(29)
+      ..writeByte(30)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -110,7 +111,9 @@ class BabyCloudSourceAdapter extends TypeAdapter<BabyCloudSource> {
       ..writeByte(27)
       ..write(obj.aliyunDriveUserId)
       ..writeByte(28)
-      ..write(obj.aliyunDriveNickName);
+      ..write(obj.aliyunDriveNickName)
+      ..writeByte(29)
+      ..write(obj.webDavEndpointMode);
   }
 
   @override

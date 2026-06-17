@@ -46,11 +46,17 @@ class BabyCloudSourceCheckResult {
 const int _generatedThumbnailSize = 520;
 
 class _CachedSourceCheck {
-  const _CachedSourceCheck(this.result, this.checkedAt, this.lookedLocal);
+  const _CachedSourceCheck(
+    this.result,
+    this.checkedAt,
+    this.lookedLocal,
+    this.endpointMode,
+  );
 
   final BabyCloudSourceCheckResult result;
   final DateTime checkedAt;
   final bool lookedLocal;
+  final String endpointMode;
 
   bool isFresh(bool currentLooksLocal) {
     // 网络环境变了，缓存无效（如内外网切换时能立刻切过来）
@@ -1420,8 +1426,11 @@ class BabyCloudService extends GetxService {
     if (!initializeRoot && persist) {
       final cacheKey = _sourceCheckCacheKey(source);
       final currentLooksLocal = await _looksLikeLocalNetwork();
+      final currentEndpointMode = _webDavEndpointMode(source);
       final cached = _sourceCheckCache[cacheKey];
-      if (cached != null && cached.isFresh(currentLooksLocal)) {
+      if (cached != null &&
+          cached.endpointMode == currentEndpointMode &&
+          cached.isFresh(currentLooksLocal)) {
         return cached.result;
       }
 
@@ -1436,8 +1445,12 @@ class BabyCloudService extends GetxService {
       _sourceCheckFutures[cacheKey] = future;
       try {
         final result = await future;
-        _sourceCheckCache[cacheKey] =
-            _CachedSourceCheck(result, DateTime.now(), currentLooksLocal);
+        _sourceCheckCache[cacheKey] = _CachedSourceCheck(
+          result,
+          DateTime.now(),
+          currentLooksLocal,
+          currentEndpointMode,
+        );
         return result;
       } finally {
         _sourceCheckFutures.remove(cacheKey);
@@ -1796,51 +1809,160 @@ class BabyCloudService extends GetxService {
     required bool initializeRoot,
   }) async {
     final looksLocal = await _looksLikeLocalNetwork();
+    final endpointMode = _webDavEndpointMode(source);
     final candidates = await _orderedWebDavCandidates(source);
 
-    // 优化：并发检测所有候选端点，谁先成功用谁（内网通常 <500ms）
-    final futures = <Future<BabyCloudSourceCheckResult>>[];
-    for (final candidate in candidates) {
-      futures.add(_checkSingleWebDavEndpoint(
+    if (candidates.isEmpty) {
+      final message = endpointMode == 'lan'
+          ? '已切换为固定内网模式，请先填写内网 WebDAV 地址'
+          : endpointMode == 'external'
+              ? '已切换为固定外网模式，请先填写外网 WebDAV 地址'
+              : '亲宝宝 WebDAV 外网/内网地址至少填写一个';
+      await _recordSourceCheck(
         source,
-        candidate,
+        ok: false,
+        message: message,
+        persist: persist,
+      );
+      return BabyCloudSourceCheckResult(ok: false, message: message);
+    }
+
+    if (endpointMode == 'lan' || endpointMode == 'external') {
+      final preferred = candidates
+          .where((candidate) => candidate.endpoint == endpointMode)
+          .toList();
+      final fallback = candidates
+          .where((candidate) => candidate.endpoint != endpointMode)
+          .toList();
+      return _checkWebDavCandidateBatch(
+        source,
+        preferred.isNotEmpty ? preferred : fallback,
         looksLocal: looksLocal,
         initializeRoot: initializeRoot,
         persist: persist,
-      ));
+      );
     }
 
-    try {
-      // 并发检测，谁先成功用谁
-      final result = await Future.any(futures);
-      if (result.ok) return result;
-    } catch (_) {
-      // 所有端点都失败，继续收集错误信息
+    final preferredEndpoint = looksLocal ? 'lan' : 'external';
+    final preferred = candidates
+        .where((candidate) => candidate.endpoint == preferredEndpoint)
+        .toList();
+    final fallback = candidates
+        .where((candidate) => candidate.endpoint != preferredEndpoint)
+        .toList();
+
+    final preferredResult = await _checkWebDavCandidateBatch(
+      source,
+      preferred.isNotEmpty ? preferred : candidates,
+      looksLocal: looksLocal,
+      initializeRoot: initializeRoot,
+      persist: persist,
+      recordFailure: false,
+    );
+    if (preferredResult.ok) return preferredResult;
+
+    if (fallback.isEmpty) {
+      await _recordSourceCheck(
+        source,
+        ok: false,
+        message: preferredResult.message,
+        persist: persist,
+      );
+      return preferredResult;
     }
 
-    // 所有端点都失败，等待收集详细错误信息
-    final candidateErrors = <String>[];
-    final results = await Future.wait(
+    final fallbackResult = await _checkWebDavCandidateBatch(
+      source,
+      fallback,
+      looksLocal: looksLocal,
+      initializeRoot: initializeRoot,
+      persist: persist,
+      failurePrefix:
+          '$preferredEndpoint 优先检测失败，已回退到${preferredEndpoint == 'lan' ? '外网' : '内网'}：',
+    );
+    if (fallbackResult.ok) return fallbackResult;
+
+    final combinedMessage =
+        '${preferredResult.message}；${fallbackResult.message}';
+    await _recordSourceCheck(
+      source,
+      ok: false,
+      message: combinedMessage,
+      persist: persist,
+    );
+    return BabyCloudSourceCheckResult(ok: false, message: combinedMessage);
+  }
+
+  Future<BabyCloudSourceCheckResult> _checkWebDavCandidateBatch(
+    BabyCloudSource source,
+    List<_WebDavEndpointCandidate> candidates, {
+    required bool looksLocal,
+    required bool initializeRoot,
+    required bool persist,
+    bool recordFailure = true,
+    String? failurePrefix,
+  }) async {
+    // 并发检测同一优先级批次里的候选端点，但只接受“第一个成功结果”。
+    final futures = candidates
+        .map(
+          (candidate) => _checkSingleWebDavEndpoint(
+            source,
+            candidate,
+            looksLocal: looksLocal,
+            initializeRoot: initializeRoot,
+            persist: persist,
+          ),
+        )
+        .toList();
+
+    final allResultsFuture = Future.wait(
       futures,
       eagerError: false,
     );
+    final firstSuccess = Completer<BabyCloudSourceCheckResult>();
+    var remaining = futures.length;
+    for (final future in futures) {
+      future.then((result) {
+        if (result.ok && !firstSuccess.isCompleted) {
+          firstSuccess.complete(result);
+        }
+      }).whenComplete(() {
+        remaining -= 1;
+        if (remaining == 0 && !firstSuccess.isCompleted) {
+          firstSuccess.completeError(StateError('no-success'));
+        }
+      });
+    }
+
+    try {
+      final result = await firstSuccess.future;
+      if (result.ok) return result;
+    } catch (_) {
+      // 没有任何候选端点成功，继续汇总错误信息。
+    }
+
+    final candidateErrors = <String>[];
+    final results = await allResultsFuture;
 
     for (var i = 0; i < results.length; i++) {
       final result = results[i];
       if (!result.ok) {
-        final candidate = candidates[i];
-        final endpointLabel = candidate.endpoint == 'lan' ? '内网' : '外网';
-        candidateErrors.add('$endpointLabel ${candidate.url}: ${result.message}');
+        candidateErrors.add(result.message);
       }
     }
 
-    final message = 'WebDAV 不可用，请检查地址、账号密码和网络：${candidateErrors.join('；')}';
-    await _recordSourceCheck(
-      source,
-      ok: false,
-      message: message,
-      persist: persist,
-    );
+    final body = candidateErrors.join('；');
+    final message = failurePrefix?.trim().isNotEmpty == true
+        ? '${failurePrefix!}$body'
+        : 'WebDAV 不可用，请检查地址、账号密码和网络：$body';
+    if (recordFailure) {
+      await _recordSourceCheck(
+        source,
+        ok: false,
+        message: message,
+        persist: persist,
+      );
+    }
     return BabyCloudSourceCheckResult(ok: false, message: message);
   }
 
@@ -1870,7 +1992,7 @@ class BabyCloudService extends GetxService {
       final endpointLabel = candidate.endpoint == 'lan' ? '内网' : '外网';
       final rootWarning = initializeRoot
           ? await _checkWebDavRoot(client, source).timeout(checkTimeout)
-          : await _quickCheckWebDav(client).timeout(checkTimeout);
+          : await _quickCheckWebDav(client, source).timeout(checkTimeout);
 
       final notes = [
         if (candidate.note?.isNotEmpty == true) candidate.note!,
@@ -1914,7 +2036,14 @@ class BabyCloudService extends GetxService {
       source.webDavLanUrl?.trim() ?? '',
       source.webDavUsername?.trim() ?? '',
       source.webDavPassword ?? '',
+      _webDavEndpointMode(source),
     ].join('\u001f');
+  }
+
+  String _webDavEndpointMode(BabyCloudSource source) {
+    final mode = source.webDavEndpointMode.trim().toLowerCase();
+    if (mode == 'lan' || mode == 'external') return mode;
+    return 'auto';
   }
 
   Future<List<Map<String, dynamic>>> listRemoteDirectories(
@@ -4248,25 +4377,25 @@ class BabyCloudService extends GetxService {
     BabyCloudSource source,
   ) async {
     final messages = <String>[];
-    Object? rootReadError;
-
-    try {
-      await client.statDir('/');
-    } catch (e) {
-      rootReadError = e;
-      try {
-        await client.mkdir('/');
-        await client.statDir('/');
-        messages.add('已创建 WebDAV 根目录');
-      } catch (e) {
-        throw Exception(
-          'WebDAV 根目录暂不可读或不可创建；初次读取：$rootReadError；创建尝试：$e',
-        );
-      }
-    }
 
     final root = _normalizeRoot(source.rootPath);
-    if (root == '/') return messages.isEmpty ? null : messages.join('；');
+    if (root == '/') {
+      try {
+        await client.statDir('/');
+        return messages.isEmpty ? null : messages.join('；');
+      } catch (e) {
+        try {
+          await client.mkdir('/');
+          await client.statDir('/');
+          messages.add('已创建 WebDAV 根目录');
+          return messages.join('；');
+        } catch (createError) {
+          throw Exception(
+            'WebDAV 根目录暂不可读或不可创建；初次读取：$e；创建尝试：$createError',
+          );
+        }
+      }
+    }
 
     Object? appRootReadError;
     try {
@@ -4288,9 +4417,11 @@ class BabyCloudService extends GetxService {
     }
   }
 
-  Future<String?> _quickCheckWebDav(_BabyWebDavClient client) async {
-    await client.statDir('/');
-    return '快速检测';
+  Future<String?> _quickCheckWebDav(
+    _BabyWebDavClient client,
+    BabyCloudSource source,
+  ) async {
+    return _checkWebDavRoot(client, source);
   }
 
   Future<void> _recordSourceCheck(
@@ -4321,6 +4452,7 @@ class BabyCloudService extends GetxService {
     final lan = source.webDavLanUrl?.trim() ?? '';
     final active = source.activeWebDavUrl?.trim() ?? '';
     final looksLocal = await _looksLikeLocalNetwork();
+    final endpointMode = _webDavEndpointMode(source);
     final result = <_WebDavEndpointCandidate>[];
 
     void add(String endpoint, String url, {String? note}) {
@@ -4328,21 +4460,6 @@ class BabyCloudService extends GetxService {
       if (normalized.isEmpty) return;
       if (result.any((item) => item.url == normalized)) return;
       result.add(_WebDavEndpointCandidate(endpoint, normalized, note: note));
-    }
-
-    void addWithOriginFallback(String endpoint, String url) {
-      final normalized = _normalizeEndpointUrl(url);
-      if (normalized.isEmpty) return;
-      add(endpoint, normalized);
-
-      final origin = _originEndpointUrl(normalized);
-      if (origin == null || origin == normalized) return;
-      final path = Uri.parse(normalized).path;
-      add(
-        endpoint,
-        origin,
-        note: '原地址路径 ${path.isEmpty ? '/' : path} 不可用，已自动改用同主机根地址 $origin',
-      );
     }
 
     String endpointForUrl(String url, String fallback) {
@@ -4368,7 +4485,10 @@ class BabyCloudService extends GetxService {
       final activeMatchesExternal = !looksLocal &&
           (source.activeWebDavEndpoint == 'external' ||
               _normalizeEndpointUrl(active) == _normalizeEndpointUrl(external));
-      if (activeMatchesLocal || activeMatchesExternal) {
+      final activeMatchesMode = endpointMode == 'auto'
+          ? activeMatchesLocal || activeMatchesExternal
+          : source.activeWebDavEndpoint == endpointMode;
+      if (activeMatchesMode) {
         add(
           endpointForUrl(active, source.activeWebDavEndpoint),
           active,
@@ -4377,12 +4497,16 @@ class BabyCloudService extends GetxService {
       }
     }
 
-    if (looksLocal) {
-      addWithOriginFallback('lan', lan);
-      addWithOriginFallback('external', external);
+    if (endpointMode == 'lan') {
+      add('lan', lan);
+    } else if (endpointMode == 'external') {
+      add('external', external);
+    } else if (looksLocal) {
+      add('lan', lan);
+      add('external', external);
     } else {
-      addWithOriginFallback('external', external);
-      addWithOriginFallback('lan', lan);
+      add('external', external);
+      add('lan', lan);
     }
     return result;
   }
@@ -4415,8 +4539,23 @@ class BabyCloudService extends GetxService {
   }
 
   String? _effectiveWebDavUrl(BabyCloudSource source) {
+    final mode = _webDavEndpointMode(source);
     final active = source.activeWebDavUrl?.trim() ?? '';
-    if (active.isNotEmpty) return _normalizeEndpointUrl(active);
+    if (mode == 'auto') {
+      if (active.isNotEmpty) return _normalizeEndpointUrl(active);
+    } else if (mode == 'lan') {
+      if (source.activeWebDavEndpoint == 'lan' && active.isNotEmpty) {
+        return _normalizeEndpointUrl(active);
+      }
+      final lan = source.webDavLanUrl?.trim() ?? '';
+      if (lan.isNotEmpty) return _normalizeEndpointUrl(lan);
+    } else if (mode == 'external') {
+      if (source.activeWebDavEndpoint == 'external' && active.isNotEmpty) {
+        return _normalizeEndpointUrl(active);
+      }
+      final external = source.webDavUrl?.trim() ?? '';
+      if (external.isNotEmpty) return _normalizeEndpointUrl(external);
+    }
     final lan = source.webDavLanUrl?.trim() ?? '';
     if (lan.isNotEmpty) return _normalizeEndpointUrl(lan);
     final external = source.webDavUrl?.trim() ?? '';
@@ -4434,13 +4573,6 @@ class BabyCloudService extends GetxService {
     if (uri == null || uri.host.isEmpty) return '';
     if (uri.scheme != 'http' && uri.scheme != 'https') return '';
     return uri.toString().replaceAll(RegExp(r'/+$'), '');
-  }
-
-  String? _originEndpointUrl(String url) {
-    final uri = Uri.tryParse(url);
-    if (uri == null || uri.host.isEmpty) return null;
-    final origin = uri.replace(path: '', query: null, fragment: null);
-    return _normalizeEndpointUrl(origin.toString());
   }
 
   _BabyWebDavClient _webDavClient(

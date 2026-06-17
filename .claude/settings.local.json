@@ -4,7 +4,11 @@
       "Bash(find D:gitstarBankstar_bankandroidappsrcmainres -name ic_stat_music_note*)",
       "Bash(flutter clean:*)",
       "Bash(flutter pub:*)",
-      "Bash(flutter analyze:*)"
+      "Bash(flutter analyze:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(flutter:*)",
+      "Bash(git:*)"
     ]
   }
 }

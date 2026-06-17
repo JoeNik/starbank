@@ -110,6 +110,10 @@ class BabyCloudSource extends HiveObject {
   @HiveField(28)
   String? aliyunDriveNickName;
 
+  /// WebDAV 端点选择模式：auto（自动检测）/ lan（强制内网）/ external（强制外网）
+  @HiveField(29)
+  String webDavEndpointMode;
+
   BabyCloudSource({
     required this.id,
     required this.name,
@@ -138,6 +142,7 @@ class BabyCloudSource extends HiveObject {
     this.aliyunDriveDriveId,
     this.aliyunDriveUserId,
     this.aliyunDriveNickName,
+    this.webDavEndpointMode = 'auto',
     DateTime? createdAt,
     DateTime? updatedAt,
   })  : createdAt = createdAt ?? DateTime.now(),
@@ -175,6 +180,7 @@ class BabyCloudSource extends HiveObject {
         'aliyunDriveDriveId': aliyunDriveDriveId,
         'aliyunDriveUserId': aliyunDriveUserId,
         'aliyunDriveNickName': aliyunDriveNickName,
+        'webDavEndpointMode': webDavEndpointMode,
         'createdAt': createdAt.toIso8601String(),
         'updatedAt': updatedAt.toIso8601String(),
       };
@@ -212,6 +218,8 @@ class BabyCloudSource extends HiveObject {
         aliyunDriveDriveId: json['aliyunDriveDriveId'] as String?,
         aliyunDriveUserId: json['aliyunDriveUserId'] as String?,
         aliyunDriveNickName: json['aliyunDriveNickName'] as String?,
+        webDavEndpointMode:
+            json['webDavEndpointMode'] as String? ?? 'auto',
         createdAt: json['createdAt'] != null
             ? DateTime.parse(json['createdAt'] as String)
             : DateTime.now(),
