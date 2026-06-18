@@ -6,6 +6,7 @@ import '../models/new_year_story.dart';
 import '../models/quiz_question.dart';
 import '../models/openai_config.dart';
 import '../widgets/ai_generation_progress_dialog.dart';
+import 'android_background_network_service.dart';
 import 'openai_service.dart';
 import 'story_management_service.dart';
 import 'quiz_service.dart';
@@ -934,7 +935,12 @@ class AIGenerationService extends GetxService {
 
       // URL 格式: 下载并转 Base64
       print('📥 从URL下载图片并转Base64: $urlOrDataUri');
-      final response = await http.get(Uri.parse(urlOrDataUri));
+      final response = await AndroidBackgroundNetworkService.protect(
+        'ai_image_${DateTime.now().microsecondsSinceEpoch}',
+        () => http.get(Uri.parse(urlOrDataUri)),
+        title: 'StarBank AI',
+        text: '正在下载生成图片',
+      );
       if (response.statusCode != 200) {
         throw Exception('下载图片失败: ${response.statusCode}');
       }

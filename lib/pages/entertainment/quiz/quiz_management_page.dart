@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import '../../../models/openai_config.dart';
 import '../../../services/quiz_service.dart';
+import '../../../services/android_background_network_service.dart';
 import '../../../services/ai_generation_service.dart';
 import '../../../services/openai_service.dart';
 import '../../../theme/app_theme.dart';
@@ -847,7 +848,12 @@ class _QuizManagementPageState extends State<QuizManagementPage> {
           barrierDismissible: false,
         );
 
-        final response = await http.get(Uri.parse(input.trim()));
+        final response = await AndroidBackgroundNetworkService.protect(
+          'quiz_import_${DateTime.now().microsecondsSinceEpoch}',
+          () => http.get(Uri.parse(input.trim())),
+          title: 'StarBank 题库',
+          text: '正在下载题库',
+        );
         Get.back();
 
         if (response.statusCode == 200) {

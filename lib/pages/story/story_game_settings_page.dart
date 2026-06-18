@@ -5,6 +5,7 @@ import 'package:hive/hive.dart';
 import '../../models/story_game_config.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../../services/android_background_network_service.dart';
 import '../../services/openai_service.dart';
 import '../../theme/app_theme.dart';
 import '../openai_settings_page.dart';
@@ -884,7 +885,12 @@ class _StoryGameSettingsPageState extends State<StoryGameSettingsPage> {
               Get.dialog(const Center(child: CircularProgressIndicator()),
                   barrierDismissible: false);
               try {
-                final response = await http.get(Uri.parse(url));
+                final response = await AndroidBackgroundNetworkService.protect(
+                  'story_settings_import_${DateTime.now().microsecondsSinceEpoch}',
+                  () => http.get(Uri.parse(url)),
+                  title: 'StarBank 故事',
+                  text: '正在导入图片地址',
+                );
                 Get.back(); // close loading
                 Get.back(); // close input dialog
 

@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
+import '../services/android_background_network_service.dart';
 import '../services/tts_service.dart';
 import '../models/cftts_config.dart';
 import '../models/openai_tts_config.dart';
@@ -753,7 +754,12 @@ class _TtsSettingsPageState extends State<TtsSettingsPage> {
     }
     try {
       final url = Uri.parse('$baseUrl/api/v1/health');
-      final response = await http.get(url).timeout(const Duration(seconds: 5));
+      final response = await AndroidBackgroundNetworkService.protect(
+        'tts_health_${DateTime.now().microsecondsSinceEpoch}',
+        () => http.get(url).timeout(const Duration(seconds: 5)),
+        title: 'StarBank 语音',
+        text: '正在检测语音服务',
+      );
       if (response.statusCode == 200) {
         ToastUtils.showSuccess('连接成功！');
         _fetchVoices();

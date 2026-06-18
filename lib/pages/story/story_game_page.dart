@@ -15,6 +15,7 @@ import '../../models/openai_config.dart';
 import '../../controllers/user_controller.dart';
 import '../../services/openai_service.dart';
 import '../../services/tts_service.dart';
+import '../../services/android_background_network_service.dart';
 import '../../theme/app_theme.dart';
 import 'story_game_settings_page.dart';
 import 'story_images.dart';
@@ -406,9 +407,12 @@ class _StoryGamePageState extends State<StoryGamePage> {
 
       // 如果是 http 链接，下载并转 base64
       if (urlOrData.startsWith('http')) {
-        final response = await http
-            .get(Uri.parse(urlOrData))
-            .timeout(const Duration(seconds: 60));
+        final response = await AndroidBackgroundNetworkService.protect(
+          'story_image_${DateTime.now().microsecondsSinceEpoch}',
+          () => http.get(Uri.parse(urlOrData)).timeout(const Duration(seconds: 60)),
+          title: 'StarBank 故事',
+          text: '正在下载故事图片',
+        );
         if (response.statusCode == 200) {
           final base64Data = base64Encode(response.bodyBytes);
           // 简单判断类型，默认 png
@@ -543,8 +547,12 @@ class _StoryGamePageState extends State<StoryGamePage> {
           ToastUtils.showInfo('网络请求较慢，正在重试 ($retryCount/$maxRetries)...');
         }
 
-        final response =
-            await http.post(uri, headers: headers, body: body).timeout(timeout);
+        final response = await AndroidBackgroundNetworkService.protect(
+          'story_vision_${DateTime.now().microsecondsSinceEpoch}_$retryCount',
+          () => http.post(uri, headers: headers, body: body).timeout(timeout),
+          title: 'StarBank 故事',
+          text: '正在请求图片分析',
+        );
 
         return response;
       } catch (e) {

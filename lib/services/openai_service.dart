@@ -96,13 +96,20 @@ class OpenAIService extends GetxService {
   Future<List<String>> fetchModels(String baseUrl, String apiKey) async {
     try {
       final uri = Uri.parse('$baseUrl/v1/models');
-      final response = await http.get(
-        uri,
-        headers: {
-          'Authorization': 'Bearer $apiKey',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 10));
+      final operationId =
+          'openai_models_${DateTime.now().microsecondsSinceEpoch}_${_backgroundRequestSeq++}';
+      final response = await AndroidBackgroundNetworkService.protect(
+        operationId,
+        () => http.get(
+          uri,
+          headers: {
+            'Authorization': 'Bearer $apiKey',
+            'Content-Type': 'application/json',
+          },
+        ).timeout(const Duration(seconds: 10)),
+        title: 'StarBank AI',
+        text: '正在获取模型列表',
+      );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -964,81 +971,81 @@ class OpenAIService extends GetxService {
       });
       request.body = jsonEncode(requestBody);
 
-      await AndroidBackgroundNetworkService.startOperation(
+      return await AndroidBackgroundNetworkService.protect(
         operationId,
+        () async {
+          final streamedResponse = await request.send().timeout(
+                const Duration(seconds: 300),
+              );
+
+          debugPrint('📥 响应状态码: ${streamedResponse.statusCode}');
+
+          if (streamedResponse.statusCode != 200) {
+            final errorBody = await streamedResponse.stream.bytesToString();
+            debugPrint('❌ 错误响应体: $errorBody');
+            throw Exception(
+                '流式图片生成失败: HTTP ${streamedResponse.statusCode}\n$errorBody');
+          }
+
+          // 解析流式响应
+          final List<String> imageUrls = [];
+          String accumulatedContent = '';
+
+          await for (var chunk in streamedResponse.stream.transform(utf8.decoder)) {
+            debugPrint('📦 收到数据块: $chunk');
+
+            // 处理多行数据
+            final lines = chunk.split('\n');
+            for (var line in lines) {
+              line = line.trim();
+              if (line.isEmpty || !line.startsWith('data: ')) continue;
+
+              final dataStr = line.substring(6); // 移除 "data: " 前缀
+              if (dataStr == '[DONE]') continue;
+
+              try {
+                final data = jsonDecode(dataStr);
+                final choices = data['choices'] as List?;
+                if (choices == null || choices.isEmpty) continue;
+
+                final delta = choices[0]['delta'];
+                final content = delta['content'] as String?;
+                if (content != null) {
+                  accumulatedContent += content;
+                }
+
+                final finishReason = choices[0]['finish_reason'];
+                if (finishReason == 'stop') {
+                  debugPrint('✅ 流式响应完成，累积内容: $accumulatedContent');
+                }
+              } catch (e) {
+                debugPrint('⚠️ 解析数据块失败: $e, 数据: $dataStr');
+              }
+            }
+          }
+
+          // 从累积的内容中提取图片URL
+          imageUrls.addAll(_extractImageUrls(accumulatedContent));
+
+          if (imageUrls.isEmpty) {
+            throw Exception('未能从响应中提取到图片URL');
+          }
+
+          debugPrint('🎉 成功提取 ${imageUrls.length} 张图片');
+          for (var url in imageUrls) {
+            debugPrint('  - $url');
+          }
+
+          return imageUrls;
+        },
         title: 'StarBank AI',
         text: '正在流式生成图片',
       );
-      final streamedResponse = await request.send().timeout(
-            const Duration(seconds: 300),
-          );
-
-      debugPrint('📥 响应状态码: ${streamedResponse.statusCode}');
-
-      if (streamedResponse.statusCode != 200) {
-        final errorBody = await streamedResponse.stream.bytesToString();
-        debugPrint('❌ 错误响应体: $errorBody');
-        throw Exception(
-            '流式图片生成失败: HTTP ${streamedResponse.statusCode}\n$errorBody');
-      }
-
-      // 解析流式响应
-      final List<String> imageUrls = [];
-      String accumulatedContent = '';
-
-      await for (var chunk in streamedResponse.stream.transform(utf8.decoder)) {
-        debugPrint('📦 收到数据块: $chunk');
-
-        // 处理多行数据
-        final lines = chunk.split('\n');
-        for (var line in lines) {
-          line = line.trim();
-          if (line.isEmpty || !line.startsWith('data: ')) continue;
-
-          final dataStr = line.substring(6); // 移除 "data: " 前缀
-          if (dataStr == '[DONE]') continue;
-
-          try {
-            final data = jsonDecode(dataStr);
-            final choices = data['choices'] as List?;
-            if (choices == null || choices.isEmpty) continue;
-
-            final delta = choices[0]['delta'];
-            final content = delta['content'] as String?;
-            if (content != null) {
-              accumulatedContent += content;
-            }
-
-            final finishReason = choices[0]['finish_reason'];
-            if (finishReason == 'stop') {
-              debugPrint('✅ 流式响应完成，累积内容: $accumulatedContent');
-            }
-          } catch (e) {
-            debugPrint('⚠️ 解析数据块失败: $e, 数据: $dataStr');
-          }
-        }
-      }
-
-      // 从累积的内容中提取图片URL
-      imageUrls.addAll(_extractImageUrls(accumulatedContent));
-
-      if (imageUrls.isEmpty) {
-        throw Exception('未能从响应中提取到图片URL');
-      }
-
-      debugPrint('🎉 成功提取 ${imageUrls.length} 张图片');
-      for (var url in imageUrls) {
-        debugPrint('  - $url');
-      }
-
-      return imageUrls;
     } catch (e, stackTrace) {
       debugPrint('❌ ========== 流式图片生成失败 ==========');
       debugPrint('错误: $e');
       debugPrint('堆栈: $stackTrace');
       rethrow;
-    } finally {
-      await AndroidBackgroundNetworkService.stopOperation(operationId);
     }
   }
 

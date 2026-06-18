@@ -52,7 +52,12 @@ class TuneHubService extends GetxService {
   Future<TuneHubMethod> _getMethod(String platform, String function) async {
     if (baseUrl.value.isEmpty) throw Exception('请先配置 TuneHub 服务器地址');
     final uri = Uri.parse('${baseUrl.value}/v1/methods/$platform/$function');
-    final response = await http.get(uri, headers: {'X-API-Key': _randomApiKey});
+    final response = await AndroidBackgroundNetworkService.protect(
+      'tunehub_method_${platform}_$function',
+      () => http.get(uri, headers: {'X-API-Key': _randomApiKey}),
+      title: 'StarBank 音乐',
+      text: '正在获取音乐解析配置',
+    );
     if (response.statusCode == 200) {
       final json = jsonDecode(_safeGetBody(response));
       if (json['code'] == 0 && json['data'] != null) {
@@ -173,9 +178,19 @@ class TuneHubService extends GetxService {
       http.Response response;
       if (config.method == 'POST') {
         debugPrint('TH Body: $finalBody');
-        response = await http.post(uri, headers: headers, body: finalBody);
+        response = await AndroidBackgroundNetworkService.protect(
+          'tunehub_exec_${DateTime.now().microsecondsSinceEpoch}',
+          () => http.post(uri, headers: headers, body: finalBody),
+          title: 'StarBank 音乐',
+          text: '正在请求音乐服务',
+        );
       } else {
-        response = await http.get(uri, headers: headers);
+        response = await AndroidBackgroundNetworkService.protect(
+          'tunehub_exec_${DateTime.now().microsecondsSinceEpoch}',
+          () => http.get(uri, headers: headers),
+          title: 'StarBank 音乐',
+          text: '正在请求音乐服务',
+        );
       }
 
       final bodyStr = _safeGetBody(response);

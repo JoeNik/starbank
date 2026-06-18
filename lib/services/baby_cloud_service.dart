@@ -305,17 +305,25 @@ class _BabyWebDavClient implements _BabyCloudRemoteClient {
 
     final client = http.Client();
     try {
-      final streamed = await client.send(request).timeout(
-            const Duration(seconds: 15),
+      final response = await AndroidBackgroundNetworkService.protect(
+        'baby_cloud_http_${method}_${DateTime.now().microsecondsSinceEpoch}',
+        () async {
+          final streamed = await client.send(request).timeout(
+                const Duration(seconds: 15),
+              );
+          final bytes = await streamed.stream.toBytes();
+          return _BabyWebDavResponse(
+            method: method,
+            requestUri: target,
+            statusCode: streamed.statusCode,
+            bodyBytes: bytes,
+            reasonPhrase: streamed.reasonPhrase,
           );
-      final bytes = await streamed.stream.toBytes();
-      return _BabyWebDavResponse(
-        method: method,
-        requestUri: target,
-        statusCode: streamed.statusCode,
-        bodyBytes: bytes,
-        reasonPhrase: streamed.reasonPhrase,
+        },
+        title: 'StarBank 亲宝宝',
+        text: '正在同步云相册数据',
       );
+      return response;
     } finally {
       client.close();
     }

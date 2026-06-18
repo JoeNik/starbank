@@ -10,6 +10,7 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import '../models/cftts_config.dart';
 import '../models/openai_tts_config.dart';
+import 'android_background_network_service.dart';
 
 /// 全局 TTS 语音服务
 /// 使用 GetxService 确保全局单例，所有页面共享同一个 TTS 实例
@@ -393,7 +394,12 @@ class TtsService extends GetxService {
           'speed': cfg.speed,
         });
 
-        final response = await http.post(url, headers: headers, body: body);
+        final response = await AndroidBackgroundNetworkService.protect(
+          'tts_cftts_${DateTime.now().microsecondsSinceEpoch}',
+          () => http.post(url, headers: headers, body: body),
+          title: 'StarBank 语音',
+          text: '正在生成语音',
+        );
 
         if (response.statusCode == 200) {
           await cacheFile.writeAsBytes(response.bodyBytes);
@@ -480,9 +486,14 @@ class TtsService extends GetxService {
     final url = _buildOpenAITtsUrl(config);
     final headers = _buildOpenAITtsHeaders(config);
 
-    final response = await http
-        .post(url, headers: headers, body: jsonEncode(body))
-        .timeout(const Duration(seconds: 30));
+    final response = await AndroidBackgroundNetworkService.protect(
+      'tts_openai_${DateTime.now().microsecondsSinceEpoch}',
+      () => http
+          .post(url, headers: headers, body: jsonEncode(body))
+          .timeout(const Duration(seconds: 30)),
+      title: 'StarBank 语音',
+      text: '正在请求语音服务',
+    );
 
     if (response.statusCode != 200) {
       debugPrint('OpenAI TTS 请求失败: ${response.statusCode} - ${response.body}');

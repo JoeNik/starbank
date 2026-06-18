@@ -326,23 +326,7 @@ class _HomePageState extends State<HomePage> {
 
   void _handleQuickAction(UserController controller, ActionItem action) {
     // 快捷记录对应的是星星增减
-    controller.updateStars(action.value.toInt(), action.name, silent: true);
-
-    Get.showSnackbar(GetSnackBar(
-      title: action.value > 0 ? '🎉 加油！' : '💪 继续努力',
-      message:
-          '已记录: ${action.name} (${action.value > 0 ? '+' : ''}${action.value})',
-      snackPosition: SnackPosition.BOTTOM,
-      duration: const Duration(seconds: 4),
-      mainButton: TextButton(
-        onPressed: () {
-          Get.back(); // 关闭 Snackbar
-          controller.revertLastStarAction();
-          Get.snackbar('撤销成功', '已撤销上次操作', snackPosition: SnackPosition.BOTTOM);
-        },
-        child: const Text('撤销', style: TextStyle(color: Colors.white)),
-      ),
-    ));
+    controller.updateStars(action.value.toInt(), action.name);
   }
 
   /// 宝宝选择对话框（居中弹出）
@@ -1248,29 +1232,7 @@ class _HomePageState extends State<HomePage> {
                     // Close dialog FIRST
                     Get.back();
 
-                    // 使用silent模式,避免重复弹框
-                    controller.updateStars(isAdd ? val : -val, reason,
-                        silent: true);
-
-                    // 只显示一次提示
-                    Get.snackbar(
-                      isAdd ? '🎉 棒棒哒！获得星星' : '💪 继续加油',
-                      '已${isAdd ? "获得" : "扣除"} $val 颗星星 ($reason)',
-                      snackPosition: SnackPosition.BOTTOM,
-                      backgroundColor: isAdd
-                          ? Colors.orange.withOpacity(0.1)
-                          : Colors.grey.withOpacity(0.1),
-                      colorText: Colors.black87,
-                      duration: const Duration(seconds: 3),
-                      mainButton: TextButton(
-                        onPressed: () {
-                          controller.revertLastStarAction();
-                          Get.back();
-                        },
-                        child: const Text('撤销',
-                            style: TextStyle(color: Colors.orange)),
-                      ),
-                    );
+                    controller.updateStars(isAdd ? val : -val, reason);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: themeColor,

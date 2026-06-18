@@ -11,6 +11,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:hive/hive.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'android_background_network_service.dart';
 import '../widgets/toast_utils.dart';
 
 /// GitHub Release 信息模型
@@ -119,9 +120,14 @@ class UpdateService extends GetxService {
       final packageInfo = await PackageInfo.fromPlatform();
       final currentVersion = packageInfo.version;
 
-      final response = await http.get(
-        Uri.parse('https://api.github.com/repos/$owner/$repo/releases/latest'),
-        headers: {'Accept': 'application/vnd.github.v3+json'},
+      final response = await AndroidBackgroundNetworkService.protect(
+        'update_check_${DateTime.now().microsecondsSinceEpoch}',
+        () => http.get(
+          Uri.parse('https://api.github.com/repos/$owner/$repo/releases/latest'),
+          headers: {'Accept': 'application/vnd.github.v3+json'},
+        ),
+        title: 'StarBank 更新',
+        text: '正在检查更新',
       );
 
       if (response.statusCode == 200) {
@@ -394,7 +400,7 @@ class UpdateService extends GetxService {
                   SizedBox(height: 8.h),
                   if (status.value.contains('下载'))
                     Text(
-                      '请保持应用在前台，否则下载可能中断',
+                      '锁屏或切到后台后会通过系统通知继续下载',
                       style: TextStyle(color: Colors.orange, fontSize: 12.sp),
                     ),
                 ],
@@ -444,136 +450,164 @@ class UpdateService extends GetxService {
       barrierDismissible: false,
     );
 
-    try {
-      // 构建下载链接
-      String downloadUrl = release.downloadUrl;
-      if (useMirror) {
-        status.value = '正在检测可用加速站...';
-        downloadUrl = (await _resolveDownloadUri(
-          release.downloadUrl,
-          onStatus: (message) => status.value = message,
-        ))
-            .toString();
-      }
-
-      status.value = '正在连接服务器...';
-
-      // 获取下载目录
-      Directory? dir;
-      if (Platform.isAndroid) {
-        // Android: 优先使用公共下载目录
+    await AndroidBackgroundNetworkService.protect(
+      'update_download_${DateTime.now().microsecondsSinceEpoch}',
+      () async {
+        http.Client? client;
         try {
-          // 尝试使用标准下载目录
-          final downloadDir = Directory('/storage/emulated/0/Download');
-          if (await downloadDir.exists()) {
-            dir = downloadDir;
-          } else {
-            // 如果不存在,尝试创建
+          // 构建下载链接
+          String downloadUrl = release.downloadUrl;
+          if (useMirror) {
+            status.value = '正在检测可用加速站...';
+            downloadUrl = (await _resolveDownloadUri(
+              release.downloadUrl,
+              onStatus: (message) => status.value = message,
+            ))
+                .toString();
+          }
+
+          status.value = '正在连接服务器...';
+
+          // 获取下载目录
+          Directory? dir;
+          if (Platform.isAndroid) {
+            // Android: 优先使用公共下载目录
             try {
-              dir = await downloadDir.create(recursive: true);
+              // 尝试使用标准下载目录
+              final downloadDir = Directory('/storage/emulated/0/Download');
+              if (await downloadDir.exists()) {
+                dir = downloadDir;
+              } else {
+                // 如果不存在,尝试创建
+                try {
+                  dir = await downloadDir.create(recursive: true);
+                } catch (e) {
+                  debugPrint('无法创建Download目录: $e');
+                  dir = null;
+                }
+              }
             } catch (e) {
-              debugPrint('无法创建Download目录: $e');
+              debugPrint('访问Download目录失败: $e');
+              dir = null;
+            }
+
+            // 降级方案: 使用getDownloadsDirectory()
+            if (dir == null) {
+              try {
+                dir = await getDownloadsDirectory();
+              } catch (e) {
+                debugPrint('getDownloadsDirectory失败: $e');
+                dir = null;
+              }
+            }
+
+            // 最后降级: 使用应用专属外部存储
+            if (dir == null) {
+              dir = await getExternalStorageDirectory();
+            }
+          } else {
+            // iOS/其他平台: 使用getDownloadsDirectory()
+            try {
+              dir = await getDownloadsDirectory();
+            } catch (e) {
+              debugPrint('getDownloadsDirectory失败: $e');
               dir = null;
             }
           }
-        } catch (e) {
-          debugPrint('访问Download目录失败: $e');
-          dir = null;
-        }
 
-        // 降级方案: 使用getDownloadsDirectory()
-        if (dir == null) {
-          try {
-            dir = await getDownloadsDirectory();
-          } catch (e) {
-            debugPrint('getDownloadsDirectory失败: $e');
-            dir = null;
+          // 最终降级: 使用临时目录
+          if (dir == null) {
+            dir = await getTemporaryDirectory();
           }
-        }
 
-        // 最后降级: 使用应用专属外部存储
-        if (dir == null) {
-          dir = await getExternalStorageDirectory();
-        }
-      } else {
-        // iOS/其他平台: 使用getDownloadsDirectory()
-        try {
-          dir = await getDownloadsDirectory();
-        } catch (e) {
-          debugPrint('getDownloadsDirectory失败: $e');
-          dir = null;
-        }
-      }
+          debugPrint('下载目录: ${dir.path}');
 
-      // 最终降级: 使用临时目录
-      if (dir == null) {
-        dir = await getTemporaryDirectory();
-      }
+          final fileName = 'StarBank_${release.version}.apk';
+          final filePath = '${dir.path}/$fileName';
+          final file = File(filePath);
 
-      debugPrint('下载目录: ${dir.path}');
+          // 检查文件是否已存在
+          if (await file.exists()) {
+            final fileSize = await file.length();
+            if (fileSize > 1024 * 1024) {
+              // 文件大于1MB,认为是有效的安装包
+              status.value = '已找到已下载的安装包';
+              progress.value = 1.0;
+              isDownloading.value = false;
+              downloadedFilePath = filePath;
+              debugPrint(
+                  '使用已存在的安装包: $filePath (${(fileSize / 1024 / 1024).toStringAsFixed(2)}MB)');
+              return;
+            } else {
+              // 文件太小,可能是损坏的,删除后重新下载
+              await file.delete();
+              debugPrint('删除损坏的安装包: $filePath');
+            }
+          }
 
-      final fileName = 'StarBank_${release.version}.apk';
-      final filePath = '${dir.path}/$fileName';
-      final file = File(filePath);
+          client = http.Client();
 
-      // 检查文件是否已存在
-      if (await file.exists()) {
-        final fileSize = await file.length();
-        if (fileSize > 1024 * 1024) {
-          // 文件大于1MB,认为是有效的安装包
-          status.value = '已找到已下载的安装包';
-          progress.value = 1.0;
+          // 发起请求
+          final request = http.Request('GET', Uri.parse(downloadUrl));
+          final response = await client.send(request);
+
+          if (response.statusCode != 200) {
+            throw Exception('服务器返回错误: ${response.statusCode}');
+          }
+
+          final contentLength = response.contentLength ?? 0;
+          int received = 0;
+
+          status.value = '正在下载...';
+
+          // 下载文件
+          final sink = file.openWrite();
+          try {
+            await for (final chunk in response.stream) {
+              if (!isDownloading.value) {
+                await sink.close();
+                await file.delete();
+                return;
+              }
+              sink.add(chunk);
+              received += chunk.length;
+              if (contentLength > 0) {
+                progress.value = received / contentLength;
+              }
+            }
+            await sink.close();
+          } catch (_) {
+            await sink.close();
+            rethrow;
+          }
+
+          if (contentLength > 0 && received != contentLength) {
+            await file.delete().catchError((_) {});
+            throw Exception('下载未完成，请稍后重试');
+          }
+
+          final downloadedSize = await file.length();
+          if (downloadedSize < 1024 * 1024) {
+            await file.delete().catchError((_) {});
+            throw Exception('安装包校验失败，请重新下载');
+          }
+
+          // 下载完成
           isDownloading.value = false;
+          progress.value = 1.0;
+          status.value = '下载完成！点击安装按钮进行安装';
           downloadedFilePath = filePath;
-          debugPrint(
-              '使用已存在的安装包: $filePath (${(fileSize / 1024 / 1024).toStringAsFixed(2)}MB)');
-          return;
-        } else {
-          // 文件太小,可能是损坏的,删除后重新下载
-          await file.delete();
-          debugPrint('删除损坏的安装包: $filePath');
+        } catch (e) {
+          isDownloading.value = false;
+          status.value = '下载失败: $e';
+          debugPrint('下载更新失败: $e');
+        } finally {
+          client?.close();
         }
-      }
-
-      // 发起请求
-      final request = http.Request('GET', Uri.parse(downloadUrl));
-      final response = await http.Client().send(request);
-
-      if (response.statusCode != 200) {
-        throw Exception('服务器返回错误: ${response.statusCode}');
-      }
-
-      final contentLength = response.contentLength ?? 0;
-      int received = 0;
-
-      status.value = '正在下载...';
-
-      // 下载文件
-      final sink = file.openWrite();
-      await for (final chunk in response.stream) {
-        if (!isDownloading.value) {
-          sink.close();
-          file.deleteSync();
-          return;
-        }
-        sink.add(chunk);
-        received += chunk.length;
-        if (contentLength > 0) {
-          progress.value = received / contentLength;
-        }
-      }
-      await sink.close();
-
-      // 下载完成
-      isDownloading.value = false;
-      progress.value = 1.0;
-      status.value = '下载完成！点击安装按钮进行安装';
-      downloadedFilePath = filePath;
-    } catch (e) {
-      isDownloading.value = false;
-      status.value = '下载失败: $e';
-      debugPrint('下载更新失败: $e');
-    }
+      },
+      title: 'StarBank 更新',
+      text: '正在下载更新包',
+    );
   }
 
   Future<void> _openBrowserDownload(ReleaseInfo release) async {
@@ -694,27 +728,35 @@ class UpdateService extends GetxService {
   Future<bool> _probeMirror(Uri uri, {required String method}) async {
     final client = http.Client();
     try {
-      final request = http.Request(method, uri)
-        ..followRedirects = false
-        ..headers['User-Agent'] = 'StarBank-Updater'
-        ..headers['Accept'] = '*/*';
-      if (method == 'GET') {
-        request.headers['Range'] = 'bytes=0-0';
-      }
-      final response =
-          await client.send(request).timeout(const Duration(seconds: 6));
-      final ok = _isUsableMirrorResponse(response);
-      if (method == 'GET') {
-        await response.stream
-            .take(1)
-            .drain<void>()
-            .timeout(const Duration(seconds: 2), onTimeout: () {});
-      } else {
-        await response.stream
-            .drain<void>()
-            .timeout(const Duration(seconds: 2), onTimeout: () {});
-      }
-      return ok;
+      return await AndroidBackgroundNetworkService.protect(
+        'update_probe_${method}_${DateTime.now().microsecondsSinceEpoch}',
+        () async {
+          final request = http.Request(method, uri)
+            ..followRedirects = false
+            ..headers['User-Agent'] = 'StarBank-Updater'
+            ..headers['Accept'] = '*/*';
+          if (method == 'GET') {
+            request.headers['Range'] = 'bytes=0-0';
+          }
+          final response = await client.send(request).timeout(
+                const Duration(seconds: 6),
+              );
+          final ok = _isUsableMirrorResponse(response);
+          if (method == 'GET') {
+            await response.stream
+                .take(1)
+                .drain<void>()
+                .timeout(const Duration(seconds: 2), onTimeout: () {});
+          } else {
+            await response.stream
+                .drain<void>()
+                .timeout(const Duration(seconds: 2), onTimeout: () {});
+          }
+          return ok;
+        },
+        title: 'StarBank 更新',
+        text: '正在检测下载加速节点',
+      );
     } on TimeoutException {
       return false;
     } catch (e) {

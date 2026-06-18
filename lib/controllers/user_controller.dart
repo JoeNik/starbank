@@ -4,6 +4,7 @@ import '../models/baby.dart';
 import '../models/action_item.dart';
 import '../models/log.dart';
 import '../services/storage_service.dart';
+import '../widgets/toast_utils.dart';
 
 class UserController extends GetxController {
   final StorageService _storage = Get.find<StorageService>();
@@ -147,22 +148,24 @@ class UserController extends GetxController {
 
     // 只在非静默模式下显示 Snackbar
     if (!silent) {
-      Get.snackbar(
-        change > 0 ? '⭐ 获得星星' : '⭐ 扣除星星',
-        '$reason ${change > 0 ? '+' : ''}$change 颗星星',
-        snackPosition: SnackPosition.BOTTOM,
-        duration: const Duration(seconds: 4),
-        mainButton: TextButton(
-          onPressed: () {
-            revertLastStarAction();
-            Get.back(); // 关闭 Snackbar
-          },
-          child: const Text(
-            '撤销',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
+      final title = change > 0 ? '⭐ 获得星星' : '⭐ 扣除星星';
+      final message = '$reason ${change > 0 ? '+' : ''}$change 颗星星';
+      final buttonColor = change > 0 ? Colors.green : Colors.orange;
+      final mainButton = TextButton(
+        onPressed: () {
+          revertLastStarAction();
+          Get.back();
+        },
+        child: Text(
+          '撤销',
+          style: TextStyle(color: buttonColor, fontWeight: FontWeight.bold),
         ),
       );
+      if (change > 0) {
+        ToastUtils.showSuccess(message, title: title, mainButton: mainButton);
+      } else {
+        ToastUtils.showWarning(message, title: title, mainButton: mainButton);
+      }
     }
   }
 

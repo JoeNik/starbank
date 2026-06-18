@@ -11,6 +11,7 @@ import '../models/encyclopedia_config.dart';
 import '../models/encyclopedia_explanation_cache.dart';
 import '../models/encyclopedia_question.dart';
 import '../models/openai_config.dart';
+import 'android_background_network_service.dart';
 import 'openai_service.dart';
 
 class EncyclopediaExplanationResult {
@@ -251,7 +252,12 @@ class EncyclopediaService extends GetxService {
       throw Exception('仅支持 HTTPS URL');
     }
 
-    final resp = await http.get(uri).timeout(const Duration(seconds: 30));
+    final resp = await AndroidBackgroundNetworkService.protect(
+      'encyclopedia_sync_${DateTime.now().microsecondsSinceEpoch}',
+      () => http.get(uri).timeout(const Duration(seconds: 30)),
+      title: 'StarBank 百科',
+      text: '正在同步题库',
+    );
     if (resp.statusCode != 200) {
       throw Exception('同步失败: HTTP ${resp.statusCode}');
     }

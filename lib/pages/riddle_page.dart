@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../data/riddle_data.dart';
+import '../services/android_background_network_service.dart';
 import '../theme/app_theme.dart';
 import '../services/tts_service.dart';
 import '../widgets/tts_engine_selector.dart';
@@ -531,7 +532,12 @@ class _RiddlePageState extends State<RiddlePage> {
       try {
         Get.dialog(const Center(child: CircularProgressIndicator()),
             barrierDismissible: false);
-        final response = await http.get(Uri.parse(input.trim()));
+        final response = await AndroidBackgroundNetworkService.protect(
+          'riddle_import_${DateTime.now().microsecondsSinceEpoch}',
+          () => http.get(Uri.parse(input.trim())),
+          title: 'StarBank 脑筋急转弯',
+          text: '正在下载题库',
+        );
         Get.back(); // close loading
 
         if (response.statusCode == 200) {
