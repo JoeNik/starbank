@@ -1984,19 +1984,12 @@ class BabyCloudService extends GetxService {
   }) async {
     try {
       final client = _webDavClient(source, endpointUrl: candidate.url);
-
-      // 优化超时设置：内网应该非常快
-      final mismatch = looksLocal
-          ? candidate.endpoint == 'external'
-          : candidate.endpoint == 'lan';
-
-      final checkTimeout = initializeRoot
-          ? const Duration(seconds: 8)
-          : mismatch
-              ? const Duration(milliseconds: 1500) // 不匹配：1.5秒
-              : (candidate.endpoint == 'lan'
-                  ? const Duration(seconds: 3) // 内网：3秒（成功则立即返回）
-                  : const Duration(seconds: 10));      // 外网：10秒（网络可能较慢）
+      final checkTimeout = _webDavEndpointCheckTimeout(
+        source,
+        candidate,
+        looksLocal: looksLocal,
+        initializeRoot: initializeRoot,
+      );
 
       final endpointLabel = candidate.endpoint == 'lan' ? '内网' : '外网';
       final rootWarning = initializeRoot
@@ -2035,6 +2028,35 @@ class BabyCloudService extends GetxService {
         message: '$endpointLabel ${candidate.url}: $e',
       );
     }
+  }
+
+  Duration _webDavEndpointCheckTimeout(
+    BabyCloudSource source,
+    _WebDavEndpointCandidate candidate, {
+    required bool looksLocal,
+    required bool initializeRoot,
+  }) {
+    if (initializeRoot) return const Duration(seconds: 8);
+
+    final endpointMode = _webDavEndpointMode(source);
+    if (endpointMode == 'lan') {
+      return const Duration(seconds: 4);
+    }
+    if (endpointMode == 'external') {
+      return const Duration(seconds: 12);
+    }
+
+    final mismatch = looksLocal
+        ? candidate.endpoint == 'external'
+        : candidate.endpoint == 'lan';
+    if (candidate.endpoint == 'lan') {
+      return mismatch
+          ? const Duration(seconds: 2)
+          : const Duration(seconds: 4);
+    }
+    return mismatch
+        ? const Duration(seconds: 6)
+        : const Duration(seconds: 12);
   }
 
   String _sourceCheckCacheKey(BabyCloudSource source) {

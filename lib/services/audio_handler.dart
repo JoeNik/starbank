@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
@@ -140,8 +142,17 @@ class MusicHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   Future<void> play() async {
     await ready;
     debugPrint('🎵 [AudioHandler] play() called - starting playback');
-    await _player.play();
-    // 强制广播一次状态，确保通知栏更新
+
+    // just_audio 的 play() Future 会在暂停/停止/播放结束后才完成。
+    // 这里不能 await，否则切歌后的 UI 同步会被卡住，直到下一次 pause/stop。
+    unawaited(
+      _player.play().catchError((Object error, StackTrace stackTrace) {
+        debugPrint('❌ [AudioHandler] play() failed: $error');
+        _broadcastState(_player.playbackEvent);
+      }),
+    );
+
+    // 强制广播一次状态，确保通知栏和控制器尽快刷新
     _broadcastState(_player.playbackEvent);
   }
 
