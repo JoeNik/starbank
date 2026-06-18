@@ -11,6 +11,8 @@ import 'tts_settings_page.dart';
 
 import 'package:package_info_plus/package_info_plus.dart';
 
+const String appVersion = '2.7.11';
+
 /// 应用设置页面
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -65,7 +67,6 @@ class SettingsPage extends StatelessWidget {
       body: FutureBuilder<PackageInfo>(
         future: PackageInfo.fromPlatform(),
         builder: (context, snapshot) {
-          final appVersion = snapshot.hasData ? snapshot.data!.version : '...';
           final buildNumber =
               snapshot.hasData ? '+${snapshot.data!.buildNumber}' : '';
           final fullVersion = '$appVersion$buildNumber';

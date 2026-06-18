@@ -46,6 +46,7 @@ class _BabyCloudMediaPickerPageState extends State<BabyCloudMediaPickerPage> {
   final _assets = <AssetEntity>[];
   final _selected = <String>{};
   final _selectedAssetsById = <String, AssetEntity>{};
+  final _selectedAssetIdsInOrder = <String>[];
   final _uploadedAssetIds = <String>{};
   final _hashCache = <String, String>{};
   final _remoteHashes = <String>{};
@@ -70,6 +71,7 @@ class _BabyCloudMediaPickerPageState extends State<BabyCloudMediaPickerPage> {
     for (final asset in widget.initialAssets) {
       _selected.add(asset.id);
       _selectedAssetsById[asset.id] = asset;
+      _selectedAssetIdsInOrder.add(asset.id);
     }
     _init();
   }
@@ -373,6 +375,7 @@ class _BabyCloudMediaPickerPageState extends State<BabyCloudMediaPickerPage> {
         _uploadedAssetIds.add(asset.id);
         _selected.remove(asset.id);
         _selectedAssetsById.remove(asset.id);
+        _selectedAssetIdsInOrder.remove(asset.id);
       } else {
         readyAssets.add(asset);
       }
@@ -407,6 +410,7 @@ class _BabyCloudMediaPickerPageState extends State<BabyCloudMediaPickerPage> {
       _safeSetState(() {
         _selected.remove(asset.id);
         _selectedAssetsById.remove(asset.id);
+        _selectedAssetIdsInOrder.remove(asset.id);
       });
       return;
     }
@@ -421,14 +425,16 @@ class _BabyCloudMediaPickerPageState extends State<BabyCloudMediaPickerPage> {
     _safeSetState(() {
       _selected.add(asset.id);
       _selectedAssetsById[asset.id] = asset;
+      _selectedAssetIdsInOrder.add(asset.id);
     });
   }
 
   List<AssetEntity> _orderedSelectedAssets() {
     final result = <AssetEntity>[];
     final seen = <String>{};
-    for (final asset in _assets) {
-      if (_selected.contains(asset.id) && seen.add(asset.id)) {
+    for (final id in _selectedAssetIdsInOrder) {
+      final asset = _selectedAssetsById[id];
+      if (asset != null && _selected.contains(id) && seen.add(id)) {
         result.add(asset);
       }
     }

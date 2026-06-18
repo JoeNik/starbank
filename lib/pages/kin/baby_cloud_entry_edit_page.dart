@@ -71,6 +71,7 @@ class _BabyCloudEntryEditPageState extends State<BabyCloudEntryEditPage> {
   String _visibility = 'family';
   late String _actorRole;
   bool _saving = false;
+  bool _recordTimeManuallyEdited = false;
 
   bool get _isEditing => widget.editingItems.isNotEmpty;
 
@@ -96,6 +97,8 @@ class _BabyCloudEntryEditPageState extends State<BabyCloudEntryEditPage> {
       _actorRole = first.actorRole?.trim().isNotEmpty == true
           ? first.actorRole!.trim()
           : _defaultActorRole;
+    } else {
+      _syncDefaultRecordTimeFromMedia(force: true);
     }
   }
 
@@ -562,6 +565,7 @@ class _BabyCloudEntryEditPageState extends State<BabyCloudEntryEditPage> {
     );
     if (time == null) return;
     setState(() {
+      _recordTimeManuallyEdited = true;
       _recordTime =
           DateTime(date.year, date.month, date.day, time.hour, time.minute);
     });
@@ -579,6 +583,7 @@ class _BabyCloudEntryEditPageState extends State<BabyCloudEntryEditPage> {
       _draftAssets
         ..clear()
         ..addAll(result);
+      _syncDefaultRecordTimeFromMedia();
     });
   }
 
@@ -593,10 +598,7 @@ class _BabyCloudEntryEditPageState extends State<BabyCloudEntryEditPage> {
       ToastUtils.showInfo('先写一点日记内容');
       return;
     }
-    if (!_isDiary &&
-        widget.audioPath == null &&
-        widget.localMediaPath == null &&
-        _draftAssets.isEmpty) {
+    if (!_isDiary && !_hasAnyMedia) {
       ToastUtils.showInfo('请先选择照片或视频');
       return;
     }
@@ -835,6 +837,39 @@ class _BabyCloudEntryEditPageState extends State<BabyCloudEntryEditPage> {
     final dot = value.lastIndexOf('.');
     if (dot <= 0 || dot == value.length - 1) return '';
     return value.substring(dot).toLowerCase();
+  }
+
+  bool get _hasAnyMedia {
+    if (_isEditing) {
+      return widget.editingItems.any((item) => !item.isDiary);
+    }
+    return widget.audioPath != null ||
+        widget.localMediaPath != null ||
+        _draftAssets.isNotEmpty;
+  }
+
+  void _syncDefaultRecordTimeFromMedia({bool force = false}) {
+    if (_isEditing || (!force && _recordTimeManuallyEdited)) return;
+    final mediaTime = _defaultRecordTimeFromMedia();
+    if (mediaTime == null) return;
+    _recordTime = mediaTime;
+  }
+
+  DateTime? _defaultRecordTimeFromMedia() {
+    if (_draftAssets.isNotEmpty) {
+      final createdAt = _draftAssets.last.createDateTime;
+      if (createdAt.millisecondsSinceEpoch > 0) {
+        return createdAt.toLocal();
+      }
+    }
+
+    final localPath = widget.localMediaPath ?? widget.audioPath;
+    if (localPath == null || localPath.trim().isEmpty) return null;
+    try {
+      return File(localPath).lastModifiedSync().toLocal();
+    } catch (_) {
+      return null;
+    }
   }
 }
 
