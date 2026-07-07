@@ -82,11 +82,73 @@ class PoopRecord extends HiveObject {
 
   /// 从 JSON 创建
   factory PoopRecord.fromJson(Map<String, dynamic> json) => PoopRecord(
-        id: json['id'] as String,
-        babyId: json['babyId'] as String,
-        dateTime: DateTime.parse(json['dateTime'] as String),
-        note: json['note'] as String? ?? '',
-        type: json['type'] as int? ?? 0,
-        color: json['color'] as int? ?? 0,
+        id: _requiredString(json['id'], 'id'),
+        babyId: _requiredString(json['babyId'], 'babyId'),
+        dateTime: _requiredDateTime(json['dateTime'], 'dateTime'),
+        note: _optionalString(json['note'], 'note'),
+        type: _optionalInt(json['type'], 'type'),
+        color: _optionalInt(json['color'], 'color'),
       );
+
+  factory PoopRecord.fromHiveFields(Map<int, dynamic> fields) => PoopRecord(
+        id: _requiredString(fields[0], 'id'),
+        babyId: _requiredString(fields[1], 'babyId'),
+        dateTime: _requiredDateTime(fields[2], 'dateTime'),
+        note: _optionalString(fields[3], 'note'),
+        type: _optionalInt(fields[4], 'type'),
+        color: _optionalInt(fields[5], 'color'),
+      );
+
+  static String _requiredString(dynamic value, String fieldName) {
+    if (value is String && value.trim().isNotEmpty) {
+      return value;
+    }
+    if (value is num) {
+      return value.toString();
+    }
+    throw FormatException('便便记录字段 $fieldName 缺失或类型错误');
+  }
+
+  static DateTime _requiredDateTime(dynamic value, String fieldName) {
+    if (value is DateTime) {
+      return value;
+    }
+    if (value is String && value.trim().isNotEmpty) {
+      try {
+        return DateTime.parse(value);
+      } catch (_) {
+        throw FormatException('便便记录字段 $fieldName 不是有效时间');
+      }
+    }
+    throw FormatException('便便记录字段 $fieldName 缺失或类型错误');
+  }
+
+  static String _optionalString(dynamic value, String fieldName) {
+    if (value == null) {
+      return '';
+    }
+    if (value is String) {
+      return value;
+    }
+    throw FormatException('便便记录字段 $fieldName 类型错误');
+  }
+
+  static int _optionalInt(dynamic value, String fieldName) {
+    if (value == null) {
+      return 0;
+    }
+    if (value is int) {
+      return value;
+    }
+    if (value is num && value.isFinite && value == value.roundToDouble()) {
+      return value.toInt();
+    }
+    if (value is String && value.trim().isNotEmpty) {
+      final parsed = int.tryParse(value);
+      if (parsed != null) {
+        return parsed;
+      }
+    }
+    throw FormatException('便便记录字段 $fieldName 类型错误');
+  }
 }

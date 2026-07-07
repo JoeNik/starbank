@@ -32,6 +32,7 @@ class _PoopRecordPageState extends State<PoopRecordPage> {
 
   late Box<PoopRecord> _recordBox;
   bool _isLoading = true;
+  String? _loadError;
 
   @override
   void initState() {
@@ -40,13 +41,25 @@ class _PoopRecordPageState extends State<PoopRecordPage> {
   }
 
   Future<void> _initData() async {
-    // 注册适配器（如果还未注册）
-    if (!Hive.isAdapterRegistered(11)) {
-      Hive.registerAdapter(PoopRecordAdapter());
+    try {
+      // 注册适配器（如果还未注册）
+      if (!Hive.isAdapterRegistered(11)) {
+        Hive.registerAdapter(PoopRecordAdapter());
+      }
+      _recordBox = await Hive.openBox<PoopRecord>('poop_records');
+      _tryLoadRecords(showToast: false);
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+    } catch (e, stack) {
+      debugPrint('便便记录初始化失败: $e');
+      debugPrint('Stack: $stack');
+      if (!mounted) return;
+      setState(() {
+        _loadError = '便便记录数据读取失败，请检查备份数据后重试。';
+        _isLoading = false;
+      });
+      ToastUtils.showError('便便记录数据读取失败');
     }
-    _recordBox = await Hive.openBox<PoopRecord>('poop_records');
-    _loadRecords();
-    setState(() => _isLoading = false);
   }
 
   void _loadRecords() {
@@ -62,6 +75,23 @@ class _PoopRecordPageState extends State<PoopRecordPage> {
         .toList()
       ..sort((a, b) => b.dateTime.compareTo(a.dateTime));
     _records.assignAll(allRecords);
+  }
+
+  bool _tryLoadRecords({required bool showToast}) {
+    try {
+      _loadRecords();
+      _loadError = null;
+      return true;
+    } catch (e, stack) {
+      debugPrint('便便记录读取失败: $e');
+      debugPrint('Stack: $stack');
+      _records.clear();
+      _loadError = '便便记录中存在无法读取的数据，请检查备份数据后重试。';
+      if (showToast) {
+        ToastUtils.showError('便便记录数据读取失败');
+      }
+      return false;
+    }
   }
 
   /// 获取指定日期的记录数
@@ -89,6 +119,12 @@ class _PoopRecordPageState extends State<PoopRecordPage> {
     if (_isLoading) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (_loadError != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('便便记录')),
+        body: _buildLoadError(),
       );
     }
 
@@ -160,6 +196,26 @@ class _PoopRecordPageState extends State<PoopRecordPage> {
           label: const Text('记录'),
         );
       }),
+    );
+  }
+
+  Widget _buildLoadError() {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(24.w),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline, size: 56.sp, color: Colors.red.shade300),
+            SizedBox(height: 12.h),
+            Text(
+              _loadError!,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14.sp, color: Colors.grey.shade700),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -483,6 +539,7 @@ class _PoopRecordPageState extends State<PoopRecordPage> {
     }
 
     final result = await _showRecordDialog();
+    if (!mounted) return;
     if (result != null) {
       final record = PoopRecord(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -494,7 +551,11 @@ class _PoopRecordPageState extends State<PoopRecordPage> {
       );
 
       await _recordBox.put(record.id, record);
-      _loadRecords();
+      final loaded = _tryLoadRecords(showToast: true);
+      if (!loaded && mounted) {
+        setState(() {});
+        return;
+      }
       ToastUtils.showSuccess('记录已添加');
     }
   }
@@ -502,6 +563,7 @@ class _PoopRecordPageState extends State<PoopRecordPage> {
   /// 编辑记录
   Future<void> _editRecord(PoopRecord record) async {
     final result = await _showRecordDialog(existing: record);
+    if (!mounted) return;
     if (result != null) {
       record.dateTime = result['dateTime'] as DateTime;
       record.note = result['note'] as String;
@@ -509,7 +571,11 @@ class _PoopRecordPageState extends State<PoopRecordPage> {
       record.color = result['color'] as int;
 
       await record.save();
-      _loadRecords();
+      final loaded = _tryLoadRecords(showToast: true);
+      if (!loaded && mounted) {
+        setState(() {});
+        return;
+      }
       ToastUtils.showSuccess('记录已更新');
     }
   }
@@ -534,9 +600,14 @@ class _PoopRecordPageState extends State<PoopRecordPage> {
       ),
     );
 
+    if (!mounted) return;
     if (confirm == true) {
       await record.delete();
-      _loadRecords();
+      final loaded = _tryLoadRecords(showToast: true);
+      if (!loaded && mounted) {
+        setState(() {});
+        return;
+      }
       ToastUtils.showSuccess('记录已删除');
     }
   }
@@ -544,17 +615,15 @@ class _PoopRecordPageState extends State<PoopRecordPage> {
   /// 显示记录编辑对话框
   Future<Map<String, dynamic>?> _showRecordDialog(
       {PoopRecord? existing}) async {
-    DateTime selectedDateTime = existing?.dateTime ??
-        DateTime(
-          _selectedDate.value.year,
-          _selectedDate.value.month,
-          _selectedDate.value.day,
-          DateTime.now().hour,
-          DateTime.now().minute,
-        );
-    String noteText = existing?.note ?? '';
-    int typeValue = existing?.type ?? 0;
-    int colorValue = existing?.color ?? 0;
+    DateTime selectedDateTime = _initialDialogDateTime(existing);
+    String noteText = '';
+    int typeValue = 0;
+    int colorValue = 0;
+    if (existing != null) {
+      noteText = existing.note;
+      typeValue = existing.type;
+      colorValue = existing.color;
+    }
 
     return showDialog<Map<String, dynamic>>(
       context: context,
@@ -576,19 +645,27 @@ class _PoopRecordPageState extends State<PoopRecordPage> {
                           .format(selectedDateTime)),
                       trailing: const Icon(Icons.edit),
                       onTap: () async {
+                        final firstDate = DateTime(2020);
+                        final lastDate = DateTime.now();
                         final date = await showDatePicker(
                           context: context,
-                          initialDate: selectedDateTime,
-                          firstDate: DateTime(2020),
-                          lastDate: DateTime.now(),
+                          initialDate: _clampDateTime(
+                            selectedDateTime,
+                            firstDate,
+                            lastDate,
+                          ),
+                          firstDate: firstDate,
+                          lastDate: lastDate,
                         );
                         if (date != null) {
+                          if (!context.mounted) return;
                           final time = await showTimePicker(
                             context: context,
                             initialTime:
                                 TimeOfDay.fromDateTime(selectedDateTime),
                           );
                           if (time != null) {
+                            if (!context.mounted) return;
                             setDialogState(() {
                               selectedDateTime = DateTime(
                                 date.year,
@@ -679,6 +756,33 @@ class _PoopRecordPageState extends State<PoopRecordPage> {
         );
       },
     );
+  }
+
+  DateTime _initialDialogDateTime(PoopRecord? existing) {
+    final now = DateTime.now();
+    final firstDate = DateTime(2020);
+    if (existing != null) {
+      return _clampDateTime(existing.dateTime, firstDate, now);
+    }
+    final selected = _selectedDate.value;
+    final candidate = DateTime(
+      selected.year,
+      selected.month,
+      selected.day,
+      now.hour,
+      now.minute,
+    );
+    return _clampDateTime(candidate, firstDate, now);
+  }
+
+  DateTime _clampDateTime(DateTime value, DateTime firstDate, DateTime lastDate) {
+    if (value.isBefore(firstDate)) {
+      return firstDate;
+    }
+    if (value.isAfter(lastDate)) {
+      return lastDate;
+    }
+    return value;
   }
 
   Widget _buildDialogChip(

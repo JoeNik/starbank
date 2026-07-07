@@ -281,6 +281,11 @@ class WebDavBackupV2Service {
     'tunehub_base_url',
     'tunehub_api_key',
     'riddle_import_url',
+    'baby_cloud_current_source_id',
+    'baby_cloud_actor_role',
+  };
+  static const Set<String> settingsPrefixWhitelist = {
+    'baby_cloud_actor_role_',
   };
 
   Future<V2Snapshot> collectSnapshot({
@@ -775,6 +780,9 @@ class WebDavBackupV2Service {
         _storage.growthRecordBox.values.map((e) => e.toJson()).toList();
     backupData['milestoneRecords'] =
         _storage.milestoneRecordBox.values.map((e) => e.toJson()).toList();
+    backupData['babyCloudSources'] =
+        _storage.babyCloudSourceBox.values.map((e) => e.toJson()).toList();
+    backupData['babyCloudSettings'] = _filteredBabyCloudSettings();
 
     try {
       final chatBox = await Hive.openBox<dynamic>('ai_chats');
@@ -820,6 +828,8 @@ class WebDavBackupV2Service {
     for (final entry in const {
       'ttsSettings': 'tts_settings',
       'poopAiSettings': 'poop_ai_settings',
+      'growthRecordSettings': 'growth_record_settings',
+      'milestoneRecordSettings': 'milestone_record_settings',
       'storyGameConfig': 'story_game_config',
       'tuneHubConfig': 'tunehub_config',
       'playerSettings': 'player_settings',
@@ -921,7 +931,38 @@ class WebDavBackupV2Service {
         result[key] = _storage.settingsBox.get(key);
       }
     }
+    for (final entry in _storage.settingsBox.toMap().entries) {
+      final key = entry.key.toString();
+      if (_hasWhitelistedPrefix(key)) {
+        result[key] = entry.value;
+      }
+    }
     return result;
+  }
+
+  Map<String, dynamic> _filteredBabyCloudSettings() {
+    final result = <String, dynamic>{};
+    for (final entry in _storage.settingsBox.toMap().entries) {
+      final key = entry.key.toString();
+      if (_shouldBackupBabyCloudSetting(key)) {
+        result[key] = entry.value;
+      }
+    }
+    return result;
+  }
+
+  static bool shouldBackupGenericSetting(String key) {
+    return settingsWhitelist.contains(key) || _hasWhitelistedPrefix(key);
+  }
+
+  static bool _hasWhitelistedPrefix(String key) {
+    return settingsPrefixWhitelist.any((prefix) => key.startsWith(prefix));
+  }
+
+  static bool _shouldBackupBabyCloudSetting(String key) {
+    return key == 'baby_cloud_current_source_id' ||
+        key == 'baby_cloud_actor_role' ||
+        key.startsWith('baby_cloud_actor_role_');
   }
 
   Future<void> _extractWhitelistedMedia(
@@ -1332,6 +1373,7 @@ class WebDavBackupV2Service {
       'productCount': count('products'),
       'growthRecordCount': count('growthRecords'),
       'milestoneRecordCount': count('milestoneRecords'),
+      'babyCloudSourceCount': count('babyCloudSources'),
       'storyCount': count('newYearStories'),
       'quizQuestionCount': count('quizQuestions'),
       'jsonObjectCount': jsonCount,

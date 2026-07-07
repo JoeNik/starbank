@@ -36,6 +36,7 @@ import '../models/encyclopedia_config.dart';
 import '../models/encyclopedia_explanation_cache.dart';
 import '../models/growth_record.dart';
 import '../models/milestone_record.dart';
+import '../models/baby_cloud_source.dart';
 
 /// 备份文件信息
 class BackupFileInfo {
@@ -247,6 +248,32 @@ class WebDavService extends GetxService {
             _storage.milestoneRecordBox.values.map((e) => e.toJson()).toList();
       } catch (e) {
         print('备份宝宝记录失败: $e');
+      }
+
+      // 备份亲宝宝基础配置：云相册数据源、当前数据源、默认发布角色。
+      try {
+        backupData['babyCloudSources'] =
+            _storage.babyCloudSourceBox.values.map((e) => e.toJson()).toList();
+        backupData['babyCloudSettings'] = _collectBabyCloudSettings();
+      } catch (e) {
+        debugPrint('备份亲宝宝基础配置失败: $e');
+      }
+
+      // 备份生长记录和大事记的 AI 设置
+      try {
+        final growthSettingsBox = await Hive.openBox('growth_record_settings');
+        backupData['growthRecordSettings'] =
+            Map<String, dynamic>.from(growthSettingsBox.toMap());
+      } catch (e) {
+        debugPrint('备份生长记录设置失败: $e');
+      }
+      try {
+        final milestoneSettingsBox =
+            await Hive.openBox('milestone_record_settings');
+        backupData['milestoneRecordSettings'] =
+            Map<String, dynamic>.from(milestoneSettingsBox.toMap());
+      } catch (e) {
+        debugPrint('备份大事记设置失败: $e');
       }
 
       // 备份 AI 聊天记录
@@ -1007,30 +1034,13 @@ class WebDavService extends GetxService {
 
           for (var item in list) {
             try {
-              if (item is Map) {
-                final map = Map<String, dynamic>.from(item);
-
-                // 健壮性处理：确保非空及类型转换
-                if (map['id'] == null)
-                  map['id'] = DateTime.now().millisecondsSinceEpoch.toString();
-                if (map['babyId'] == null) map['babyId'] = 'default_baby';
-
-                // 强制转 String
-                map['id'] = map['id'].toString();
-                map['babyId'] = map['babyId'].toString();
-
-                // 兼容性处理：防止 type/color 被错误存储为 String
-                if (map['type'] is String) {
-                  map['type'] = int.tryParse(map['type']) ?? 0;
-                }
-                if (map['color'] is String) {
-                  map['color'] = int.tryParse(map['color']) ?? 0;
-                }
-
-                final record = PoopRecord.fromJson(map);
-                await poopBox.put(record.id, record);
-                successCount++;
+              if (item is! Map) {
+                throw const FormatException('便便记录不是 JSON 对象');
               }
+              final record =
+                  PoopRecord.fromJson(Map<String, dynamic>.from(item));
+              await poopBox.put(record.id, record);
+              successCount++;
             } catch (e) {
               failCount++;
               lastError = e.toString();
@@ -1088,6 +1098,69 @@ class WebDavService extends GetxService {
         } catch (e) {
           debugPrint('恢复大事记失败: $e');
           ToastUtils.showWarning('大事记恢复失败: $e');
+        }
+      }
+
+      if (backupData['babyCloudSources'] != null) {
+        try {
+          await _storage.babyCloudSourceBox.clear();
+          for (var item in (backupData['babyCloudSources'] as List)) {
+            if (item is Map) {
+              final source =
+                  BabyCloudSource.fromJson(Map<String, dynamic>.from(item));
+              await _storage.babyCloudSourceBox.put(source.id, source);
+            }
+          }
+          await _storage.babyCloudSourceBox.flush();
+        } catch (e) {
+          debugPrint('恢复亲宝宝数据源配置失败: $e');
+          ToastUtils.showWarning('亲宝宝数据源配置恢复失败: $e');
+        }
+      }
+
+      if (backupData['babyCloudSettings'] != null) {
+        try {
+          final settingsBox = await Hive.openBox('settings');
+          final settings = backupData['babyCloudSettings'] as Map;
+          for (var entry in settings.entries) {
+            await settingsBox.put(entry.key, entry.value);
+          }
+          await settingsBox.flush();
+        } catch (e) {
+          debugPrint('恢复亲宝宝基础设置失败: $e');
+          ToastUtils.showWarning('亲宝宝基础设置恢复失败: $e');
+        }
+      }
+
+      if (backupData['growthRecordSettings'] != null) {
+        try {
+          final growthSettingsBox =
+              await Hive.openBox('growth_record_settings');
+          await growthSettingsBox.clear();
+          final settings = backupData['growthRecordSettings'] as Map;
+          for (var entry in settings.entries) {
+            await growthSettingsBox.put(entry.key, entry.value);
+          }
+          await growthSettingsBox.flush();
+        } catch (e) {
+          debugPrint('恢复生长记录设置失败: $e');
+          ToastUtils.showWarning('生长记录设置恢复失败: $e');
+        }
+      }
+
+      if (backupData['milestoneRecordSettings'] != null) {
+        try {
+          final milestoneSettingsBox =
+              await Hive.openBox('milestone_record_settings');
+          await milestoneSettingsBox.clear();
+          final settings = backupData['milestoneRecordSettings'] as Map;
+          for (var entry in settings.entries) {
+            await milestoneSettingsBox.put(entry.key, entry.value);
+          }
+          await milestoneSettingsBox.flush();
+        } catch (e) {
+          debugPrint('恢复大事记设置失败: $e');
+          ToastUtils.showWarning('大事记设置恢复失败: $e');
         }
       }
 
@@ -1670,5 +1743,26 @@ class WebDavService extends GetxService {
     if (!Hive.isAdapterRegistered(47)) {
       Hive.registerAdapter(MilestoneRecordAdapter());
     }
+    // BabyCloudSource (48)
+    if (!Hive.isAdapterRegistered(48)) {
+      Hive.registerAdapter(BabyCloudSourceAdapter());
+    }
+  }
+
+  Map<String, dynamic> _collectBabyCloudSettings() {
+    final result = <String, dynamic>{};
+    for (final entry in _storage.settingsBox.toMap().entries) {
+      final key = entry.key.toString();
+      if (_shouldBackupBabyCloudSetting(key)) {
+        result[key] = entry.value;
+      }
+    }
+    return result;
+  }
+
+  bool _shouldBackupBabyCloudSetting(String key) {
+    return key == 'baby_cloud_current_source_id' ||
+        key == 'baby_cloud_actor_role' ||
+        key.startsWith('baby_cloud_actor_role_');
   }
 }

@@ -46,6 +46,7 @@ class _PoopAIPageState extends State<PoopAIPage> {
   // 加载状态
   bool _isLoading = true;
   bool _isAnalyzing = false;
+  String? _loadError;
 
   // 自定义 Prompt（保存到 Hive）
   String _customPrompt = '''你是一位专业的儿科健康顾问，负责持续跟踪宝宝的排便健康状况。
@@ -135,17 +136,28 @@ class _PoopAIPageState extends State<PoopAIPage> {
       _loadRecords();
       _loadChatHistory();
 
+      if (!mounted) return;
       setState(() => _isLoading = false);
-    } catch (e) {
+    } catch (e, stack) {
       debugPrint('Initialization error: $e');
-      setState(() => _isLoading = false);
+      debugPrint('Stack: $stack');
+      if (!mounted) return;
+      setState(() {
+        _loadError = 'AI 便便分析初始化失败，请检查便便记录或 AI 配置。';
+        _isLoading = false;
+      });
       ToastUtils.showError('初始化失败: $e');
     }
   }
 
   void _loadRecords() {
     final babyId = _userController.currentBaby.value?.id;
-    if (babyId == null) return;
+    if (babyId == null) {
+      if (mounted) {
+        setState(() => _records = []);
+      }
+      return;
+    }
 
     final records = _recordBox.values
         .where((r) =>
@@ -155,18 +167,25 @@ class _PoopAIPageState extends State<PoopAIPage> {
         .toList()
       ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
 
+    if (!mounted) return;
     setState(() => _records = records);
   }
 
   void _loadChatHistory() {
     final babyId = _userController.currentBaby.value?.id;
-    if (babyId == null) return;
+    if (babyId == null) {
+      if (mounted) {
+        setState(() => _chatHistory = []);
+      }
+      return;
+    }
 
     final chats = _chatBox.values
         .where((c) => c.babyId == babyId && c.chatType == 'poop_analysis')
         .toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
+    if (!mounted) return;
     setState(() => _chatHistory = chats);
   }
 
@@ -189,7 +208,11 @@ class _PoopAIPageState extends State<PoopAIPage> {
 
     try {
       // 构建本次用户消息
-      final baby = _userController.currentBaby.value!;
+      final baby = _userController.currentBaby.value;
+      if (baby == null) {
+        ToastUtils.showInfo('请先选择宝宝');
+        return;
+      }
       final recordsText = _records.map((r) {
         return '- ${DateFormat('MM月dd日 HH:mm').format(r.dateTime)}: ${r.typeDesc}, ${r.colorDesc}${r.note.isNotEmpty ? ", 备注: ${r.note}" : ""}';
       }).join('\n');
@@ -228,6 +251,7 @@ $recordsText''';
         enableWebSearch: _enableWebSearchForThisSession,
       );
 
+      if (!mounted) return;
       setState(() => _currentResponse = response);
 
       // 保存本次分析记录
@@ -244,11 +268,14 @@ $recordsText''';
     } catch (e) {
       ToastUtils.showError('分析失败: $e');
     } finally {
-      setState(() => _isAnalyzing = false);
+      if (mounted) {
+        setState(() => _isAnalyzing = false);
+      }
     }
   }
 
   void _showConfigMissingDialog() {
+    if (!mounted) return;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -264,6 +291,7 @@ $recordsText''';
               Navigator.of(ctx).pop();
               Get.to(() => const OpenAISettingsPage())?.then((_) {
                 // 返回时刷新配置
+                if (!mounted) return;
                 setState(() {
                   _selectedConfig = _openAIService.currentConfig.value;
                   if (_selectedConfig != null && _selectedModel.isEmpty) {
@@ -286,6 +314,12 @@ $recordsText''';
         body: Center(child: CircularProgressIndicator()),
       );
     }
+    if (_loadError != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('AI 便便分析')),
+        body: _buildLoadError(),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -298,6 +332,7 @@ $recordsText''';
             onPressed: () {
               Get.to(() => const OpenAISettingsPage())?.then((_) {
                 // 返回时刷新配置列表
+                if (!mounted) return;
                 setState(() {});
               });
             },
@@ -421,6 +456,7 @@ $recordsText''';
                 TextButton.icon(
                   onPressed: () {
                     Get.to(() => const OpenAISettingsPage())?.then((_) {
+                      if (!mounted) return;
                       setState(() {});
                     });
                   },
@@ -633,6 +669,7 @@ $recordsText''';
     );
 
     if (date != null) {
+      if (!mounted) return;
       setState(() {
         if (isStart) {
           _startDate = date;
@@ -693,6 +730,26 @@ $recordsText''';
             style: TextStyle(fontSize: 14.sp, color: Colors.grey),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildLoadError() {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(24.w),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline, size: 56.sp, color: Colors.red.shade300),
+            SizedBox(height: 12.h),
+            Text(
+              _loadError!,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14.sp, color: Colors.grey.shade700),
+            ),
+          ],
+        ),
       ),
     );
   }

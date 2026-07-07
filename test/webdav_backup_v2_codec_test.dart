@@ -117,4 +117,36 @@ void main() {
       ),
     );
   });
+
+  test('generic settings whitelist includes stable baby cloud settings only',
+      () {
+    expect(
+      WebDavBackupV2Service.shouldBackupGenericSetting(
+        'baby_cloud_current_source_id',
+      ),
+      isTrue,
+    );
+    expect(
+      WebDavBackupV2Service.shouldBackupGenericSetting('baby_cloud_actor_role'),
+      isTrue,
+    );
+    expect(
+      WebDavBackupV2Service.shouldBackupGenericSetting(
+        'baby_cloud_actor_role_baby-1',
+      ),
+      isTrue,
+    );
+    expect(
+      WebDavBackupV2Service.shouldBackupGenericSetting(
+        'baby_cloud_aliyun_oauth_state',
+      ),
+      isFalse,
+    );
+    expect(
+      WebDavBackupV2Service.shouldBackupGenericSetting(
+        'baby_cloud_last_sync_source-1_baby-1',
+      ),
+      isFalse,
+    );
+  });
 }

@@ -16,14 +16,7 @@ class PoopRecordAdapter extends TypeAdapter<PoopRecord> {
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return PoopRecord(
-      id: fields[0] as String,
-      babyId: fields[1] as String,
-      dateTime: fields[2] as DateTime,
-      note: fields[3] as String,
-      type: fields[4] as int,
-      color: fields[5] as int,
-    );
+    return PoopRecord.fromHiveFields(fields);
   }
 
   @override
