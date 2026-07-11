@@ -44,7 +44,13 @@ class _BabyCloudPageState extends State<BabyCloudPage> {
   Future<void> _syncCurrent({bool forceRemote = false}) async {
     final baby = _user.currentBaby.value;
     if (baby != null && _cloud.currentSource.value != null) {
-      await _cloud.syncBaby(baby, forceRemote: forceRemote);
+      await _cloud.syncBaby(
+        baby,
+        forceRemote: forceRemote,
+        trigger: forceRemote
+            ? BabyCloudSyncTrigger.manualRefresh
+            : BabyCloudSyncTrigger.viewActivation,
+      );
     }
   }
 
@@ -70,6 +76,7 @@ class _BabyCloudPageState extends State<BabyCloudPage> {
                       onRefresh: () => _cloud.syncBaby(
                         baby,
                         forceRemote: true,
+                        trigger: BabyCloudSyncTrigger.manualRefresh,
                       ),
                       child: CustomScrollView(
                         physics: const AlwaysScrollableScrollPhysics(),
@@ -204,6 +211,7 @@ class _BabyCloudPageState extends State<BabyCloudPage> {
             onPressed: () => _cloud.syncBaby(
               baby,
               forceRemote: true,
+              trigger: BabyCloudSyncTrigger.manualRefresh,
             ),
           ),
         ],
@@ -435,13 +443,12 @@ class _BabyCloudPageState extends State<BabyCloudPage> {
   }
 
   Widget _buildTimelineEntryCard(_BabyCloudTimelineEntry entry) {
-    final firstMedia = entry.mediaItems.isNotEmpty
-        ? entry.mediaItems.first
-        : null;
+    final firstMedia =
+        entry.mediaItems.isNotEmpty ? entry.mediaItems.first : null;
     final description =
         (entry.entry?.description ?? firstMedia?.description ?? '').trim();
-    final actorRole = (entry.entry?.actorRole ?? firstMedia?.actorRole ?? '家人')
-        .trim();
+    final actorRole =
+        (entry.entry?.actorRole ?? firstMedia?.actorRole ?? '家人').trim();
     final locationName = entry.entry?.locationName ?? firstMedia?.locationName;
     final media = entry.mediaItems.where((item) => !item.isDiary).toList();
 
@@ -567,8 +574,8 @@ class _BabyCloudPageState extends State<BabyCloudPage> {
                 child: _buildMediaTile(
                   media,
                   index,
-                  showCount: media.length > maxVisible &&
-                      index == visibleCount - 1,
+                  showCount:
+                      media.length > maxVisible && index == visibleCount - 1,
                   onCountTap: () => _openEntryDetail(entry),
                 ),
               ),

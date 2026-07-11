@@ -164,7 +164,7 @@ class _BabyCloudSourcePageState extends State<BabyCloudSourcePage> {
     setState(() => _checkingIds.add(source.id));
     ToastUtils.showInfo('正在检测 ${source.name}');
     try {
-      final result = await _cloud.checkSource(source);
+      final result = await _cloud.checkSource(source, forceProbe: true);
       if (result.ok) {
         if (source.isWebDav) {
           ToastUtils.showSuccess('已连接${result.endpointLabel} WebDAV');
@@ -205,6 +205,7 @@ class _BabyCloudSourcePageState extends State<BabyCloudSourcePage> {
         baby,
         showErrors: true,
         forceRemote: true,
+        trigger: BabyCloudSyncTrigger.sourceSwitch,
       );
     }
   }
@@ -917,9 +918,8 @@ class _BabyCloudSourceEditorPageState
       onSubmitted: (_) => _submit(),
       decoration: InputDecoration(
         labelText: _type == 'webdav' ? '亲宝宝云端根目录' : '云端根目录名',
-        helperText: _type == 'webdav'
-            ? '不同宝宝会自动放到这个目录下的不同子目录'
-            : '会在阿里云盘中创建或定位这个应用目录',
+        helperText:
+            _type == 'webdav' ? '不同宝宝会自动放到这个目录下的不同子目录' : '会在阿里云盘中创建或定位这个应用目录',
         border: const OutlineInputBorder(),
         suffixIcon: IconButton(
           tooltip: '选择云端目录',

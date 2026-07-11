@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
-import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
@@ -45,6 +44,15 @@ class BabyCloudSourceCheckResult {
 
 const int _generatedThumbnailSize = 360;
 const int _generatedThumbnailJpegQuality = 62;
+const Duration _sourceCheckSuccessFreshness = Duration(minutes: 10);
+const Duration _sourceCheckFailureFreshness = Duration(seconds: 30);
+
+enum BabyCloudSyncTrigger {
+  viewActivation,
+  manualRefresh,
+  sourceSwitch,
+  contentPublish,
+}
 
 class _CachedSourceCheck {
   const _CachedSourceCheck(
@@ -63,7 +71,7 @@ class _CachedSourceCheck {
     // 网络环境变了，缓存无效（如内外网切换时能立刻切过来）
     if (lookedLocal != currentLooksLocal) return false;
     final ttl =
-        result.ok ? const Duration(seconds: 45) : const Duration(seconds: 5);
+        result.ok ? _sourceCheckSuccessFreshness : _sourceCheckFailureFreshness;
     return DateTime.now().difference(checkedAt) < ttl;
   }
 }
@@ -1033,6 +1041,7 @@ class BabyCloudService extends GetxService {
   final Set<String> _thumbnailAutoFailedKeys = <String>{};
   final Map<String, String> _manifestBabyDirs = {};
   final Map<String, String> _manifestCloudBabyIds = {};
+  final Set<String> _preparedBabyStructureKeys = <String>{};
   final Map<String, _CachedSourceCheck> _sourceCheckCache = {};
   final Map<String, Future<BabyCloudSourceCheckResult>> _sourceCheckFutures =
       {};
@@ -1403,6 +1412,7 @@ class BabyCloudService extends GetxService {
     BabyCloudSource source, {
     bool persist = true,
     bool initializeRoot = false,
+    bool forceProbe = false,
   }) async {
     if (source.isAliyunDrive) {
       return _checkAliyunDriveSource(
@@ -1432,7 +1442,7 @@ class BabyCloudService extends GetxService {
       return const BabyCloudSourceCheckResult(ok: false, message: message);
     }
 
-    if (!initializeRoot && persist) {
+    if (!initializeRoot && persist && !forceProbe) {
       final cacheKey = _sourceCheckCacheKey(source);
       final currentLooksLocal = await _looksLikeLocalNetwork();
       final currentEndpointMode = _webDavEndpointMode(source);
@@ -1441,6 +1451,21 @@ class BabyCloudService extends GetxService {
           cached.endpointMode == currentEndpointMode &&
           cached.isFresh(currentLooksLocal)) {
         return cached.result;
+      }
+
+      final persisted = _recentPersistedWebDavCheck(
+        source,
+        looksLocal: currentLooksLocal,
+        endpointMode: currentEndpointMode,
+      );
+      if (persisted != null) {
+        _sourceCheckCache[cacheKey] = _CachedSourceCheck(
+          persisted,
+          DateTime.now(),
+          currentLooksLocal,
+          currentEndpointMode,
+        );
+        return persisted;
       }
 
       final pending = _sourceCheckFutures[cacheKey];
@@ -1470,6 +1495,38 @@ class BabyCloudService extends GetxService {
       source,
       persist: persist,
       initializeRoot: initializeRoot,
+    );
+  }
+
+  BabyCloudSourceCheckResult? _recentPersistedWebDavCheck(
+    BabyCloudSource source, {
+    required bool looksLocal,
+    required String endpointMode,
+  }) {
+    if (!source.isWebDav || source.status != 'normal') return null;
+    final checkedAt = source.lastCheckedAt;
+    if (checkedAt == null ||
+        DateTime.now().difference(checkedAt) >= _sourceCheckSuccessFreshness) {
+      return null;
+    }
+    final activeUrl = source.activeWebDavUrl?.trim() ?? '';
+    if (activeUrl.isEmpty || source.activeWebDavEndpoint == 'none') {
+      return null;
+    }
+    if (!_activeWebDavEndpointMatches(
+      source,
+      looksLocal: looksLocal,
+      endpointMode: endpointMode,
+    )) {
+      return null;
+    }
+    return BabyCloudSourceCheckResult(
+      ok: true,
+      message: source.lastCheckMessage?.trim().isNotEmpty == true
+          ? source.lastCheckMessage!
+          : '复用最近可用 WebDAV 连接',
+      endpoint: source.activeWebDavEndpoint,
+      url: _normalizeEndpointUrl(activeUrl),
     );
   }
 
@@ -1770,9 +1827,8 @@ class BabyCloudService extends GetxService {
         force: force,
         persist: persistSourceChanges,
       ),
-      onSourceChanged: persistSourceChanges
-          ? _persistSourceSilently
-          : (_) async {},
+      onSourceChanged:
+          persistSourceChanges ? _persistSourceSilently : (_) async {},
     );
   }
 
@@ -2050,13 +2106,9 @@ class BabyCloudService extends GetxService {
         ? candidate.endpoint == 'external'
         : candidate.endpoint == 'lan';
     if (candidate.endpoint == 'lan') {
-      return mismatch
-          ? const Duration(seconds: 2)
-          : const Duration(seconds: 4);
+      return mismatch ? const Duration(seconds: 2) : const Duration(seconds: 4);
     }
-    return mismatch
-        ? const Duration(seconds: 6)
-        : const Duration(seconds: 12);
+    return mismatch ? const Duration(seconds: 6) : const Duration(seconds: 12);
   }
 
   String _sourceCheckCacheKey(BabyCloudSource source) {
@@ -2154,6 +2206,7 @@ class BabyCloudService extends GetxService {
     Baby baby, {
     bool showErrors = true,
     bool forceRemote = false,
+    BabyCloudSyncTrigger trigger = BabyCloudSyncTrigger.viewActivation,
   }) {
     final source = currentSource.value;
     if (source == null) return Future<void>.value();
@@ -2166,7 +2219,12 @@ class BabyCloudService extends GetxService {
     final active = _activeSync;
     if (active != null) return active;
 
-    final operation = _syncBabyInternal(baby, showErrors: showErrors);
+    final operation = _syncBabyInternal(
+      baby,
+      showErrors: showErrors,
+      forceRemote: forceRemote,
+      trigger: trigger,
+    );
     _activeSync = operation;
     return operation.whenComplete(() {
       if (identical(_activeSync, operation)) {
@@ -2177,9 +2235,8 @@ class BabyCloudService extends GetxService {
 
   bool _hasFreshBabySyncCache(BabyCloudSource source, Baby baby) {
     final raw = _storage.settingsBox.get(_babySyncCacheKey(source.id, baby.id));
-    final syncedAt = raw is DateTime
-        ? raw
-        : DateTime.tryParse(raw?.toString() ?? '');
+    final syncedAt =
+        raw is DateTime ? raw : DateTime.tryParse(raw?.toString() ?? '');
     if (syncedAt == null) return false;
     return DateTime.now().difference(syncedAt) < _automaticSyncFreshness;
   }
@@ -2195,7 +2252,12 @@ class BabyCloudService extends GetxService {
     return 'baby_cloud_last_sync_${_safeFileSegment(sourceId)}_${_safeFileSegment(babyId)}';
   }
 
-  Future<void> _syncBabyInternal(Baby baby, {bool showErrors = true}) async {
+  Future<void> _syncBabyInternal(
+    Baby baby, {
+    bool showErrors = true,
+    required bool forceRemote,
+    required BabyCloudSyncTrigger trigger,
+  }) async {
     final source = currentSource.value;
     if (source == null) return;
 
@@ -2207,7 +2269,17 @@ class BabyCloudService extends GetxService {
         return;
       }
       final client = await _remoteClientForSource(source, check: check);
-      await _prepareBabyCloudStructure(client, source, baby);
+      await _prepareBabyCloudStructure(
+        client,
+        source,
+        baby,
+        ensureDirs: _shouldEnsureBabyStructureDirs(
+          source,
+          baby,
+          forceRemote: forceRemote,
+          trigger: trigger,
+        ),
+      );
       final remote = await _readRemoteIndexAt(client, _indexPath(source, baby));
       if (remote != null) {
         await _mergeRemoteIndex(source, baby, remote);
@@ -2216,6 +2288,12 @@ class BabyCloudService extends GetxService {
         source.id,
         baby.id,
         waitForActiveSync: false,
+        sourceOverride: source,
+        clientOverride: client,
+        babyOverride: baby,
+        prepareStructure: false,
+        mergeRemote: false,
+        trigger: trigger,
       );
       source.status = 'normal';
       await saveSource(source);
@@ -2635,7 +2713,8 @@ class BabyCloudService extends GetxService {
             cacheKey: stored.sha256,
             existingThumbnailPath: stored.localThumbnailPath,
           ).then((path) async {
-            await _rememberLocalMediaPath(stored, storedOriginalCachedFile.path);
+            await _rememberLocalMediaPath(
+                stored, storedOriginalCachedFile.path);
             if (path != null && path != storedOriginalCachedFile.path) {
               item.localThumbnailPath = path;
               _logMediaCache('缩略图从Hive原图磁盘缓存生成', item, path);
@@ -3113,22 +3192,47 @@ class BabyCloudService extends GetxService {
     String sourceId,
     String babyId, {
     bool waitForActiveSync = true,
+    BabyCloudSource? sourceOverride,
+    _BabyCloudRemoteClient? clientOverride,
+    Baby? babyOverride,
+    bool prepareStructure = true,
+    bool mergeRemote = true,
+    BabyCloudSyncTrigger trigger = BabyCloudSyncTrigger.contentPublish,
   }) async {
     if (waitForActiveSync) {
       await _waitForActiveSync();
     }
-    final source = sources.firstWhereOrNull((s) => s.id == sourceId);
+    final source =
+        sourceOverride ?? sources.firstWhereOrNull((s) => s.id == sourceId);
     if (source == null) return;
-    final check = await checkSource(source);
-    if (!check.ok) return;
-    final client = await _remoteClientForSource(source, check: check);
-    final babyName = _babySafeName(babyId);
-    final baby = Baby(id: babyId, name: babyName, avatarPath: '');
-    await _prepareBabyCloudStructure(client, source, baby);
+    var client = clientOverride;
+    if (client == null) {
+      final check = await checkSource(source);
+      if (!check.ok) return;
+      client = await _remoteClientForSource(source, check: check);
+    }
+    final babyName = babyOverride?.name ?? _babySafeName(babyId);
+    final baby =
+        babyOverride ?? Baby(id: babyId, name: babyName, avatarPath: '');
+    if (prepareStructure) {
+      await _prepareBabyCloudStructure(
+        client,
+        source,
+        baby,
+        ensureDirs: _shouldEnsureBabyStructureDirs(
+          source,
+          baby,
+          forceRemote: trigger != BabyCloudSyncTrigger.viewActivation,
+          trigger: trigger,
+        ),
+      );
+    }
     final indexPath = _indexPath(source, baby);
-    final remote = await _readRemoteIndexAt(client, indexPath);
-    if (remote != null) {
-      await _mergeRemoteIndex(source, baby, remote);
+    if (mergeRemote) {
+      final remote = await _readRemoteIndexAt(client, indexPath);
+      if (remote != null) {
+        await _mergeRemoteIndex(source, baby, remote);
+      }
     }
     await _normalizeLocalCloudIdentity(source, baby);
     final cloudBabyId = _cloudBabyId(source, baby);
@@ -3619,12 +3723,10 @@ class BabyCloudService extends GetxService {
       final oriented = img.bakeOrientation(decoded);
       final resized = img.copyResize(
         oriented,
-        width: oriented.width >= oriented.height
-            ? _generatedThumbnailSize
-            : null,
-        height: oriented.height > oriented.width
-            ? _generatedThumbnailSize
-            : null,
+        width:
+            oriented.width >= oriented.height ? _generatedThumbnailSize : null,
+        height:
+            oriented.height > oriented.width ? _generatedThumbnailSize : null,
         interpolation: img.Interpolation.average,
       );
       final thumbnailBytes = img.encodeJpg(
@@ -3830,8 +3932,9 @@ class BabyCloudService extends GetxService {
   Future<void> _prepareBabyCloudStructure(
     _BabyCloudRemoteClient client,
     BabyCloudSource source,
-    Baby baby,
-  ) async {
+    Baby baby, {
+    bool ensureDirs = true,
+  }) async {
     final manifest = await _readOrCreateLibraryManifest(client, source);
     final libraryId = manifest['libraryId']?.toString().trim() ?? '';
     if (libraryId.isNotEmpty) {
@@ -3840,7 +3943,35 @@ class BabyCloudService extends GetxService {
     }
     _rememberBabyMappingFromManifest(source, baby, manifest);
     await _bindBabyInManifest(client, source, baby, manifest);
-    await _ensureBabyDirs(client, source, baby);
+    if (ensureDirs) {
+      await _ensureBabyDirs(client, source, baby);
+      _preparedBabyStructureKeys.add(_babyStructureCacheKey(source, baby));
+    }
+  }
+
+  bool _shouldEnsureBabyStructureDirs(
+    BabyCloudSource source,
+    Baby baby, {
+    required bool forceRemote,
+    required BabyCloudSyncTrigger trigger,
+  }) {
+    if (forceRemote || trigger != BabyCloudSyncTrigger.viewActivation) {
+      return true;
+    }
+    return !_preparedBabyStructureKeys.contains(
+      _babyStructureCacheKey(source, baby),
+    );
+  }
+
+  String _babyStructureCacheKey(BabyCloudSource source, Baby baby) {
+    return [
+      source.id,
+      _normalizeRoot(source.rootPath),
+      _libraryScopeForSource(source),
+      baby.id,
+      _safeName(baby.name),
+      _babyDir(source, baby),
+    ].join('\u001f');
   }
 
   Future<void> _normalizeLocalCloudIdentity(
@@ -3887,12 +4018,12 @@ class BabyCloudService extends GetxService {
     BabyCloudSource source,
   ) async {
     final root = _normalizeRoot(source.rootPath);
-    if (root != '/') {
-      await _ensureRemoteDir(client, root);
-    }
     final existing = await _readLibraryManifest(client, source);
     if (existing != null) return existing;
 
+    if (root != '/') {
+      await _ensureRemoteDir(client, root);
+    }
     final now = DateTime.now().toIso8601String();
     final libraryId = source.libraryId?.trim().isNotEmpty == true
         ? source.libraryId!.trim()
@@ -3994,15 +4125,31 @@ class BabyCloudService extends GetxService {
       'updatedAt': now,
       'createdAt': existing?['createdAt']?.toString() ?? now,
     };
+    final unchanged = existing != null &&
+        existing['cloudBabyId']?.toString() == cloudBabyId &&
+        _normalizeRemoteDir(existing['babyDir']?.toString() ?? '') == babyDir &&
+        existing['name']?.toString() == baby.name &&
+        existing['safeName']?.toString() == _safeName(baby.name) &&
+        setEquals(
+          _stringSet(existing['localBabyIds']),
+          _stringSet(node['localBabyIds']),
+        );
+    _rememberManifestBabyDir(source, baby.id, babyDir);
+    _rememberCloudBabyId(source, baby.id, cloudBabyId);
+    if (unchanged) return;
+
     if (existing == null) {
       babies.add(node);
     } else if (existingIndex >= 0) {
       babies[existingIndex] = node;
     }
     manifest['babies'] = babies;
-    _rememberManifestBabyDir(source, baby.id, babyDir);
-    _rememberCloudBabyId(source, baby.id, cloudBabyId);
     await _writeLibraryManifest(client, source, manifest);
+  }
+
+  Set<String> _stringSet(Object? raw) {
+    if (raw is! List) return <String>{};
+    return raw.map((item) => item.toString()).toSet();
   }
 
   List<Map<String, dynamic>> _manifestBabies(Map<String, dynamic> manifest) {
@@ -4475,6 +4622,7 @@ class BabyCloudService extends GetxService {
         ..activeWebDavUrl = null
         ..activeWebDavEndpoint = 'none';
     }
+    _sourceCheckCache.remove(_sourceCheckCacheKey(source));
     if (persist) {
       await saveSource(source);
     }
@@ -4544,6 +4692,35 @@ class BabyCloudService extends GetxService {
       add('lan', lan);
     }
     return result;
+  }
+
+  bool _activeWebDavEndpointMatches(
+    BabyCloudSource source, {
+    required bool looksLocal,
+    required String endpointMode,
+  }) {
+    final active = source.activeWebDavUrl?.trim() ?? '';
+    if (active.isEmpty) return false;
+    final normalizedActive = _normalizeEndpointUrl(active);
+    if (normalizedActive.isEmpty) return false;
+    final lan = _normalizeEndpointUrl(source.webDavLanUrl?.trim() ?? '');
+    final external = _normalizeEndpointUrl(source.webDavUrl?.trim() ?? '');
+    final activeEndpoint = source.activeWebDavEndpoint;
+
+    if (endpointMode == 'lan') {
+      return activeEndpoint == 'lan' ||
+          (lan.isNotEmpty && normalizedActive == lan);
+    }
+    if (endpointMode == 'external') {
+      return activeEndpoint == 'external' ||
+          (external.isNotEmpty && normalizedActive == external);
+    }
+    if (looksLocal) {
+      return activeEndpoint == 'lan' ||
+          (lan.isNotEmpty && normalizedActive == lan);
+    }
+    return activeEndpoint == 'external' ||
+        (external.isNotEmpty && normalizedActive == external);
   }
 
   Future<bool> _looksLikeLocalNetwork() async {
@@ -4745,9 +4922,8 @@ class BabyCloudService extends GetxService {
     DateTime takenAt,
   ) {
     final rawExt = _extension(fileName);
-    final ext = rawExt.isEmpty || rawExt.toLowerCase() == '.heic'
-        ? '.jpg'
-        : rawExt;
+    final ext =
+        rawExt.isEmpty || rawExt.toLowerCase() == '.heic' ? '.jpg' : rawExt;
     final year = DateFormat('yyyy').format(takenAt);
     final month = DateFormat('MM').format(takenAt);
     final ts = DateFormat('yyyyMMdd_HHmmss').format(takenAt);

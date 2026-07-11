@@ -1211,6 +1211,7 @@ class _GrowthChartState extends State<GrowthChart> {
   _ChartRange? _startXRange;
   _ChartRange? _startYRange;
   Offset? _startFocalPoint;
+  String? _selectedRecordId;
 
   @override
   void didUpdateWidget(covariant GrowthChart oldWidget) {
@@ -1220,6 +1221,8 @@ class _GrowthChartState extends State<GrowthChart> {
         oldWidget.baby.gender != widget.baby.gender ||
         oldWidget.baby.birthDate != widget.baby.birthDate) {
       _resetViewport();
+    } else if (!widget.records.any((record) => record.id == _selectedRecordId)) {
+      _selectedRecordId = null;
     }
   }
 
@@ -1237,6 +1240,7 @@ class _GrowthChartState extends State<GrowthChart> {
           metric: widget.metric,
           xRange: null,
           yRange: null,
+          selectedRecordId: null,
         ),
         child: const SizedBox.expand(),
       );
@@ -1249,8 +1253,10 @@ class _GrowthChartState extends State<GrowthChart> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final size = Size(constraints.maxWidth, constraints.maxHeight);
+        final selected = _selectedPointFor(size, xRange, yRange);
         return GestureDetector(
           behavior: HitTestBehavior.opaque,
+          onTapUp: (details) => _handleTapUp(details, size),
           onDoubleTap: _resetViewport,
           onScaleStart: (details) {
             _startXRange = xRange;
@@ -1258,15 +1264,30 @@ class _GrowthChartState extends State<GrowthChart> {
             _startFocalPoint = details.localFocalPoint;
           },
           onScaleUpdate: (details) => _handleScaleUpdate(details, size),
-          child: CustomPaint(
-            painter: _GrowthChartPainter(
-              baby: widget.baby,
-              records: widget.records,
-              metric: widget.metric,
-              xRange: xRange,
-              yRange: yRange,
-            ),
-            child: const SizedBox.expand(),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              CustomPaint(
+                painter: _GrowthChartPainter(
+                  baby: widget.baby,
+                  records: widget.records,
+                  metric: widget.metric,
+                  xRange: xRange,
+                  yRange: yRange,
+                  selectedRecordId: _selectedRecordId,
+                ),
+                child: const SizedBox.expand(),
+              ),
+              if (selected != null)
+                _GrowthPointInfoOverlay(
+                  baby: widget.baby,
+                  record: selected.point.record,
+                  metric: widget.metric,
+                  value: selected.point.value,
+                  offset: selected.offset,
+                  chartSize: size,
+                ),
+            ],
           ),
         );
       },
@@ -1303,12 +1324,12 @@ class _GrowthChartState extends State<GrowthChart> {
   }
 
   List<_GrowthPoint> _recordPoints(_ChartRange xRange) {
-    return widget.records
+    final points = widget.records
         .map((record) {
           final value = _growthMetricValue(record, widget.metric);
           final age = _exactAgeMonthsFor(widget.baby, record.recordDate);
           if (value == null || age == null) return null;
-          return _GrowthPoint(age, value);
+          return _GrowthPoint(age, value, record);
         })
         .whereType<_GrowthPoint>()
         .where(
@@ -1316,6 +1337,79 @@ class _GrowthChartState extends State<GrowthChart> {
               point.ageMonths >= xRange.min && point.ageMonths <= xRange.max,
         )
         .toList();
+    points.sort((a, b) => a.ageMonths.compareTo(b.ageMonths));
+    return points;
+  }
+
+  void _handleTapUp(TapUpDetails details, Size size) {
+    final xRange = _xRange;
+    final yRange = _yRange;
+    if (xRange == null || yRange == null) return;
+
+    final hit = _nearestPoint(details.localPosition, size, xRange, yRange);
+    setState(() {
+      _selectedRecordId = hit?.record.id;
+    });
+  }
+
+  _GrowthPoint? _nearestPoint(
+    Offset position,
+    Size size,
+    _ChartRange xRange,
+    _ChartRange yRange,
+  ) {
+    final points = _visibleRecordPoints(xRange, yRange);
+    if (points.isEmpty) return null;
+
+    _GrowthPoint? nearest;
+    var nearestDistance = double.infinity;
+    for (final point in points) {
+      final offset = _chartOffset(size, xRange, yRange, point);
+      final distance = (offset - position).distance;
+      if (distance < nearestDistance) {
+        nearest = point;
+        nearestDistance = distance;
+      }
+    }
+    return nearestDistance <= 24 ? nearest : null;
+  }
+
+  List<_GrowthPoint> _visibleRecordPoints(
+    _ChartRange xRange,
+    _ChartRange yRange,
+  ) {
+    return _recordPoints(xRange)
+        .where((point) => point.value >= yRange.min && point.value <= yRange.max)
+        .toList();
+  }
+
+  _SelectedGrowthPoint? _selectedPointFor(
+    Size size,
+    _ChartRange? xRange,
+    _ChartRange? yRange,
+  ) {
+    final selectedRecordId = _selectedRecordId;
+    if (selectedRecordId == null || xRange == null || yRange == null) {
+      return null;
+    }
+    final point = _visibleRecordPoints(xRange, yRange)
+        .firstWhereOrNull((item) => item.record.id == selectedRecordId);
+    if (point == null) return null;
+    return _SelectedGrowthPoint(point, _chartOffset(size, xRange, yRange, point));
+  }
+
+  Offset _chartOffset(
+    Size size,
+    _ChartRange xRange,
+    _ChartRange yRange,
+    _GrowthPoint point,
+  ) {
+    final rect = _growthChartPlotRect(size);
+    final x =
+        rect.left + (point.ageMonths - xRange.min) / xRange.span * rect.width;
+    final y =
+        rect.bottom - (point.value - yRange.min) / yRange.span * rect.height;
+    return Offset(x, y);
   }
 
   void _handleScaleUpdate(ScaleUpdateDetails details, Size size) {
@@ -1388,6 +1482,7 @@ class _GrowthChartState extends State<GrowthChart> {
       _startXRange = null;
       _startYRange = null;
       _startFocalPoint = null;
+      _selectedRecordId = null;
     });
   }
 
@@ -1407,8 +1502,161 @@ class _GrowthChartState extends State<GrowthChart> {
 class _GrowthPoint {
   final double ageMonths;
   final double value;
+  final GrowthRecord record;
 
-  const _GrowthPoint(this.ageMonths, this.value);
+  const _GrowthPoint(this.ageMonths, this.value, this.record);
+}
+
+class _SelectedGrowthPoint {
+  final _GrowthPoint point;
+  final Offset offset;
+
+  const _SelectedGrowthPoint(this.point, this.offset);
+}
+
+class _GrowthPointInfoOverlay extends StatelessWidget {
+  final Baby baby;
+  final GrowthRecord record;
+  final GrowthMetric metric;
+  final double value;
+  final Offset offset;
+  final Size chartSize;
+
+  const _GrowthPointInfoOverlay({
+    required this.baby,
+    required this.record,
+    required this.metric,
+    required this.value,
+    required this.offset,
+    required this.chartSize,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final metrics = _growthRecordMetrics(record);
+    final note = record.note.trim();
+    final horizontalMargin = 8.w;
+    final availableWidth = math.max(0.0, chartSize.width - horizontalMargin * 2);
+    final panelWidth = math.min(276.w, availableWidth);
+    final left = _clampDouble(
+      offset.dx - panelWidth / 2,
+      horizontalMargin,
+      chartSize.width - panelWidth - horizontalMargin,
+    );
+    final showAtTop = offset.dy > chartSize.height * 0.48;
+    final ageText = _growthAgeTextAt(baby, record.recordDate);
+    final selectedText =
+        '${_formatGrowthChartValue(value)} ${_growthMetricUnit(metric)}';
+
+    Widget metricChip(_RecordMetric item) {
+      return Container(
+        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 5.h),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF4FAF6),
+          borderRadius: BorderRadius.circular(6.r),
+        ),
+        child: Text(
+          '${item.label} ${item.value} ${item.unit}',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: AppTheme.textMain,
+            fontSize: 11.5.sp,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      );
+    }
+
+    return Positioned(
+      left: left,
+      width: panelWidth,
+      top: showAtTop ? 10.h : null,
+      bottom: showAtTop ? null : 10.h,
+      child: IgnorePointer(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.97),
+            borderRadius: BorderRadius.circular(8.r),
+            border: Border.all(color: const Color(0xFFDDEFE3)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.10),
+                blurRadius: 14,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(10.w),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 8.w,
+                      height: 8.w,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF55C878),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    SizedBox(width: 6.w),
+                    Expanded(
+                      child: Text(
+                        '${_growthMetricLabel(metric)} $selectedText',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: AppTheme.textMain,
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 6.h),
+                Text(
+                  '${DateFormat('yyyy-MM-dd').format(record.recordDate)} $ageText',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: const Color(0xFF7B7B7B),
+                    fontSize: 11.5.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                SizedBox(height: 8.h),
+                Wrap(
+                  spacing: 6.w,
+                  runSpacing: 6.h,
+                  children: [
+                    for (final item in metrics) metricChip(item),
+                  ],
+                ),
+                if (note.isNotEmpty) ...[
+                  SizedBox(height: 7.h),
+                  Text(
+                    note,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontSize: 11.5.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _ChartRange {
@@ -1509,6 +1757,57 @@ double? _growthMetricValue(GrowthRecord record, GrowthMetric metric) {
   };
 }
 
+String _growthMetricLabel(GrowthMetric metric) {
+  return switch (metric) {
+    GrowthMetric.height => '身高',
+    GrowthMetric.weight => '体重',
+    GrowthMetric.headCircumference => '头围',
+  };
+}
+
+String _growthMetricUnit(GrowthMetric metric) {
+  return switch (metric) {
+    GrowthMetric.height => 'cm',
+    GrowthMetric.weight => 'kg',
+    GrowthMetric.headCircumference => 'cm',
+  };
+}
+
+String _formatGrowthChartValue(double value) {
+  final text = value.toStringAsFixed(2);
+  if (text.endsWith('00')) return value.toStringAsFixed(1);
+  if (text.endsWith('0')) return text.substring(0, text.length - 1);
+  return text;
+}
+
+String _growthAgeTextAt(Baby baby, DateTime date) {
+  if (baby.birthDate == null) return '';
+  return BabyProfileUtils.ageText(baby, now: date);
+}
+
+List<_RecordMetric> _growthRecordMetrics(GrowthRecord record) {
+  return [
+    if (record.heightCm != null)
+      _RecordMetric(
+        _growthMetricLabel(GrowthMetric.height),
+        _formatGrowthChartValue(record.heightCm!),
+        _growthMetricUnit(GrowthMetric.height),
+      ),
+    if (record.weightKg != null)
+      _RecordMetric(
+        _growthMetricLabel(GrowthMetric.weight),
+        _formatGrowthChartValue(record.weightKg!),
+        _growthMetricUnit(GrowthMetric.weight),
+      ),
+    if (record.headCircumferenceCm != null)
+      _RecordMetric(
+        _growthMetricLabel(GrowthMetric.headCircumference),
+        _formatGrowthChartValue(record.headCircumferenceCm!),
+        _growthMetricUnit(GrowthMetric.headCircumference),
+      ),
+  ];
+}
+
 double? _exactAgeMonthsFor(Baby baby, DateTime date) {
   final birth = baby.birthDate;
   if (birth == null || date.isBefore(birth)) return null;
@@ -1555,6 +1854,7 @@ class _GrowthChartPainter extends CustomPainter {
   final GrowthMetric metric;
   final _ChartRange? xRange;
   final _ChartRange? yRange;
+  final String? selectedRecordId;
 
   _GrowthChartPainter({
     required this.baby,
@@ -1562,6 +1862,7 @@ class _GrowthChartPainter extends CustomPainter {
     required this.metric,
     required this.xRange,
     required this.yRange,
+    required this.selectedRecordId,
   });
 
   @override
@@ -1579,7 +1880,7 @@ class _GrowthChartPainter extends CustomPainter {
           final value = _growthMetricValue(record, metric);
           final age = _exactAgeMonthsFor(baby, record.recordDate);
           if (value == null || age == null) return null;
-          return _GrowthPoint(age, value);
+          return _GrowthPoint(age, value, record);
         })
         .whereType<_GrowthPoint>()
         .toList()
@@ -1771,14 +2072,27 @@ class _GrowthChartPainter extends CustomPainter {
     final dotPaint = Paint()
       ..color = const Color(0xFF70C989)
       ..style = PaintingStyle.fill;
+    final selectedPaint = Paint()
+      ..color = const Color(0xFF2F68A8)
+      ..style = PaintingStyle.fill;
+    final selectedHaloPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.85)
+      ..style = PaintingStyle.fill;
     final dotBorder = Paint()
       ..color = Colors.white
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
     for (final item in points) {
       final p = point(item.ageMonths, item.value);
-      canvas.drawCircle(p, 5.2, dotPaint);
-      canvas.drawCircle(p, 5.2, dotBorder);
+      final isSelected = item.record.id == selectedRecordId;
+      final radius = isSelected ? 7.4 : 5.2;
+      if (isSelected) {
+        canvas.drawCircle(p, radius + 3.0, selectedHaloPaint);
+        canvas.drawCircle(p, radius, selectedPaint);
+      } else {
+        canvas.drawCircle(p, radius, dotPaint);
+      }
+      canvas.drawCircle(p, radius, dotBorder);
     }
   }
 
@@ -1919,7 +2233,8 @@ class _GrowthChartPainter extends CustomPainter {
         oldDelegate.baby != baby ||
         oldDelegate.metric != metric ||
         oldDelegate.xRange != xRange ||
-        oldDelegate.yRange != yRange;
+        oldDelegate.yRange != yRange ||
+        oldDelegate.selectedRecordId != selectedRecordId;
   }
 }
 

@@ -194,15 +194,20 @@ class _RecordPageState extends State<RecordPage> {
   String _mediaFilter = 'all';
   DateTime? _dateFilter;
   bool _visibleSyncRunning = false;
+  String? _observedSourceId;
 
   @override
   void initState() {
     super.initState();
     _albumScrollController.addListener(_handleAlbumScroll);
+    _observedSourceId = _cloud.currentSource.value?.id;
     _babySyncWorker = ever(_user.currentBaby, (_) {
       if (widget.isActive) _scheduleCurrentBabySync();
     });
-    _sourceSyncWorker = ever(_cloud.currentSource, (_) {
+    _sourceSyncWorker = ever(_cloud.currentSource, (source) {
+      final nextSourceId = source?.id;
+      if (nextSourceId == _observedSourceId) return;
+      _observedSourceId = nextSourceId;
       if (widget.isActive) _scheduleCurrentBabySync();
     });
     if (widget.isActive) {
@@ -276,8 +281,10 @@ class _RecordPageState extends State<RecordPage> {
         baby,
         showErrors: showErrors,
         forceRemote: forceRemote,
+        trigger: forceRemote
+            ? BabyCloudSyncTrigger.manualRefresh
+            : BabyCloudSyncTrigger.viewActivation,
       );
-      unawaited(_cloud.processQueue());
     } finally {
       _visibleSyncRunning = false;
     }
