@@ -36,8 +36,18 @@ class _PinyinLearningPageState extends State<PinyinLearningPage> {
     super.dispose();
   }
 
+  bool get _supportsTone => _selectedItem.section != PinyinSection.initials;
+
+  int _effectiveTone(PinyinItem item, [int? tone]) {
+    // 汉语拼音声母不带声调；声调只标在韵母（及整体认读音节）上。
+    if (item.section == PinyinSection.initials) {
+      return item.defaultTone;
+    }
+    return tone ?? _selectedTone;
+  }
+
   Future<void> _playItem(PinyinItem item, {int? tone}) async {
-    final nextTone = tone ?? _selectedTone;
+    final nextTone = _effectiveTone(item, tone);
     setState(() {
       _selectedItem = item;
       _selectedTone = nextTone;
@@ -51,7 +61,7 @@ class _PinyinLearningPageState extends State<PinyinLearningPage> {
       await _playTip(_selectedItem);
       _spokenTipKeys.add(tipKey);
     }
-    await _audio.play(_selectedItem.audioKey(_selectedTone));
+    await _audio.play(_selectedItem.audioKey(_effectiveTone(_selectedItem)));
   }
 
   Future<void> _playTip(PinyinItem item) async {
@@ -89,10 +99,8 @@ class _PinyinLearningPageState extends State<PinyinLearningPage> {
   }
 
   String _buildTipSpeech(PinyinItem item) {
-    if (item.isExampleAudio) {
-      return '${item.text}，${item.tip}。';
-    }
-    return '${item.text}，${item.tip}。${item.example}。';
+    // 界面仍显示拼音字母；TTS 用中文呼读，避免 f/b/p 等被读成英文。
+    return PinyinData.toTipSpeech(item);
   }
 
   String _tipKeyFor(PinyinItem item) => '${item.section.name}:${item.text}';
@@ -138,8 +146,10 @@ class _PinyinLearningPageState extends State<PinyinLearningPage> {
                   _buildSectionTabs(),
                   SizedBox(height: 16.h),
                   _buildListenCard(),
-                  SizedBox(height: 16.h),
-                  _buildToneRow(),
+                  if (_supportsTone) ...[
+                    SizedBox(height: 16.h),
+                    _buildToneRow(),
+                  ],
                   SizedBox(height: 18.h),
                   _buildPinyinGrid(),
                   SizedBox(height: 18.h),
@@ -321,9 +331,13 @@ class _PinyinLearningPageState extends State<PinyinLearningPage> {
   }
 
   Widget _buildListenCard() {
-    final toneText = PinyinData.markTone(_selectedItem.text, _selectedTone);
+    final playTone = _effectiveTone(_selectedItem);
+    // 声母不标调；韵母/整体认读才显示声调符号。
+    final toneText = _supportsTone
+        ? PinyinData.markTone(_selectedItem.text, playTone)
+        : _selectedItem.text;
     final audioText =
-        PinyinData.markTone(_selectedItem.audioBase, _selectedTone);
+        PinyinData.markTone(_selectedItem.audioBase, playTone);
 
     return Container(
       width: double.infinity,
@@ -372,7 +386,7 @@ class _PinyinLearningPageState extends State<PinyinLearningPage> {
               Obx(() {
                 final loading = _audio.isLoading.value &&
                     _audio.currentAudioKey.value ==
-                        _selectedItem.audioKey(_selectedTone);
+                        _selectedItem.audioKey(_effectiveTone(_selectedItem));
                 return GestureDetector(
                   onTap: loading ? null : _playSelectedWithTip,
                   child: AnimatedContainer(
@@ -452,9 +466,7 @@ class _PinyinLearningPageState extends State<PinyinLearningPage> {
                 ),
                 SizedBox(height: 6.h),
                 Text(
-                  _selectedItem.isExampleAudio
-                      ? '当前播放示例音节：$audioText，用来听清里面的 ${_selectedItem.text}。'
-                      : '当前听到：$audioText · ${_selectedItem.example}',
+                  _listenHint(audioText),
                   style: TextStyle(
                     fontSize: 12.sp,
                     color: AppTheme.textSub,
@@ -820,6 +832,16 @@ class _PinyinLearningPageState extends State<PinyinLearningPage> {
       case PinyinSection.wholeSyllables:
         return '整体认读';
     }
+  }
+
+  String _listenHint(String audioText) {
+    if (_selectedItem.section == PinyinSection.initials) {
+      return '声母本身没有声调。现在听到的是教学读音：$audioText · ${_selectedItem.example}';
+    }
+    if (_selectedItem.isExampleAudio) {
+      return '当前播放示例音节：$audioText，用来听清里面的 ${_selectedItem.text}。';
+    }
+    return '当前听到：$audioText · ${_selectedItem.example}';
   }
 
   void _showParentSettings() {

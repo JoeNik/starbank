@@ -75,7 +75,7 @@ class PinyinData {
     PinyinItem(
         text: 't',
         audioBase: 'te',
-        tip: '和 d 像，但要送气',
+        tip: '和 d 一样，但要送气',
         example: '特别的 te',
         section: PinyinSection.initials),
     PinyinItem(
@@ -99,7 +99,7 @@ class PinyinData {
     PinyinItem(
         text: 'k',
         audioBase: 'ke',
-        tip: '和 g 像，但要送气',
+        tip: '和 g 一样，但要送气',
         example: '一颗的 ke',
         section: PinyinSection.initials),
     PinyinItem(
@@ -117,7 +117,7 @@ class PinyinData {
     PinyinItem(
         text: 'q',
         audioBase: 'qi',
-        tip: '和 j 像，但要送气',
+        tip: '和 j 一样，但要送气',
         example: '气球的 qi',
         section: PinyinSection.initials),
     PinyinItem(
@@ -171,7 +171,7 @@ class PinyinData {
     PinyinItem(
         text: 'y',
         audioBase: 'yi',
-        tip: '像整体认读 yi 的开头',
+        tip: '像整体认读 yi 的开头音',
         example: '衣服的 yi',
         section: PinyinSection.initials),
     PinyinItem(
@@ -324,7 +324,7 @@ class PinyinData {
     PinyinItem(
         text: 'ong',
         audioBase: 'zhong',
-        tip: 'audio-cmn 无纯 ong，这里听 zhong 中的 ong',
+        tip: '单独不好发时，听 zhong 里的 ong',
         example: '中国的 zhong',
         section: PinyinSection.finals,
         isExampleAudio: true),
@@ -581,6 +581,247 @@ class PinyinData {
       case PinyinSection.wholeSyllables:
         return wholeSyllables;
     }
+  }
+
+  /// 教学呼读名：给 TTS 用中文读，避免把声母字母读成英文（如 f 读成 ef）。
+  static const Map<String, String> _initialSpokenNames = {
+    'b': '玻',
+    'p': '坡',
+    'm': '摸',
+    'f': '佛',
+    'd': '得',
+    't': '特',
+    'n': '讷',
+    'l': '勒',
+    'g': '哥',
+    'k': '科',
+    'h': '喝',
+    'j': '基',
+    'q': '欺',
+    'x': '希',
+    'zh': '知',
+    'ch': '吃',
+    'sh': '诗',
+    'r': '日',
+    'z': '资',
+    'c': '雌',
+    's': '思',
+    'y': '衣',
+    'w': '乌',
+  };
+
+  /// 常见韵母 / 音节的中文近似读法，供 TTS 播报。
+  static const Map<String, String> _syllableSpokenNames = {
+    'a': '啊',
+    'o': '喔',
+    'e': '鹅',
+    'i': '衣',
+    'u': '乌',
+    'ü': '迂',
+    'v': '迂',
+    'ai': '爱',
+    'ei': '诶',
+    'ui': '威',
+    'ao': '奥',
+    'ou': '欧',
+    'iu': '优',
+    'ie': '耶',
+    'üe': '约',
+    'ue': '约',
+    'er': '儿',
+    'an': '安',
+    'en': '恩',
+    'in': '因',
+    'un': '温',
+    'ün': '晕',
+    'vn': '晕',
+    'ang': '昂',
+    'eng': '鞥',
+    'ing': '英',
+    'ong': '翁',
+    'bo': '玻',
+    'po': '坡',
+    'mo': '摸',
+    'fo': '佛',
+    'de': '得',
+    'te': '特',
+    'ne': '讷',
+    'le': '勒',
+    'ge': '哥',
+    'ke': '科',
+    'he': '喝',
+    'ji': '基',
+    'qi': '欺',
+    'xi': '西',
+    'zhi': '知',
+    'chi': '吃',
+    'shi': '诗',
+    'ri': '日',
+    'zi': '资',
+    'ci': '刺',
+    'si': '思',
+    'yi': '衣',
+    'wu': '乌',
+    'yu': '鱼',
+    'ye': '叶',
+    'yue': '月',
+    'yuan': '圆',
+    'yin': '音',
+    'yun': '云',
+    'ying': '影',
+    'wei': '威',
+    'you': '优',
+    'wen': '温',
+    'zhong': '中',
+    'ng': '嗯',
+  };
+
+  static String spokenName(PinyinItem item) {
+    switch (item.section) {
+      case PinyinSection.initials:
+        final name = _initialSpokenNames[item.text];
+        if (name == null) {
+          throw StateError('缺少声母呼读名: ${item.text}');
+        }
+        return name;
+      case PinyinSection.finals:
+      case PinyinSection.wholeSyllables:
+        final name = _syllableSpokenNames[item.text];
+        if (name == null) {
+          throw StateError('缺少音节呼读名: ${item.text}');
+        }
+        return name;
+    }
+  }
+
+  static String sectionSpeechLabel(PinyinSection section) {
+    switch (section) {
+      case PinyinSection.initials:
+        return '声母';
+      case PinyinSection.finals:
+        return '韵母';
+      case PinyinSection.wholeSyllables:
+        return '整体认读音节';
+    }
+  }
+
+  /// 把界面里的拼音字母/音节转成适合中文 TTS 的读法。
+  static String toChineseSpeech(String text) {
+    if (text.isEmpty) return text;
+
+    final tokens = _syllableSpokenNames.keys.toList()
+      ..sort((a, b) => b.length.compareTo(a.length));
+    // 也替换带调元音为对应无调读法
+    final toneMap = {
+      'ā': 'a',
+      'á': 'a',
+      'ǎ': 'a',
+      'à': 'a',
+      'ō': 'o',
+      'ó': 'o',
+      'ǒ': 'o',
+      'ò': 'o',
+      'ē': 'e',
+      'é': 'e',
+      'ě': 'e',
+      'è': 'e',
+      'ī': 'i',
+      'í': 'i',
+      'ǐ': 'i',
+      'ì': 'i',
+      'ū': 'u',
+      'ú': 'u',
+      'ǔ': 'u',
+      'ù': 'u',
+      'ǖ': 'ü',
+      'ǘ': 'ü',
+      'ǚ': 'ü',
+      'ǜ': 'ü',
+    };
+
+    final buffer = StringBuffer();
+    var i = 0;
+    final source = text;
+    while (i < source.length) {
+      final ch = source[i];
+      if (toneMap.containsKey(ch)) {
+        final base = toneMap[ch]!;
+        final spoken = _syllableSpokenNames[base] ?? base;
+        buffer.write(spoken);
+        i += 1;
+        continue;
+      }
+
+      final lower = source.substring(i).toLowerCase();
+      var matched = false;
+      for (final token in tokens) {
+        if (lower.startsWith(token)) {
+          // 仅替换独立拼音 token：前后不是拉丁字母
+          final end = i + token.length;
+          final beforeOk = i == 0 || !_isLatinLetter(source[i - 1]);
+          final afterOk = end >= source.length || !_isLatinLetter(source[end]);
+          if (beforeOk && afterOk) {
+            buffer.write(_syllableSpokenNames[token]!);
+            i = end;
+            matched = true;
+            break;
+          }
+        }
+      }
+      if (matched) continue;
+
+      // 单独声母字母（含多字母 zh/ch/sh 已在 tokens 更长优先覆盖）
+      if (_isLatinLetter(ch)) {
+        final lowerCh = ch.toLowerCase();
+        // 尝试 2 字母声母
+        if (i + 1 < source.length && _isLatinLetter(source[i + 1])) {
+          final two = (lowerCh + source[i + 1].toLowerCase());
+          if (_initialSpokenNames.containsKey(two)) {
+            final end = i + 2;
+            final afterOk = end >= source.length || !_isLatinLetter(source[end]);
+            if (afterOk) {
+              buffer.write(_initialSpokenNames[two]!);
+              i = end;
+              continue;
+            }
+          }
+        }
+        if (_initialSpokenNames.containsKey(lowerCh)) {
+          final end = i + 1;
+          final afterOk = end >= source.length || !_isLatinLetter(source[end]);
+          if (afterOk) {
+            buffer.write(_initialSpokenNames[lowerCh]!);
+            i = end;
+            continue;
+          }
+        }
+      }
+
+      buffer.write(ch);
+      i += 1;
+    }
+    return buffer.toString();
+  }
+
+  static bool _isLatinLetter(String ch) {
+    if (ch.isEmpty) return false;
+    final code = ch.codeUnitAt(0);
+    return (code >= 65 && code <= 90) ||
+        (code >= 97 && code <= 122) ||
+        ch == 'ü' ||
+        ch == 'Ü';
+  }
+
+  /// 发音方法播报：用中文呼读，避免 TTS 把 f/b/p 读成英文。
+  static String toTipSpeech(PinyinItem item) {
+    final label = sectionSpeechLabel(item.section);
+    final name = spokenName(item);
+    final tip = toChineseSpeech(item.tip);
+    if (item.isExampleAudio) {
+      return '$label$name，读作$name。$tip。';
+    }
+    final example = toChineseSpeech(item.example);
+    return '$label$name，读作$name。$tip。$example。';
   }
 
   static String markTone(String pinyin, int tone) {
