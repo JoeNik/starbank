@@ -7,6 +7,7 @@ import '../services/update_service.dart';
 import 'webdav_settings_page.dart';
 import 'openai_settings_page.dart';
 import 'music_cache_settings_page.dart';
+import 'kin/baby_cloud_cache_settings_page.dart';
 import 'tts_settings_page.dart';
 
 import 'package:package_info_plus/package_info_plus.dart';
@@ -236,6 +237,16 @@ class SettingsPage extends StatelessWidget {
                       subtitle: const Text("查看占用空间并清理缓存"),
                       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                       onTap: () => Get.to(() => const MusicCacheSettingsPage()),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.photo_library_outlined,
+                          color: Color(0xFFE09B00)),
+                      title: const Text("管理云相册缓存"),
+                      subtitle: const Text("自动清理过期缓存，或一键清理 X 天前"),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () =>
+                          Get.to(() => const BabyCloudCacheSettingsPage()),
                     ),
                   ],
                 ),

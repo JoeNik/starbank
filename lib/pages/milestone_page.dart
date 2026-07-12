@@ -21,6 +21,7 @@ import '../widgets/baby_cloud_media_thumbnail.dart';
 import '../widgets/image_utils.dart';
 import '../widgets/toast_utils.dart';
 import 'kin/baby_cloud_entry_detail_page.dart';
+import 'record_page.dart';
 import 'openai_settings_page.dart';
 
 class MilestonePage extends StatefulWidget {
@@ -279,6 +280,16 @@ class _MilestonePageState extends State<MilestonePage> {
         margin: EdgeInsets.only(bottom: 14.h),
         child: InkWell(
           onTap: () => _showEditor(record: record),
+          onLongPress: () async {
+            if (record.mediaRefs.isEmpty) {
+              ToastUtils.showInfo('这条大事记尚未关联云相册动态');
+              return;
+            }
+            await _locateInTimeline(
+              entryId: record.mediaRefs.first,
+              date: record.recordDate,
+            );
+          },
           child: Padding(
             padding: EdgeInsets.all(14.w),
             child: Column(
@@ -295,8 +306,12 @@ class _MilestonePageState extends State<MilestonePage> {
                     ),
                     const Spacer(),
                     Chip(
-                      label: Text(record.category),
+                      label: Text(
+                        record.category,
+                        style: TextStyle(fontSize: 11.sp),
+                      ),
                       visualDensity: VisualDensity.compact,
+                      labelPadding: EdgeInsets.symmetric(horizontal: 6.w),
                     ),
                   ],
                 ),
@@ -320,10 +335,15 @@ class _MilestonePageState extends State<MilestonePage> {
                     children: tags
                         .map(
                           (tag) => Chip(
-                            label: Text('#$tag'),
+                            label: Text(
+                              '#$tag',
+                              style: TextStyle(fontSize: 11.sp),
+                            ),
                             visualDensity: VisualDensity.compact,
                             materialTapTargetSize:
                                 MaterialTapTargetSize.shrinkWrap,
+                            labelPadding:
+                                EdgeInsets.symmetric(horizontal: 6.w),
                           ),
                         )
                         .toList(),
@@ -368,6 +388,7 @@ class _MilestonePageState extends State<MilestonePage> {
               mediaItems: entry.mediaItems,
             ),
           ),
+          onLongPress: () => _showCloudEntryActions(entry),
           child: Padding(
             padding: EdgeInsets.all(12.w),
             child: Row(
@@ -395,10 +416,14 @@ class _MilestonePageState extends State<MilestonePage> {
                             ),
                           ),
                           Chip(
-                            label: const Text('云相册'),
+                            label: Text(
+                              '云相册',
+                              style: TextStyle(fontSize: 11.sp),
+                            ),
                             visualDensity: VisualDensity.compact,
                             materialTapTargetSize:
                                 MaterialTapTargetSize.shrinkWrap,
+                            labelPadding: EdgeInsets.symmetric(horizontal: 6.w),
                           ),
                         ],
                       ),
@@ -428,10 +453,15 @@ class _MilestonePageState extends State<MilestonePage> {
                           children: tags
                               .map(
                                 (tag) => Chip(
-                                  label: Text('#$tag'),
+                                  label: Text(
+                                    '#$tag',
+                                    style: TextStyle(fontSize: 11.sp),
+                                  ),
                                   visualDensity: VisualDensity.compact,
                                   materialTapTargetSize:
                                       MaterialTapTargetSize.shrinkWrap,
+                                  labelPadding:
+                                      EdgeInsets.symmetric(horizontal: 6.w),
                                   backgroundColor: const Color(0xFFFFF4D0),
                                   side: BorderSide.none,
                                 ),
@@ -461,6 +491,146 @@ class _MilestonePageState extends State<MilestonePage> {
           ),
         ),
       ),
+    );
+  }
+
+
+  Future<void> _locateInTimeline({
+    String? entryId,
+    DateTime? date,
+    List<BabyCloudMedia> mediaItems = const [],
+  }) async {
+    final focusId = (entryId != null && entryId.trim().isNotEmpty)
+        ? entryId.trim()
+        : (mediaItems.isNotEmpty ? mediaItems.first.entryId : null);
+    final focusDate = date ??
+        (mediaItems.isNotEmpty ? mediaItems.first.takenAt : null);
+    if ((focusId == null || focusId.isEmpty) && focusDate == null) {
+      ToastUtils.showInfo('这条动态无法定位到云相册时间轴');
+      return;
+    }
+
+    // Soft loading veil while the route transition + timeline settle.
+    Get.dialog(
+      Center(
+        child: Container(
+          width: 188.w,
+          padding: EdgeInsets.fromLTRB(18.w, 20.h, 18.w, 18.h),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFFCF4),
+            borderRadius: BorderRadius.circular(18.r),
+            border: Border.all(color: const Color(0xFFE8D7B0)),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF8A6A22).withValues(alpha: 0.14),
+                blurRadius: 22,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 32.w,
+                height: 32.w,
+                child: const CircularProgressIndicator(
+                  strokeWidth: 2.6,
+                  color: Color(0xFFE09B00),
+                ),
+              ),
+              SizedBox(height: 14.h),
+              Text(
+                '正在打开时间轴',
+                style: TextStyle(
+                  fontSize: 15.sp,
+                  fontWeight: FontWeight.w900,
+                  color: AppTheme.textMain,
+                ),
+              ),
+              SizedBox(height: 6.h),
+              Text(
+                '定位动态并加载前后内容',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      barrierDismissible: false,
+      barrierColor: const Color(0xFF2B2418).withValues(alpha: 0.28),
+    );
+
+    try {
+      await Future<void>.delayed(const Duration(milliseconds: 180));
+      await Get.to(
+        () => RecordPage(
+          isActive: true,
+          focusEntryId: focusId,
+          focusDate: focusDate,
+        ),
+      );
+    } finally {
+      if (Get.isDialogOpen == true) {
+        Get.back();
+      }
+    }
+  }
+
+  Future<void> _showCloudEntryActions(_CloudMilestoneEntry entry) async {
+    final focusId = entry.entry?.id ??
+        (entry.mediaItems.isNotEmpty ? entry.mediaItems.first.entryId : null);
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.open_in_new),
+                title: const Text('查看动态详情'),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  Get.to(
+                    () => BabyCloudEntryDetailPage(
+                      entry: entry.entry,
+                      mediaItems: entry.mediaItems,
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.timeline),
+                title: const Text('定位到云相册时间轴'),
+                subtitle: const Text('跳转到亲宝宝时间轴对应动态'),
+                onTap: () async {
+                  Navigator.of(sheetContext).pop();
+                  await _locateInTimeline(
+                    entryId: focusId,
+                    date: entry.takenAt,
+                    mediaItems: entry.mediaItems,
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.close),
+                title: const Text('取消'),
+                onTap: () => Navigator.of(sheetContext).pop(),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

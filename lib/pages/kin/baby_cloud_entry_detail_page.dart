@@ -286,6 +286,8 @@ class BabyCloudEntryDetailPage extends StatelessWidget {
           child: BabyCloudMediaThumbnail(
             item: item,
             fit: BoxFit.contain,
+            // Detail page may load originals; timeline list stays on thumbnails.
+            preferOriginal: true,
           ),
         ),
       ),

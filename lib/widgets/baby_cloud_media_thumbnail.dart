@@ -31,12 +31,18 @@ class BabyCloudMediaThumbnail extends StatefulWidget {
 
 class _BabyCloudMediaThumbnailState extends State<BabyCloudMediaThumbnail>
     with SingleTickerProviderStateMixin {
+  static final Map<String, bool> _pathExistsCache = <String, bool>{};
+  static const int _pathExistsCacheLimit = 512;
+
   final _cloud = Get.find<BabyCloudService>();
   late final AnimationController _retryController;
   Future<String?>? _downloadFuture;
   Object? _lastError;
   bool _manualOriginalFallback = false;
   bool _forceThumbnailRetry = false;
+  String? _resolvedImagePath;
+  bool _loadingRemote = false;
+  int? _cachedDecodeWidth;
 
   @override
   void initState() {
@@ -62,6 +68,7 @@ class _BabyCloudMediaThumbnailState extends State<BabyCloudMediaThumbnail>
         oldWidget.item.localThumbnailPath != widget.item.localThumbnailPath ||
         oldWidget.preferOriginal != widget.preferOriginal) {
       _manualOriginalFallback = false;
+      _cachedDecodeWidth = null;
       _prepare();
     }
   }
@@ -71,68 +78,101 @@ class _BabyCloudMediaThumbnailState extends State<BabyCloudMediaThumbnail>
     _forceThumbnailRetry = false;
     _downloadFuture = null;
     _lastError = null;
+    _resolvedImagePath = null;
+    _loadingRemote = false;
+
     if (!widget.preferOriginal) {
+      // Timeline/list mode: only thumbnails. Originals load in detail pages.
       if (widget.item.isAudio || widget.item.isDiary) {
         return;
       }
-      if (_readableThumbnailPath() != null) return;
+      final thumb = _readableThumbnailPath();
+      if (thumb != null) {
+        _resolvedImagePath = thumb;
+        return;
+      }
       if (!widget.item.isVideo && _readableOriginalPath() != null) {
+        // Local original already exists; derive a thumbnail without remote original download.
+        _loadingRemote = true;
         _downloadFuture = _cloud.ensureLocalThumbnailFile(
           widget.item,
           forceRemote: forceThumbnailRetry,
         );
+        _listenDownload(_downloadFuture!);
         return;
       }
       if (_manualOriginalFallback && !widget.item.isVideo) {
+        // Explicit user retry when remote thumbnail is unavailable.
+        _loadingRemote = true;
         _downloadFuture = _cloud.ensureLocalMediaFile(widget.item);
+        _listenDownload(_downloadFuture!);
         return;
       }
+      _loadingRemote = true;
       _downloadFuture = _cloud.ensureLocalThumbnailFile(
         widget.item,
         forceRemote: forceThumbnailRetry,
       );
+      _listenDownload(_downloadFuture!);
       return;
     }
-    if (_readableOriginalPath() != null) return;
+
+    final original = _readableOriginalPath();
+    if (original != null) {
+      _resolvedImagePath = original;
+      return;
+    }
+    _loadingRemote = true;
     _downloadFuture = _cloud.ensureLocalMediaFile(widget.item);
+    _listenDownload(_downloadFuture!);
+  }
+
+  void _listenDownload(Future<String?> future) {
+    future.then((path) {
+      if (!mounted || !identical(_downloadFuture, future)) return;
+      final resolved = (path != null && _exists(path)) ? path : null;
+      final nextPath = resolved ?? _bestImagePath();
+      if (_resolvedImagePath == nextPath && !_loadingRemote && _lastError == null) {
+        return;
+      }
+      setState(() {
+        _resolvedImagePath = nextPath;
+        _loadingRemote = false;
+      });
+    }).catchError((Object error) {
+      if (!mounted || !identical(_downloadFuture, future)) return;
+      setState(() {
+        _lastError = error;
+        _loadingRemote = false;
+        _resolvedImagePath = _bestImagePath();
+      });
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final imagePath = _bestImagePath();
-    if (imagePath != null &&
-        (!widget.preferOriginal || _downloadFuture == null)) {
-      return _withVideoBadge(_image(imagePath));
-    }
-
-    final future = _downloadFuture;
-    if (future == null) return _withVideoBadge(_fallback());
-
-    return FutureBuilder<String?>(
-      future: future,
-      builder: (_, snapshot) {
-        if (snapshot.hasError) _lastError = snapshot.error;
-        final downloaded = snapshot.data;
-        if (downloaded != null && _exists(downloaded)) {
-          return _withVideoBadge(_image(downloaded));
-        }
-        if (imagePath != null) {
-          return Stack(
+    final imagePath = _resolvedImagePath ?? _bestImagePath();
+    if (imagePath != null) {
+      final image = _image(imagePath);
+      if (_loadingRemote) {
+        return _withVideoBadge(
+          Stack(
             fit: StackFit.expand,
             children: [
-              _image(imagePath),
-              if (snapshot.connectionState != ConnectionState.done)
-                const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+              image,
+              const Center(child: CircularProgressIndicator(strokeWidth: 2)),
             ],
-          );
-        }
-        return _withVideoBadge(
-          _fallback(
-            loading: snapshot.connectionState != ConnectionState.done,
-            failed: snapshot.connectionState == ConnectionState.done,
           ),
         );
-      },
+      }
+      return _withVideoBadge(image);
+    }
+
+    return _withVideoBadge(
+      _fallback(
+        loading: _loadingRemote,
+        failed: !_loadingRemote && _lastError != null,
+      ),
     );
   }
 
@@ -144,33 +184,36 @@ class _BabyCloudMediaThumbnailState extends State<BabyCloudMediaThumbnail>
       excludeFromSemantics: true,
       gaplessPlayback: true,
       filterQuality: FilterQuality.low,
+      // Avoid per-frame Opacity layer while decoding; placeholder is enough.
       frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
         if (wasSynchronouslyLoaded || frame != null) return child;
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            _fallback(loading: true),
-            Opacity(opacity: 0, child: child),
-          ],
-        );
+        return _fallback(loading: true);
       },
       errorBuilder: (_, error, __) {
         _lastError = error;
+        _pathExistsCache[path] = false;
         return _fallback(failed: true);
       },
     );
   }
 
   int? _decodeCacheWidth() {
+    if (_cachedDecodeWidth != null) return _cachedDecodeWidth;
     final media = MediaQuery.maybeOf(context);
     final dpr = media?.devicePixelRatio ?? 1;
-    final logicalWidth = widget.preferOriginal
-        ? media?.size.width ?? 360
-        : media?.size.shortestSide ?? 180;
-    final target = (logicalWidth * dpr * (widget.preferOriginal ? 2.0 : 1.25))
-        .round();
-    final maxWidth = widget.preferOriginal ? 2200 : 900;
-    return math.min(math.max(target, 240), maxWidth);
+    if (widget.preferOriginal) {
+      final logicalWidth = media?.size.width ?? 360;
+      final target = (logicalWidth * dpr * 2.0).round();
+      _cachedDecodeWidth = math.min(math.max(target, 240), 1600);
+      return _cachedDecodeWidth;
+    }
+    // Timeline tiles are small; keep decode size close to on-screen tile width.
+    final shortest = media?.size.shortestSide ?? 360;
+    // ~1/3 of screen for 3-column album tiles, with modest DPR headroom.
+    final tileLogical = math.min(140.0, shortest / 3.1);
+    final target = (tileLogical * dpr).round();
+    _cachedDecodeWidth = math.min(math.max(target, 160), 420);
+    return _cachedDecodeWidth;
   }
 
   Widget _withVideoBadge(Widget child) {
@@ -183,31 +226,34 @@ class _BabyCloudMediaThumbnailState extends State<BabyCloudMediaThumbnail>
         isVideo ? const Color(0xFFE85D4A) : const Color(0xFF4C70E8);
     final badgeIcon = isVideo ? Icons.videocam_rounded : Icons.mic_rounded;
     final badgeText = isVideo ? '视频' : '录音';
+    // List mode keeps overlays light to reduce Android overdraw during scroll.
+    final compact = !widget.preferOriginal;
     return Stack(
       fit: StackFit.expand,
       children: [
         child,
-        Positioned.fill(
-          child: IgnorePointer(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withValues(alpha: 0.18),
-                    Colors.transparent,
-                    Colors.black.withValues(alpha: 0.34),
-                  ],
-                  stops: const [0, 0.46, 1],
+        if (!compact)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.18),
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.34),
+                    ],
+                    stops: const [0, 0.46, 1],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
         Positioned(
-          top: 6.w,
-          right: 6.w,
+          top: compact ? 4.w : 6.w,
+          right: compact ? 4.w : 6.w,
           child: _MediaTypeBadge(
             color: badgeColor,
             icon: badgeIcon,
@@ -216,27 +262,29 @@ class _BabyCloudMediaThumbnailState extends State<BabyCloudMediaThumbnail>
         ),
         Center(
           child: Container(
-            width: 42.w,
-            height: 42.w,
+            width: compact ? 34.w : 42.w,
+            height: compact ? 34.w : 42.w,
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.52),
+              color: Colors.black.withValues(alpha: compact ? 0.45 : 0.52),
               shape: BoxShape.circle,
               border: Border.all(
                 color: Colors.white.withValues(alpha: 0.82),
-                width: 1.4,
+                width: compact ? 1 : 1.4,
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.34),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+              boxShadow: compact
+                  ? null
+                  : [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.34),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
             ),
             child: Icon(
               isVideo ? Icons.play_arrow_rounded : Icons.graphic_eq_rounded,
               color: Colors.white,
-              size: isVideo ? 30.sp : 24.sp,
+              size: isVideo ? (compact ? 24.sp : 30.sp) : (compact ? 18.sp : 24.sp),
             ),
           ),
         ),
@@ -414,9 +462,17 @@ class _BabyCloudMediaThumbnailState extends State<BabyCloudMediaThumbnail>
   }
 
   bool _exists(String path) {
+    final cached = _pathExistsCache[path];
+    if (cached != null) return cached;
     try {
-      return File(path).existsSync();
+      final exists = File(path).existsSync();
+      if (_pathExistsCache.length >= _pathExistsCacheLimit) {
+        _pathExistsCache.clear();
+      }
+      _pathExistsCache[path] = exists;
+      return exists;
     } catch (_) {
+      _pathExistsCache[path] = false;
       return false;
     }
   }
@@ -440,13 +496,6 @@ class _MediaTypeBadge extends StatelessWidget {
         color: color.withValues(alpha: 0.96),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: Colors.white.withValues(alpha: 0.78)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 3.h),

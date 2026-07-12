@@ -42,6 +42,46 @@ class BabyCloudSourceCheckResult {
   }
 }
 
+class BabyCloudCacheStats {
+  const BabyCloudCacheStats({
+    required this.fileCount,
+    required this.totalBytes,
+    this.oldestModified,
+    this.newestModified,
+  });
+
+  final int fileCount;
+  final int totalBytes;
+  final DateTime? oldestModified;
+  final DateTime? newestModified;
+
+  String get formattedSize => _formatBabyCloudBytes(totalBytes);
+}
+
+class BabyCloudCacheCleanupResult {
+  const BabyCloudCacheCleanupResult({
+    required this.deletedFiles,
+    required this.freedBytes,
+    required this.olderThanDays,
+  });
+
+  final int deletedFiles;
+  final int freedBytes;
+  final int olderThanDays;
+
+  String get formattedFreedSize => _formatBabyCloudBytes(freedBytes);
+}
+
+String _formatBabyCloudBytes(int bytes) {
+  if (bytes < 1024) return '$bytes B';
+  final kb = bytes / 1024;
+  if (kb < 1024) return '${kb.toStringAsFixed(1)} KB';
+  final mb = kb / 1024;
+  if (mb < 1024) return '${mb.toStringAsFixed(1)} MB';
+  final gb = mb / 1024;
+  return '${gb.toStringAsFixed(2)} GB';
+}
+
 const int _generatedThumbnailSize = 360;
 const int _generatedThumbnailJpegQuality = 62;
 const Duration _sourceCheckSuccessFreshness = Duration(minutes: 10);
@@ -1086,6 +1126,8 @@ class BabyCloudService extends GetxService {
   Future<void> _warmAppDocumentsDir() async {
     try {
       _appDocumentsDir = await getApplicationDocumentsDirectory();
+      // Fire-and-forget: prune stale downloaded album cache on startup.
+      unawaited(maybeAutoCleanupLocalCache());
     } catch (e) {
       debugPrint('BabyCloudCache: 初始化本地缓存目录失败: $e');
     }
@@ -2269,39 +2311,56 @@ class BabyCloudService extends GetxService {
         return;
       }
       final client = await _remoteClientForSource(source, check: check);
+      // Album sync only touches baby-cloud boxes/paths.
+      // Full-app Hive restore remains exclusive to system WebDAV settings.
+      final isPublish = trigger == BabyCloudSyncTrigger.contentPublish;
       await _prepareBabyCloudStructure(
         client,
         source,
         baby,
-        ensureDirs: _shouldEnsureBabyStructureDirs(
+        // Pull/refresh: do not mkdir/bind on remote; only read existing structure.
+        ensureDirs: isPublish
+            ? _shouldEnsureBabyStructureDirs(
+                source,
+                baby,
+                forceRemote: forceRemote,
+                trigger: trigger,
+              )
+            : false,
+        writeManifest: isPublish,
+      );
+
+      if (trigger == BabyCloudSyncTrigger.contentPublish) {
+        // Local content publish: push local album index to remote.
+        await _writeLocalIndexFor(
+          source.id,
+          baby.id,
+          waitForActiveSync: false,
+          sourceOverride: source,
+          clientOverride: client,
+          babyOverride: baby,
+          prepareStructure: false,
+          mergeRemote: false,
+          trigger: trigger,
+        );
+      } else {
+        // Manual refresh / view activation: remote album index is source of truth.
+        // Only preserve local-only unpublished drafts (not yet on remote).
+        final remote = await _readRemoteIndexAt(client, _indexPath(source, baby));
+        await _applyRemoteAlbumIndexAsAuthority(
           source,
           baby,
-          forceRemote: forceRemote,
-          trigger: trigger,
-        ),
-      );
-      final remote = await _readRemoteIndexAt(client, _indexPath(source, baby));
-      if (remote != null) {
-        await _mergeRemoteIndex(source, baby, remote);
+          remote,
+        );
+        source.status = 'normal';
+        await _persistSourceSilently(source);
+        await _markBabySyncCacheFresh(source.id, baby.id);
+        _refreshEntries();
+        _refreshMedia();
       }
-      await _writeLocalIndexFor(
-        source.id,
-        baby.id,
-        waitForActiveSync: false,
-        sourceOverride: source,
-        clientOverride: client,
-        babyOverride: baby,
-        prepareStructure: false,
-        mergeRemote: false,
-        trigger: trigger,
-      );
-      source.status = 'normal';
-      await saveSource(source);
-      _refreshEntries();
-      _refreshMedia();
     } catch (e) {
       source.status = 'invalid';
-      await saveSource(source);
+      await _persistSourceSilently(source);
       if (showErrors) ToastUtils.showError('同步亲宝宝数据源失败: $e');
     } finally {
       isSyncing.value = false;
@@ -3919,6 +3978,190 @@ class BabyCloudService extends GetxService {
     return dir;
   }
 
+
+  static const String _autoCacheCleanupDaysKey =
+      'baby_cloud_auto_cache_cleanup_days';
+  static const int defaultAutoCacheCleanupDays = 60;
+
+  int get autoCacheCleanupDays {
+    final raw = _storage.settingsBox.get(_autoCacheCleanupDaysKey);
+    if (raw is int && raw > 0) return raw;
+    final parsed = int.tryParse(raw?.toString() ?? '');
+    if (parsed != null && parsed > 0) return parsed;
+    return defaultAutoCacheCleanupDays;
+  }
+
+  Future<void> setAutoCacheCleanupDays(int days) async {
+    final value = days < 1 ? defaultAutoCacheCleanupDays : days;
+    await _storage.settingsBox.put(_autoCacheCleanupDaysKey, value);
+  }
+
+  Future<Directory> _babyCloudCacheRoot() async {
+    final base = _appDocumentsDir ?? await getApplicationDocumentsDirectory();
+    _appDocumentsDir ??= base;
+    return Directory(
+      [base.path, 'baby_cloud_cache'].join(Platform.pathSeparator),
+    );
+  }
+
+  Future<Directory> _babyCloudThumbnailRoot() async {
+    final base = _appDocumentsDir ?? await getApplicationDocumentsDirectory();
+    _appDocumentsDir ??= base;
+    return Directory(
+      [base.path, 'baby_cloud_thumbnails'].join(Platform.pathSeparator),
+    );
+  }
+
+  Future<List<Directory>> _babyCloudCacheRoots() async {
+    return [
+      await _babyCloudCacheRoot(),
+      await _babyCloudThumbnailRoot(),
+    ];
+  }
+
+  Future<BabyCloudCacheStats> getLocalCacheStats() async {
+    var fileCount = 0;
+    var totalBytes = 0;
+    DateTime? oldest;
+    DateTime? newest;
+    for (final root in await _babyCloudCacheRoots()) {
+      if (!await root.exists()) continue;
+      await for (final entity in root.list(recursive: true, followLinks: false)) {
+        if (entity is! File) continue;
+        try {
+          final stat = await entity.stat();
+          fileCount += 1;
+          totalBytes += stat.size;
+          final modified = stat.modified;
+          oldest = oldest == null || modified.isBefore(oldest)
+              ? modified
+              : oldest;
+          newest = newest == null || modified.isAfter(newest)
+              ? modified
+              : newest;
+        } catch (_) {}
+      }
+    }
+    return BabyCloudCacheStats(
+      fileCount: fileCount,
+      totalBytes: totalBytes,
+      oldestModified: oldest,
+      newestModified: newest,
+    );
+  }
+
+  /// Delete downloaded album cache files older than [olderThanDays].
+  /// Keeps media metadata; only removes local cache binaries.
+  Future<BabyCloudCacheCleanupResult> clearLocalCacheOlderThan(
+    int olderThanDays, {
+    bool clearPathFields = true,
+  }) async {
+    final days = olderThanDays < 1 ? 1 : olderThanDays;
+    final cutoff = DateTime.now().subtract(Duration(days: days));
+    var deletedFiles = 0;
+    var freedBytes = 0;
+    final deletedPaths = <String>{};
+
+    for (final root in await _babyCloudCacheRoots()) {
+      if (!await root.exists()) continue;
+      await for (final entity in root.list(recursive: true, followLinks: false)) {
+        if (entity is! File) continue;
+        try {
+          final stat = await entity.stat();
+          if (!stat.modified.isBefore(cutoff)) continue;
+          freedBytes += stat.size;
+          await entity.delete();
+          deletedFiles += 1;
+          deletedPaths.add(entity.path);
+        } catch (_) {}
+      }
+      await _pruneEmptyDirs(root);
+    }
+
+    if (clearPathFields && deletedPaths.isNotEmpty) {
+      await _clearMissingLocalCachePaths(deletedPaths);
+    }
+
+    return BabyCloudCacheCleanupResult(
+      deletedFiles: deletedFiles,
+      freedBytes: freedBytes,
+      olderThanDays: days,
+    );
+  }
+
+  Future<BabyCloudCacheCleanupResult> clearAllLocalCache() {
+    // Very large day window effectively clears all existing cache files.
+    return clearLocalCacheOlderThan(36500);
+  }
+
+  Future<void> maybeAutoCleanupLocalCache() async {
+    final days = autoCacheCleanupDays;
+    try {
+      await clearLocalCacheOlderThan(days);
+    } catch (e) {
+      debugPrint('BabyCloudCache: auto cleanup failed: $e');
+    }
+  }
+
+  Future<void> _clearMissingLocalCachePaths(Set<String> deletedPaths) async {
+    for (final item in _storage.babyCloudMediaBox.values) {
+      var changed = false;
+      final localPath = item.localPath;
+      if (localPath != null &&
+          localPath.trim().isNotEmpty &&
+          (deletedPaths.contains(localPath) || !_fileExists(localPath))) {
+        // Only clear cache-dir paths; keep original local upload paths.
+        if (_isUnderBabyCloudCache(localPath)) {
+          item.localPath = null;
+          changed = true;
+        }
+      }
+      final thumb = item.localThumbnailPath;
+      if (thumb != null &&
+          thumb.trim().isNotEmpty &&
+          (deletedPaths.contains(thumb) || !_fileExists(thumb))) {
+        if (_isUnderBabyCloudCache(thumb)) {
+          item.localThumbnailPath = null;
+          changed = true;
+        }
+      }
+      if (changed && item.isInBox) {
+        await item.save();
+      }
+    }
+    _refreshMedia();
+  }
+
+  bool _isUnderBabyCloudCache(String path) {
+    final normalized = path.replaceAll('\\', '/').toLowerCase();
+    return normalized.contains('/baby_cloud_cache/') ||
+        normalized.contains('/baby_cloud_thumbnails/');
+  }
+
+  bool _fileExists(String path) {
+    try {
+      return File(path).existsSync();
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _pruneEmptyDirs(Directory root) async {
+    if (!await root.exists()) return;
+    final dirs = <Directory>[];
+    await for (final entity in root.list(recursive: true, followLinks: false)) {
+      if (entity is Directory) dirs.add(entity);
+    }
+    dirs.sort((a, b) => b.path.length.compareTo(a.path.length));
+    for (final dir in dirs) {
+      try {
+        if (await dir.list(followLinks: false).isEmpty) {
+          await dir.delete();
+        }
+      } catch (_) {}
+    }
+  }
+
   void _logMediaCache(String event, BabyCloudMedia item, String path) {
     if (!_debugMediaCache) return;
     debugPrint(
@@ -3934,15 +4177,27 @@ class BabyCloudService extends GetxService {
     BabyCloudSource source,
     Baby baby, {
     bool ensureDirs = true,
+    bool writeManifest = true,
   }) async {
-    final manifest = await _readOrCreateLibraryManifest(client, source);
+    final manifest = writeManifest
+        ? await _readOrCreateLibraryManifest(client, source)
+        : await _readLibraryManifest(client, source);
+    if (manifest == null) {
+      if (writeManifest) {
+        throw Exception('亲宝宝库清单不可用');
+      }
+      // Pull path: no remote library yet — keep local structure cache empty.
+      return;
+    }
     final libraryId = manifest['libraryId']?.toString().trim() ?? '';
     if (libraryId.isNotEmpty) {
       source.libraryId = libraryId;
       source.libraryName = manifest['name']?.toString();
     }
     _rememberBabyMappingFromManifest(source, baby, manifest);
-    await _bindBabyInManifest(client, source, baby, manifest);
+    if (writeManifest) {
+      await _bindBabyInManifest(client, source, baby, manifest);
+    }
     if (ensureDirs) {
       await _ensureBabyDirs(client, source, baby);
       _preparedBabyStructureKeys.add(_babyStructureCacheKey(source, baby));
@@ -4243,6 +4498,228 @@ class BabyCloudService extends GetxService {
     return sha256
         .convert(utf8.encode('${source.id}|${baby.id}|$remoteId'))
         .toString();
+  }
+
+
+  /// Apply remote album_index as authority for cloud album metadata only.
+  ///
+  /// - Does not touch app-wide Hive boxes (user/actions/settings/etc).
+  /// - Remote entries/media replace local synced copies.
+  /// - Local-only drafts (no remotePath / not present remotely) are preserved
+  ///   so pending uploads are not wiped before they publish.
+  Future<void> _applyRemoteAlbumIndexAsAuthority(
+    BabyCloudSource source,
+    Baby baby,
+    Map<String, dynamic>? remote,
+  ) async {
+    await _normalizeLocalCloudIdentity(source, baby);
+    if (remote == null) {
+      // Remote has no index yet: keep local-only drafts, drop nothing remote-owned.
+      return;
+    }
+
+    final expectedLibraryId = _libraryScopeForSource(source);
+    final remoteLibraryId = remote['libraryId']?.toString().trim() ?? '';
+    if (remoteLibraryId.isNotEmpty && remoteLibraryId != expectedLibraryId) {
+      return;
+    }
+    final expectedCloudBabyId = _cloudBabyId(source, baby);
+    final cloudBabyId = remote['cloudBabyId']?.toString().trim() ?? '';
+    if (cloudBabyId.isNotEmpty && cloudBabyId != expectedCloudBabyId) {
+      return;
+    }
+    final resolvedCloudBabyId =
+        cloudBabyId.isNotEmpty ? cloudBabyId : expectedCloudBabyId;
+
+    final remoteEntries = <String, BabyCloudEntry>{};
+    final rawEntries = remote['entries'];
+    if (rawEntries is List) {
+      for (final raw in rawEntries) {
+        if (raw is! Map) continue;
+        final incoming =
+            BabyCloudEntry.fromJson(Map<String, dynamic>.from(raw));
+        incoming
+          ..dataSourceId = source.id
+          ..babyId = baby.id
+          ..libraryId = expectedLibraryId
+          ..cloudBabyId = resolvedCloudBabyId;
+        remoteEntries[incoming.id] = incoming;
+      }
+    }
+
+    final remoteMedia = <String, BabyCloudMedia>{};
+    final rawItems = remote['media'];
+    if (rawItems is List) {
+      for (final raw in rawItems) {
+        if (raw is! Map) continue;
+        final incoming =
+            BabyCloudMedia.fromJson(Map<String, dynamic>.from(raw));
+        incoming
+          ..dataSourceId = source.id
+          ..babyId = baby.id
+          ..libraryId = expectedLibraryId
+          ..cloudBabyId = resolvedCloudBabyId;
+        // Keep any already-downloaded local files; metadata still remote-owned.
+        final existing = _findExistingLocalMedia(source, baby, incoming);
+        if (existing != null) {
+          incoming
+            ..localPath = _readablePath(existing.localPath) ??
+                _readablePath(incoming.localPath)
+            ..localThumbnailPath = _readablePath(existing.localThumbnailPath) ??
+                _readablePath(incoming.localThumbnailPath);
+        } else {
+          incoming
+            ..localPath = _readablePath(incoming.localPath)
+            ..localThumbnailPath = _readablePath(incoming.localThumbnailPath);
+        }
+        final idConflict = _storage.babyCloudMediaBox.get(incoming.id);
+        if (idConflict != null &&
+            (idConflict.dataSourceId != source.id ||
+                idConflict.babyId != baby.id)) {
+          incoming.id = _importedMediaId(source, baby, incoming.id);
+        }
+        remoteMedia[incoming.id] = incoming;
+      }
+    }
+
+    // Remove local synced cloud items that no longer exist remotely.
+    // Preserve local-only drafts (typically pending upload / unpublished diary).
+    final localEntries = _storage.babyCloudEntryBox.values
+        .where((entry) =>
+            _entryBelongsToSource(source, entry) && entry.babyId == baby.id)
+        .toList();
+    for (final entry in localEntries) {
+      if (remoteEntries.containsKey(entry.id)) continue;
+      if (_isLocalOnlyAlbumDraftEntry(entry, source, baby)) continue;
+      await _storage.babyCloudEntryBox.delete(entry.id);
+    }
+
+    final localMedia = _storage.babyCloudMediaBox.values
+        .where((item) =>
+            _mediaBelongsToSource(source, item) && item.babyId == baby.id)
+        .toList();
+    for (final item in localMedia) {
+      if (remoteMedia.containsKey(item.id)) continue;
+      // Also keep if linked by sha/remotePath identity to a remote item.
+      final matchedRemote = remoteMedia.values.any(
+        (remoteItem) =>
+            (item.sha256.isNotEmpty && remoteItem.sha256 == item.sha256) ||
+            (item.remotePath.trim().isNotEmpty &&
+                remoteItem.remotePath.trim() == item.remotePath.trim()),
+      );
+      if (matchedRemote) continue;
+      if (_isLocalOnlyAlbumDraftMedia(item)) continue;
+      await _storage.babyCloudMediaBox.delete(item.id);
+    }
+
+    // Upsert remote authority snapshot into local cloud boxes only.
+    for (final entry in remoteEntries.values) {
+      final existing = _findExistingLocalEntry(source, baby, entry);
+      if (existing == null) {
+        await _storage.babyCloudEntryBox.put(entry.id, entry);
+      } else {
+        _replaceEntryWithRemoteAuthority(existing, entry);
+        await existing.save();
+      }
+    }
+    for (final item in remoteMedia.values) {
+      final existing = _findExistingLocalMedia(source, baby, item);
+      if (existing == null) {
+        await _storage.babyCloudMediaBox.put(item.id, item);
+      } else {
+        _replaceMediaWithRemoteAuthority(existing, item);
+        await existing.save();
+      }
+    }
+  }
+
+  bool _isLocalOnlyAlbumDraftMedia(BabyCloudMedia item) {
+    // Unpublished local content: no remote object path yet.
+    if (item.remotePath.trim().isEmpty &&
+        (item.thumbnailRemotePath?.trim().isEmpty ?? true)) {
+      return true;
+    }
+    return false;
+  }
+
+  bool _isLocalOnlyAlbumDraftEntry(
+    BabyCloudEntry entry,
+    BabyCloudSource source,
+    Baby baby,
+  ) {
+    final mediaItems = _storage.babyCloudMediaBox.values.where(
+      (item) =>
+          _mediaBelongsToSource(source, item) &&
+          item.babyId == baby.id &&
+          (item.entryId == entry.id || entry.mediaIds.contains(item.id)),
+    );
+    if (mediaItems.isEmpty) {
+      // Diary-like entry without media payload: treat as local draft if never purged remotely.
+      return entry.deletedAt == null && entry.purgedAt == null;
+    }
+    return mediaItems.every(_isLocalOnlyAlbumDraftMedia);
+  }
+
+  void _replaceEntryWithRemoteAuthority(
+    BabyCloudEntry existing,
+    BabyCloudEntry incoming,
+  ) {
+    existing
+      ..dataSourceId = incoming.dataSourceId
+      ..libraryId = incoming.libraryId
+      ..cloudBabyId = incoming.cloudBabyId
+      ..entryType = incoming.entryType
+      ..description = incoming.description
+      ..tags = List<String>.from(incoming.tags)
+      ..locationName = incoming.locationName
+      ..actorRole = incoming.actorRole
+      ..visibility = incoming.visibility
+      ..takenAt = incoming.takenAt
+      ..createdAt = incoming.createdAt
+      ..updatedAt = incoming.updatedAt
+      ..deletedAt = incoming.deletedAt
+      ..deleteReason = incoming.deleteReason
+      ..mediaIds = List<String>.from(incoming.mediaIds)
+      ..purgedAt = incoming.purgedAt;
+  }
+
+  void _replaceMediaWithRemoteAuthority(
+    BabyCloudMedia existing,
+    BabyCloudMedia incoming,
+  ) {
+    final localPath = _readablePath(existing.localPath);
+    final localThumbnailPath = _readablePath(existing.localThumbnailPath);
+    existing
+      ..dataSourceId = incoming.dataSourceId
+      ..libraryId = incoming.libraryId
+      ..cloudBabyId = incoming.cloudBabyId
+      ..sha256 = incoming.sha256
+      ..fileName = incoming.fileName
+      ..mediaType = incoming.mediaType
+      ..mimeType = incoming.mimeType
+      ..remotePath = incoming.remotePath
+      ..thumbnailRemotePath = incoming.thumbnailRemotePath
+      ..sizeBytes = incoming.sizeBytes
+      ..width = incoming.width
+      ..height = incoming.height
+      ..durationSeconds = incoming.durationSeconds
+      ..takenAt = incoming.takenAt
+      ..uploadedAt = incoming.uploadedAt
+      ..updatedAt = incoming.updatedAt
+      ..deletedAt = incoming.deletedAt
+      ..entryId = incoming.entryId
+      ..description = incoming.description
+      ..tags = List<String>.from(incoming.tags)
+      ..locationName = incoming.locationName
+      ..actorRole = incoming.actorRole
+      ..visibility = incoming.visibility
+      ..deleteReason = incoming.deleteReason
+      ..replacedByMediaId = incoming.replacedByMediaId
+      ..purgedAt = incoming.purgedAt
+      // Keep local cache files; remote owns metadata.
+      ..localPath = localPath ?? _readablePath(incoming.localPath)
+      ..localThumbnailPath =
+          localThumbnailPath ?? _readablePath(incoming.localThumbnailPath);
   }
 
   Future<void> _mergeRemoteIndex(

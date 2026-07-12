@@ -6,6 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:star_bank/models/baby.dart';
+import 'package:star_bank/models/baby_cloud_entry.dart';
+import 'package:star_bank/models/baby_cloud_media.dart';
 import 'package:star_bank/models/baby_cloud_source.dart';
 import 'package:star_bank/services/baby_cloud_service.dart';
 import 'package:star_bank/services/storage_service.dart';
@@ -43,8 +45,8 @@ void main() {
         trigger: BabyCloudSyncTrigger.manualRefresh,
       );
 
-      expect(server.libraryManifestPutCount, greaterThan(0));
-      expect(server.totalRequestCount, greaterThan(0));
+      // Pull/refresh no longer creates/binds library_manifest on remote.
+      expect(server.libraryManifestPutCount, 0);
 
       server.resetCounts();
       await service.syncBaby(baby, showErrors: false);
@@ -59,7 +61,207 @@ void main() {
         trigger: BabyCloudSyncTrigger.manualRefresh,
       );
 
-      expect(server.albumIndexGetCount, 1);
+      expect(server.albumIndexPutCount, 0);
+    } finally {
+      await server.close();
+      Get.reset();
+      await Hive.close();
+      if (await temp.exists()) {
+        await temp.delete(recursive: true);
+      }
+    }
+  });
+
+  test('manual refresh treats remote album index as authority for cloud boxes only',
+      () async {
+    final temp =
+        await Directory.systemTemp.createTemp('starbank_baby_cloud_auth_');
+    final server = await _FakeWebDavServer.start();
+    try {
+      Hive.init(temp.path);
+      final storage = await StorageService().init();
+      Get.put(storage, permanent: true);
+
+      final baby = Baby(id: 'baby-1', name: '宝宝', avatarPath: '');
+      final source = BabyCloudSource(
+        id: 'source-1',
+        name: '测试 WebDAV',
+        rootPath: 'starbank_baby_cloud',
+        webDavUrl: server.baseUrl,
+        webDavUsername: 'user',
+        webDavPassword: 'pass',
+        libraryId: 'lib-test',
+      );
+      await storage.babyBox.put(baby.id, baby);
+      await storage.babyCloudSourceBox.put(source.id, source);
+
+      server.seedDir('/starbank_baby_cloud');
+      server.seedDir('/starbank_baby_cloud/babies');
+      server.seedDir('/starbank_baby_cloud/babies/baby-1');
+      server.seedDir('/starbank_baby_cloud/babies/baby-1/index');
+      server.seedFile(
+        '/starbank_baby_cloud/library_manifest.json',
+        utf8.encode(
+          jsonEncode({
+            'format': 1,
+            'type': 'starbank.baby_cloud.library',
+            'libraryId': 'lib-test',
+            'name': '亲宝宝云相册',
+            'rootPath': '/starbank_baby_cloud',
+            'babies': [
+              {
+                'cloudBabyId': 'cloud-baby-1',
+                'localBabyIds': [baby.id],
+                'name': baby.name,
+                'safeName': 'baby-1',
+                'babyDir': '/starbank_baby_cloud/babies/baby-1',
+              }
+            ],
+          }),
+        ),
+      );
+
+      final remoteIndex = {
+        'format': 3,
+        'type': 'starbank.baby_cloud.album_index',
+        'libraryId': 'lib-test',
+        'cloudBabyId': 'cloud-baby-1',
+        'sourceId': source.id,
+        'babyId': baby.id,
+        'babyName': baby.name,
+        'babyDir': '/starbank_baby_cloud/babies/baby-1',
+        'updatedAt': DateTime.now().toIso8601String(),
+        'entries': [
+          {
+            'id': 'remote-entry-1',
+            'babyId': baby.id,
+            'dataSourceId': source.id,
+            'libraryId': 'lib-test',
+            'cloudBabyId': 'cloud-baby-1',
+            'entryType': 'media',
+            'description': '远端动态',
+            'tags': ['远程'],
+            'takenAt': DateTime(2026, 1, 1).toIso8601String(),
+            'createdAt': DateTime(2026, 1, 1).toIso8601String(),
+            'updatedAt': DateTime(2026, 1, 2).toIso8601String(),
+            'mediaIds': ['remote-media-1'],
+            'actorRole': '妈妈',
+          }
+        ],
+        'media': [
+          {
+            'id': 'remote-media-1',
+            'babyId': baby.id,
+            'dataSourceId': source.id,
+            'libraryId': 'lib-test',
+            'cloudBabyId': 'cloud-baby-1',
+            'sha256': 'abc',
+            'fileName': 'a.jpg',
+            'mediaType': 'photo',
+            'mimeType': 'image/jpeg',
+            'remotePath':
+                '/starbank_baby_cloud/babies/baby-1/2026/01/a.jpg',
+            'sizeBytes': 10,
+            'takenAt': DateTime(2026, 1, 1).toIso8601String(),
+            'entryId': 'remote-entry-1',
+            'description': '远端动态',
+            'tags': ['远程'],
+            'actorRole': '妈妈',
+          }
+        ],
+      };
+      server.seedFile(
+        '/starbank_baby_cloud/babies/baby-1/index/album_index.json',
+        utf8.encode(jsonEncode(remoteIndex)),
+      );
+
+      // Stale local synced entry that remote no longer has.
+      final stale = BabyCloudEntry(
+        id: 'stale-entry',
+        babyId: baby.id,
+        dataSourceId: source.id,
+        libraryId: 'lib-test',
+        cloudBabyId: 'cloud-baby-1',
+        entryType: 'media',
+        description: '本地陈旧',
+        takenAt: DateTime(2025, 1, 1),
+        mediaIds: const ['stale-media'],
+      );
+      await storage.babyCloudEntryBox.put(stale.id, stale);
+      final staleMedia = BabyCloudMedia(
+        id: 'stale-media',
+        babyId: baby.id,
+        dataSourceId: source.id,
+        libraryId: 'lib-test',
+        cloudBabyId: 'cloud-baby-1',
+        sha256: 'stale',
+        fileName: 'old.jpg',
+        mediaType: 'photo',
+        mimeType: 'image/jpeg',
+        remotePath: '/starbank_baby_cloud/babies/baby-1/2025/01/old.jpg',
+        sizeBytes: 1,
+        takenAt: DateTime(2025, 1, 1),
+        entryId: 'stale-entry',
+      );
+      await storage.babyCloudMediaBox.put(staleMedia.id, staleMedia);
+
+      // Local unpublished draft (no remote path).
+      final draft = BabyCloudEntry(
+        id: 'local-draft-entry',
+        babyId: baby.id,
+        dataSourceId: source.id,
+        libraryId: 'lib-test',
+        cloudBabyId: 'cloud-baby-1',
+        entryType: 'diary',
+        description: '本地草稿',
+        takenAt: DateTime(2026, 2, 1),
+        mediaIds: const ['local-draft-media'],
+        actorRole: '爸爸',
+      );
+      await storage.babyCloudEntryBox.put(draft.id, draft);
+      final draftMedia = BabyCloudMedia(
+        id: 'local-draft-media',
+        babyId: baby.id,
+        dataSourceId: source.id,
+        libraryId: 'lib-test',
+        cloudBabyId: 'cloud-baby-1',
+        sha256: 'draft',
+        fileName: '日记',
+        mediaType: 'diary',
+        mimeType: 'text/plain',
+        remotePath: '',
+        sizeBytes: 0,
+        takenAt: DateTime(2026, 2, 1),
+        entryId: 'local-draft-entry',
+        description: '本地草稿',
+        actorRole: '爸爸',
+      );
+      await storage.babyCloudMediaBox.put(draftMedia.id, draftMedia);
+
+      // App-wide settings marker: album sync must not restore/clear these.
+      await storage.settingsBox.put('webdav_url', 'http://should-remain');
+      await storage.settingsBox.put('demo_app_setting', 'keep-me');
+
+      final service = BabyCloudService();
+      service.sources.assignAll([source]);
+      service.currentSource.value = source;
+
+      await service.syncBaby(
+        baby,
+        showErrors: false,
+        forceRemote: true,
+        trigger: BabyCloudSyncTrigger.manualRefresh,
+      );
+
+      expect(storage.babyCloudEntryBox.get('remote-entry-1'), isNotNull);
+      expect(storage.babyCloudMediaBox.get('remote-media-1'), isNotNull);
+      expect(storage.babyCloudEntryBox.get('stale-entry'), isNull);
+      expect(storage.babyCloudMediaBox.get('stale-media'), isNull);
+      expect(storage.babyCloudEntryBox.get('local-draft-entry'), isNotNull);
+      expect(storage.babyCloudMediaBox.get('local-draft-media'), isNotNull);
+      expect(storage.settingsBox.get('webdav_url'), 'http://should-remain');
+      expect(storage.settingsBox.get('demo_app_setting'), 'keep-me');
+      expect(server.albumIndexPutCount, 0);
       expect(server.libraryManifestPutCount, 0);
     } finally {
       await server.close();
@@ -81,6 +283,7 @@ class _FakeWebDavServer {
 
   int totalRequestCount = 0;
   int albumIndexGetCount = 0;
+  int albumIndexPutCount = 0;
   int libraryManifestPutCount = 0;
 
   String get baseUrl => 'http://${_server.address.host}:${_server.port}';
@@ -95,7 +298,31 @@ class _FakeWebDavServer {
   void resetCounts() {
     totalRequestCount = 0;
     albumIndexGetCount = 0;
+    albumIndexPutCount = 0;
     libraryManifestPutCount = 0;
+  }
+
+  void seedDir(String path) {
+    _dirs.add(_normalizePath(path));
+  }
+
+  void seedFile(String path, List<int> bytes) {
+    final normalized = _normalizePath(path);
+    _files[normalized] = bytes;
+    // ensure parent dirs exist
+    final parts = normalized.split('/');
+    var cur = '';
+    for (final part in parts) {
+      if (part.isEmpty) continue;
+      cur = '$cur/$part';
+      if (!cur.contains('.')) {
+        _dirs.add(cur);
+      } else {
+        // parent only
+        final parent = cur.substring(0, cur.lastIndexOf('/'));
+        if (parent.isNotEmpty) _dirs.add(parent);
+      }
+    }
   }
 
   Future<void> close() => _server.close(force: true);
@@ -127,7 +354,7 @@ class _FakeWebDavServer {
   }
 
   Future<void> _handlePropFind(HttpRequest request, String path) async {
-    if (!_dirs.contains(path)) {
+    if (!_dirs.contains(path) && !_files.containsKey(path)) {
       request.response.statusCode = HttpStatus.notFound;
       await request.response.close();
       return;
@@ -166,18 +393,9 @@ class _FakeWebDavServer {
     _files[path] = bytes;
     if (path.endsWith('/library_manifest.json')) {
       libraryManifestPutCount += 1;
-      final raw = jsonDecode(utf8.decode(bytes));
-      if (raw is Map) {
-        final babies = raw['babies'];
-        if (babies is List) {
-          for (final baby in babies.whereType<Map>()) {
-            final dir = baby['babyDir']?.toString();
-            if (dir != null && dir.trim().isNotEmpty) {
-              _dirs.add(_normalizePath(dir));
-            }
-          }
-        }
-      }
+    }
+    if (path.endsWith('/index/album_index.json')) {
+      albumIndexPutCount += 1;
     }
     request.response.statusCode = HttpStatus.created;
     await request.response.close();

@@ -49,6 +49,15 @@ class _TimelineEntryData {
     if (mediaItems.isNotEmpty) return mediaItems.first.takenAt;
     return DateTime.fromMillisecondsSinceEpoch(0);
   }
+
+  String get identityKey {
+    final entryId = entry?.id;
+    if (entryId != null && entryId.isNotEmpty) return 'entry:$entryId';
+    if (mediaItems.isNotEmpty) {
+      return 'media:${mediaItems.map((item) => item.id).join(',')}';
+    }
+    return 'empty:${takenAt.toIso8601String()}';
+  }
 }
 
 ImageProvider? _recordHeroImageProvider(String? source) {
@@ -111,12 +120,40 @@ class _HeroBackgroundImageState extends State<_HeroBackgroundImage> {
   Widget build(BuildContext context) {
     final provider = _provider;
     if (provider == null) return const SizedBox.shrink();
+    final dpr = MediaQuery.maybeOf(context)?.devicePixelRatio ?? 1;
+    final width = MediaQuery.maybeOf(context)?.size.width ?? 390;
+    final cacheWidth = (width * dpr).round().clamp(480, 1400);
+    // Decode once at screen-ish width; collapse anim only clips, never redecodes.
     return Image(
-      image: provider,
+      image: ResizeImage.resizeIfNeeded(cacheWidth, null, provider),
       fit: BoxFit.cover,
+      alignment: Alignment.topCenter,
       gaplessPlayback: true,
+      filterQuality: FilterQuality.low,
+      excludeFromSemantics: true,
       errorBuilder: (_, __, ___) => const SizedBox.shrink(),
     );
+  }
+}
+
+class _KeepAlive extends StatefulWidget {
+  const _KeepAlive({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_KeepAlive> createState() => _KeepAliveState();
+}
+
+class _KeepAliveState extends State<_KeepAlive>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
   }
 }
 
@@ -158,15 +195,24 @@ class _HeroBabyAvatar extends StatelessWidget {
 /// 亲宝宝模块入口。
 /// 云相册是主页面，便便记录、生长记录和宝宝大事记收拢在后续 tab 中。
 class RecordPage extends StatefulWidget {
-  const RecordPage({super.key, this.isActive = false});
+  const RecordPage({
+    super.key,
+    this.isActive = false,
+    this.focusEntryId,
+    this.focusDate,
+  });
 
   final bool isActive;
+  /// Jump timeline filter/scroll to this entry after open.
+  final String? focusEntryId;
+  final DateTime? focusDate;
 
   @override
   State<RecordPage> createState() => _RecordPageState();
 }
 
-class _RecordPageState extends State<RecordPage> {
+class _RecordPageState extends State<RecordPage>
+    with TickerProviderStateMixin {
   static const _cloudActorRoles = [
     '妈妈',
     '爸爸',
@@ -185,29 +231,47 @@ class _RecordPageState extends State<RecordPage> {
   final _searchController = TextEditingController();
   final _imagePicker = ImagePicker();
   final _filterRevision = ValueNotifier<int>(0);
+  static const int _timelinePageSize = 5;
 
+  late final TabController _tabController;
   Worker? _babySyncWorker;
   Worker? _sourceSyncWorker;
-  bool _heroCollapsed = false;
-  bool _searchOpen = false;
+  final ValueNotifier<bool> _heroCollapsed = ValueNotifier<bool>(false);
   String _searchQuery = '';
   String _mediaFilter = 'all';
   DateTime? _dateFilter;
+  String? _focusEntryId;
+  /// Keep surrounding timeline items when locating from milestone.
+  static const int _focusNeighborCount = 4;
+  int _timelineVisibleCount = _timelinePageSize;
+  bool _timelineLoadingMore = false;
+  String? _timelineSignature;
   bool _visibleSyncRunning = false;
   String? _observedSourceId;
+  bool _focusApplied = false;
+  bool _focusLocating = false;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 4, vsync: this);
+    _focusEntryId = widget.focusEntryId?.trim().isNotEmpty == true
+        ? widget.focusEntryId!.trim()
+        : null;
+    // Locating from milestone should show surrounding posts, not isolate one day.
+    // Keep date only as soft scroll hint, never as exclusive filter.
+    _focusLocating = _focusEntryId != null || widget.focusDate != null;
     _albumScrollController.addListener(_handleAlbumScroll);
     _observedSourceId = _cloud.currentSource.value?.id;
     _babySyncWorker = ever(_user.currentBaby, (_) {
+      _resetTimelinePagination();
       if (widget.isActive) _scheduleCurrentBabySync();
     });
     _sourceSyncWorker = ever(_cloud.currentSource, (source) {
       final nextSourceId = source?.id;
       if (nextSourceId == _observedSourceId) return;
       _observedSourceId = nextSourceId;
+      _resetTimelinePagination();
       if (widget.isActive) _scheduleCurrentBabySync();
     });
     if (widget.isActive) {
@@ -230,31 +294,137 @@ class _RecordPageState extends State<RecordPage> {
     _albumScrollController
       ..removeListener(_handleAlbumScroll)
       ..dispose();
+    _tabController.dispose();
     _searchController.dispose();
     _filterRevision.dispose();
+    _heroCollapsed.dispose();
     super.dispose();
   }
 
+  Future<void> _scrollAlbumToTop() async {
+    if (!_albumScrollController.hasClients) return;
+    await _albumScrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+    );
+    if (_heroCollapsed.value) {
+      _heroCollapsed.value = false;
+    }
+  }
+
   void _notifyFiltersChanged() {
+    _resetTimelinePagination();
     _filterRevision.value++;
   }
 
-  void _openSearchPanel() {
-    if (!_searchOpen) {
-      _searchOpen = true;
-      _notifyFiltersChanged();
+  void _resetTimelinePagination() {
+    _timelineVisibleCount = _timelinePageSize;
+    _timelineLoadingMore = false;
+    _timelineSignature = null;
+    // Keep locate highlight, but allow re-settling after filter/source change.
+    _focusApplied = false;
+  }
+
+  void _syncTimelinePagination({
+    required String signature,
+    required int totalCount,
+  }) {
+    if (_timelineSignature != signature) {
+      _timelineSignature = signature;
+      _timelineVisibleCount = _timelinePageSize;
+      _timelineLoadingMore = false;
+    }
+    if (_timelineVisibleCount > totalCount) {
+      _timelineVisibleCount = totalCount;
+    }
+  }
+
+  bool _timelinePageSyncScheduled = false;
+
+  void _scheduleTimelinePageSync({
+    required String signature,
+    required int totalCount,
+  }) {
+    // Coalesce multiple rebuilds in the same frame into one post-frame sync.
+    if (_timelinePageSyncScheduled) {
+      _pendingTimelineSignature = signature;
+      _pendingTimelineTotalCount = totalCount;
+      return;
+    }
+    _timelinePageSyncScheduled = true;
+    _pendingTimelineSignature = signature;
+    _pendingTimelineTotalCount = totalCount;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _timelinePageSyncScheduled = false;
+      if (!mounted) return;
+      final syncSignature = _pendingTimelineSignature;
+      final syncTotal = _pendingTimelineTotalCount;
+      if (syncSignature == null || syncTotal == null) return;
+      _currentTimelineTotalHint = syncTotal;
+      final previousVisible = _timelineVisibleCount;
+      final previousSignature = _timelineSignature;
+      _syncTimelinePagination(signature: syncSignature, totalCount: syncTotal);
+      if (previousSignature != _timelineSignature ||
+          previousVisible != _timelineVisibleCount) {
+        setState(() {});
+        return;
+      }
+      _maybeLoadMoreTimeline(syncTotal);
+    });
+  }
+
+  String? _pendingTimelineSignature;
+  int? _pendingTimelineTotalCount;
+
+  void _maybeLoadMoreTimeline(int totalCount) {
+    if (_timelineLoadingMore) return;
+    if (_timelineVisibleCount >= totalCount) return;
+    if (!_albumScrollController.hasClients) return;
+    final position = _albumScrollController.position;
+    if (!position.hasPixels || !position.hasContentDimensions) return;
+    // Trigger slightly before the absolute end for smoother infinite scroll.
+    if (position.extentAfter > 280) return;
+    _timelineLoadingMore = true;
+    Future<void>.delayed(const Duration(milliseconds: 80), () {
+      if (!mounted) return;
+      setState(() {
+        final next = _timelineVisibleCount + _timelinePageSize;
+        _timelineVisibleCount = next > totalCount ? totalCount : next;
+        _timelineLoadingMore = false;
+      });
+    });
+  }
+
+  void _focusSearchField() {
+    // Search bar is always visible; just scroll to top so the field is in view.
+    if (_albumScrollController.hasClients) {
+      _albumScrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+      );
     }
   }
 
   void _handleAlbumScroll() {
     if (!_albumScrollController.hasClients) return;
     final offset = _albumScrollController.offset;
-    if (!_heroCollapsed && offset > 76.h) {
-      setState(() => _heroCollapsed = true);
-    } else if (_heroCollapsed && offset < 34.h) {
-      setState(() => _heroCollapsed = false);
+    // Hero collapse is isolated so scroll does not rebuild the whole album tree.
+    // Wider hysteresis reduces collapse thrashing while flinging.
+    if (!_heroCollapsed.value && offset > 88.h) {
+      _heroCollapsed.value = true;
+    } else if (_heroCollapsed.value && offset < 28.h) {
+      _heroCollapsed.value = false;
+    }
+    final total = _currentTimelineTotalHint;
+    if (total != null) {
+      _maybeLoadMoreTimeline(total);
     }
   }
+
+  /// Latest filtered timeline size seen by the sliver builder.
+  int? _currentTimelineTotalHint;
 
   void _scheduleCurrentBabySync({
     bool showErrors = false,
@@ -317,18 +487,21 @@ class _RecordPageState extends State<RecordPage> {
         );
       }
 
-      return DefaultTabController(
-        length: 4,
-        child: Scaffold(
-          backgroundColor: const Color(0xFFF6F6F6),
-          body: Column(
-            children: [
-              _buildHero(baby),
-              Expanded(
-                child: TabBarView(
-                  children: [
-                    _buildAlbumTab(baby),
-                    _buildFeatureTab(
+      return Scaffold(
+        backgroundColor: const Color(0xFFF6F6F6),
+        body: Column(
+          children: [
+            _buildHero(baby),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                // Keep offscreen tabs alive so timeline scroll offset is retained.
+                children: [
+                  _KeepAlive(
+                    child: _buildAlbumTab(baby),
+                  ),
+                  _KeepAlive(
+                    child: _buildFeatureTab(
                       icon: Icons.flag,
                       color: Colors.pink,
                       title: '宝宝大事记',
@@ -336,7 +509,9 @@ class _RecordPageState extends State<RecordPage> {
                       buttonText: '进入大事记',
                       onTap: () => Get.to(() => const MilestonePage()),
                     ),
-                    _buildFeatureTab(
+                  ),
+                  _KeepAlive(
+                    child: _buildFeatureTab(
                       icon: Icons.height,
                       color: Colors.green,
                       title: '生长记录',
@@ -344,7 +519,9 @@ class _RecordPageState extends State<RecordPage> {
                       buttonText: '进入生长记录',
                       onTap: () => Get.to(() => const GrowthRecordPage()),
                     ),
-                    _buildFeatureTab(
+                  ),
+                  _KeepAlive(
+                    child: _buildFeatureTab(
                       icon: Icons.calendar_month,
                       color: Colors.brown,
                       title: '便便记录',
@@ -352,11 +529,11 @@ class _RecordPageState extends State<RecordPage> {
                       buttonText: '进入便便记录',
                       onTap: () => Get.to(() => const PoopRecordPage()),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       );
     });
@@ -365,220 +542,236 @@ class _RecordPageState extends State<RecordPage> {
   Widget _buildHero(baby) {
     final hasAvatar = baby.avatarPath.trim().isNotEmpty;
     final coverPath = _heroCoverPath(baby.id);
-    final collapsed = _heroCollapsed;
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOutCubic,
-      height: collapsed ? 138.h : 304.h,
-      clipBehavior: Clip.hardEdge,
-      decoration: const BoxDecoration(),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFFB9C6BA), Color(0xFFE8BC72)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-          ),
-          if (coverPath != null || hasAvatar)
-            RepaintBoundary(
-              child: _HeroBackgroundImage(
-                path: coverPath ?? baby.avatarPath,
-              ),
-            ),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.black.withOpacity(0.24),
-                  Colors.black.withOpacity(0.06),
-                  Colors.black.withOpacity(0.42),
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
-          ),
-          SafeArea(
-            bottom: false,
-            child: Stack(
-              children: [
-                Positioned(
-                  left: 16.w,
-                  right: 14.w,
-                  top: 8.h,
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: AnimatedOpacity(
-                          opacity: collapsed ? 1 : 0,
-                          duration: const Duration(milliseconds: 140),
-                          curve: Curves.easeOut,
-                          child: Row(
-                            children: [
-                              _buildBabyAvatar(
-                                baby,
-                                radius: 17.r,
-                                imageSize: 30.w,
-                                iconSize: 20.sp,
-                                hasAvatar: hasAvatar,
-                              ),
-                              SizedBox(width: 8.w),
-                              Expanded(
-                                child: Text(
-                                  baby.name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18.sp,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        tooltip: '搜索',
-                        onPressed: _openSearchPanel,
-                        icon: Icon(
-                          Icons.search,
-                          color: Colors.white,
-                          size: 25.sp,
-                        ),
-                      ),
-                      InkWell(
-                        onTap: _showUploadMenu,
-                        borderRadius: BorderRadius.circular(99),
-                        child: Container(
-                          width: 40.w,
-                          height: 40.w,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFFFC22D),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.add_a_photo,
-                            color: Colors.white,
-                            size: 21.sp,
-                          ),
-                        ),
-                      ),
-                    ],
+    return ValueListenableBuilder<bool>(
+      valueListenable: _heroCollapsed,
+      builder: (context, collapsed, _) {
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 240),
+          curve: Curves.easeOutCubic,
+          height: collapsed ? 138.h : 304.h,
+          clipBehavior: Clip.hardEdge,
+          decoration: const BoxDecoration(),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFFB9C6BA), Color(0xFFE8BC72)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
                 ),
-                Positioned(
-                  left: 16.w,
-                  right: 16.w,
-                  bottom: 58.h,
-                  child: IgnorePointer(
-                    ignoring: collapsed,
-                    child: AnimatedOpacity(
-                      opacity: collapsed ? 0 : 1,
-                      duration: const Duration(milliseconds: 150),
-                      curve: Curves.easeOut,
-                      child: AnimatedSlide(
-                        offset:
-                            collapsed ? const Offset(0, -0.08) : Offset.zero,
-                        duration: const Duration(milliseconds: 180),
-                        curve: Curves.easeOutCubic,
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            _buildBabyAvatar(
-                              baby,
-                              radius: 40.r,
-                              imageSize: 72.w,
-                              iconSize: 42.sp,
-                              hasAvatar: hasAvatar,
-                            ),
-                            SizedBox(width: 16.w),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+              ),
+              if (coverPath != null || hasAvatar)
+                RepaintBoundary(
+                  child: _HeroBackgroundImage(
+                    path: coverPath ?? baby.avatarPath,
+                  ),
+                ),
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Color(0x3D000000),
+                      Color(0x0F000000),
+                      Color(0x6B000000),
+                    ],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                ),
+              ),
+              SafeArea(
+                bottom: false,
+                child: Stack(
+                  children: [
+                    Positioned(
+                      left: 16.w,
+                      right: 14.w,
+                      top: 8.h,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: AnimatedOpacity(
+                              opacity: collapsed ? 1 : 0,
+                              duration: const Duration(milliseconds: 160),
+                              curve: Curves.easeOut,
+                              child: Row(
                                 children: [
-                                  Text(
-                                    baby.name,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 24.sp,
-                                      fontWeight: FontWeight.w900,
-                                    ),
+                                  _buildBabyAvatar(
+                                    baby,
+                                    radius: 17.r,
+                                    imageSize: 30.w,
+                                    iconSize: 20.sp,
+                                    hasAvatar: hasAvatar,
                                   ),
-                                  SizedBox(height: 4.h),
-                                  Text(
-                                    BabyProfileUtils.ageText(baby),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 18.sp,
-                                      fontWeight: FontWeight.w800,
+                                  SizedBox(width: 8.w),
+                                  Expanded(
+                                    child: Text(
+                                      baby.name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 18.sp,
+                                        fontWeight: FontWeight.w900,
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                            SizedBox(width: 8.w),
-                            IconButton.filledTonal(
-                              tooltip: '更换背景',
-                              style: IconButton.styleFrom(
-                                backgroundColor:
-                                    Colors.white.withValues(alpha: 0.22),
-                                foregroundColor: Colors.white,
-                                fixedSize: Size(40.w, 40.w),
-                              ),
-                              onPressed: () => _changeHeroCover(baby),
-                              icon: Icon(Icons.wallpaper_outlined, size: 21.sp),
+                          ),
+                          IconButton(
+                            tooltip: '搜索',
+                            onPressed: _focusSearchField,
+                            icon: Icon(
+                              Icons.search,
+                              color: Colors.white,
+                              size: 25.sp,
                             ),
+                          ),
+                          InkWell(
+                            onTap: _showUploadMenu,
+                            borderRadius: BorderRadius.circular(99),
+                            child: Container(
+                              width: 40.w,
+                              height: 40.w,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFFFC22D),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.add_a_photo,
+                                color: Colors.white,
+                                size: 21.sp,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Positioned(
+                      left: 16.w,
+                      right: 16.w,
+                      bottom: 58.h,
+                      child: IgnorePointer(
+                        ignoring: collapsed,
+                        child: AnimatedOpacity(
+                          opacity: collapsed ? 0 : 1,
+                          duration: const Duration(milliseconds: 160),
+                          curve: Curves.easeOut,
+                          child: AnimatedSlide(
+                            offset: collapsed
+                                ? const Offset(0, -0.06)
+                                : Offset.zero,
+                            duration: const Duration(milliseconds: 200),
+                            curve: Curves.easeOutCubic,
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                _buildBabyAvatar(
+                                  baby,
+                                  radius: 40.r,
+                                  imageSize: 72.w,
+                                  iconSize: 42.sp,
+                                  hasAvatar: hasAvatar,
+                                ),
+                                SizedBox(width: 16.w),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        baby.name,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 24.sp,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                      ),
+                                      SizedBox(height: 4.h),
+                                      Text(
+                                        BabyProfileUtils.ageText(baby),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 18.sp,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                SizedBox(width: 8.w),
+                                IconButton.filledTonal(
+                                  tooltip: '更换背景',
+                                  style: IconButton.styleFrom(
+                                    backgroundColor:
+                                        Colors.white.withValues(alpha: 0.22),
+                                    foregroundColor: Colors.white,
+                                    fixedSize: Size(40.w, 40.w),
+                                  ),
+                                  onPressed: () => _changeHeroCover(baby),
+                                  icon: Icon(
+                                    Icons.wallpaper_outlined,
+                                    size: 21.sp,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: SizedBox(
+                        height: 48.h,
+                        child: TabBar(
+                          controller: _tabController,
+                          isScrollable: false,
+                          indicatorColor: const Color(0xFFFFC22D),
+                          indicatorWeight: 4,
+                          labelColor: Colors.white,
+                          unselectedLabelColor:
+                              Colors.white.withValues(alpha: 0.86),
+                          labelStyle: TextStyle(
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.w900,
+                          ),
+                          unselectedLabelStyle: TextStyle(
+                            fontSize: 15.sp,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          onTap: (index) {
+                            if (index == 0 && _tabController.index == 0) {
+                              _scrollAlbumToTop();
+                            }
+                          },
+                          tabs: const [
+                            Tab(text: '云相册'),
+                            Tab(text: '大事记'),
+                            Tab(text: '生长'),
+                            Tab(text: '便便'),
                           ],
                         ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: SizedBox(
-                    height: 48.h,
-                    child: TabBar(
-                      isScrollable: false,
-                      indicatorColor: const Color(0xFFFFC22D),
-                      indicatorWeight: 4,
-                      labelColor: Colors.white,
-                      unselectedLabelColor: Colors.white.withOpacity(0.86),
-                      labelStyle: TextStyle(
-                        fontSize: 16.sp,
-                        fontWeight: FontWeight.w900,
-                      ),
-                      unselectedLabelStyle: TextStyle(
-                        fontSize: 15.sp,
-                        fontWeight: FontWeight.w700,
-                      ),
-                      tabs: const [
-                        Tab(text: '云相册'),
-                        Tab(text: '大事记'),
-                        Tab(text: '生长'),
-                        Tab(text: '便便'),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -642,26 +835,93 @@ class _RecordPageState extends State<RecordPage> {
     return ValueListenableBuilder<int>(
       valueListenable: _filterRevision,
       builder: (context, _, __) {
-        return RefreshIndicator(
-          onRefresh: () => _syncCurrentBaby(
-            showErrors: true,
-            forceRemote: true,
-          ),
-          child: CustomScrollView(
-            controller: _albumScrollController,
-            physics: const AlwaysScrollableScrollPhysics(),
-            slivers: [
-              SliverToBoxAdapter(child: _buildSourceTools()),
-              if (_searchOpen ||
-                  _searchQuery.isNotEmpty ||
-                  _mediaFilter != 'all' ||
-                  _dateFilter != null)
-                SliverToBoxAdapter(child: _buildSearchPanel()),
-              _buildTimelineSliver(baby.id),
-            ],
-          ),
+        return Stack(
+          children: [
+            RefreshIndicator(
+              onRefresh: () => _syncCurrentBaby(
+                showErrors: true,
+                forceRemote: true,
+              ),
+              child: CustomScrollView(
+                key: const PageStorageKey<String>('baby_cloud_album_timeline'),
+                controller: _albumScrollController,
+                physics: const AlwaysScrollableScrollPhysics(),
+                // Prefetch a bit more of the timeline so scroll feels continuous
+                // without keeping the full media set mounted.
+                cacheExtent: 900,
+                slivers: [
+                  SliverToBoxAdapter(child: _buildSourceTools()),
+                  SliverToBoxAdapter(child: _buildSearchPanel()),
+                  _buildTimelineSliver(baby.id),
+                ],
+              ),
+            ),
+            if (_focusLocating) _buildTimelineLocateOverlay(),
+          ],
         );
       },
+    );
+  }
+
+  Widget _buildTimelineLocateOverlay() {
+    return IgnorePointer(
+      child: AnimatedOpacity(
+        opacity: _focusLocating ? 1 : 0,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        child: Container(
+          color: const Color(0xFFF6F1E7).withValues(alpha: 0.92),
+          child: Center(
+            child: Container(
+              width: 196.w,
+              padding: EdgeInsets.fromLTRB(18.w, 20.h, 18.w, 18.h),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFFCF4),
+                borderRadius: BorderRadius.circular(18.r),
+                border: Border.all(color: const Color(0xFFE8D7B0)),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF8A6A22).withValues(alpha: 0.12),
+                    blurRadius: 24,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 34.w,
+                    height: 34.w,
+                    child: const CircularProgressIndicator(
+                      strokeWidth: 2.6,
+                      color: Color(0xFFE09B00),
+                    ),
+                  ),
+                  SizedBox(height: 14.h),
+                  Text(
+                    '正在定位动态',
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w900,
+                      color: AppTheme.textMain,
+                    ),
+                  ),
+                  SizedBox(height: 6.h),
+                  Text(
+                    '载入时间轴上下文…',
+                    style: TextStyle(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -921,6 +1181,10 @@ class _RecordPageState extends State<RecordPage> {
   }
 
   Widget _buildSearchPanel() {
+    final hasActiveFilter = _searchQuery.isNotEmpty ||
+        _mediaFilter != 'all' ||
+        _dateFilter != null ||
+        _focusEntryId != null;
     return Container(
       color: Colors.white,
       padding: EdgeInsets.fromLTRB(14.w, 0, 14.w, 12.h),
@@ -935,10 +1199,13 @@ class _RecordPageState extends State<RecordPage> {
             decoration: InputDecoration(
               hintText: '搜索文字、标签、日期',
               prefixIcon: const Icon(Icons.search),
-              suffixIcon: IconButton(
-                onPressed: _clearFilters,
-                icon: const Icon(Icons.close),
-              ),
+              suffixIcon: hasActiveFilter
+                  ? IconButton(
+                      tooltip: '清除筛选',
+                      onPressed: _clearFilters,
+                      icon: const Icon(Icons.close),
+                    )
+                  : null,
               filled: true,
               fillColor: const Color(0xFFF7F7F7),
               border: OutlineInputBorder(
@@ -962,12 +1229,22 @@ class _RecordPageState extends State<RecordPage> {
                 _filterChip('录音', 'audio'),
                 SizedBox(width: 8.w),
                 _filterChip('文字', 'diary'),
+                SizedBox(width: 8.w),
+                ActionChip(
+                  label: Text(
+                    _dateFilter == null
+                        ? '日期'
+                        : DateFormat('MM-dd').format(_dateFilter!),
+                  ),
+                  avatar: const Icon(Icons.event, size: 16),
+                  onPressed: _pickTimelineDate,
+                ),
                 if (_dateFilter != null) ...[
-                  SizedBox(width: 8.w),
+                  SizedBox(width: 4.w),
                   ActionChip(
-                    label: Text(DateFormat('MM-dd').format(_dateFilter!)),
-                    avatar: const Icon(Icons.event, size: 16),
-                    onPressed: _pickTimelineDate,
+                    label: const Text('清空日期'),
+                    avatar: const Icon(Icons.close, size: 16),
+                    onPressed: _clearDateFilter,
                   ),
                 ],
               ],
@@ -999,12 +1276,14 @@ class _RecordPageState extends State<RecordPage> {
       final mediaItems = _cloud.mediaForBaby(babyId);
       final timelineEntries = _timelineEntriesFor(babyId, mediaItems);
       if (source == null) {
+        _currentTimelineTotalHint = 0;
         return SliverFillRemaining(
           hasScrollBody: false,
           child: _emptyTimeline('先配置亲宝宝 WebDAV，再开始备份照片和视频'),
         );
       }
       if (timelineEntries.isEmpty) {
+        _currentTimelineTotalHint = 0;
         final sourceId = source.id;
         final tasks = _cloud.uploadTasks
             .where((task) =>
@@ -1043,6 +1322,7 @@ class _RecordPageState extends State<RecordPage> {
       final visibleEntries =
           timelineEntries.where(_matchesTimelineEntry).toList();
       if (visibleEntries.isEmpty) {
+        _currentTimelineTotalHint = 0;
         return SliverFillRemaining(
           hasScrollBody: false,
           child: _emptyTimeline('没有匹配的亲宝宝记录'),
@@ -1054,63 +1334,243 @@ class _RecordPageState extends State<RecordPage> {
             .where((item) => item.mediaType == _mediaFilter)
             .toList();
         if (visibleMedia.isEmpty) {
+          _currentTimelineTotalHint = 0;
           return SliverFillRemaining(
             hasScrollBody: false,
             child: _emptyTimeline('没有匹配的亲宝宝记录'),
           );
         }
-        return _buildFilteredMediaGrid(visibleMedia);
+        final signature =
+            'grid|$_mediaFilter|$_searchQuery|${_dateFilter?.millisecondsSinceEpoch ?? 0}|${visibleMedia.length}|${visibleMedia.isEmpty ? '' : visibleMedia.first.id}|${visibleMedia.isEmpty ? '' : visibleMedia.last.id}';
+        final visibleCount = _timelineSignature == signature
+            ? (_timelineVisibleCount > visibleMedia.length
+                ? visibleMedia.length
+                : _timelineVisibleCount)
+            : (_timelinePageSize > visibleMedia.length
+                ? visibleMedia.length
+                : _timelinePageSize);
+        final pageItems = visibleMedia.take(visibleCount).toList();
+        _scheduleTimelinePageSync(
+          signature: signature,
+          totalCount: visibleMedia.length,
+        );
+        return _buildFilteredMediaGrid(
+          pageItems,
+          allItems: visibleMedia,
+          totalCount: visibleMedia.length,
+          visibleCount: pageItems.length,
+        );
+      }
+
+      final signature =
+          'timeline|$_mediaFilter|$_searchQuery|${_dateFilter?.millisecondsSinceEpoch ?? 0}|${visibleEntries.length}|${visibleEntries.isEmpty ? '' : visibleEntries.first.identityKey}|${visibleEntries.isEmpty ? '' : visibleEntries.last.identityKey}';
+      final visibleCount = _timelineSignature == signature
+          ? (_timelineVisibleCount > visibleEntries.length
+              ? visibleEntries.length
+              : _timelineVisibleCount)
+          : (_timelinePageSize > visibleEntries.length
+              ? visibleEntries.length
+              : _timelinePageSize);
+      var pageLimit = visibleCount;
+      final focusIndex = _indexOfFocusEntry(visibleEntries);
+      if (focusIndex >= 0) {
+        // Timeline is newest-first. Keep from top through focus + older neighbors
+        // so users can browse posts around the located entry.
+        final endExclusive = focusIndex + _focusNeighborCount + 1;
+        final needed = endExclusive > visibleEntries.length
+            ? visibleEntries.length
+            : endExclusive;
+        if (needed > pageLimit) pageLimit = needed;
+      }
+      final pageEntries = visibleEntries.take(pageLimit).toList();
+      _scheduleTimelinePageSync(
+        signature: signature,
+        totalCount: visibleEntries.length,
+      );
+      if ((_focusEntryId != null || widget.focusDate != null) &&
+          !_focusApplied) {
+        final requiredVisible = pageLimit;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || _focusApplied) return;
+          _focusApplied = true;
+          if (requiredVisible > _timelineVisibleCount) {
+            setState(() => _timelineVisibleCount = requiredVisible);
+          }
+          // Give layout a beat, then settle and dismiss locating veil.
+          Future<void>.delayed(const Duration(milliseconds: 420), () {
+            if (!mounted) return;
+            setState(() => _focusLocating = false);
+          });
+        });
       }
 
       final groups = <String, List<_TimelineEntryData>>{};
-      for (final entry in visibleEntries) {
+      for (final entry in pageEntries) {
         final key = DateFormat('yyyy-MM-dd').format(entry.takenAt);
         groups.putIfAbsent(key, () => []).add(entry);
       }
-      final entries = groups.entries.toList();
+      final dayEntries = groups.entries.toList();
+      final hasMore = pageEntries.length < visibleEntries.length;
       return SliverPadding(
         padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 24.h),
         sliver: SliverList.builder(
-          itemCount: entries.length,
+          itemCount: dayEntries.length + (hasMore || _timelineLoadingMore ? 1 : 0),
           itemBuilder: (_, index) {
-            final entry = entries[index];
+            if (index >= dayEntries.length) {
+              return _buildTimelineLoadFooter(
+                hasMore: hasMore,
+                loadedCount: pageEntries.length,
+                totalCount: visibleEntries.length,
+              );
+            }
+            final entry = dayEntries[index];
             final date = DateTime.parse(entry.key);
-            return _buildDayGroup(date, entry.value);
+            return RepaintBoundary(
+              key: ValueKey('day-${entry.key}'),
+              child: _buildDayGroup(date, entry.value),
+            );
           },
         ),
       );
     });
   }
 
-  Widget _buildFilteredMediaGrid(List<BabyCloudMedia> items) {
-    return SliverPadding(
-      padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 24.h),
-      sliver: SliverGrid.builder(
-        itemCount: items.length,
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          crossAxisSpacing: 5.w,
-          mainAxisSpacing: 5.w,
-        ),
-        itemBuilder: (_, index) => Material(
-          color: Colors.grey.shade200,
-          borderRadius: BorderRadius.circular(6.r),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: () => Get.to(
-              () => BabyCloudMediaDetailPage(
-                items: items,
-                initialIndex: index,
-              ),
+  Widget _buildFilteredMediaGrid(
+    List<BabyCloudMedia> items, {
+    required List<BabyCloudMedia> allItems,
+    required int totalCount,
+    required int visibleCount,
+  }) {
+    final hasMore = visibleCount < totalCount;
+    final detailIndexById = <String, int>{
+      for (var i = 0; i < allItems.length; i++) allItems[i].id: i,
+    };
+    return SliverMainAxisGroup(
+      slivers: [
+        SliverPadding(
+          padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, hasMore ? 8.h : 24.h),
+          sliver: SliverGrid.builder(
+            itemCount: items.length,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 5.w,
+              mainAxisSpacing: 5.w,
             ),
-            child: BabyCloudMediaThumbnail(
-              item: items[index],
-              fit: BoxFit.cover,
-            ),
+            itemBuilder: (_, index) {
+              final item = items[index];
+              final detailIndex = detailIndexById[item.id] ?? index;
+              return RepaintBoundary(
+                key: ValueKey(item.id),
+                child: Material(
+                  color: Colors.grey.shade200,
+                  borderRadius: BorderRadius.circular(6.r),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: () => Get.to(
+                      () => BabyCloudMediaDetailPage(
+                        items: allItems,
+                        initialIndex: detailIndex,
+                      ),
+                    ),
+                    // Timeline/grid list only loads thumbnails; originals open in detail.
+                    child: BabyCloudMediaThumbnail(
+                      item: item,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
         ),
+        if (hasMore || _timelineLoadingMore)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(14.w, 0, 14.w, 24.h),
+              child: _buildTimelineLoadFooter(
+                hasMore: hasMore,
+                loadedCount: visibleCount,
+                totalCount: totalCount,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildTimelineLoadFooter({
+    required bool hasMore,
+    required int loadedCount,
+    required int totalCount,
+  }) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 14.h),
+      child: Center(
+        child: hasMore || _timelineLoadingMore
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 16.w,
+                    height: 16.w,
+                    child: const CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  SizedBox(width: 10.w),
+                  Text(
+                    '加载更多 ($loadedCount/$totalCount)',
+                    style: TextStyle(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              )
+            : Text(
+                '已全部加载 ($totalCount)',
+                style: TextStyle(
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.grey.shade500,
+                ),
+              ),
       ),
     );
+  }
+
+  int _indexOfFocusEntry(List<_TimelineEntryData> entries) {
+    final focusId = _focusEntryId;
+    if (focusId != null) {
+      final byId = entries.indexWhere((entry) {
+        return entry.entry?.id == focusId ||
+            entry.mediaItems.any(
+              (item) => item.id == focusId || item.entryId == focusId,
+            );
+      });
+      if (byId >= 0) return byId;
+    }
+    final focusDate = widget.focusDate;
+    if (focusDate != null) {
+      return entries.indexWhere(
+        (entry) => DateUtils.isSameDay(entry.takenAt, focusDate),
+      );
+    }
+    return -1;
+  }
+
+  bool _entryMatchesFocus(_TimelineEntryData timelineEntry) {
+    final focusId = _focusEntryId;
+    if (focusId != null) {
+      final entry = timelineEntry.entry;
+      final items = timelineEntry.mediaItems;
+      return entry?.id == focusId ||
+          items.any((item) => item.id == focusId || item.entryId == focusId);
+    }
+    final focusDate = widget.focusDate;
+    if (focusDate != null) {
+      return DateUtils.isSameDay(timelineEntry.takenAt, focusDate);
+    }
+    return false;
   }
 
   List<_TimelineEntryData> _timelineEntriesFor(
@@ -1121,15 +1581,29 @@ class _RecordPageState extends State<RecordPage> {
     final usedMediaIds = <String>{};
     final entries = _cloud.entriesForBaby(babyId);
 
+    // Index media once so entry assembly is O(n) instead of O(entries * media).
+    final mediaById = <String, BabyCloudMedia>{
+      for (final item in mediaItems) item.id: item,
+    };
+    final mediaByEntryId = <String, List<BabyCloudMedia>>{};
+    for (final item in mediaItems) {
+      final entryId = item.entryId.trim();
+      if (entryId.isEmpty) continue;
+      mediaByEntryId.putIfAbsent(entryId, () => <BabyCloudMedia>[]).add(item);
+    }
+
     for (final entry in entries) {
-      final mediaIds = entry.mediaIds.toSet();
-      final entryMedia = mediaItems
-          .where(
-            (item) => item.entryId == entry.id || mediaIds.contains(item.id),
-          )
-          .toList()
+      final collected = <String, BabyCloudMedia>{};
+      for (final item in mediaByEntryId[entry.id] ?? const <BabyCloudMedia>[]) {
+        collected[item.id] = item;
+      }
+      for (final mediaId in entry.mediaIds) {
+        final item = mediaById[mediaId];
+        if (item != null) collected[item.id] = item;
+      }
+      final entryMedia = collected.values.toList()
         ..sort((a, b) => a.takenAt.compareTo(b.takenAt));
-      usedMediaIds.addAll(entryMedia.map((item) => item.id));
+      usedMediaIds.addAll(collected.keys);
       result.add(_TimelineEntryData(entry: entry, mediaItems: entryMedia));
     }
 
@@ -1156,14 +1630,14 @@ class _RecordPageState extends State<RecordPage> {
       child: Stack(
         children: [
           Positioned(
-            left: 5.w,
-            top: 12.w,
+            left: 9.w,
+            top: 18.h,
             bottom: 0,
             child: GestureDetector(
               onTap: _pickTimelineDate,
               behavior: HitTestBehavior.opaque,
               child: Container(
-                width: 10.w,
+                width: 12.w,
                 color: Colors.transparent,
                 child: Center(
                   child: Container(width: 2.w, color: const Color(0xFFE6E6E6)),
@@ -1175,21 +1649,28 @@ class _RecordPageState extends State<RecordPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(
-                width: 18.w,
+                width: 28.w,
                 child: Align(
-                  alignment: Alignment.topLeft,
+                  alignment: Alignment.topCenter,
                   child: GestureDetector(
                     onTap: _pickTimelineDate,
-                    child: Container(
-                      width: 12.w,
-                      height: 12.w,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: const Color(0xFFFFC22D),
-                          width: 3,
+                    behavior: HitTestBehavior.opaque,
+                    child: SizedBox(
+                      width: 28.w,
+                      height: 36.h,
+                      child: Center(
+                        child: Container(
+                          width: 12.w,
+                          height: 12.w,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: const Color(0xFFFFC22D),
+                              width: 3,
+                            ),
+                            color: Colors.white,
+                          ),
                         ),
-                        color: Colors.white,
                       ),
                     ),
                   ),
@@ -1204,12 +1685,35 @@ class _RecordPageState extends State<RecordPage> {
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Text(
-                            today ? '今天' : DateFormat('M月d日').format(date),
-                            style: TextStyle(
-                              fontSize: 22.sp,
-                              fontWeight: FontWeight.w900,
-                              color: AppTheme.textMain,
+                          InkWell(
+                            onTap: _pickTimelineDate,
+                            borderRadius: BorderRadius.circular(8.r),
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 2.w,
+                                vertical: 4.h,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    today
+                                        ? '今天'
+                                        : DateFormat('M月d日').format(date),
+                                    style: TextStyle(
+                                      fontSize: 22.sp,
+                                      fontWeight: FontWeight.w900,
+                                      color: AppTheme.textMain,
+                                    ),
+                                  ),
+                                  SizedBox(width: 2.w),
+                                  Icon(
+                                    Icons.expand_more,
+                                    size: 20.sp,
+                                    color: Colors.grey.shade500,
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                           SizedBox(width: 8.w),
@@ -1254,8 +1758,17 @@ class _RecordPageState extends State<RecordPage> {
             ? first!.actorRole!.trim()
             : '家人';
     final takenAt = timelineEntry.takenAt;
-    return Container(
+    final isFocused = _entryMatchesFocus(timelineEntry);
+    return RepaintBoundary(
+      key: ValueKey(timelineEntry.identityKey),
+      child: Container(
       margin: EdgeInsets.only(bottom: 14.h),
+      decoration: isFocused
+          ? BoxDecoration(
+              borderRadius: BorderRadius.circular(8.r),
+              border: Border.all(color: const Color(0xFFFFC22D), width: 2),
+            )
+          : null,
       child: Material(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8.r),
@@ -1343,11 +1856,32 @@ class _RecordPageState extends State<RecordPage> {
                           ),
                         ],
                         SizedBox(width: 6.w),
-                        Text(
-                          DateFormat('HH:mm').format(takenAt),
-                          style: TextStyle(
-                            color: Colors.grey.shade500,
-                            fontWeight: FontWeight.w700,
+                        InkWell(
+                          onTap: _pickTimelineDate,
+                          borderRadius: BorderRadius.circular(8.r),
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 6.w,
+                              vertical: 6.h,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  DateFormat('HH:mm').format(takenAt),
+                                  style: TextStyle(
+                                    color: Colors.grey.shade500,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                SizedBox(width: 2.w),
+                                Icon(
+                                  Icons.expand_more,
+                                  size: 16.sp,
+                                  color: Colors.grey.shade400,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                         const Spacer(),
@@ -1399,6 +1933,7 @@ class _RecordPageState extends State<RecordPage> {
           ),
         ),
       ),
+    ),
     );
   }
 
@@ -1472,13 +2007,15 @@ class _RecordPageState extends State<RecordPage> {
               SizedBox(
                 width: tileSize,
                 height: tileSize,
-                child: _buildMediaTile(
-                  items,
-                  index,
-                  onTap: onTileTap,
-                  onOverflowTap: onOverflowTap,
-                  overflowCount:
-                      index == 8 && items.length > 9 ? items.length - 8 : 0,
+                child: RepaintBoundary(
+                  child: _buildMediaTile(
+                    items,
+                    index,
+                    onTap: onTileTap,
+                    onOverflowTap: onOverflowTap,
+                    overflowCount:
+                        index == 8 && items.length > 9 ? items.length - 8 : 0,
+                  ),
                 ),
               ),
           ],
@@ -1611,7 +2148,10 @@ class _RecordPageState extends State<RecordPage> {
     );
   }
 
-  bool _matchesTimelineEntry(_TimelineEntryData entryData) {
+  bool _matchesTimelineEntry(
+    _TimelineEntryData entryData, {
+    bool ignoreDateFilter = false,
+  }) {
     final entry = entryData.entry;
     final mediaItems = entryData.mediaItems;
     if (_mediaFilter != 'all') {
@@ -1620,7 +2160,8 @@ class _RecordPageState extends State<RecordPage> {
           mediaItems.any((item) => item.mediaType == _mediaFilter);
       if (!entryMatchesType && !mediaMatchesType) return false;
     }
-    if (_dateFilter != null &&
+    if (!ignoreDateFilter &&
+        _dateFilter != null &&
         !DateUtils.isSameDay(entryData.takenAt, _dateFilter)) {
       return false;
     }
@@ -1661,24 +2202,205 @@ class _RecordPageState extends State<RecordPage> {
   }
 
   void _clearFilters() {
-    _searchOpen = false;
     _searchQuery = '';
     _mediaFilter = 'all';
     _dateFilter = null;
+    _focusEntryId = null;
+    _focusLocating = false;
     _searchController.clear();
     _notifyFiltersChanged();
   }
 
+  void _clearDateFilter() {
+    if (_dateFilter == null && _focusEntryId == null) return;
+    _dateFilter = null;
+    _focusEntryId = null;
+    _focusLocating = false;
+    _notifyFiltersChanged();
+  }
+
+  List<DateTime> _availableTimelineDates() {
+    final baby = _user.currentBaby.value;
+    if (baby == null) return const [];
+    final mediaItems = _cloud.mediaForBaby(baby.id);
+    final entries = _timelineEntriesFor(baby.id, mediaItems)
+        .where((entry) => _matchesTimelineEntry(entry, ignoreDateFilter: true))
+        .toList();
+
+    final unique = <String, DateTime>{};
+    for (final entry in entries) {
+      final day = DateUtils.dateOnly(entry.takenAt);
+      unique.putIfAbsent(DateFormat('yyyy-MM-dd').format(day), () => day);
+    }
+    final dates = unique.values.toList()
+      ..sort((a, b) => b.compareTo(a));
+    return dates;
+  }
+
   Future<void> _pickTimelineDate() async {
-    final picked = await showDatePicker(
+    final dates = _availableTimelineDates();
+    if (dates.isEmpty) {
+      ToastUtils.showInfo('当前没有可跳转的时间点');
+      return;
+    }
+
+    final selected = await showModalBottomSheet<DateTime>(
       context: context,
-      initialDate: _dateFilter ?? DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime.now().add(const Duration(days: 1)),
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
+      ),
+      builder: (sheetContext) {
+        final maxHeight = MediaQuery.of(sheetContext).size.height * 0.72;
+        return SafeArea(
+          child: SizedBox(
+            height: maxHeight,
+            child: Column(
+              children: [
+                SizedBox(height: 10.h),
+                Container(
+                  width: 40.w,
+                  height: 4.h,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(16.w, 14.h, 8.w, 8.h),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '选择时间点',
+                          style: TextStyle(
+                            fontSize: 18.sp,
+                            fontWeight: FontWeight.w900,
+                            color: AppTheme.textMain,
+                          ),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.of(sheetContext).pop(
+                          DateTime.fromMillisecondsSinceEpoch(0),
+                        ),
+                        child: Text(
+                          _dateFilter == null ? '不筛选日期' : '清空日期',
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: '关闭',
+                        onPressed: () => Navigator.of(sheetContext).pop(),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                ),
+                Divider(height: 1, color: Colors.grey.shade200),
+                Expanded(
+                  child: ListView.separated(
+                    padding: EdgeInsets.fromLTRB(12.w, 8.h, 12.w, 16.h),
+                    itemCount: dates.length,
+                    separatorBuilder: (_, __) => SizedBox(height: 8.h),
+                    itemBuilder: (_, index) {
+                      final date = dates[index];
+                      final selectedDay = _dateFilter != null &&
+                          DateUtils.isSameDay(_dateFilter, date);
+                      final today = DateUtils.isSameDay(date, DateTime.now());
+                      final label = today
+                          ? '今天'
+                          : DateFormat('yyyy年M月d日').format(date);
+                      final weekday = _weekdayText(date);
+                      return Material(
+                        color: selectedDay
+                            ? const Color(0xFFFFF4D0)
+                            : const Color(0xFFF8F8F8),
+                        borderRadius: BorderRadius.circular(12.r),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12.r),
+                          onTap: () => Navigator.of(sheetContext).pop(date),
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(minHeight: 52.h),
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 14.w,
+                                vertical: 12.h,
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 10.w,
+                                    height: 10.w,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: selectedDay
+                                          ? const Color(0xFFE09B00)
+                                          : const Color(0xFFFFC22D),
+                                    ),
+                                  ),
+                                  SizedBox(width: 12.w),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          label,
+                                          style: TextStyle(
+                                            fontSize: 16.sp,
+                                            fontWeight: FontWeight.w900,
+                                            color: AppTheme.textMain,
+                                          ),
+                                        ),
+                                        SizedBox(height: 2.h),
+                                        Text(
+                                          weekday,
+                                          style: TextStyle(
+                                            fontSize: 12.sp,
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.grey.shade600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (selectedDay)
+                                    Icon(
+                                      Icons.check_circle,
+                                      color: const Color(0xFFE09B00),
+                                      size: 22.sp,
+                                    )
+                                  else
+                                    Icon(
+                                      Icons.chevron_right,
+                                      color: Colors.grey.shade400,
+                                      size: 22.sp,
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
-    if (picked == null) return;
-    _searchOpen = true;
-    _dateFilter = picked;
+
+    if (selected == null) return;
+    if (selected.millisecondsSinceEpoch == 0) {
+      _clearDateFilter();
+      return;
+    }
+
+    _focusEntryId = null;
+    _dateFilter = DateUtils.dateOnly(selected);
     _notifyFiltersChanged();
     if (_albumScrollController.hasClients) {
       await _albumScrollController.animateTo(
