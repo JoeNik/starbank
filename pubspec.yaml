@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 2.7.16+118
+version: 2.7.17+119
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -48,6 +48,7 @@ dependencies:
   image_picker: ^1.0.4
   photo_manager: ^3.6.4          # Android 优先的系统相册浏览
   video_player: ^2.9.2           # 云相册视频播放
+  wakelock_plus: ^1.2.8            # 播放视频时保持屏幕常亮
   file_picker: ^10.2.0           # 亲宝宝录音文件导入
   record: ^6.0.0                 # 亲宝宝录音
   crop_your_image: ^2.0.0        # 图片裁剪(纯Dart实现,兼容性好)
@@ -86,7 +87,7 @@ flutter_launcher_icons:
   android: true
   ios: false
   image_path: "assets/icon.png"
-  adaptive_icon_background: "#D05C3B"
+  adaptive_icon_background: "#3A90F5"
   adaptive_icon_foreground: "assets/icon.png"
 
 flutter:

@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
@@ -394,6 +396,13 @@ class _VideoPreview extends StatefulWidget {
 
 class _VideoPreviewState extends State<_VideoPreview> {
   VideoPlayerController? _controller;
+  bool _loading = true;
+  String? _error;
+  bool _controlsVisible = true;
+  bool _dragging = false;
+  double? _dragValueMs;
+  Timer? _hideControlsTimer;
+  bool _wakeLockHeld = false;
 
   @override
   void initState() {
@@ -405,7 +414,15 @@ class _VideoPreviewState extends State<_VideoPreview> {
     final path = await Get.find<BabyCloudService>().ensureLocalMediaFile(
       widget.item,
     );
-    if (path == null) return;
+    if (!mounted) return;
+    if (path == null) {
+      setState(() {
+        _loading = false;
+        _error = '视频文件暂不可读取';
+      });
+      return;
+    }
+
     final controller = VideoPlayerController.file(File(path));
     try {
       await controller.initialize();
@@ -413,45 +430,306 @@ class _VideoPreviewState extends State<_VideoPreview> {
         await controller.dispose();
         return;
       }
-      setState(() => _controller = controller);
-    } catch (_) {
+      controller.addListener(_onControllerTick);
+      setState(() {
+        _controller = controller;
+        _loading = false;
+      });
+      await controller.play();
+      await _setKeepScreenOn(true);
+      _scheduleHideControls();
+    } catch (e) {
       await controller.dispose();
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = '视频播放失败: $e';
+      });
     }
+  }
+
+  void _onControllerTick() {
+    if (!mounted || _dragging) return;
+    setState(() {});
+  }
+
+  Future<void> _setKeepScreenOn(bool enabled) async {
+    if (_wakeLockHeld == enabled) return;
+    try {
+      if (enabled) {
+        await WakelockPlus.enable();
+      } else {
+        await WakelockPlus.disable();
+      }
+      _wakeLockHeld = enabled;
+    } catch (e) {
+      debugPrint('Wakelock failed: $e');
+    }
+  }
+
+  void _toggleControls() {
+    setState(() => _controlsVisible = !_controlsVisible);
+    if (_controlsVisible) {
+      _scheduleHideControls();
+    } else {
+      _hideControlsTimer?.cancel();
+    }
+  }
+
+  void _scheduleHideControls() {
+    _hideControlsTimer?.cancel();
+    final controller = _controller;
+    if (controller == null || !controller.value.isPlaying) return;
+    _hideControlsTimer = Timer(const Duration(seconds: 3), () {
+      if (!mounted || _dragging) return;
+      if (_controller?.value.isPlaying == true) {
+        setState(() => _controlsVisible = false);
+      }
+    });
+  }
+
+  Future<void> _togglePlayPause() async {
+    final controller = _controller;
+    if (controller == null) return;
+    if (controller.value.isPlaying) {
+      await controller.pause();
+      await _setKeepScreenOn(false);
+      _hideControlsTimer?.cancel();
+      if (mounted) setState(() => _controlsVisible = true);
+    } else {
+      final duration = controller.value.duration;
+      final position = controller.value.position;
+      if (duration > Duration.zero && position >= duration) {
+        await controller.seekTo(Duration.zero);
+      }
+      await controller.play();
+      await _setKeepScreenOn(true);
+      _scheduleHideControls();
+    }
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    _controller?.dispose();
+    _hideControlsTimer?.cancel();
+    final controller = _controller;
+    controller?.removeListener(_onControllerTick);
+    unawaited(_setKeepScreenOn(false));
+    controller?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final controller = _controller;
-    if (controller == null || !controller.value.isInitialized) {
-      return const Center(child: CircularProgressIndicator());
+    if (_loading) {
+      return const Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      );
     }
-    return Center(
-      child: AspectRatio(
-        aspectRatio: controller.value.aspectRatio,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            VideoPlayer(controller),
-            IconButton.filled(
-              icon: Icon(
-                  controller.value.isPlaying ? Icons.pause : Icons.play_arrow),
-              onPressed: () {
-                setState(() {
-                  controller.value.isPlaying
-                      ? controller.pause()
-                      : controller.play();
-                });
-              },
-            ),
-          ],
+    if (_error != null) {
+      return Center(
+        child: Padding(
+          padding: EdgeInsets.all(28.w),
+          child: Text(
+            _error!,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white70),
+          ),
         ),
+      );
+    }
+
+    final controller = _controller!;
+    final value = controller.value;
+    final duration = value.duration;
+    final position = _dragging
+        ? Duration(milliseconds: (_dragValueMs ?? 0).round())
+        : value.position;
+    final maxMs =
+        duration.inMilliseconds <= 0 ? 1.0 : duration.inMilliseconds.toDouble();
+    final progressMs =
+        position.inMilliseconds.clamp(0, maxMs.toInt()).toDouble();
+    final playing = value.isPlaying;
+    final aspect = value.aspectRatio == 0 ? (16 / 9) : value.aspectRatio;
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _toggleControls,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Center(
+            child: AspectRatio(
+              aspectRatio: aspect,
+              child: VideoPlayer(controller),
+            ),
+          ),
+          IgnorePointer(
+            child: AnimatedOpacity(
+              opacity: _controlsVisible ? 1 : 0,
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              child: const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Color(0x00000000),
+                      Color(0x14000000),
+                      Color(0x8C000000),
+                    ],
+                    stops: [0.42, 0.7, 1],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          IgnorePointer(
+            ignoring: !_controlsVisible,
+            child: AnimatedOpacity(
+              opacity: _controlsVisible ? 1 : 0,
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              child: Center(
+                child: Material(
+                  color: const Color(0x6B000000),
+                  shape: const CircleBorder(),
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: _togglePlayPause,
+                    child: SizedBox(
+                      width: 70.w,
+                      height: 70.w,
+                      child: Icon(
+                        playing
+                            ? Icons.pause_rounded
+                            : Icons.play_arrow_rounded,
+                        color: Colors.white,
+                        size: 42.sp,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          IgnorePointer(
+            ignoring: !_controlsVisible,
+            child: AnimatedOpacity(
+              opacity: _controlsVisible ? 1 : 0,
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                child: SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(14.w, 0, 14.w, 14.h),
+                    child: Container(
+                      padding: EdgeInsets.fromLTRB(8.w, 6.h, 12.w, 8.h),
+                      decoration: BoxDecoration(
+                        color: const Color(0x66000000),
+                        borderRadius: BorderRadius.circular(14.r),
+                        border: Border.all(color: const Color(0x22FFFFFF)),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            children: [
+                              IconButton(
+                                onPressed: _togglePlayPause,
+                                icon: Icon(
+                                  playing
+                                      ? Icons.pause_rounded
+                                      : Icons.play_arrow_rounded,
+                                  color: Colors.white,
+                                  size: 28.sp,
+                                ),
+                              ),
+                              Expanded(
+                                child: SliderTheme(
+                                  data: SliderTheme.of(context).copyWith(
+                                    trackHeight: 3.5,
+                                    thumbShape: RoundSliderThumbShape(
+                                      enabledThumbRadius: 7.r,
+                                    ),
+                                    overlayShape: RoundSliderOverlayShape(
+                                      overlayRadius: 14.r,
+                                    ),
+                                    activeTrackColor: const Color(0xFFFFC22D),
+                                    inactiveTrackColor: const Color(0x3DFFFFFF),
+                                    thumbColor: const Color(0xFFFFC22D),
+                                    overlayColor: const Color(0x33FFC22D),
+                                  ),
+                                  child: Slider(
+                                    value: progressMs,
+                                    max: maxMs,
+                                    onChangeStart: (_) {
+                                      setState(() => _dragging = true);
+                                      _hideControlsTimer?.cancel();
+                                    },
+                                    onChanged: (v) {
+                                      setState(() => _dragValueMs = v);
+                                    },
+                                    onChangeEnd: (v) async {
+                                      await controller.seekTo(
+                                        Duration(milliseconds: v.round()),
+                                      );
+                                      if (!mounted) return;
+                                      setState(() {
+                                        _dragging = false;
+                                        _dragValueMs = null;
+                                      });
+                                      _scheduleHideControls();
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          Padding(
+                            padding: EdgeInsets.fromLTRB(10.w, 0, 6.w, 2.h),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  _formatDuration(position),
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 12.sp,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                Text(
+                                  _formatDuration(duration),
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 12.sp,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
+  }
+
+  String _formatDuration(Duration duration) {
+    final totalSeconds = duration.inSeconds;
+    final minutes = (totalSeconds ~/ 60).toString().padLeft(2, '0');
+    final seconds = (totalSeconds % 60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
   }
 }
