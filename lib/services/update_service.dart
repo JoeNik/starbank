@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:convert';
+import '../utils/remote_json.dart';
 import 'dart:io';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter/material.dart';
@@ -34,7 +34,7 @@ class ReleaseInfo {
 
   factory ReleaseInfo.fromJson(Map<String, dynamic> json) {
     // 从 tag_name 提取版本号 (v1.2.0-xxx -> 1.2.0)
-    final tagName = json['tag_name'] as String? ?? '';
+    final tagName = asNonEmptyString(json['tag_name']) ?? '';
     String version = tagName;
 
     // 移除 v 前缀
@@ -56,11 +56,13 @@ class ReleaseInfo {
 
     // 查找 APK 下载链接
     String downloadUrl = '';
-    final assets = json['assets'] as List? ?? [];
-    for (var asset in assets) {
-      final name = asset['name'] as String? ?? '';
+    final assets = asJsonList(json['assets']) ?? const [];
+    for (final asset in assets) {
+      final assetMap = asJsonMap(asset);
+      if (assetMap == null) continue;
+      final name = asNonEmptyString(assetMap['name']) ?? '';
       if (name.endsWith('.apk')) {
-        downloadUrl = asset['browser_download_url'] as String? ?? '';
+        downloadUrl = asNonEmptyString(assetMap['browser_download_url']) ?? '';
         break;
       }
     }
@@ -68,11 +70,12 @@ class ReleaseInfo {
     return ReleaseInfo(
       tagName: tagName,
       version: version,
-      name: json['name'] as String? ?? '',
-      body: json['body'] as String? ?? '',
+      name: asNonEmptyString(json['name']) ?? '',
+      body: asNonEmptyString(json['body']) ?? '',
       downloadUrl: downloadUrl,
-      publishedAt:
-          DateTime.tryParse(json['published_at'] ?? '') ?? DateTime.now(),
+      publishedAt: DateTime.tryParse(
+            asNonEmptyString(json['published_at']) ?? '') ??
+          DateTime.now(),
     );
   }
 }
@@ -131,7 +134,13 @@ class UpdateService extends GetxService {
       );
 
       if (response.statusCode == 200) {
-        final json = jsonDecode(response.body);
+        final json = tryDecodeJsonObject(response.body);
+        if (json == null) {
+          if (showNoUpdateMessage) {
+            ToastUtils.showError('更新信息为空或格式错误');
+          }
+          return false;
+        }
         final release = ReleaseInfo.fromJson(json);
         latestRelease.value = release;
 

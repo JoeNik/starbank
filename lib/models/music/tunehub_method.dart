@@ -18,16 +18,21 @@ class TuneHubMethod {
   });
 
   factory TuneHubMethod.fromJson(Map<String, dynamic> json) {
+    final paramsRaw = json['params'];
+    final headersRaw = json['headers'];
+    final bodyRaw = json['body'];
     return TuneHubMethod(
-      type: json['type'] ?? 'http',
-      method: json['method'] ?? 'GET',
-      url: json['url'] ?? '',
-      params: json['params'] ?? {},
-      body: json['body'],
-      headers: json['headers'] != null
-          ? Map<String, String>.from(json['headers'])
+      type: (json['type'] ?? 'http').toString(),
+      method: (json['method'] ?? 'GET').toString(),
+      url: (json['url'] ?? '').toString(),
+      params: paramsRaw is Map
+          ? Map<String, dynamic>.from(paramsRaw)
+          : <String, dynamic>{},
+      body: bodyRaw is Map ? Map<String, dynamic>.from(bodyRaw) : null,
+      headers: headersRaw is Map
+          ? headersRaw.map((k, v) => MapEntry(k.toString(), v?.toString() ?? ''))
           : null,
-      transform: json['transform'],
+      transform: json['transform']?.toString(),
     );
   }
 }

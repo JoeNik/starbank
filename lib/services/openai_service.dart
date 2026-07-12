@@ -5,6 +5,7 @@ import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
 import '../models/openai_config.dart';
 import 'android_background_network_service.dart';
+import '../utils/remote_json.dart';
 
 /// OpenAI 服务
 /// 封装对 OpenAI 兼容 API 的调用
@@ -112,13 +113,24 @@ class OpenAIService extends GetxService {
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final models =
-            (data['data'] as List).map((m) => m['id'] as String).toList();
+        final data = tryDecodeJsonObject(response.body);
+        if (data == null) {
+          throw Exception('获取模型失败: 响应为空或不是合法 JSON');
+        }
+        final list = asJsonList(data['data']);
+        if (list == null) {
+          throw Exception('获取模型失败: 响应缺少 data 数组');
+        }
+        final models = <String>[];
+        for (final item in list) {
+          final map = asJsonMap(item);
+          final id = asNonEmptyString(map?['id']);
+          if (id != null) models.add(id);
+        }
         models.sort();
         return models;
       } else {
-        throw Exception('获取模型失败: ${response.statusCode}');
+        throw Exception(openAiErrorMessage(response.body, response.statusCode));
       }
     } catch (e) {
       debugPrint('获取模型列表失败: $e');
@@ -194,22 +206,25 @@ class OpenAIService extends GetxService {
       );
 
       if (response.statusCode != 200) {
-        final error = jsonDecode(response.body);
         throw Exception(
-            error['error']?['message'] ?? '请求失败: ${response.statusCode}');
+            openAiErrorMessage(response.body, response.statusCode));
       }
 
       var data = _parseResponseBody(utf8.decode(response.bodyBytes));
-      var message = data['choices'][0]['message'];
+      var message = _requireChatMessage(data);
 
       // 检查是否有工具调用
       if (message['tool_calls'] != null) {
-        final toolCalls = message['tool_calls'] as List;
+        final toolCalls = asJsonList(message['tool_calls']) ?? const [];
         messages.add(message); // 添加助手的回复（包含工具调用）
 
         for (var toolCall in toolCalls) {
-          if (toolCall['function']['name'] == 'web_search') {
-            final args = jsonDecode(toolCall['function']['arguments']);
+          final toolMap = asJsonMap(toolCall);
+          final functionMap = asJsonMap(toolMap?['function']);
+          if (functionMap != null && functionMap['name'] == 'web_search') {
+            final args = tryDecodeJsonObject(
+                  asNonEmptyString(functionMap['arguments']) ?? '') ??
+                <String, dynamic>{};
             final query = args['query'];
 
             // 模拟搜索结果
@@ -219,7 +234,7 @@ class OpenAIService extends GetxService {
 
             messages.add({
               'role': 'tool',
-              'tool_call_id': toolCall['id'],
+              'tool_call_id': toolMap?['id'],
               'name': 'web_search',
               'content': searchResult,
             });
@@ -242,10 +257,10 @@ class OpenAIService extends GetxService {
         }
 
         data = _parseResponseBody(utf8.decode(response.bodyBytes));
-        message = data['choices'][0]['message'];
+        message = _requireChatMessage(data);
       }
 
-      return message['content'] as String;
+      return _requireMessageContent(message);
     } catch (e) {
       debugPrint('OpenAI 请求失败: $e');
       rethrow;
@@ -325,22 +340,25 @@ class OpenAIService extends GetxService {
       );
 
       if (response.statusCode != 200) {
-        final error = jsonDecode(response.body);
         throw Exception(
-            error['error']?['message'] ?? '请求失败: ${response.statusCode}');
+            openAiErrorMessage(response.body, response.statusCode));
       }
 
       var data = _parseResponseBody(utf8.decode(response.bodyBytes));
-      var message = data['choices'][0]['message'];
+      var message = _requireChatMessage(data);
 
       // 检查是否有工具调用
       if (message['tool_calls'] != null) {
-        final toolCalls = message['tool_calls'] as List;
+        final toolCalls = asJsonList(message['tool_calls']) ?? const [];
         chatMessages.add(message); // 添加助手的回复（包含工具调用）
 
         for (var toolCall in toolCalls) {
-          if (toolCall['function']['name'] == 'web_search') {
-            final args = jsonDecode(toolCall['function']['arguments']);
+          final toolMap = asJsonMap(toolCall);
+          final functionMap = asJsonMap(toolMap?['function']);
+          if (functionMap != null && functionMap['name'] == 'web_search') {
+            final args = tryDecodeJsonObject(
+                  asNonEmptyString(functionMap['arguments']) ?? '') ??
+                <String, dynamic>{};
             final query = args['query'];
 
             // 模拟搜索结果
@@ -350,7 +368,7 @@ class OpenAIService extends GetxService {
 
             chatMessages.add({
               'role': 'tool',
-              'tool_call_id': toolCall['id'],
+              'tool_call_id': toolMap?['id'],
               'name': 'web_search',
               'content': searchResult,
             });
@@ -373,10 +391,10 @@ class OpenAIService extends GetxService {
         }
 
         data = _parseResponseBody(utf8.decode(response.bodyBytes));
-        message = data['choices'][0]['message'];
+        message = _requireChatMessage(data);
       }
 
-      return message['content'] as String;
+      return _requireMessageContent(message);
     } catch (e) {
       debugPrint('OpenAI 请求失败: $e');
       rethrow;
@@ -449,7 +467,7 @@ class OpenAIService extends GetxService {
       }
 
       final data = _parseResponseBody(utf8.decode(response.bodyBytes));
-      return data['choices'][0]['message']['content'] as String;
+      return _requireChatContent(data);
     } catch (e) {
       debugPrint('OpenAI 图片识别请求失败: $e');
       rethrow;
@@ -545,8 +563,14 @@ class OpenAIService extends GetxService {
       }
       jsonStr = jsonStr.trim();
 
-      final List<dynamic> stories = jsonDecode(jsonStr);
-      return stories.cast<Map<String, dynamic>>();
+      final stories = tryDecodeJsonList(jsonStr);
+      if (stories == null) {
+        throw Exception('生成故事失败: AI 返回为空或不是 JSON 数组');
+      }
+      return stories
+          .map(asJsonMap)
+          .whereType<Map<String, dynamic>>()
+          .toList();
     } catch (e) {
       debugPrint('生成故事失败: $e');
       rethrow;
@@ -617,8 +641,14 @@ class OpenAIService extends GetxService {
       }
       jsonStr = jsonStr.trim();
 
-      final List<dynamic> questions = jsonDecode(jsonStr);
-      return questions.cast<Map<String, dynamic>>();
+      final questions = tryDecodeJsonList(jsonStr);
+      if (questions == null) {
+        throw Exception('生成题目失败: AI 返回为空或不是 JSON 数组');
+      }
+      return questions
+          .map(asJsonMap)
+          .whereType<Map<String, dynamic>>()
+          .toList();
     } catch (e) {
       debugPrint('生成题目失败: $e');
       rethrow;
@@ -774,24 +804,18 @@ class OpenAIService extends GetxService {
             final responseText = utf8.decode(response.bodyBytes);
             debugPrint('📥 响应体: $responseText');
 
-            final data = jsonDecode(responseText);
-            final List<dynamic> list = data['data'];
-
-            if (list.isEmpty) {
-              throw Exception('API 返回的 data 数组为空');
+            final data = tryDecodeJsonObject(responseText);
+            if (data == null) {
+              throw Exception('图片响应为空或不是合法 JSON');
             }
-
-            final imageData = list.first;
-            if (imageData['url'] != null) {
-              final url = imageData['url'] as String;
-              debugPrint('✅ [${i + 1}/$n] 成功获取图片 URL: $url');
-              allUrls.add(url);
-            } else if (imageData['b64_json'] != null) {
+            final urls = extractImagePayloadUrls(data);
+            final url = urls.first;
+            if (url.startsWith('data:image')) {
               debugPrint('✅ [${i + 1}/$n] 成功获取 Base64 图片');
-              allUrls.add('data:image/png;base64,${imageData['b64_json']}');
             } else {
-              throw Exception('图片响应格式错误: ${jsonEncode(imageData)}');
+              debugPrint('✅ [${i + 1}/$n] 成功获取图片 URL: $url');
             }
+            allUrls.add(url);
 
             if (i < n - 1) {
               await Future.delayed(const Duration(milliseconds: 500));
@@ -854,22 +878,11 @@ class OpenAIService extends GetxService {
           final responseText = utf8.decode(response.bodyBytes);
           debugPrint('📥 响应体: $responseText');
 
-          final data = jsonDecode(responseText);
-          final List<dynamic> list = data['data'];
-
-          if (list.isEmpty) {
-            throw Exception('API 返回的 data 数组为空');
+          final data = tryDecodeJsonObject(responseText);
+          if (data == null) {
+            throw Exception('图片响应为空或不是合法 JSON');
           }
-
-          final urls = list.map((e) {
-            if (e['url'] != null) {
-              return e['url'] as String;
-            } else if (e['b64_json'] != null) {
-              return 'data:image/png;base64,${e['b64_json']}';
-            } else {
-              throw Exception('图片响应格式错误: ${jsonEncode(e)}');
-            }
-          }).toList();
+          final urls = extractImagePayloadUrls(data);
 
           debugPrint('🎉 成功生成 ${urls.length} 张图片');
           return urls;
@@ -1051,14 +1064,40 @@ class OpenAIService extends GetxService {
 
   /// 解析 API 响应体，兼容标准 JSON 和 SSE 格式
   /// 某些 API 提供商即使 stream=false 也可能返回 SSE 格式
+  Map<String, dynamic> _requireChatMessage(Map<String, dynamic> data) {
+    final message = extractChatCompletionMessage(data);
+    if (message == null) {
+      throw const FormatException('AI 响应缺少 choices/message 字段');
+    }
+    return message;
+  }
+
+  String _requireMessageContent(Map<String, dynamic> message) {
+    final content = extractMessageContent(message);
+    if (content == null) {
+      throw const FormatException('AI 响应 message.content 为空');
+    }
+    return content;
+  }
+
+  String _requireChatContent(Map<String, dynamic> data) {
+    final content = extractChatCompletionContent(data);
+    if (content == null) {
+      throw const FormatException('AI 响应内容为空或格式不正确');
+    }
+    return content;
+  }
+
   Map<String, dynamic> _parseResponseBody(String body) {
     final trimmed = body.trim();
+    if (trimmed.isEmpty) {
+      throw const FormatException('AI 响应体为空');
+    }
 
     // 先尝试直接解析标准 JSON
-    try {
-      return jsonDecode(trimmed) as Map<String, dynamic>;
-    } catch (_) {
-      // 继续尝试 SSE 格式解析
+    final direct = tryDecodeJsonObject(trimmed);
+    if (direct != null) {
+      return direct;
     }
 
     // 尝试解析 SSE 格式: 提取 data: 行中的 JSON
@@ -1079,14 +1118,16 @@ class OpenAIService extends GetxService {
       }
 
       try {
-        final parsed = jsonDecode(dataStr) as Map<String, dynamic>;
-        final choices = parsed['choices'] as List?;
+        final parsed = tryDecodeJsonObject(dataStr);
+        if (parsed == null) continue;
+        final choices = asJsonList(parsed['choices']);
         if (choices != null && choices.isNotEmpty) {
-          final choice = choices[0] as Map<String, dynamic>;
+          final choice = asJsonMap(choices[0]);
+          if (choice == null) continue;
           // 检查是否为流式 delta 格式
           if (choice.containsKey('delta')) {
-            final delta = choice['delta'] as Map<String, dynamic>?;
-            final content = delta?['content'] as String?;
+            final delta = asJsonMap(choice['delta']);
+            final content = asNonEmptyString(delta?['content']);
             if (content != null) {
               accumulatedContent += content;
             }

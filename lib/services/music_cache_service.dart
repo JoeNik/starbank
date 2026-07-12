@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:crypto/crypto.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
+import '../utils/remote_json.dart';
 import '../models/music/music_track.dart';
 import 'android_background_network_service.dart';
 
@@ -38,18 +39,21 @@ class CacheMetadata {
   });
 
   factory CacheMetadata.fromJson(Map<String, dynamic> json) {
+    final cachedAtRaw = asNonEmptyString(json['cachedAt']);
     return CacheMetadata(
-      trackId: json['trackId'],
-      title: json['title'],
-      artist: json['artist'],
-      album: json['album'],
-      coverUrl: json['coverUrl'],
-      platform: json['platform'],
-      originalUrl: json['originalUrl'],
-      fileSize: json['fileSize'],
-      cachedAt: DateTime.parse(json['cachedAt']),
-      checksum: json['checksum'],
-      lyricContent: json['lyricContent'],
+      trackId: asNonEmptyString(json['trackId']) ?? '',
+      title: asNonEmptyString(json['title']) ?? '',
+      artist: asNonEmptyString(json['artist']) ?? '',
+      album: asNonEmptyString(json['album']),
+      coverUrl: asNonEmptyString(json['coverUrl']),
+      platform: asNonEmptyString(json['platform']) ?? '',
+      originalUrl: asNonEmptyString(json['originalUrl']) ?? '',
+      fileSize: (json['fileSize'] as num?)?.toInt() ?? 0,
+      cachedAt: cachedAtRaw != null
+          ? (DateTime.tryParse(cachedAtRaw) ?? DateTime.fromMillisecondsSinceEpoch(0))
+          : DateTime.fromMillisecondsSinceEpoch(0),
+      checksum: asNonEmptyString(json['checksum']) ?? '',
+      lyricContent: asNonEmptyString(json['lyricContent']),
     );
   }
 
@@ -461,11 +465,21 @@ class MusicCacheService extends GetxService {
       final indexFile = File('${_cacheDir!.path}/cache_index.json');
       if (await indexFile.exists()) {
         final indexJson = await indexFile.readAsString();
-        final indexData = jsonDecode(indexJson) as Map<String, dynamic>;
+        final indexData = tryDecodeJsonObject(indexJson);
+        if (indexData == null) {
+          debugPrint('⚠️ [MusicCacheService] 缓存索引为空或格式错误，已忽略');
+          return;
+        }
 
         _cacheIndex.clear();
         indexData.forEach((key, value) {
-          _cacheIndex[key] = CacheMetadata.fromJson(value);
+          final map = asJsonMap(value);
+          if (map == null) return;
+          try {
+            _cacheIndex[key] = CacheMetadata.fromJson(map);
+          } catch (e) {
+            debugPrint('⚠️ [MusicCacheService] 跳过损坏的缓存索引项 $key: $e');
+          }
         });
 
         debugPrint('✅ [MusicCacheService] 缓存索引加载完成: ${_cacheIndex.length} 首歌曲');

@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
+import '../utils/remote_json.dart';
 
 import '../data/encyclopedia_data.dart';
 import '../models/encyclopedia_config.dart';
@@ -219,9 +220,9 @@ class EncyclopediaService extends GetxService {
     String jsonStr, {
     required String source,
   }) {
-    final list = jsonDecode(jsonStr);
-    if (list is! List) {
-      throw Exception('题库 JSON 格式错误，顶层必须是数组');
+    final list = tryDecodeJsonList(jsonStr);
+    if (list == null) {
+      throw Exception('题库 JSON 格式错误，顶层必须是数组（或内容为空）');
     }
 
     final parsed = <EncyclopediaQuestion>[];
@@ -262,6 +263,9 @@ class EncyclopediaService extends GetxService {
       throw Exception('同步失败: HTTP ${resp.statusCode}');
     }
     final body = utf8.decode(resp.bodyBytes);
+    if (body.trim().isEmpty) {
+      throw Exception('同步失败: 远端返回空内容');
+    }
     return replaceQuestionsFromJsonString(body, source: 'remote');
   }
 
@@ -297,9 +301,9 @@ class EncyclopediaService extends GetxService {
     );
 
     final jsonArray = _extractJsonArray(response);
-    final decoded = jsonDecode(jsonArray);
-    if (decoded is! List) {
-      throw Exception('AI 返回格式错误，顶层不是数组');
+    final decoded = tryDecodeJsonList(jsonArray);
+    if (decoded == null) {
+      throw Exception('AI 返回格式错误，顶层不是数组（或内容为空）');
     }
 
     int imported = 0;
@@ -583,11 +587,14 @@ class EncyclopediaService extends GetxService {
       );
 
       final jsonObject = _extractJsonObject(response);
-      final data = jsonDecode(jsonObject) as Map<String, dynamic>;
+      final data = tryDecodeJsonObject(jsonObject);
+      if (data == null) {
+        throw Exception('返回内容为空或不是 JSON 对象');
+      }
 
-      final shortAnswer = (data['short_answer'] as String? ?? '').trim();
-      final why = (data['why'] as String? ?? '').trim();
-      final example = (data['example'] as String? ?? '').trim();
+      final shortAnswer = (asNonEmptyString(data['short_answer']) ?? '').trim();
+      final why = (asNonEmptyString(data['why']) ?? '').trim();
+      final example = (asNonEmptyString(data['example']) ?? '').trim();
 
       if (shortAnswer.isEmpty || why.isEmpty || example.isEmpty) {
         throw Exception('返回字段不完整');

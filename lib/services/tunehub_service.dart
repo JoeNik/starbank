@@ -6,6 +6,7 @@ import '../models/music/music_track.dart';
 import '../models/music/tunehub_method.dart';
 import 'android_background_network_service.dart';
 import 'storage_service.dart';
+import '../utils/remote_json.dart';
 
 class TuneHubService extends GetxService {
   final StorageService _storage = Get.find<StorageService>();
@@ -59,11 +60,15 @@ class TuneHubService extends GetxService {
       text: '正在获取音乐解析配置',
     );
     if (response.statusCode == 200) {
-      final json = jsonDecode(_safeGetBody(response));
-      if (json['code'] == 0 && json['data'] != null) {
-        return TuneHubMethod.fromJson(json['data']);
+      final json = tryDecodeJsonObject(_safeGetBody(response));
+      if (json == null) {
+        throw Exception('获取配置失败: 响应为空或不是合法 JSON');
       }
-      throw Exception(json['msg'] ?? '获取配置失败');
+      final data = asJsonMap(json['data']);
+      if (json['code'] == 0 && data != null) {
+        return TuneHubMethod.fromJson(data);
+      }
+      throw Exception(asNonEmptyString(json['msg']) ?? '获取配置失败');
     }
     throw Exception('网络错误: ${response.statusCode}');
   }
@@ -202,7 +207,11 @@ class TuneHubService extends GetxService {
       }
 
       if (response.statusCode == 200) {
-        return jsonDecode(bodyStr);
+        if (bodyStr.trim().isEmpty) {
+          debugPrint('TH Error: empty response body');
+          return null;
+        }
+        return tryDecodeJson(bodyStr);
       }
       return null;
     } catch (e) {
@@ -259,10 +268,11 @@ class TuneHubService extends GetxService {
           // QQ 音乐可能的数据结构:
           // { data: { song: { list: [...] } } }
           // { req_1: { data: { song: { list: [...] } } } }
-          if (raw['data'] is Map) {
-            final data = raw['data'] as Map;
-            if (data['song'] is Map && data['song']['list'] is List) {
-              list = data['song']['list'];
+          final data = asJsonMap(raw['data']);
+          if (data != null) {
+            final song = asJsonMap(data['song']);
+            if (song != null && song['list'] is List) {
+              list = song['list'];
               debugPrint('🎵 [QQ音乐] 从 data.song.list 找到歌曲列表');
             } else if (data['list'] is List) {
               list = data['list'];
@@ -270,14 +280,13 @@ class TuneHubService extends GetxService {
             }
           }
           // 检查 req_1 格式
-          if (list == null && raw['req_1'] is Map) {
-            final req1 = raw['req_1'] as Map;
-            if (req1['data'] is Map) {
-              final data = req1['data'] as Map;
-              if (data['song'] is Map && data['song']['list'] is List) {
-                list = data['song']['list'];
-                debugPrint('🎵 [QQ音乐] 从 req_1.data.song.list 找到歌曲列表');
-              }
+          if (list == null) {
+            final req1 = asJsonMap(raw['req_1']);
+            final req1Data = asJsonMap(req1?['data']);
+            final song = asJsonMap(req1Data?['song']);
+            if (song != null && song['list'] is List) {
+              list = song['list'];
+              debugPrint('🎵 [QQ音乐] 从 req_1.data.song.list 找到歌曲列表');
             }
           }
           // 检查其他可能的 QQ 音乐格式
@@ -334,6 +343,9 @@ class TuneHubService extends GetxService {
         debugPrint('✅ [TuneHub] $platform 找到 ${list.length} 首歌曲');
 
         for (var item in list) {
+          final itemMap = asJsonMap(item);
+          if (itemMap == null) continue;
+          item = itemMap;
           // QQ 音乐的 ID 字段可能是 songmid 或 mid
           final id = (item['songmid'] ??
                   item['mid'] ??
@@ -459,19 +471,31 @@ class TuneHubService extends GetxService {
         debugPrint('TH Parse Res: $resStr');
 
         if (response.statusCode == 200) {
-          final json = jsonDecode(resStr);
+          final json = tryDecodeJsonObject(resStr);
+          if (json == null) {
+            debugPrint('TH Parse Error: empty or invalid JSON');
+            return {};
+          }
           if (json['code'] == 0 && json['data'] != null) {
             final data = json['data'];
             // 适配各种返回格式
-            if (data is Map && data['data'] is List) {
-              // data: { data: [{id: xxx, url: xxx}] }
-              for (var item in (data['data'] as List)) {
-                if (item is Map && item['id'].toString() == id)
-                  return Map<String, dynamic>.from(item);
+            final dataMap = asJsonMap(data);
+            if (dataMap != null) {
+              final nestedList = asJsonList(dataMap['data']);
+              if (nestedList != null) {
+                // data: { data: [{id: xxx, url: xxx}] }
+                for (final item in nestedList) {
+                  final itemMap = asJsonMap(item);
+                  if (itemMap != null &&
+                      asNonEmptyString(itemMap['id']) == id) {
+                    return itemMap;
+                  }
+                }
               }
-            }
-            if (data is Map && data[id] != null) {
-              return Map<String, dynamic>.from(data[id]);
+              final byId = asJsonMap(dataMap[id]);
+              if (byId != null) {
+                return byId;
+              }
             }
           }
         }
