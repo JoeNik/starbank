@@ -104,10 +104,18 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
 
     WidgetsBinding.instance.addObserver(this);
     if (enabled.value && isLoggedIn) {
+      // 一次性自愈：旧版分页游标可能跳过了同 seq 批次的部分记录，
+      // 归零游标全量重拉一遍（应用是幂等的，不会产生重复数据）。
+      if (_state.get('pullCursorFixV2') != true) {
+        await _state.put('lastSeq', 0);
+        await _state.put('pullCursorFixV2', true);
+      }
       _startWatchers();
       _startPeriodic();
       // 启动后延迟触发一次同步，避免拖慢冷启动
       Future.delayed(const Duration(seconds: 6), () => syncNow());
+    } else {
+      await _state.put('pullCursorFixV2', true);
     }
     return this;
   }
@@ -776,6 +784,9 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
 
   Future<void> _pullChanges() async {
     var since = _state.get('lastSeq') as int? ?? 0;
+    // 复合游标：同一批次的记录共享 seq，翻页必须带上段名+记录 ID 才不丢行
+    String? sinceSection;
+    String? sinceRecord;
     final manifest = _readManifest();
     var manifestChanged = false;
     var appliedAny = false;
@@ -783,8 +794,11 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
     List<dynamic> counters = const [];
 
     while (true) {
-      final data =
-          await _api('GET', '/api/sync/changes', query: {'since': '$since'});
+      final data = await _api('GET', '/api/sync/changes', query: {
+        'since': '$since',
+        if (sinceSection != null) 'sinceSection': sinceSection,
+        if (sinceRecord != null) 'sinceRecord': sinceRecord,
+      });
       final records = data['records'] as List? ?? const [];
       counters = data['counters'] as List? ?? counters;
 
@@ -842,6 +856,8 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
       }
 
       since = (data['nextSince'] as num?)?.toInt() ?? since;
+      sinceSection = data['nextSection'] as String?;
+      sinceRecord = data['nextRecord'] as String?;
       if (data['hasMore'] != true) {
         final serverSeq = (data['seq'] as num?)?.toInt();
         if (serverSeq != null && serverSeq > since) since = serverSeq;

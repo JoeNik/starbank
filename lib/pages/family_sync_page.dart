@@ -140,158 +140,18 @@ class _FamilySyncPageState extends State<FamilySyncPage> {
       await _sync.saveEndpoint(endpoint);
       // 先做连通性检查，失败给出具体原因，成功再进入强制登录/注册
       await _sync.testEndpoint();
-      _showAuthSheet();
+      // 全屏登录页：表单从顶部排布，键盘弹起不会压缩输入框
+      final result =
+          await Get.to<FirstLoginResult>(() => const _FamilySyncAuthPage());
+      if (result == FirstLoginResult.needMergeChoice) {
+        _showMergeChoiceDialog();
+      }
     } on FamilySyncException catch (e) {
       ToastUtils.showError(e.message);
     } catch (e) {
       ToastUtils.showError('连接失败: $e');
     } finally {
       if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  void _showAuthSheet() {
-    final userController = TextEditingController();
-    final passwordController = TextEditingController();
-    final familyController = TextEditingController();
-    final isRegister = false.obs;
-    final working = false.obs;
-
-    // 表单主体只构建一次；键盘弹出时仅外层 Padding 随动画重建，
-    // 子树为同一 widget 实例会被跳过重建，避免键盘动画掉帧。
-    final sheetBody = Container(
-      padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 24.h),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
-      ),
-      // 键盘弹出后内容可能超过剩余高度，必须可滚动，否则产生溢出条纹
-      child: SingleChildScrollView(
-        child: Obx(
-          () => Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                isRegister.value ? '注册家庭号（成为主号）' : '登录家庭号',
-                style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w900),
-              ),
-              SizedBox(height: 6.h),
-              Text(
-                '启用家庭同步必须登录或注册',
-                style: TextStyle(fontSize: 12.sp, color: AppTheme.textSub),
-              ),
-              SizedBox(height: 16.h),
-              TextField(
-                controller: userController,
-                decoration: const InputDecoration(
-                  labelText: '用户名',
-                  prefixIcon: Icon(Icons.person_outline),
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              SizedBox(height: 12.h),
-              TextField(
-                controller: passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: '密码（至少 6 位）',
-                  prefixIcon: Icon(Icons.lock_outline),
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              if (isRegister.value) ...[
-                SizedBox(height: 12.h),
-                TextField(
-                  controller: familyController,
-                  decoration: const InputDecoration(
-                    labelText: '家庭名称（可选）',
-                    prefixIcon: Icon(Icons.home_outlined),
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ],
-              SizedBox(height: 18.h),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: working.value
-                      ? null
-                      : () => _submitAuth(
-                            isRegister: isRegister.value,
-                            username: userController.text.trim(),
-                            password: passwordController.text,
-                            familyName: familyController.text.trim(),
-                            working: working,
-                          ),
-                  child: working.value
-                      ? SizedBox.square(
-                          dimension: 18.w,
-                          child:
-                              const CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(isRegister.value ? '注册并启用同步' : '登录并启用同步'),
-                ),
-              ),
-              TextButton(
-                onPressed: () => isRegister.value = !isRegister.value,
-                child: Text(
-                  isRegister.value ? '已有家庭号？去登录' : '还没有家庭号？注册一个',
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-
-    Get.bottomSheet(
-      isScrollControlled: true,
-      Builder(
-        builder: (sheetContext) => Padding(
-          padding: EdgeInsets.only(
-              bottom: MediaQuery.viewInsetsOf(sheetContext).bottom),
-          child: sheetBody,
-        ),
-      ),
-    );
-  }
-
-  Future<void> _submitAuth({
-    required bool isRegister,
-    required String username,
-    required String password,
-    required String familyName,
-    required RxBool working,
-  }) async {
-    if (username.isEmpty || password.length < 6) {
-      ToastUtils.showWarning('请输入用户名和至少 6 位密码');
-      return;
-    }
-    working.value = true;
-    try {
-      if (isRegister) {
-        await _sync.register(
-          user: username,
-          password: password,
-          familyDisplayName: familyName,
-        );
-        Get.back();
-        ToastUtils.showSuccess('注册成功，数据正在后台同步');
-      } else {
-        final result = await _sync.login(user: username, password: password);
-        Get.back();
-        if (result == FirstLoginResult.needMergeChoice) {
-          _showMergeChoiceDialog();
-        } else {
-          ToastUtils.showSuccess('登录成功，数据正在后台同步');
-        }
-      }
-    } on FamilySyncException catch (e) {
-      ToastUtils.showError(e.message);
-    } catch (e) {
-      ToastUtils.showError('操作失败: $e');
-    } finally {
-      working.value = false;
     }
   }
 
@@ -733,5 +593,228 @@ class _FamilySyncPageState extends State<FamilySyncPage> {
       ),
       child: child,
     );
+  }
+}
+
+/// 全屏登录/注册页：表单从顶部排布，键盘弹起只收起底部空间，
+/// 输入框不会被压缩或遮挡。
+class _FamilySyncAuthPage extends StatefulWidget {
+  const _FamilySyncAuthPage();
+
+  @override
+  State<_FamilySyncAuthPage> createState() => _FamilySyncAuthPageState();
+}
+
+class _FamilySyncAuthPageState extends State<_FamilySyncAuthPage> {
+  final _sync = Get.find<FamilySyncService>();
+  final _userController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _familyController = TextEditingController();
+  bool _isRegister = false;
+  bool _working = false;
+  bool _obscure = true;
+
+  @override
+  void dispose() {
+    _userController.dispose();
+    _passwordController.dispose();
+    _familyController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFFFF6F2),
+      appBar: AppBar(
+        title: Text(_isRegister ? '注册家庭号' : '登录家庭号'),
+        backgroundColor: Colors.transparent,
+      ),
+      body: ListView(
+        padding: EdgeInsets.fromLTRB(24.w, 8.h, 24.w, 32.h),
+        children: [
+          Center(
+            child: Container(
+              width: 84.w,
+              height: 84.w,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFF9A9E), Color(0xFFFFC371)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFFF9A9E).withValues(alpha: 0.35),
+                    blurRadius: 18,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              alignment: Alignment.center,
+              child: Text('👨‍👩‍👧', style: TextStyle(fontSize: 38.sp)),
+            ),
+          ),
+          SizedBox(height: 14.h),
+          Text(
+            _isRegister ? '创建你的家庭' : '欢迎回来',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 22.sp,
+              fontWeight: FontWeight.w900,
+              color: AppTheme.textMain,
+            ),
+          ),
+          SizedBox(height: 6.h),
+          Text(
+            _isRegister ? '首次注册自动创建家庭，你将成为主号' : '启用家庭同步需要登录家庭号',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 13.sp, color: AppTheme.textSub),
+          ),
+          SizedBox(height: 22.h),
+          Container(
+            padding: EdgeInsets.all(18.w),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20.r),
+              border: Border.all(color: const Color(0xFFFFE4E6), width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF4E342E).withValues(alpha: 0.05),
+                  blurRadius: 14,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                TextField(
+                  controller: _userController,
+                  textInputAction: TextInputAction.next,
+                  decoration: InputDecoration(
+                    labelText: '用户名',
+                    prefixIcon: const Icon(Icons.person_outline),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14.r),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 14.h),
+                TextField(
+                  controller: _passwordController,
+                  obscureText: _obscure,
+                  textInputAction:
+                      _isRegister ? TextInputAction.next : TextInputAction.done,
+                  onSubmitted: (_) {
+                    if (!_isRegister) _submit();
+                  },
+                  decoration: InputDecoration(
+                    labelText: '密码（至少 6 位）',
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    suffixIcon: IconButton(
+                      icon: Icon(_obscure
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined),
+                      onPressed: () => setState(() => _obscure = !_obscure),
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14.r),
+                    ),
+                  ),
+                ),
+                if (_isRegister) ...[
+                  SizedBox(height: 14.h),
+                  TextField(
+                    controller: _familyController,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => _submit(),
+                    decoration: InputDecoration(
+                      labelText: '家庭名称（可选）',
+                      prefixIcon: const Icon(Icons.home_outlined),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14.r),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          SizedBox(height: 20.h),
+          SizedBox(
+            height: 48.h,
+            child: ElevatedButton(
+              onPressed: _working ? null : _submit,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryDark,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16.r),
+                ),
+              ),
+              child: _working
+                  ? SizedBox.square(
+                      dimension: 20.w,
+                      child: const CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(
+                      _isRegister ? '注册并启用同步' : '登录并启用同步',
+                      style: TextStyle(
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+            ),
+          ),
+          SizedBox(height: 8.h),
+          TextButton(
+            onPressed: _working
+                ? null
+                : () => setState(() => _isRegister = !_isRegister),
+            child: Text(
+              _isRegister ? '已有家庭号？去登录' : '还没有家庭号？注册一个',
+              style: TextStyle(fontSize: 14.sp),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _submit() async {
+    final username = _userController.text.trim();
+    final password = _passwordController.text;
+    if (username.isEmpty || password.length < 6) {
+      ToastUtils.showWarning('请输入用户名和至少 6 位密码');
+      return;
+    }
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() => _working = true);
+    try {
+      if (_isRegister) {
+        await _sync.register(
+          user: username,
+          password: password,
+          familyDisplayName: _familyController.text.trim(),
+        );
+        ToastUtils.showSuccess('注册成功，数据正在后台同步');
+        Get.back(result: FirstLoginResult.done);
+      } else {
+        final result = await _sync.login(user: username, password: password);
+        if (result == FirstLoginResult.done) {
+          ToastUtils.showSuccess('登录成功，数据正在后台同步');
+        }
+        Get.back(result: result);
+      }
+    } on FamilySyncException catch (e) {
+      ToastUtils.showError(e.message);
+    } catch (e) {
+      ToastUtils.showError('操作失败: $e');
+    } finally {
+      if (mounted) setState(() => _working = false);
+    }
   }
 }

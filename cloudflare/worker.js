@@ -511,20 +511,38 @@ async function apiSyncChanges(env, auth, url) {
   if (!Number.isFinite(since) || since < 0) {
     throw new HttpError(400, 'since 参数非法');
   }
-  const rows = await env.DB.prepare(
-    `SELECT section, record_id, seq, updated_at, deleted, payload
-       FROM records
-      WHERE family_id = ? AND seq > ?
-      ORDER BY seq
-      LIMIT ?`,
-  )
-    .bind(auth.familyId, since, PULL_PAGE_SIZE + 1)
-    .all();
+  // 复合游标：同一推送批次的记录共享 seq，必须用 (seq, section, record_id)
+  // 精确续页，否则分页边界会跳过同 seq 组的剩余记录。
+  const sinceSection = url.searchParams.get('sinceSection');
+  const sinceRecord = url.searchParams.get('sinceRecord');
+
+  let stmt;
+  if (sinceSection !== null && sinceRecord !== null) {
+    stmt = env.DB.prepare(
+      `SELECT section, record_id, seq, updated_at, deleted, payload
+         FROM records
+        WHERE family_id = ?1
+          AND (seq > ?2
+               OR (seq = ?2 AND (section > ?3
+                    OR (section = ?3 AND record_id > ?4))))
+        ORDER BY seq, section, record_id
+        LIMIT ?5`,
+    ).bind(auth.familyId, since, sinceSection, sinceRecord, PULL_PAGE_SIZE + 1);
+  } else {
+    stmt = env.DB.prepare(
+      `SELECT section, record_id, seq, updated_at, deleted, payload
+         FROM records
+        WHERE family_id = ?1 AND seq > ?2
+        ORDER BY seq, section, record_id
+        LIMIT ?3`,
+    ).bind(auth.familyId, since, PULL_PAGE_SIZE + 1);
+  }
+  const rows = await stmt.all();
 
   const results = rows.results || [];
   const hasMore = results.length > PULL_PAGE_SIZE;
   const page = hasMore ? results.slice(0, PULL_PAGE_SIZE) : results;
-  const nextSince = page.length > 0 ? page[page.length - 1].seq : since;
+  const last = page.length > 0 ? page[page.length - 1] : null;
 
   const counters = await env.DB.prepare(
     'SELECT baby_id, field, total FROM counters WHERE family_id = ?',
@@ -535,7 +553,9 @@ async function apiSyncChanges(env, auth, url) {
   const family = await familyInfo(env, auth.familyId);
   return json({
     seq: family.last_seq,
-    nextSince,
+    nextSince: last ? last.seq : since,
+    nextSection: last ? last.section : null,
+    nextRecord: last ? last.record_id : null,
     hasMore,
     records: page.map((r) => ({
       section: r.section,
