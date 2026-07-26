@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:math';
 
 import 'package:crypto/crypto.dart';
@@ -20,6 +21,7 @@ import '../models/baby_cloud_source.dart';
 import '../models/baby_cloud_upload_task.dart';
 import '../services/android_background_network_service.dart';
 import '../services/storage_service.dart';
+import '../utils/async_semaphore.dart';
 import '../widgets/toast_utils.dart';
 
 class BabyCloudSourceCheckResult {
@@ -1073,11 +1075,19 @@ class BabyCloudService extends GetxService {
   final RxList<BabyCloudUploadTask> uploadTasks = <BabyCloudUploadTask>[].obs;
   final RxBool isSyncing = false.obs;
 
+  /// entries/media 每次整体刷新时自增；页面可据此对时间轴分组结果做缓存，
+  /// 避免路由返回等场景下的全量重算。
+  final RxInt timelineRevision = 0.obs;
+
   bool _queueRunning = false;
   bool _aliyunOAuthChannelInitialized = false;
   Future<void>? _activeSync;
   final Map<String, Future<String?>> _localFileFutures = {};
   final Map<String, Future<String?>> _localThumbnailFutures = {};
+  // 详情页可能一次请求几十个文件；限制并发避免挤占带宽/IO 造成 UI 卡顿。
+  final AsyncSemaphore _originalDownloadSemaphore = AsyncSemaphore(2);
+  final AsyncSemaphore _thumbnailDownloadSemaphore = AsyncSemaphore(4);
+  final AsyncSemaphore _thumbnailGenerateSemaphore = AsyncSemaphore(2);
   final Set<String> _thumbnailAutoFailedKeys = <String>{};
   final Map<String, String> _manifestBabyDirs = {};
   final Map<String, String> _manifestCloudBabyIds = {};
@@ -1213,6 +1223,7 @@ class BabyCloudService extends GetxService {
     final source = currentSource.value;
     if (source == null) {
       entries.clear();
+      timelineRevision.value++;
       return;
     }
     final sourceLibraryId = _libraryIdForSource(source);
@@ -1225,12 +1236,14 @@ class BabyCloudService extends GetxService {
     }).toList()
       ..sort((a, b) => b.takenAt.compareTo(a.takenAt));
     entries.assignAll(items);
+    timelineRevision.value++;
   }
 
   void _refreshMedia() {
     final source = currentSource.value;
     if (source == null) {
       media.clear();
+      timelineRevision.value++;
       return;
     }
     final sourceLibraryId = _libraryIdForSource(source);
@@ -1243,9 +1256,21 @@ class BabyCloudService extends GetxService {
     }).toList()
       ..sort((a, b) => b.takenAt.compareTo(a.takenAt));
     media.assignAll(items);
+    timelineRevision.value++;
   }
 
   void reloadLocalMedia() => _refreshMedia();
+
+  /// 家庭同步应用远端的数据源配置后调用：重新加载数据源与当前选择。
+  void reloadSources() {
+    sources.assignAll(_storage.babyCloudSourceBox.values.toList()
+      ..sort((a, b) => a.createdAt.compareTo(b.createdAt)));
+    final savedId = _storage.settingsBox.get('baby_cloud_current_source_id');
+    currentSource.value =
+        sources.firstWhereOrNull((s) => s.id == savedId) ?? sources.firstOrNull;
+    _refreshEntries();
+    _refreshMedia();
+  }
 
   List<BabyCloudMedia> mediaForBaby(
     String babyId, {
@@ -2346,7 +2371,8 @@ class BabyCloudService extends GetxService {
       } else {
         // Manual refresh / view activation: remote album index is source of truth.
         // Only preserve local-only unpublished drafts (not yet on remote).
-        final remote = await _readRemoteIndexAt(client, _indexPath(source, baby));
+        final remote =
+            await _readRemoteIndexAt(client, _indexPath(source, baby));
         await _applyRemoteAlbumIndexAsAuthority(
           source,
           baby,
@@ -2670,7 +2696,8 @@ class BabyCloudService extends GetxService {
     }
     return _localFileFutures.putIfAbsent(futureKey, () async {
       try {
-        return await _downloadMediaToLocalCache(item);
+        return await _originalDownloadSemaphore
+            .run(() => _downloadMediaToLocalCache(item));
       } catch (_) {
         return null;
       } finally {
@@ -2811,7 +2838,8 @@ class BabyCloudService extends GetxService {
     }
     return _localThumbnailFutures.putIfAbsent(futureKey, () async {
       try {
-        final path = await _downloadThumbnailToLocalCache(item);
+        final path = await _thumbnailDownloadSemaphore
+            .run(() => _downloadThumbnailToLocalCache(item));
         if (path != null) _thumbnailAutoFailedKeys.remove(futureKey);
         return path;
       } catch (_) {
@@ -3776,25 +3804,48 @@ class BabyCloudService extends GetxService {
       );
       if (await file.exists() && await file.length() > 0) return file.path;
 
-      final bytes = await source.readAsBytes();
+      // 解码/缩放/编码是重 CPU 操作，放到后台 isolate，避免阻塞 UI 线程。
+      final sourceFilePath = sourcePath;
+      final targetFilePath = file.path;
+      const maxSize = _generatedThumbnailSize;
+      const quality = _generatedThumbnailJpegQuality;
+      final generated = await _thumbnailGenerateSemaphore.run(
+        () => Isolate.run(
+          () => _generatePhotoThumbnailSync(
+            sourcePath: sourceFilePath,
+            targetPath: targetFilePath,
+            maxSize: maxSize,
+            quality: quality,
+          ),
+        ),
+      );
+      return generated;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static String? _generatePhotoThumbnailSync({
+    required String sourcePath,
+    required String targetPath,
+    required int maxSize,
+    required int quality,
+  }) {
+    try {
+      final bytes = File(sourcePath).readAsBytesSync();
       final decoded = img.decodeImage(bytes);
       if (decoded == null) return null;
       final oriented = img.bakeOrientation(decoded);
       final resized = img.copyResize(
         oriented,
-        width:
-            oriented.width >= oriented.height ? _generatedThumbnailSize : null,
-        height:
-            oriented.height > oriented.width ? _generatedThumbnailSize : null,
+        width: oriented.width >= oriented.height ? maxSize : null,
+        height: oriented.height > oriented.width ? maxSize : null,
         interpolation: img.Interpolation.average,
       );
-      final thumbnailBytes = img.encodeJpg(
-        resized,
-        quality: _generatedThumbnailJpegQuality,
-      );
+      final thumbnailBytes = img.encodeJpg(resized, quality: quality);
       if (thumbnailBytes.isEmpty) return null;
-      await file.writeAsBytes(thumbnailBytes, flush: true);
-      return file.path;
+      File(targetPath).writeAsBytesSync(thumbnailBytes, flush: true);
+      return targetPath;
     } catch (_) {
       return null;
     }
@@ -3978,7 +4029,6 @@ class BabyCloudService extends GetxService {
     return dir;
   }
 
-
   static const String _autoCacheCleanupDaysKey =
       'baby_cloud_auto_cache_cleanup_days';
   static const int defaultAutoCacheCleanupDays = 60;
@@ -4026,19 +4076,18 @@ class BabyCloudService extends GetxService {
     DateTime? newest;
     for (final root in await _babyCloudCacheRoots()) {
       if (!await root.exists()) continue;
-      await for (final entity in root.list(recursive: true, followLinks: false)) {
+      await for (final entity
+          in root.list(recursive: true, followLinks: false)) {
         if (entity is! File) continue;
         try {
           final stat = await entity.stat();
           fileCount += 1;
           totalBytes += stat.size;
           final modified = stat.modified;
-          oldest = oldest == null || modified.isBefore(oldest)
-              ? modified
-              : oldest;
-          newest = newest == null || modified.isAfter(newest)
-              ? modified
-              : newest;
+          oldest =
+              oldest == null || modified.isBefore(oldest) ? modified : oldest;
+          newest =
+              newest == null || modified.isAfter(newest) ? modified : newest;
         } catch (_) {}
       }
     }
@@ -4064,7 +4113,8 @@ class BabyCloudService extends GetxService {
 
     for (final root in await _babyCloudCacheRoots()) {
       if (!await root.exists()) continue;
-      await for (final entity in root.list(recursive: true, followLinks: false)) {
+      await for (final entity
+          in root.list(recursive: true, followLinks: false)) {
         if (entity is! File) continue;
         try {
           final stat = await entity.stat();
@@ -4499,7 +4549,6 @@ class BabyCloudService extends GetxService {
         .convert(utf8.encode('${source.id}|${baby.id}|$remoteId'))
         .toString();
   }
-
 
   /// Apply remote album_index as authority for cloud album metadata only.
   ///

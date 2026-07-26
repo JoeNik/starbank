@@ -6,13 +6,14 @@ import '../controllers/app_mode_controller.dart';
 import '../services/update_service.dart';
 import 'webdav_settings_page.dart';
 import 'openai_settings_page.dart';
+import 'family_sync_page.dart';
 import 'music_cache_settings_page.dart';
 import 'kin/baby_cloud_cache_settings_page.dart';
 import 'tts_settings_page.dart';
 
 import 'package:package_info_plus/package_info_plus.dart';
 
-const String appVersion = '2.7.17';
+const String appVersion = '2.7.18';
 
 /// 应用设置页面
 class SettingsPage extends StatelessWidget {
@@ -201,6 +202,21 @@ class SettingsPage extends StatelessWidget {
                                   size: 16, color: Colors.grey),
                           onTap: modeController.isParentMode
                               ? () => Get.to(() => const WebDavSettingsPage())
+                              : null,
+                        )),
+                    const Divider(height: 1),
+                    Obx(() => ListTile(
+                          leading: const Icon(Icons.family_restroom,
+                              color: Colors.teal),
+                          title: const Text("家庭同步"),
+                          subtitle:
+                              const Text("多设备实时同步（自部署 Cloudflare 服务端）"),
+                          trailing: modeController.isParentMode
+                              ? const Icon(Icons.arrow_forward_ios, size: 16)
+                              : const Icon(Icons.lock,
+                                  size: 16, color: Colors.grey),
+                          onTap: modeController.isParentMode
+                              ? () => Get.to(() => const FamilySyncPage())
                               : null,
                         )),
                     const Divider(height: 1),

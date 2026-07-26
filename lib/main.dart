@@ -12,6 +12,7 @@ import 'controllers/user_controller.dart';
 import 'controllers/shop_controller.dart';
 import 'controllers/app_mode_controller.dart';
 import 'services/tunehub_service.dart';
+import 'services/family_sync_service.dart';
 import 'services/music_service.dart';
 import 'services/music_cache_service.dart';
 import 'controllers/music_player_controller.dart';
@@ -192,6 +193,17 @@ void main() async {
       debugPrint('Music services initialized');
     } catch (e, stack) {
       debugPrint('Music services init failed: $e');
+      debugPrint('Stack: $stack');
+    }
+
+    try {
+      // 家庭同步（自部署 Cloudflare 服务端；未配置端点时为纯本地模式）
+      final familySyncService = FamilySyncService();
+      Get.put(familySyncService, permanent: true);
+      await familySyncService.init();
+      debugPrint('Family sync service initialized');
+    } catch (e, stack) {
+      debugPrint('Family sync service init failed: $e');
       debugPrint('Stack: $stack');
     }
   }

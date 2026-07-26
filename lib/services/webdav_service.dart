@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'storage_service.dart';
 import 'webdav_backup_v2_service.dart';
+import 'family_sync_service.dart';
 import '../widgets/toast_utils.dart';
 import '../models/user_profile.dart';
 import '../models/baby.dart';
@@ -405,6 +406,17 @@ class WebDavService extends GetxService {
         print('备份 TuneHub 设置失败: $e');
       }
 
+      // 备份家庭同步（Cloudflare 服务端）端点与账号配置
+      try {
+        final familySyncBox = await Hive.openBox('family_sync_state');
+        backupData['familySyncSettings'] = {
+          for (final key in FamilySyncService.backupConfigKeys)
+            key: familySyncBox.get(key),
+        };
+      } catch (e) {
+        print('备份家庭同步配置失败: $e');
+      }
+
       // 备份播放器设置
       try {
         final playerSettingsBox = await Hive.openBox('player_settings');
@@ -695,8 +707,7 @@ class WebDavService extends GetxService {
         rethrow;
       } catch (e) {
         lastError = e;
-        if (!_isRetryableV2RemoteError(e) ||
-            attempt == _v2RemoteMaxAttempts) {
+        if (!_isRetryableV2RemoteError(e) || attempt == _v2RemoteMaxAttempts) {
           break;
         }
         final delay = Duration(milliseconds: 450 * attempt);
@@ -1373,6 +1384,20 @@ class WebDavService extends GetxService {
           _loadConfig();
         } catch (e) {
           print('恢复通用设置失败: $e');
+        }
+      }
+
+      // 恢复家庭同步（Cloudflare 服务端）端点与账号配置
+      if (backupData['familySyncSettings'] is Map) {
+        try {
+          if (Get.isRegistered<FamilySyncService>()) {
+            await Get.find<FamilySyncService>().restoreConfigFromBackup(
+              Map<String, dynamic>.from(
+                  backupData['familySyncSettings'] as Map),
+            );
+          }
+        } catch (e) {
+          print('恢复家庭同步配置失败: $e');
         }
       }
 

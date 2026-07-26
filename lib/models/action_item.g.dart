@@ -21,13 +21,14 @@ class ActionItemAdapter extends TypeAdapter<ActionItem> {
       type: fields[1] as String,
       value: fields[2] as double,
       iconName: fields[3] as String,
+      syncId: fields[4] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, ActionItem obj) {
     writer
-      ..writeByte(4)
+      ..writeByte(5)
       ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)
@@ -35,7 +36,9 @@ class ActionItemAdapter extends TypeAdapter<ActionItem> {
       ..writeByte(2)
       ..write(obj.value)
       ..writeByte(3)
-      ..write(obj.iconName);
+      ..write(obj.iconName)
+      ..writeByte(4)
+      ..write(obj.syncId);
   }
 
   @override

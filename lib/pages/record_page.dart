@@ -848,7 +848,7 @@ class _RecordPageState extends State<RecordPage>
                 physics: const AlwaysScrollableScrollPhysics(),
                 // Prefetch a bit more of the timeline so scroll feels continuous
                 // without keeping the full media set mounted.
-                cacheExtent: 900,
+                cacheExtent: 700,
                 slivers: [
                   SliverToBoxAdapter(child: _buildSourceTools()),
                   SliverToBoxAdapter(child: _buildSearchPanel()),
@@ -1272,7 +1272,14 @@ class _RecordPageState extends State<RecordPage>
 
   Widget _buildTimelineSliver(String babyId) {
     return Obx(() {
+      // Explicit reactive deps: source + media/entries lengths & upload task count.
       final source = _cloud.currentSource.value;
+      final mediaRevision = _cloud.media.length;
+      final entryRevision = _cloud.entries.length;
+      final taskRevision = _cloud.uploadTasks.length;
+      // Use revisions to ensure Obx tracks list mutations without rebuilding on
+      // unrelated service fields.
+      final _ = mediaRevision + entryRevision + taskRevision;
       final mediaItems = _cloud.mediaForBaby(babyId);
       final timelineEntries = _timelineEntriesFor(babyId, mediaItems);
       if (source == null) {
@@ -1285,6 +1292,7 @@ class _RecordPageState extends State<RecordPage>
       if (timelineEntries.isEmpty) {
         _currentTimelineTotalHint = 0;
         final sourceId = source.id;
+        // Only scan tasks in empty state.
         final tasks = _cloud.uploadTasks
             .where((task) =>
                 task.babyId == babyId && task.dataSourceId == sourceId)
@@ -1414,6 +1422,8 @@ class _RecordPageState extends State<RecordPage>
       return SliverPadding(
         padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 24.h),
         sliver: SliverList.builder(
+          addAutomaticKeepAlives: false,
+          addRepaintBoundaries: false,
           itemCount: dayEntries.length + (hasMore || _timelineLoadingMore ? 1 : 0),
           itemBuilder: (_, index) {
             if (index >= dayEntries.length) {

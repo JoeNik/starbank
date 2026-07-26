@@ -15,6 +15,7 @@ class BabyCloudMediaThumbnail extends StatefulWidget {
     this.fit = BoxFit.cover,
     this.backgroundColor,
     this.preferOriginal = false,
+    this.fetchOriginalIfMissing = true,
     this.showVideoBadge = true,
   });
 
@@ -22,6 +23,11 @@ class BabyCloudMediaThumbnail extends StatefulWidget {
   final BoxFit fit;
   final Color? backgroundColor;
   final bool preferOriginal;
+
+  /// preferOriginal 为 true 时是否允许自动下载缺失的原图。
+  /// 详情页列表设为 false：本地有原图就用原图，否则退回缩略图，
+  /// 避免一次动态触发几十个原图下载导致页面与返回后的时间轴卡顿。
+  final bool fetchOriginalIfMissing;
   final bool showVideoBadge;
 
   @override
@@ -66,7 +72,8 @@ class _BabyCloudMediaThumbnailState extends State<BabyCloudMediaThumbnail>
     if (oldWidget.item.ref != widget.item.ref ||
         oldWidget.item.localPath != widget.item.localPath ||
         oldWidget.item.localThumbnailPath != widget.item.localThumbnailPath ||
-        oldWidget.preferOriginal != widget.preferOriginal) {
+        oldWidget.preferOriginal != widget.preferOriginal ||
+        oldWidget.fetchOriginalIfMissing != widget.fetchOriginalIfMissing) {
       _manualOriginalFallback = false;
       _cachedDecodeWidth = null;
       _prepare();
@@ -120,6 +127,22 @@ class _BabyCloudMediaThumbnailState extends State<BabyCloudMediaThumbnail>
     final original = _readableOriginalPath();
     if (original != null) {
       _resolvedImagePath = original;
+      return;
+    }
+    if (!widget.fetchOriginalIfMissing) {
+      // 原图缺失时退回缩略图（必要时只拉取轻量缩略图），不自动下载原图。
+      if (widget.item.isAudio || widget.item.isDiary) return;
+      final thumb = _readableThumbnailPath();
+      if (thumb != null) {
+        _resolvedImagePath = thumb;
+        return;
+      }
+      _loadingRemote = true;
+      _downloadFuture = _cloud.ensureLocalThumbnailFile(
+        widget.item,
+        forceRemote: forceThumbnailRetry,
+      );
+      _listenDownload(_downloadFuture!);
       return;
     }
     _loadingRemote = true;
@@ -203,16 +226,15 @@ class _BabyCloudMediaThumbnailState extends State<BabyCloudMediaThumbnail>
     final dpr = media?.devicePixelRatio ?? 1;
     if (widget.preferOriginal) {
       final logicalWidth = media?.size.width ?? 360;
-      final target = (logicalWidth * dpr * 2.0).round();
-      _cachedDecodeWidth = math.min(math.max(target, 240), 1600);
+      final target = (logicalWidth * dpr * 1.5).round();
+      _cachedDecodeWidth = math.min(math.max(target, 240), 1200);
       return _cachedDecodeWidth;
     }
-    // Timeline tiles are small; keep decode size close to on-screen tile width.
+    // Timeline tiles are small; tighter decode budget reduces Android scroll jank.
     final shortest = media?.size.shortestSide ?? 360;
-    // ~1/3 of screen for 3-column album tiles, with modest DPR headroom.
-    final tileLogical = math.min(140.0, shortest / 3.1);
+    final tileLogical = math.min(120.0, shortest / 3.3);
     final target = (tileLogical * dpr).round();
-    _cachedDecodeWidth = math.min(math.max(target, 160), 420);
+    _cachedDecodeWidth = math.min(math.max(target, 140), 320);
     return _cachedDecodeWidth;
   }
 
@@ -260,34 +282,33 @@ class _BabyCloudMediaThumbnailState extends State<BabyCloudMediaThumbnail>
             text: badgeText,
           ),
         ),
-        Center(
-          child: Container(
-            width: compact ? 34.w : 42.w,
-            height: compact ? 34.w : 42.w,
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: compact ? 0.45 : 0.52),
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.82),
-                width: compact ? 1 : 1.4,
+        if (!compact)
+          Center(
+            child: Container(
+              width: 42.w,
+              height: 42.w,
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.52),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.82),
+                  width: 1.4,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.34),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-              boxShadow: compact
-                  ? null
-                  : [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.34),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-            ),
-            child: Icon(
-              isVideo ? Icons.play_arrow_rounded : Icons.graphic_eq_rounded,
-              color: Colors.white,
-              size: isVideo ? (compact ? 24.sp : 30.sp) : (compact ? 18.sp : 24.sp),
+              child: Icon(
+                isVideo ? Icons.play_arrow_rounded : Icons.graphic_eq_rounded,
+                color: Colors.white,
+                size: isVideo ? 30.sp : 24.sp,
+              ),
             ),
           ),
-        ),
       ],
     );
   }

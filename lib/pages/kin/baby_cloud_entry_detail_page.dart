@@ -39,50 +39,97 @@ class BabyCloudEntryDetailPage extends StatelessWidget {
         foregroundColor: AppTheme.textMain,
         elevation: 0,
       ),
-      body: ListView(
+      // 懒加载：正文卡片 + 每个媒体独立列表项，滚到哪加载到哪，
+      // 避免一次性构建几十个媒体块导致打开/返回卡顿。
+      body: ListView.builder(
         padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 28.h),
+        itemCount: 1 + media.length,
+        itemBuilder: (context, index) {
+          if (index == 0) {
+            return _headerCard(
+              role: role,
+              takenAt: takenAt,
+              locationName: locationName,
+              description: description,
+              tags: tags,
+              mediaCount: media.length,
+            );
+          }
+          final item = media[index - 1];
+          return Padding(
+            padding: EdgeInsets.only(top: 10.h),
+            child: RepaintBoundary(
+              child: _articleMediaTile(
+                item,
+                media,
+                index - 1,
+                aspectRatio: _mediaAspectRatio(item),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _headerCard({
+    required String role,
+    required DateTime takenAt,
+    required String? locationName,
+    required String description,
+    required List<String> tags,
+    required int mediaCount,
+  }) {
+    final paragraphs = _paragraphs(description);
+    return Container(
+      padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 18.h),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFCF4),
+        borderRadius: BorderRadius.circular(8.r),
+        border: Border.all(color: const Color(0xFFE9DFCC)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 18.h),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFFCF4),
-              borderRadius: BorderRadius.circular(8.r),
-              border: Border.all(color: const Color(0xFFE9DFCC)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _articleHeader(
-                  role: role,
-                  takenAt: takenAt,
-                  locationName: locationName,
-                ),
-                SizedBox(height: 13.h),
-                Divider(height: 1, color: const Color(0xFFE8DDC8)),
-                SizedBox(height: 15.h),
-                _articleBody(description, media),
-                if (tags.isNotEmpty) ...[
-                  SizedBox(height: 14.h),
-                  Wrap(
-                    spacing: 6.w,
-                    runSpacing: 6.h,
-                    children: tags
-                        .map(
-                          (tag) => Chip(
-                            label: Text('#$tag'),
-                            side: BorderSide.none,
-                            visualDensity: VisualDensity.compact,
-                            backgroundColor: const Color(0xFFFFF4D0),
-                            materialTapTargetSize:
-                                MaterialTapTargetSize.shrinkWrap,
-                          ),
-                        )
-                        .toList(),
-                  ),
-                ],
-              ],
-            ),
+          _articleHeader(
+            role: role,
+            takenAt: takenAt,
+            locationName: locationName,
           ),
+          SizedBox(height: 13.h),
+          const Divider(height: 1, color: Color(0xFFE8DDC8)),
+          if (paragraphs.isNotEmpty) ...[
+            SizedBox(height: 15.h),
+            _textParagraphs(paragraphs),
+          ],
+          if (paragraphs.isEmpty && mediaCount == 0) ...[
+            SizedBox(height: 15.h),
+            Text(
+              '这条动态暂无文字或媒体内容',
+              style: TextStyle(
+                color: Colors.grey.shade500,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+          if (tags.isNotEmpty) ...[
+            SizedBox(height: 14.h),
+            Wrap(
+              spacing: 6.w,
+              runSpacing: 6.h,
+              children: tags
+                  .map(
+                    (tag) => Chip(
+                      label: Text('#$tag'),
+                      side: BorderSide.none,
+                      visualDensity: VisualDensity.compact,
+                      backgroundColor: const Color(0xFFFFF4D0),
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  )
+                  .toList(),
+            ),
+          ],
         ],
       ),
     );
@@ -189,28 +236,6 @@ class BabyCloudEntryDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _articleBody(String description, List<BabyCloudMedia> media) {
-    final paragraphs = _paragraphs(description);
-    if (paragraphs.isEmpty && media.isEmpty) {
-      return Text(
-        '这条动态暂无文字或媒体内容',
-        style: TextStyle(
-          color: Colors.grey.shade500,
-          fontWeight: FontWeight.w700,
-        ),
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (paragraphs.isNotEmpty) _textParagraphs(paragraphs),
-        if (paragraphs.isNotEmpty && media.isNotEmpty) SizedBox(height: 14.h),
-        if (media.isNotEmpty) _mediaStack(media),
-      ],
-    );
-  }
-
   Widget _textParagraphs(List<String> paragraphs) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -232,22 +257,6 @@ class BabyCloudEntryDetailPage extends StatelessWidget {
         fontWeight: isLead ? FontWeight.w800 : FontWeight.w600,
         color: AppTheme.textMain,
       ),
-    );
-  }
-
-  Widget _mediaStack(List<BabyCloudMedia> media) {
-    return Column(
-      children: [
-        for (var index = 0; index < media.length; index++) ...[
-          if (index > 0) SizedBox(height: 10.h),
-          _articleMediaTile(
-            media[index],
-            media,
-            index,
-            aspectRatio: _mediaAspectRatio(media[index]),
-          ),
-        ],
-      ],
     );
   }
 
@@ -286,8 +295,10 @@ class BabyCloudEntryDetailPage extends StatelessWidget {
           child: BabyCloudMediaThumbnail(
             item: item,
             fit: BoxFit.contain,
-            // Detail page may load originals; timeline list stays on thumbnails.
+            // 本地已有原图则显示原图，否则先展示缩略图；
+            // 原图下载留到点开大图（媒体详情页）时按需进行。
             preferOriginal: true,
+            fetchOriginalIfMissing: false,
           ),
         ),
       ),

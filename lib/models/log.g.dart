@@ -22,13 +22,14 @@ class LogAdapter extends TypeAdapter<Log> {
       changeAmount: fields[2] as double,
       type: fields[3] as String,
       babyId: fields[4] as String,
+      syncId: fields[5] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Log obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(6)
       ..writeByte(0)
       ..write(obj.timestamp)
       ..writeByte(1)
@@ -38,7 +39,9 @@ class LogAdapter extends TypeAdapter<Log> {
       ..writeByte(3)
       ..write(obj.type)
       ..writeByte(4)
-      ..write(obj.babyId);
+      ..write(obj.babyId)
+      ..writeByte(5)
+      ..write(obj.syncId);
   }
 
   @override

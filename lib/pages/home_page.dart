@@ -9,6 +9,7 @@ import '../models/action_item.dart';
 import '../theme/app_theme.dart';
 import '../widgets/image_utils.dart';
 import '../widgets/module_background_scene.dart';
+import '../widgets/star_fx.dart';
 import 'action_settings_page.dart';
 import 'settings_page.dart';
 
@@ -18,6 +19,22 @@ class HomePage extends StatefulWidget {
   @override
   State<HomePage> createState() => _HomePageState();
 }
+
+/// 快捷记录卡片的糖果色配色（背景 / 强调色），按索引循环使用。
+class _TileTint {
+  const _TileTint(this.bg, this.fg);
+  final Color bg;
+  final Color fg;
+}
+
+const List<_TileTint> _actionTints = [
+  _TileTint(Color(0xFFFFF1E4), Color(0xFFE8811C)), // 蜜桃
+  _TileTint(Color(0xFFE8F7EE), Color(0xFF2E9E6B)), // 薄荷
+  _TileTint(Color(0xFFEFEDFF), Color(0xFF7B6CD9)), // 香芋
+  _TileTint(Color(0xFFE7F4FE), Color(0xFF3E8FD8)), // 天空
+  _TileTint(Color(0xFFFFF6D9), Color(0xFFC79A00)), // 柠檬
+  _TileTint(Color(0xFFFFEBF0), Color(0xFFE05B8B)), // 草莓
+];
 
 class _HomePageState extends State<HomePage> {
   // 快捷记录是否展开
@@ -49,15 +66,24 @@ class _HomePageState extends State<HomePage> {
             SafeArea(
               child: Column(
                 children: [
-                  _buildBabySelector(controller, modeController),
+                  _buildHeader(controller, modeController),
                   Expanded(
                     child: SingleChildScrollView(
                       physics: const BouncingScrollPhysics(),
                       child: Column(
                         children: [
-                          _buildStarCard(controller, modeController),
-                          _buildActionGrid(controller, modeController),
-                          _buildRecentLogs(controller),
+                          _StaggerIn(
+                            delayMs: 0,
+                            child: _buildStarCard(controller, modeController),
+                          ),
+                          _StaggerIn(
+                            delayMs: 120,
+                            child: _buildActionGrid(controller, modeController),
+                          ),
+                          _StaggerIn(
+                            delayMs: 240,
+                            child: _buildRecentLogs(controller),
+                          ),
                           SizedBox(height: 20.h),
                         ],
                       ),
@@ -66,149 +92,200 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
             ),
+            // 加星/扣星的全屏动效反馈层（撒花 / 委屈表情）
+            Positioned.fill(child: StarFxLayer(key: StarFx.layerKey)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildBabySelector(
+  String get _greeting {
+    final hour = DateTime.now().hour;
+    if (hour < 5) return '夜深了 🌙';
+    if (hour < 12) return '早上好 🌞';
+    if (hour < 18) return '下午好 🌈';
+    return '晚上好 🌙';
+  }
+
+  Widget _buildHeader(
       UserController controller, AppModeController modeController) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+      padding: EdgeInsets.fromLTRB(16.w, 10.h, 16.w, 6.h),
       child: Row(
         children: [
-          // 当前宝宝头像和信息（点击弹出选择器）
-          Obx(() {
-            final baby = controller.currentBaby.value;
-            if (baby == null) {
-              return _buildAddBabyButton(controller);
-            }
-            return GestureDetector(
-              onTap: () => _showBabySelectorDialog(controller),
-              child: Row(
-                children: [
-                  // 头像 - 带渐变边框
-                  GestureDetector(
-                    onTap: () {
-                      // 点击头像查看大图
-                      if (baby.avatarPath.isNotEmpty) {
-                        ImageUtils.showImagePreview(context, baby.avatarPath);
-                      }
-                    },
-                    child: Hero(
-                      tag: 'avatar_preview_${baby.avatarPath}',
-                      child: Container(
-                        width: 56.w,
-                        height: 56.w,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: const LinearGradient(
-                            colors: [
-                              Color(0xFFFF6B9D),
-                              Color(0xFFFF8E53),
-                              Color(0xFFFFC371),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFFFF6B9D).withOpacity(0.4),
-                              blurRadius: 12,
-                              spreadRadius: 2,
-                            ),
-                          ],
-                        ),
+          Expanded(
+            child: Obx(() {
+              final baby = controller.currentBaby.value;
+              if (baby == null) {
+                return Row(
+                  children: [
+                    _buildAddBabyButton(controller),
+                    Text(
+                      '先添加一位宝宝吧',
+                      style: TextStyle(
+                        fontSize: 15.sp,
+                        color: AppTheme.textSub,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                );
+              }
+              return GestureDetector(
+                onTap: () => _showBabySelectorDialog(controller),
+                behavior: HitTestBehavior.opaque,
+                child: Row(
+                  children: [
+                    // 头像 - 带渐变光环，点击查看大图
+                    GestureDetector(
+                      onTap: () {
+                        if (baby.avatarPath.isNotEmpty) {
+                          ImageUtils.showImagePreview(context, baby.avatarPath);
+                        }
+                      },
+                      child: Hero(
+                        tag: 'avatar_preview_${baby.avatarPath}',
                         child: Container(
-                          margin: EdgeInsets.all(3.w),
-                          decoration: const BoxDecoration(
+                          width: 54.w,
+                          height: 54.w,
+                          decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: Colors.white,
+                            gradient: const LinearGradient(
+                              colors: [
+                                Color(0xFFFF6B9D),
+                                Color(0xFFFF8E53),
+                                Color(0xFFFFC371),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFFFF6B9D)
+                                    .withValues(alpha: 0.35),
+                                blurRadius: 12,
+                                spreadRadius: 1,
+                              ),
+                            ],
                           ),
-                          child: ClipOval(
-                            child: ImageUtils.displayImage(
-                              baby.avatarPath,
-                              width: 50.w,
-                              height: 50.w,
-                              fit: BoxFit.cover,
+                          child: Container(
+                            margin: EdgeInsets.all(2.5.w),
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white,
+                            ),
+                            child: ClipOval(
+                              child: ImageUtils.displayImage(
+                                baby.avatarPath,
+                                width: 49.w,
+                                height: 49.w,
+                                fit: BoxFit.cover,
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                  SizedBox(width: 12.w),
-                  // 名字和星星数
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        baby.name,
-                        style: TextStyle(
-                          fontSize: 18.sp,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.textMain,
-                        ),
-                      ),
-                      Row(
+                    SizedBox(width: 12.w),
+                    // 问候语 + 名字
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.star, color: Colors.amber, size: 16.sp),
-                          SizedBox(width: 4.w),
                           Text(
-                            '${baby.starCount} 颗星星',
+                            _greeting,
                             style: TextStyle(
-                              fontSize: 13.sp,
+                              fontSize: 12.sp,
                               color: AppTheme.textSub,
+                              fontWeight: FontWeight.w600,
                             ),
+                          ),
+                          SizedBox(height: 2.h),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  baby.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 19.sp,
+                                    fontWeight: FontWeight.w900,
+                                    color: AppTheme.textMain,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 4.w),
+                              Icon(
+                                Icons.expand_more_rounded,
+                                color: AppTheme.textSub,
+                                size: 20.sp,
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                  SizedBox(width: 8.w),
-                  Icon(Icons.keyboard_arrow_down, color: AppTheme.textSub),
-                ],
-              ),
-            );
-          }),
-          const Spacer(),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ),
           // 编辑按钮（儿童模式隐藏）
           Obx(() => modeController.isChildMode
               ? const SizedBox()
-              : IconButton(
-                  icon: const Icon(Icons.edit_rounded, color: AppTheme.textSub),
-                  onPressed: () => _showEditBabyDialog(controller),
+              : _buildRoundIconButton(
+                  icon: Icons.edit_rounded,
+                  color: AppTheme.textSub,
+                  tooltip: '编辑宝宝',
+                  onTap: () => _showEditBabyDialog(controller),
                 )),
-          // 设置按钮 - 始终显示，使用更醒目的样式
-          Container(
-            margin: EdgeInsets.only(left: 4.w),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8.r),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: IconButton(
-              icon: Icon(Icons.settings_rounded,
-                  color: AppTheme.primary, size: 22.sp),
-              onPressed: () => Get.to(() => const SettingsPage()),
-              tooltip: '设置',
-            ),
+          SizedBox(width: 8.w),
+          _buildRoundIconButton(
+            icon: Icons.settings_rounded,
+            color: AppTheme.primaryDark,
+            tooltip: '设置',
+            onTap: () => Get.to(() => const SettingsPage()),
           ),
         ],
       ),
     );
   }
 
+  Widget _buildRoundIconButton({
+    required IconData icon,
+    required Color color,
+    required String tooltip,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF4E342E).withValues(alpha: 0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: IconButton(
+        icon: Icon(icon, color: color, size: 20.sp),
+        onPressed: onTap,
+        tooltip: tooltip,
+        visualDensity: VisualDensity.compact,
+      ),
+    );
+  }
+
   Widget _buildQuickActionCard(UserController controller, ActionItem action,
-      AppModeController modeController) {
+      AppModeController modeController, _TileTint tint) {
     final isPositive = action.value > 0;
+    final valueColor = isPositive ? tint.fg : const Color(0xFF5B8DEF);
     return GestureDetector(
       onTap: () async {
         if (modeController.isChildMode) {
@@ -273,48 +350,55 @@ class _HomePageState extends State<HomePage> {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: tint.bg,
           borderRadius: BorderRadius.circular(20.r),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          border: Border.all(
+            color: tint.fg.withValues(alpha: 0.18),
+            width: 1.5,
+          ),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // 使用 iconName 作为 emoji
-            Text(action.iconName.isNotEmpty ? action.iconName : "⭐️",
-                style: TextStyle(fontSize: 32.sp)),
-            SizedBox(height: 8.h),
-            Text(
-              action.name,
-              style: TextStyle(
-                fontSize: 14.sp,
-                color: AppTheme.textMain,
-                fontWeight: FontWeight.w600,
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            SizedBox(height: 4.h),
             Container(
-              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+              width: 44.w,
+              height: 44.w,
               decoration: BoxDecoration(
-                color:
-                    (isPositive ? Colors.orange : Colors.blue).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8.r),
+                color: Colors.white.withValues(alpha: 0.85),
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: Text(action.iconName.isNotEmpty ? action.iconName : "⭐️",
+                  style: TextStyle(fontSize: 24.sp)),
+            ),
+            SizedBox(height: 7.h),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 6.w),
+              child: Text(
+                action.name,
+                style: TextStyle(
+                  fontSize: 13.sp,
+                  color: AppTheme.textMain,
+                  fontWeight: FontWeight.w700,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            SizedBox(height: 5.h),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 9.w, vertical: 2.5.h),
+              decoration: BoxDecoration(
+                color: valueColor.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(999),
               ),
               child: Text(
-                '${isPositive ? '+' : ''}${action.value}',
+                '${isPositive ? '+' : ''}${action.value} ⭐',
                 style: TextStyle(
-                  fontSize: 12.sp,
-                  color: isPositive ? Colors.orange : Colors.blue,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 11.sp,
+                  color: valueColor,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
             ),
@@ -326,7 +410,17 @@ class _HomePageState extends State<HomePage> {
 
   void _handleQuickAction(UserController controller, ActionItem action) {
     // 快捷记录对应的是星星增减
-    controller.updateStars(action.value.toInt(), action.name);
+    _updateStarsWithFx(controller, action.value.toInt(), action.name);
+  }
+
+  /// 更新星星并触发对应的动效与音效（加星撒花 / 扣星委屈）。
+  void _updateStarsWithFx(UserController controller, int delta, String reason) {
+    controller.updateStars(delta, reason);
+    if (delta > 0) {
+      StarFx.celebrate(delta);
+    } else if (delta < 0) {
+      StarFx.pout(delta.abs());
+    }
   }
 
   /// 宝宝选择对话框（居中弹出）
@@ -411,7 +505,7 @@ class _HomePageState extends State<HomePage> {
                                   ? [
                                       BoxShadow(
                                         color: const Color(0xFFFF6B9D)
-                                            .withOpacity(0.3),
+                                            .withValues(alpha: 0.3),
                                         blurRadius: 12,
                                         spreadRadius: 2,
                                       ),
@@ -486,8 +580,8 @@ class _HomePageState extends State<HomePage> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(20.r),
-                    border:
-                        Border.all(color: AppTheme.primary.withOpacity(0.3)),
+                    border: Border.all(
+                        color: AppTheme.primary.withValues(alpha: 0.3)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -520,7 +614,7 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
       ),
-      barrierColor: Colors.black.withOpacity(0.4),
+      barrierColor: Colors.black.withValues(alpha: 0.4),
     );
   }
 
@@ -653,354 +747,556 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  /// 今日星星净变化（只统计 star 类型日志）。
+  num _todayStarDelta(UserController controller) {
+    final now = DateTime.now();
+    num sum = 0;
+    for (final log in controller.logs) {
+      if (log.type != 'star') continue;
+      final t = log.timestamp;
+      if (t.year == now.year && t.month == now.month && t.day == now.day) {
+        sum += log.changeAmount;
+      }
+    }
+    return sum;
+  }
+
   Widget _buildStarCard(
       UserController controller, AppModeController modeController) {
     return Obx(() {
       final baby = controller.currentBaby.value;
       if (baby == null) return const SizedBox();
+      final todayDelta = _todayStarDelta(controller);
       return Container(
-        margin: EdgeInsets.all(16.w),
-        padding: EdgeInsets.symmetric(vertical: 24.h, horizontal: 20.w),
+        margin: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 8.h),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(32.r),
+          borderRadius: BorderRadius.circular(28.r),
           boxShadow: [
             BoxShadow(
-              color: AppTheme.primary.withOpacity(0.1),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
+              color: const Color(0xFFFF8E53).withValues(alpha: 0.38),
+              blurRadius: 24,
+              offset: const Offset(0, 12),
             ),
           ],
         ),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8.r),
-                  child: ImageUtils.displayImage(
-                    baby.avatarPath,
-                    width: 40.w,
-                    height: 40.w,
-                    fit: BoxFit.cover,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(28.r),
+          child: Stack(
+            children: [
+              // 落日糖果渐变底
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Color(0xFFFF9A9E),
+                        Color(0xFFFF8E53),
+                        Color(0xFFFFC371),
+                      ],
+                    ),
                   ),
                 ),
-                SizedBox(width: 10.w),
-                Text(
-                  "${baby.name}的星星",
-                  style: TextStyle(
-                    color: AppTheme.textSub,
-                    fontSize: 16.sp,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 10.h),
-            Text(
-              "${baby.starCount}",
-              style: TextStyle(
-                fontSize: 64.sp,
-                fontWeight: FontWeight.w900,
-                color: AppTheme.primary,
-                fontFamily: 'MiSans',
               ),
-            ),
-            SizedBox(height: 20.h),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStarButton(
-                    onTap: () {
-                      if (modeController.isChildMode) {
-                        Get.snackbar('👀 只能看哦', '让爸爸妈妈来加星星吧~');
-                        return;
-                      }
-                      _showStarAdjustDialog(controller, true);
-                    },
-                    icon: Icons.add_circle,
-                    label: "增加星星",
-                    color: AppTheme.primary,
-                  ),
+              // 装饰气泡
+              Positioned(
+                top: -34.w,
+                right: -22.w,
+                child: _bubble(120.w, 0.14),
+              ),
+              Positioned(
+                bottom: -40.w,
+                left: -26.w,
+                child: _bubble(132.w, 0.10),
+              ),
+              Positioned(
+                top: 18.h,
+                left: 22.w,
+                child: Text('✨',
+                    style: TextStyle(
+                        fontSize: 16.sp,
+                        color: Colors.white.withValues(alpha: 0.9))),
+              ),
+              Positioned(
+                top: 52.h,
+                right: 30.w,
+                child: Text('✨', style: TextStyle(fontSize: 13.sp)),
+              ),
+              Positioned(
+                bottom: 68.h,
+                left: 34.w,
+                child: Text('⭐',
+                    style: TextStyle(
+                        fontSize: 11.sp,
+                        color: Colors.white.withValues(alpha: 0.8))),
+              ),
+              Padding(
+                padding: EdgeInsets.symmetric(vertical: 22.h, horizontal: 20.w),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(2.w),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.9),
+                            borderRadius: BorderRadius.circular(10.r),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8.r),
+                            child: ImageUtils.displayImage(
+                              baby.avatarPath,
+                              width: 34.w,
+                              height: 34.w,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 10.w),
+                        Text(
+                          "${baby.name}的星星",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.w800,
+                            shadows: [
+                              Shadow(
+                                color: const Color(0xFFE8734D)
+                                    .withValues(alpha: 0.5),
+                                blurRadius: 6,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 6.h),
+                    // 数字滚动动画
+                    TweenAnimationBuilder<int>(
+                      tween: IntTween(begin: 0, end: baby.starCount),
+                      duration: const Duration(milliseconds: 700),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, value, _) => Text(
+                        '$value',
+                        style: TextStyle(
+                          fontSize: 62.sp,
+                          height: 1.05,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          fontFamily: 'MiSans',
+                          shadows: [
+                            Shadow(
+                              color: const Color(0xFFD96B3B)
+                                  .withValues(alpha: 0.45),
+                              blurRadius: 14,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 4.h),
+                    // 今日变化徽章
+                    Container(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.22),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.4),
+                        ),
+                      ),
+                      child: Text(
+                        todayDelta == 0
+                            ? '今天还没有新记录'
+                            : '今日 ${todayDelta > 0 ? '+' : ''}${todayDelta.toInt()} ⭐',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 18.h),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildStarButton(
+                            onTap: () {
+                              if (modeController.isChildMode) {
+                                Get.snackbar('👀 只能看哦', '让爸爸妈妈来加星星吧~');
+                                return;
+                              }
+                              _showStarAdjustDialog(controller, true);
+                            },
+                            icon: Icons.add_circle,
+                            label: "增加星星",
+                            filled: true,
+                          ),
+                        ),
+                        SizedBox(width: 14.w),
+                        Expanded(
+                          child: _buildStarButton(
+                            onTap: () {
+                              if (modeController.isChildMode) {
+                                Get.snackbar('👀 只能看哦', '让爸爸妈妈来操作吧~');
+                                return;
+                              }
+                              _showStarAdjustDialog(controller, false);
+                            },
+                            icon: Icons.remove_circle,
+                            label: "扣除星星",
+                            filled: false,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                SizedBox(width: 16.w),
-                Expanded(
-                  child: _buildStarButton(
-                    onTap: () {
-                      if (modeController.isChildMode) {
-                        Get.snackbar('👀 只能看哦', '让爸爸妈妈来操作吧~');
-                        return;
-                      }
-                      _showStarAdjustDialog(controller, false);
-                    },
-                    icon: Icons.remove_circle,
-                    label: "扣除星星",
-                    color: Colors.grey.shade400,
-                  ),
-                ),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       );
     });
+  }
+
+  Widget _bubble(double size, double alpha) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white.withValues(alpha: alpha),
+      ),
+    );
   }
 
   Widget _buildStarButton({
     required VoidCallback onTap,
     required IconData icon,
     required String label,
-    required Color color,
+    required bool filled,
   }) {
-    return ElevatedButton.icon(
+    if (filled) {
+      return ElevatedButton.icon(
+        onPressed: onTap,
+        icon: Icon(icon, size: 20.sp),
+        label: Text(label),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: AppTheme.primaryDark,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.r),
+          ),
+          padding: EdgeInsets.symmetric(vertical: 12.h),
+          textStyle: TextStyle(
+            fontWeight: FontWeight.w900,
+            fontSize: 14.sp,
+          ),
+        ),
+      );
+    }
+    return OutlinedButton.icon(
       onPressed: onTap,
       icon: Icon(icon, size: 20.sp),
       label: Text(label),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: Colors.white,
+        backgroundColor: Colors.white.withValues(alpha: 0.14),
+        side: BorderSide(
+          color: Colors.white.withValues(alpha: 0.65),
+          width: 1.4,
+        ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16.r),
         ),
         padding: EdgeInsets.symmetric(vertical: 12.h),
+        textStyle: TextStyle(
+          fontWeight: FontWeight.w900,
+          fontSize: 14.sp,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionCard({required List<Widget> children}) {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24.r),
+        border: Border.all(color: const Color(0xFFFFE4E6), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF4E342E).withValues(alpha: 0.05),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(children: children),
+    );
+  }
+
+  Widget _buildSectionHeader({
+    required String emoji,
+    required Color emojiBg,
+    required String title,
+    required String subtitle,
+    required bool expanded,
+    required VoidCallback onTap,
+    Widget? trailing,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(24.r),
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+        child: Row(
+          children: [
+            Container(
+              width: 38.w,
+              height: 38.w,
+              decoration: BoxDecoration(
+                color: emojiBg,
+                borderRadius: BorderRadius.circular(12.r),
+              ),
+              alignment: Alignment.center,
+              child: Text(emoji, style: TextStyle(fontSize: 19.sp)),
+            ),
+            SizedBox(width: 10.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w900,
+                      color: AppTheme.textMain,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 11.sp,
+                      color: AppTheme.textSub,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (trailing != null) trailing,
+            SizedBox(width: 6.w),
+            AnimatedRotation(
+              turns: expanded ? 0.5 : 0,
+              duration: const Duration(milliseconds: 240),
+              child: Container(
+                width: 26.w,
+                height: 26.w,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFFF1F2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: AppTheme.textSub,
+                  size: 20.sp,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildActionGrid(
       UserController controller, AppModeController modeController) {
-    return Card(
-      margin: EdgeInsets.all(16.w),
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16.r),
-      ),
-      child: Column(
-        children: [
-          // 标题栏 - 可点击折叠/展开
-          InkWell(
-            onTap: () {
-              setState(() {
-                _isQuickActionsExpanded = !_isQuickActionsExpanded;
-              });
-            },
-            borderRadius: BorderRadius.vertical(
-              top: Radius.circular(16.r),
-              bottom:
-                  _isQuickActionsExpanded ? Radius.zero : Radius.circular(16.r),
-            ),
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.flash_on,
-                    color: AppTheme.primary,
-                    size: 20.sp,
-                  ),
-                  SizedBox(width: 8.w),
-                  Text(
-                    "快捷记录",
-                    style: TextStyle(
-                      fontSize: 16.sp,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.textMain,
-                    ),
-                  ),
-                  const Spacer(),
-                  // 管理按钮 (儿童模式隐藏)
-                  Obx(() => modeController.isChildMode
-                      ? const SizedBox()
-                      : IconButton(
-                          icon: Icon(Icons.settings_outlined,
-                              color: AppTheme.textSub, size: 18.sp),
-                          onPressed: () =>
-                              Get.to(() => const ActionSettingsPage()),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                        )),
-                  SizedBox(width: 8.w),
-                  // 展开/收起图标
-                  Icon(
-                    _isQuickActionsExpanded
-                        ? Icons.keyboard_arrow_up
-                        : Icons.keyboard_arrow_down,
-                    color: AppTheme.textSub,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          // 快捷记录网格 - 可折叠
-          AnimatedCrossFade(
-            firstChild: const SizedBox(width: double.infinity),
-            secondChild: Padding(
-              padding: EdgeInsets.fromLTRB(12.w, 0, 12.w, 12.h),
-              child: Obx(
-                () => GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    mainAxisSpacing: 8.h,
-                    crossAxisSpacing: 8.w,
-                    childAspectRatio: 1.0,
-                  ),
-                  itemCount: controller.actions.length,
-                  itemBuilder: (context, index) {
-                    final action = controller.actions[index];
-                    return _buildQuickActionCard(
-                        controller, action, modeController);
-                  },
+    return _buildSectionCard(
+      children: [
+        _buildSectionHeader(
+          emoji: '⚡',
+          emojiBg: const Color(0xFFFFF6D9),
+          title: "快捷记录",
+          subtitle: '点一下，星星马上记好',
+          expanded: _isQuickActionsExpanded,
+          onTap: () {
+            setState(() {
+              _isQuickActionsExpanded = !_isQuickActionsExpanded;
+            });
+          },
+          trailing: Obx(() => modeController.isChildMode
+              ? const SizedBox()
+              : IconButton(
+                  icon: Icon(Icons.tune_rounded,
+                      color: AppTheme.textSub, size: 18.sp),
+                  onPressed: () => Get.to(() => const ActionSettingsPage()),
+                  tooltip: '管理快捷记录',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                )),
+        ),
+        // 快捷记录网格 - 可折叠
+        AnimatedCrossFade(
+          firstChild: const SizedBox(width: double.infinity),
+          secondChild: Padding(
+            padding: EdgeInsets.fromLTRB(12.w, 0, 12.w, 12.h),
+            child: Obx(
+              () => GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  mainAxisSpacing: 8.h,
+                  crossAxisSpacing: 8.w,
+                  childAspectRatio: 0.92,
                 ),
+                itemCount: controller.actions.length,
+                itemBuilder: (context, index) {
+                  final action = controller.actions[index];
+                  return _buildQuickActionCard(
+                    controller,
+                    action,
+                    modeController,
+                    _actionTints[index % _actionTints.length],
+                  );
+                },
               ),
             ),
-            crossFadeState: _isQuickActionsExpanded
-                ? CrossFadeState.showSecond
-                : CrossFadeState.showFirst,
-            duration: const Duration(milliseconds: 300),
           ),
-        ],
-      ),
+          crossFadeState: _isQuickActionsExpanded
+              ? CrossFadeState.showSecond
+              : CrossFadeState.showFirst,
+          duration: const Duration(milliseconds: 300),
+        ),
+      ],
     );
   }
 
   Widget _buildRecentLogs(UserController controller) {
-    return Card(
-      margin: EdgeInsets.all(16.w),
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16.r),
-      ),
-      child: Column(
-        children: [
-          // 标题栏 - 可点击折叠/展开
-          InkWell(
-            onTap: () {
-              setState(() {
-                _isStarLogsExpanded = !_isStarLogsExpanded;
-              });
-            },
-            borderRadius: BorderRadius.vertical(
-              top: Radius.circular(16.r),
-              bottom: _isStarLogsExpanded ? Radius.zero : Radius.circular(16.r),
-            ),
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.star,
-                    color: Colors.amber,
-                    size: 20.sp,
-                  ),
-                  SizedBox(width: 8.w),
-                  Text(
-                    "星星足迹",
-                    style: TextStyle(
-                      fontSize: 16.sp,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.textMain,
-                    ),
-                  ),
-                  const Spacer(),
-                  // 空白占位,与快捷记录保持一致的布局
-                  SizedBox(width: 8.w),
-                  // 展开/收起图标
-                  Icon(
-                    _isStarLogsExpanded
-                        ? Icons.keyboard_arrow_up
-                        : Icons.keyboard_arrow_down,
-                    color: AppTheme.textSub,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          // 记录列表 - 可折叠
-          AnimatedCrossFade(
-            firstChild: const SizedBox(width: double.infinity),
-            secondChild: Padding(
-              padding: EdgeInsets.fromLTRB(12.w, 0, 12.w, 12.h),
-              child: Obx(() {
-                final starLogs =
-                    controller.logs.where((l) => l.type == 'star').toList();
-                if (starLogs.isEmpty) {
-                  return Padding(
-                    padding: EdgeInsets.all(20.h),
-                    child: const Center(child: Text("还没有记录哦")),
-                  );
-                }
-                final displayCount = starLogs.length > _starLogsPageSize
-                    ? _starLogsPageSize
-                    : starLogs.length;
-                return Column(
-                  children: [
-                    ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: displayCount,
-                      itemBuilder: (context, index) {
-                        final log = starLogs[index];
-                        return _buildLogItem(log);
-                      },
-                    ),
-                    // 加载更多按钮
-                    if (starLogs.length > _starLogsPageSize)
-                      Padding(
-                        padding: EdgeInsets.only(top: 8.h),
-                        child: TextButton.icon(
-                          onPressed: () {
-                            setState(() {
-                              _starLogsPageSize += 5;
-                            });
-                          },
-                          icon: const Icon(Icons.expand_more),
-                          label: Text(
-                            '加载更多 (还有 ${starLogs.length - _starLogsPageSize} 条)',
-                          ),
-                          style: TextButton.styleFrom(
-                            foregroundColor: AppTheme.primary,
+    return _buildSectionCard(
+      children: [
+        _buildSectionHeader(
+          emoji: '🌟',
+          emojiBg: const Color(0xFFFFEDE3),
+          title: "星星足迹",
+          subtitle: '每颗星星都有自己的故事',
+          expanded: _isStarLogsExpanded,
+          onTap: () {
+            setState(() {
+              _isStarLogsExpanded = !_isStarLogsExpanded;
+            });
+          },
+        ),
+        // 记录列表 - 可折叠
+        AnimatedCrossFade(
+          firstChild: const SizedBox(width: double.infinity),
+          secondChild: Padding(
+            padding: EdgeInsets.fromLTRB(12.w, 0, 12.w, 12.h),
+            child: Obx(() {
+              final starLogs =
+                  controller.logs.where((l) => l.type == 'star').toList();
+              if (starLogs.isEmpty) {
+                return Padding(
+                  padding: EdgeInsets.all(20.h),
+                  child: Center(
+                    child: Column(
+                      children: [
+                        Text('🐣', style: TextStyle(fontSize: 34.sp)),
+                        SizedBox(height: 8.h),
+                        Text(
+                          "还没有记录哦，快去赚第一颗星星吧",
+                          style: TextStyle(
+                            color: AppTheme.textSub,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                      ),
-                  ],
+                      ],
+                    ),
+                  ),
                 );
-              }),
-            ),
-            crossFadeState: _isStarLogsExpanded
-                ? CrossFadeState.showSecond
-                : CrossFadeState.showFirst,
-            duration: const Duration(milliseconds: 300),
+              }
+              final displayCount = starLogs.length > _starLogsPageSize
+                  ? _starLogsPageSize
+                  : starLogs.length;
+              return Column(
+                children: [
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: displayCount,
+                    itemBuilder: (context, index) {
+                      final log = starLogs[index];
+                      return _buildLogItem(log);
+                    },
+                  ),
+                  // 加载更多按钮
+                  if (starLogs.length > _starLogsPageSize)
+                    Padding(
+                      padding: EdgeInsets.only(top: 8.h),
+                      child: TextButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            _starLogsPageSize += 5;
+                          });
+                        },
+                        icon: const Icon(Icons.expand_more),
+                        label: Text(
+                          '加载更多 (还有 ${starLogs.length - _starLogsPageSize} 条)',
+                        ),
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppTheme.primary,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            }),
           ),
-        ],
-      ),
+          crossFadeState: _isStarLogsExpanded
+              ? CrossFadeState.showSecond
+              : CrossFadeState.showFirst,
+          duration: const Duration(milliseconds: 300),
+        ),
+      ],
     );
   }
 
   Widget _buildLogItem(Log log) {
     final isPositive = log.changeAmount > 0;
+    final accent =
+        isPositive ? const Color(0xFF2E9E6B) : const Color(0xFFE05B5B);
+    final accentBg =
+        isPositive ? const Color(0xFFE8F7EE) : const Color(0xFFFFEDED);
     return Container(
-      margin: EdgeInsets.only(bottom: 10.h),
-      padding: EdgeInsets.all(12.w),
+      margin: EdgeInsets.only(bottom: 8.h),
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.5),
+        color: const Color(0xFFFFFAF5),
         borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(color: const Color(0xFFF6E8DC)),
       ),
       child: Row(
         children: [
           Container(
-            padding: EdgeInsets.all(8.w),
+            width: 34.w,
+            height: 34.w,
             decoration: BoxDecoration(
-              color: isPositive
-                  ? Colors.green.withOpacity(0.1)
-                  : Colors.red.withOpacity(0.1),
+              color: accentBg,
               shape: BoxShape.circle,
             ),
             child: Icon(
-              isPositive ? Icons.add : Icons.remove,
-              color: isPositive ? Colors.green : Colors.red,
-              size: 16.sp,
+              isPositive ? Icons.add_rounded : Icons.remove_rounded,
+              color: accent,
+              size: 18.sp,
             ),
           ),
           SizedBox(width: 12.w),
@@ -1010,11 +1306,15 @@ class _HomePageState extends State<HomePage> {
               children: [
                 Text(
                   log.description,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13.5.sp,
                     color: AppTheme.textMain,
                   ),
                 ),
+                SizedBox(height: 2.h),
                 Text(
                   "${log.timestamp.month}-${log.timestamp.day} ${log.timestamp.hour}:${log.timestamp.minute.toString().padLeft(2, '0')}",
                   style: TextStyle(fontSize: 11.sp, color: AppTheme.textSub),
@@ -1022,12 +1322,19 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
           ),
-          Text(
-            "${isPositive ? '+' : ''}${log.changeAmount.toInt()}",
-            style: TextStyle(
-              fontSize: 18.sp,
-              fontWeight: FontWeight.w900,
-              color: isPositive ? Colors.green : Colors.red,
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+            decoration: BoxDecoration(
+              color: accentBg,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              "${isPositive ? '+' : ''}${log.changeAmount.toInt()} ⭐",
+              style: TextStyle(
+                fontSize: 13.sp,
+                fontWeight: FontWeight.w900,
+                color: accent,
+              ),
             ),
           ),
         ],
@@ -1155,7 +1462,7 @@ class _HomePageState extends State<HomePage> {
                         label: Text(r),
                         selected:
                             !isCustomReason.value && selectedReason.value == r,
-                        selectedColor: themeColor.withOpacity(0.2),
+                        selectedColor: themeColor.withValues(alpha: 0.2),
                         labelStyle: TextStyle(
                           color: (!isCustomReason.value &&
                                   selectedReason.value == r)
@@ -1174,7 +1481,7 @@ class _HomePageState extends State<HomePage> {
                     ChoiceChip(
                       label: const Text("自定义"),
                       selected: isCustomReason.value,
-                      selectedColor: themeColor.withOpacity(0.2),
+                      selectedColor: themeColor.withValues(alpha: 0.2),
                       labelStyle: TextStyle(
                         color: isCustomReason.value ? themeColor : Colors.grey,
                         fontWeight: FontWeight.bold,
@@ -1232,7 +1539,7 @@ class _HomePageState extends State<HomePage> {
                     // Close dialog FIRST
                     Get.back();
 
-                    controller.updateStars(isAdd ? val : -val, reason);
+                    _updateStarsWithFx(controller, isAdd ? val : -val, reason);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: themeColor,
@@ -1373,6 +1680,36 @@ class _HomePageState extends State<HomePage> {
         DropdownMenuItem(value: 'female', child: Text('女孩')),
       ],
       onChanged: onChanged,
+    );
+  }
+}
+
+/// 页面加载时的错落浮现动画：整体一次编排，比零散微动效更有仪式感。
+class _StaggerIn extends StatelessWidget {
+  const _StaggerIn({required this.delayMs, required this.child});
+
+  final int delayMs;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final totalMs = 480 + delayMs;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: totalMs),
+      curve: Interval(
+        delayMs / totalMs,
+        1,
+        curve: Curves.easeOutCubic,
+      ),
+      builder: (context, t, child) => Opacity(
+        opacity: t,
+        child: Transform.translate(
+          offset: Offset(0, 22 * (1 - t)),
+          child: child,
+        ),
+      ),
+      child: child,
     );
   }
 }

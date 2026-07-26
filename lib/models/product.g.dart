@@ -23,13 +23,14 @@ class ProductAdapter extends TypeAdapter<Product> {
       imagePath: fields[3] as String,
       isRedeemed: fields[4] as bool,
       babyId: fields[5] as String?,
+      syncId: fields[6] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Product obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)
@@ -41,7 +42,9 @@ class ProductAdapter extends TypeAdapter<Product> {
       ..writeByte(4)
       ..write(obj.isRedeemed)
       ..writeByte(5)
-      ..write(obj.babyId);
+      ..write(obj.babyId)
+      ..writeByte(6)
+      ..write(obj.syncId);
   }
 
   @override

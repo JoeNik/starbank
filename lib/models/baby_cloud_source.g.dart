@@ -44,7 +44,7 @@ class BabyCloudSourceAdapter extends TypeAdapter<BabyCloudSource> {
       aliyunDriveDriveId: fields[26] as String?,
       aliyunDriveUserId: fields[27] as String?,
       aliyunDriveNickName: fields[28] as String?,
-      webDavEndpointMode: (fields[29] as String?) ?? 'auto',
+      webDavEndpointMode: fields[29] as String,
       createdAt: fields[9] as DateTime?,
       updatedAt: fields[10] as DateTime?,
     );

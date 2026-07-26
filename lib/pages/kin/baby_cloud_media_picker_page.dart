@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
@@ -13,6 +14,7 @@ import '../../controllers/app_mode_controller.dart';
 import '../../controllers/user_controller.dart';
 import '../../services/baby_cloud_service.dart';
 import '../../services/storage_service.dart';
+import '../../utils/async_semaphore.dart';
 import '../../widgets/toast_utils.dart';
 import 'baby_cloud_entry_edit_page.dart';
 import 'baby_cloud_source_page.dart';
@@ -33,11 +35,16 @@ class BabyCloudMediaPickerPage extends StatefulWidget {
 }
 
 class _BabyCloudMediaPickerPageState extends State<BabyCloudMediaPickerPage> {
-  static const _pageSize = 60;
-  static const _thumbnailSize = ThumbnailSize.square(180);
+  static const _pageSize = 80;
+  static const _thumbnailSize = ThumbnailSize.square(140);
   static const _crossAxisCount = 4;
   static const _gridSpacing = 4.0;
   static const _lastAssetIdKey = 'baby_cloud_picker_last_asset_id';
+  static const int _thumbCacheLimit = 256;
+  // 后台"已上传"标记预热时跳过超大文件，避免长时间读盘。
+  static const int _warmupHashMaxBytes = 128 * 1024 * 1024;
+  // 哈希计算在后台 isolate 执行，但仍限制并发避免 IO 争抢。
+  static final AsyncSemaphore _hashSemaphore = AsyncSemaphore(2);
 
   final _cloud = Get.find<BabyCloudService>();
   final _user = Get.find<UserController>();
@@ -53,6 +60,10 @@ class _BabyCloudMediaPickerPageState extends State<BabyCloudMediaPickerPage> {
   final _warmingAssetIds = <String>{};
   final _checkingAssetIds = <String>{};
   final _scrollController = ScrollController();
+  static final Map<String, Uint8List> _thumbnailBytesCache =
+      <String, Uint8List>{};
+  Timer? _scrollIdleWarmupTimer;
+  bool _isScrolling = false;
 
   AssetPathEntity? _path;
   int _page = 0;
@@ -79,6 +90,7 @@ class _BabyCloudMediaPickerPageState extends State<BabyCloudMediaPickerPage> {
   @override
   void dispose() {
     _closing = true;
+    _scrollIdleWarmupTimer?.cancel();
     _scrollController.dispose();
     super.dispose();
   }
@@ -148,8 +160,8 @@ class _BabyCloudMediaPickerPageState extends State<BabyCloudMediaPickerPage> {
     _loadingMore = true;
     final next = await _path!.getAssetListPaged(page: _page, size: _pageSize);
     _page++;
+    // PhotoManager already returns createDate desc via FilterOptionGroup orders.
     _assets.addAll(next);
-    _assets.sort((a, b) => b.createDateTime.compareTo(a.createDateTime));
     for (final asset in next) {
       if (_selected.contains(asset.id)) {
         _selectedAssetsById[asset.id] = asset;
@@ -159,13 +171,15 @@ class _BabyCloudMediaPickerPageState extends State<BabyCloudMediaPickerPage> {
     _loadingMore = false;
     _safeSetState(() {});
 
-    // 优化：加载第一页时预检测更多图片，后续页面只检测可见部分
-    final warmupCount = _page == 1 ? 40 : 18;
-    final visibleWarmups = next.take(warmupCount).toList();
-    unawaited(
-      Future<void>.delayed(const Duration(milliseconds: 200))
-          .then((_) => _warmUploadedMarks(visibleWarmups)),
-    );
+    // Defer hash warmup until scrolling settles to keep fling smooth.
+    if (!_isScrolling) {
+      final warmupCount = _page == 1 ? 24 : 12;
+      final visibleWarmups = next.take(warmupCount).toList();
+      unawaited(
+        Future<void>.delayed(const Duration(milliseconds: 350))
+            .then((_) => _warmUploadedMarks(visibleWarmups)),
+      );
+    }
   }
 
   Future<void> _restoreLastPositionIfNeeded() async {
@@ -203,25 +217,48 @@ class _BabyCloudMediaPickerPageState extends State<BabyCloudMediaPickerPage> {
     _scrollController.jumpTo(offset.clamp(0.0, maxOffset));
   }
 
+  void _warmVisibleUploadedMarks() {
+    if (!_scrollController.hasClients || _remoteHashes.isEmpty) return;
+    final position = _scrollController.position;
+    if (!position.hasPixels || !position.hasContentDimensions) return;
+    final width = MediaQuery.sizeOf(context).width;
+    final tile =
+        (width - (_gridSpacing * 2) - (_gridSpacing * (_crossAxisCount - 1))) /
+            _crossAxisCount;
+    final rowHeight = tile + _gridSpacing;
+    if (rowHeight <= 0) return;
+    final firstRow = (position.pixels / rowHeight).floor().clamp(0, 1 << 20);
+    final visibleRows =
+        ((position.viewportDimension / rowHeight).ceil() + 2).clamp(1, 40);
+    final start = (firstRow * _crossAxisCount).clamp(0, _assets.length);
+    final end =
+        ((firstRow + visibleRows) * _crossAxisCount).clamp(0, _assets.length);
+    if (start >= end) return;
+    unawaited(_warmUploadedMarks(_assets.sublist(start, end)));
+  }
+
   Future<void> _rememberAssetPosition(AssetEntity asset) {
     return _storage.settingsBox.put(_lastAssetIdKey, asset.id);
   }
 
   Future<void> _warmUploadedMarks(List<AssetEntity> assets) async {
-    if (_remoteHashes.isEmpty) return;
+    if (_remoteHashes.isEmpty || _isScrolling) return;
+    var changed = false;
     for (final asset in assets) {
-      if (!mounted || _closing) return;
+      if (!mounted || _closing || _isScrolling) return;
+      if (_uploadedAssetIds.contains(asset.id)) continue;
       if (_hashCache.containsKey(asset.id) ||
           _warmingAssetIds.contains(asset.id)) {
         continue;
       }
       _warmingAssetIds.add(asset.id);
       try {
-        final hash = await _hashAsset(asset);
+        final hash = await _hashAsset(asset, maxBytes: _warmupHashMaxBytes);
         if (hash == null) continue;
         if (_remoteHashes.contains(hash)) {
-          _uploadedAssetIds.add(asset.id);
-          _safeSetState(() {});
+          if (_uploadedAssetIds.add(asset.id)) {
+            changed = true;
+          }
         }
       } catch (_) {
         // Ignore files the system gallery cannot expose.
@@ -229,6 +266,7 @@ class _BabyCloudMediaPickerPageState extends State<BabyCloudMediaPickerPage> {
         _warmingAssetIds.remove(asset.id);
       }
     }
+    if (changed) _safeSetState(() {});
   }
 
   @override
@@ -284,47 +322,79 @@ class _BabyCloudMediaPickerPageState extends State<BabyCloudMediaPickerPage> {
               }
               _queueSelected();
             },
-            child: Text('${widget.returnSelectionOnly ? '完成' : '上传'} ${_selected.length}'),
+            child: Text(
+                '${widget.returnSelectionOnly ? '完成' : '上传'} ${_selected.length}'),
           ),
         ],
       ),
       body: NotificationListener<ScrollNotification>(
         onNotification: (notification) {
-          if (notification.metrics.extentAfter < 900) {
+          if (notification is ScrollStartNotification ||
+              notification is ScrollUpdateNotification) {
+            _isScrolling = true;
+            _scrollIdleWarmupTimer?.cancel();
+          } else if (notification is ScrollEndNotification) {
+            _isScrolling = false;
+            _scrollIdleWarmupTimer?.cancel();
+            _scrollIdleWarmupTimer =
+                Timer(const Duration(milliseconds: 280), () {
+              if (!mounted || _closing) return;
+              _warmVisibleUploadedMarks();
+            });
+          }
+          if (notification.metrics.extentAfter < 1200) {
             unawaited(_loadMore());
           }
           return false;
         },
-        child: GridView.builder(
+        child: _FastScrollbar(
           controller: _scrollController,
-          padding: EdgeInsets.all(4.w),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 4,
-            mainAxisSpacing: 4.w,
-            crossAxisSpacing: 4.w,
+          labelForFraction: _fastScrollLabel,
+          child: GridView.builder(
+            controller: _scrollController,
+            padding: EdgeInsets.all(4.w),
+            cacheExtent: 900,
+            addAutomaticKeepAlives: false,
+            addRepaintBoundaries: true,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 4,
+              mainAxisSpacing: 4.w,
+              crossAxisSpacing: 4.w,
+            ),
+            itemCount: _assets.length + (_hasMore || _loadingMore ? 1 : 0),
+            itemBuilder: (_, index) {
+              if (index >= _assets.length) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              final asset = _assets[index];
+              final uploaded = _uploadedAssetIds.contains(asset.id);
+              final checking = _checkingAssetIds.contains(asset.id);
+              final selected = _selected.contains(asset.id);
+              return _AssetTile(
+                key: ValueKey(asset.id),
+                asset: asset,
+                thumbnailSize: _thumbnailSize,
+                thumbnailCache: _thumbnailBytesCache,
+                thumbnailCacheLimit: _thumbCacheLimit,
+                uploaded: uploaded,
+                checking: checking,
+                selected: selected,
+                onTap: () => _toggleAssetSelection(asset),
+                onPreview: () => _openPreview(index),
+              );
+            },
           ),
-          itemCount: _assets.length + (_hasMore || _loadingMore ? 1 : 0),
-          itemBuilder: (_, index) {
-            if (index >= _assets.length) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            final asset = _assets[index];
-            final uploaded = _uploadedAssetIds.contains(asset.id);
-            final checking = _checkingAssetIds.contains(asset.id);
-            final selected = _selected.contains(asset.id);
-            return _AssetTile(
-              asset: asset,
-              thumbnailSize: _thumbnailSize,
-              uploaded: uploaded,
-              checking: checking,
-              selected: selected,
-              onTap: () => _toggleAssetSelection(asset),
-              onPreview: () => _openPreview(index),
-            );
-          },
         ),
       ),
     );
+  }
+
+  String? _fastScrollLabel(double fraction) {
+    if (_assets.isEmpty) return null;
+    final index =
+        ((_assets.length - 1) * fraction).round().clamp(0, _assets.length - 1);
+    final date = _assets[index].createDateTime;
+    return '${date.year}年${date.month}月${date.day}日';
   }
 
   void _openPreview(int index) {
@@ -357,8 +427,7 @@ class _BabyCloudMediaPickerPageState extends State<BabyCloudMediaPickerPage> {
       return;
     }
 
-    final selectedAssets =
-        _orderedSelectedAssets();
+    final selectedAssets = _orderedSelectedAssets();
     if (selectedAssets.isEmpty) {
       ToastUtils.showInfo('请先选择要上传的照片或视频');
       return;
@@ -402,10 +471,6 @@ class _BabyCloudMediaPickerPageState extends State<BabyCloudMediaPickerPage> {
       ToastUtils.showInfo('已在当前宝宝的当前数据源中存在');
       return;
     }
-    if (_checkingAssetIds.contains(asset.id)) {
-      ToastUtils.showInfo('正在校验是否已上传');
-      return;
-    }
     if (_selected.contains(asset.id)) {
       _safeSetState(() {
         _selected.remove(asset.id);
@@ -415,18 +480,34 @@ class _BabyCloudMediaPickerPageState extends State<BabyCloudMediaPickerPage> {
       return;
     }
 
-    final hash = await _hashAsset(asset, markChecking: true);
-    if (hash != null && _remoteHashes.contains(hash)) {
-      _uploadedAssetIds.add(asset.id);
-      _safeSetState(() {});
-      ToastUtils.showInfo('已在当前宝宝的当前数据源中存在');
-      return;
-    }
+    // 立即选中，杜绝点选时等待整文件哈希导致的卡顿；
+    // 是否重复上传由后台校验，发现重复时自动取消并提示。
     _safeSetState(() {
       _selected.add(asset.id);
       _selectedAssetsById[asset.id] = asset;
       _selectedAssetIdsInOrder.add(asset.id);
     });
+    unawaited(_verifySelectionNotUploaded(asset));
+  }
+
+  Future<void> _verifySelectionNotUploaded(AssetEntity asset) async {
+    if (_remoteHashes.isEmpty) return;
+    String? hash;
+    try {
+      hash = await _hashAsset(asset);
+    } catch (_) {
+      return;
+    }
+    if (!mounted || _closing) return;
+    if (hash == null || !_remoteHashes.contains(hash)) return;
+    _uploadedAssetIds.add(asset.id);
+    final wasSelected = _selected.remove(asset.id);
+    _selectedAssetsById.remove(asset.id);
+    _selectedAssetIdsInOrder.remove(asset.id);
+    if (wasSelected) {
+      ToastUtils.showInfo('该文件已上传过，已自动取消选择');
+    }
+    _safeSetState(() {});
   }
 
   List<AssetEntity> _orderedSelectedAssets() {
@@ -446,14 +527,19 @@ class _BabyCloudMediaPickerPageState extends State<BabyCloudMediaPickerPage> {
     return result;
   }
 
-  Future<String> _hashFile(File file) async {
-    final digest = await sha256.bind(file.openRead()).first;
-    return digest.toString();
+  static Future<String> _hashFile(File file) {
+    final path = file.path;
+    // SHA-256 在后台 isolate 计算，主线程只等待结果。
+    return Isolate.run(() async {
+      final digest = await sha256.bind(File(path).openRead()).first;
+      return digest.toString();
+    });
   }
 
   Future<String?> _hashAsset(
     AssetEntity asset, {
     bool markChecking = false,
+    int? maxBytes,
   }) async {
     final cached = _hashCache[asset.id];
     if (cached != null) return cached;
@@ -464,7 +550,8 @@ class _BabyCloudMediaPickerPageState extends State<BabyCloudMediaPickerPage> {
     try {
       final file = await asset.file;
       if (file == null || !await file.exists()) return null;
-      final hash = await _hashFile(file);
+      if (maxBytes != null && await file.length() > maxBytes) return null;
+      final hash = await _hashSemaphore.run(() => _hashFile(file));
       _hashCache[asset.id] = hash;
       return hash;
     } catch (_) {
@@ -483,10 +570,221 @@ class _BabyCloudMediaPickerPageState extends State<BabyCloudMediaPickerPage> {
   }
 }
 
+/// 右侧可拖动的快速滚动条：拖动滑块可快速跳转，并显示当前位置的日期气泡。
+class _FastScrollbar extends StatefulWidget {
+  const _FastScrollbar({
+    required this.controller,
+    required this.labelForFraction,
+    required this.child,
+  });
+
+  final ScrollController controller;
+  final String? Function(double fraction) labelForFraction;
+  final Widget child;
+
+  @override
+  State<_FastScrollbar> createState() => _FastScrollbarState();
+}
+
+class _FastScrollbarState extends State<_FastScrollbar> {
+  static const double _thumbHeight = 52;
+  static const double _thumbWidth = 24;
+
+  final GlobalKey _trackKey = GlobalKey();
+  bool _dragging = false;
+  bool _visible = false;
+  Timer? _hideTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _hideTimer?.cancel();
+    widget.controller.removeListener(_onScroll);
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!widget.controller.hasClients) return;
+    final position = widget.controller.position;
+    if (!position.hasContentDimensions || position.maxScrollExtent <= 0) {
+      return;
+    }
+    if (!_visible && mounted) {
+      setState(() => _visible = true);
+    }
+    _scheduleHide();
+  }
+
+  void _scheduleHide() {
+    _hideTimer?.cancel();
+    _hideTimer = Timer(const Duration(milliseconds: 1600), () {
+      if (!mounted || _dragging) return;
+      setState(() => _visible = false);
+    });
+  }
+
+  void _dragTo(Offset globalPosition) {
+    final trackBox = _trackKey.currentContext?.findRenderObject() as RenderBox?;
+    if (trackBox == null || !widget.controller.hasClients) return;
+    final position = widget.controller.position;
+    if (!position.hasContentDimensions || position.maxScrollExtent <= 0) {
+      return;
+    }
+    final localY = trackBox.globalToLocal(globalPosition).dy;
+    final travel = trackBox.size.height - _thumbHeight;
+    if (travel <= 0) return;
+    final fraction = ((localY - _thumbHeight / 2) / travel).clamp(0.0, 1.0);
+    widget.controller.jumpTo(fraction * position.maxScrollExtent);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        widget.child,
+        Positioned(
+          top: 8,
+          bottom: 8,
+          right: 0,
+          width: 120,
+          child: LayoutBuilder(
+            key: _trackKey,
+            builder: (context, box) {
+              final trackHeight = box.maxHeight;
+              final travel = trackHeight - _thumbHeight;
+              return AnimatedBuilder(
+                animation: widget.controller,
+                builder: (context, _) {
+                  double fraction = 0;
+                  var hasContent = false;
+                  if (widget.controller.hasClients) {
+                    final position = widget.controller.position;
+                    if (position.hasContentDimensions &&
+                        position.maxScrollExtent > 0) {
+                      hasContent = true;
+                      fraction = (position.pixels / position.maxScrollExtent)
+                          .clamp(0.0, 1.0);
+                    }
+                  }
+                  if (!hasContent || travel <= 0) {
+                    return const SizedBox.shrink();
+                  }
+                  final top = fraction * travel;
+                  final label =
+                      _dragging ? widget.labelForFraction(fraction) : null;
+                  final active = _visible || _dragging;
+                  return IgnorePointer(
+                    // 隐藏时不拦截右侧边缘的滑动手势
+                    ignoring: !active,
+                    child: AnimatedOpacity(
+                      opacity: active ? 1 : 0,
+                      duration: const Duration(milliseconds: 220),
+                      child: Stack(
+                        children: [
+                          if (label != null && label.isNotEmpty)
+                            Positioned(
+                              right: _thumbWidth + 12,
+                              top: (top + _thumbHeight / 2 - 20)
+                                  .clamp(0.0, trackHeight - 40),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 9,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.78),
+                                  borderRadius: BorderRadius.circular(22),
+                                ),
+                                child: Text(
+                                  label,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w800,
+                                    height: 1,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          Positioned(
+                            top: top,
+                            right: 2,
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onVerticalDragStart: (details) {
+                                setState(() => _dragging = true);
+                                _dragTo(details.globalPosition);
+                              },
+                              onVerticalDragUpdate: (details) =>
+                                  _dragTo(details.globalPosition),
+                              onVerticalDragEnd: (_) {
+                                setState(() => _dragging = false);
+                                _scheduleHide();
+                              },
+                              onVerticalDragCancel: () {
+                                setState(() => _dragging = false);
+                                _scheduleHide();
+                              },
+                              child: SizedBox(
+                                width: _thumbWidth + 8,
+                                height: _thumbHeight,
+                                child: Center(
+                                  child: Container(
+                                    width: _thumbWidth,
+                                    height: _thumbHeight,
+                                    decoration: BoxDecoration(
+                                      color: _dragging
+                                          ? const Color(0xFFE91E63)
+                                          : Colors.black.withValues(alpha: 0.5),
+                                      borderRadius: const BorderRadius.only(
+                                        topLeft: Radius.circular(26),
+                                        bottomLeft: Radius.circular(26),
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black
+                                              .withValues(alpha: 0.25),
+                                          blurRadius: 6,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: const Icon(
+                                      Icons.unfold_more_rounded,
+                                      color: Colors.white,
+                                      size: 18,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _AssetTile extends StatefulWidget {
   const _AssetTile({
+    super.key,
     required this.asset,
     required this.thumbnailSize,
+    required this.thumbnailCache,
+    required this.thumbnailCacheLimit,
     required this.uploaded,
     required this.checking,
     required this.selected,
@@ -496,6 +794,8 @@ class _AssetTile extends StatefulWidget {
 
   final AssetEntity asset;
   final ThumbnailSize thumbnailSize;
+  final Map<String, Uint8List> thumbnailCache;
+  final int thumbnailCacheLimit;
   final bool uploaded;
   final bool checking;
   final bool selected;
@@ -507,131 +807,160 @@ class _AssetTile extends StatefulWidget {
 }
 
 class _AssetTileState extends State<_AssetTile> {
-  late Future<Uint8List?> _thumbnailFuture;
+  Uint8List? _bytes;
 
   @override
   void initState() {
     super.initState();
-    _thumbnailFuture = _loadThumbnail();
+    _prepareThumbnail();
   }
 
   @override
   void didUpdateWidget(covariant _AssetTile oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.asset.id != widget.asset.id) {
-      _thumbnailFuture = _loadThumbnail();
+      _prepareThumbnail();
     }
+  }
+
+  void _prepareThumbnail() {
+    final cached = widget.thumbnailCache[widget.asset.id];
+    if (cached != null) {
+      _bytes = cached;
+      return;
+    }
+    _bytes = null;
+    _loadThumbnail().then((bytes) {
+      if (!mounted || bytes == null) return;
+      if (widget.thumbnailCache[widget.asset.id] == null) {
+        final cache = widget.thumbnailCache;
+        if (cache.length >= widget.thumbnailCacheLimit) {
+          final removeCount = (cache.length / 4).ceil();
+          final keys = cache.keys.take(removeCount).toList(growable: false);
+          for (final key in keys) {
+            cache.remove(key);
+          }
+        }
+        cache[widget.asset.id] = bytes;
+      }
+      if (!identical(_bytes, bytes)) {
+        setState(() => _bytes = bytes);
+      }
+    });
   }
 
   Future<Uint8List?> _loadThumbnail() {
     return widget.asset.thumbnailDataWithSize(
       widget.thumbnailSize,
-      quality: 72,
+      quality: 60,
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: widget.onTap,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(4.r),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            FutureBuilder<Uint8List?>(
-              future: _thumbnailFuture,
-              builder: (_, snapshot) {
-                final bytes = snapshot.data;
-                if (bytes == null) {
-                  return Container(color: Colors.grey.shade200);
-                }
-                return Image.memory(
-                  bytes,
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final decodeWidth =
+        (widget.thumbnailSize.width * dpr).round().clamp(80, 220);
+    final imageBytes = _bytes;
+    return RepaintBoundary(
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(4.r),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (imageBytes != null)
+                Image.memory(
+                  imageBytes,
                   fit: BoxFit.cover,
                   gaplessPlayback: true,
                   filterQuality: FilterQuality.low,
-                );
-              },
-            ),
-            if (widget.asset.type == AssetType.video)
-              Positioned(
-                right: 4.w,
-                bottom: 4.w,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(99),
-                  ),
-                  child: const Icon(
-                    Icons.play_arrow,
-                    size: 18,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            if (widget.uploaded)
-              Container(
-                color: Colors.black45,
-                child: const Center(
-                  child: Text(
-                    '已上传',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
+                  cacheWidth: decodeWidth,
+                )
+              else
+                ColoredBox(color: Colors.grey.shade200),
+              if (widget.asset.type == AssetType.video)
+                Positioned(
+                  right: 4.w,
+                  bottom: 4.w,
+                  child: const DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      shape: BoxShape.circle,
                     ),
-                  ),
-                ),
-              ),
-            if (widget.checking)
-              Container(
-                color: Colors.black26,
-                child: const Center(
-                  child: SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
+                    child: Icon(
+                      Icons.play_arrow,
+                      size: 16,
                       color: Colors.white,
                     ),
                   ),
                 ),
-              ),
-            if (widget.selected)
-              Container(
-                color: Colors.pink.withValues(alpha: 0.28),
-                child: const Align(
-                  alignment: Alignment.topRight,
-                  child: Padding(
-                    padding: EdgeInsets.all(4),
-                    child: Icon(Icons.check_circle, color: Colors.white),
-                  ),
-                ),
-              ),
-            Positioned(
-              left: 4.w,
-              bottom: 4.w,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: widget.onPreview,
-                child: SizedBox.square(
-                  dimension: 28.w,
-                  child: Icon(
-                    Icons.visibility,
-                    size: 20.sp,
-                    color: Colors.white,
-                    shadows: const [
-                      Shadow(
-                        color: Colors.black54,
-                        blurRadius: 4,
-                        offset: Offset(0, 1),
+              if (widget.uploaded)
+                const ColoredBox(
+                  color: Color(0x73000000),
+                  child: Center(
+                    child: Text(
+                      '已上传',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
                       ),
-                    ],
+                    ),
+                  ),
+                ),
+              if (widget.checking)
+                const ColoredBox(
+                  color: Color(0x42000000),
+                  child: Center(
+                    child: SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              if (widget.selected)
+                const ColoredBox(
+                  color: Color(0x47E91E63),
+                  child: Align(
+                    alignment: Alignment.topRight,
+                    child: Padding(
+                      padding: EdgeInsets.all(4),
+                      child: Icon(Icons.check_circle,
+                          color: Colors.white, size: 20),
+                    ),
+                  ),
+                ),
+              Positioned(
+                left: 2.w,
+                bottom: 2.w,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: widget.onPreview,
+                  child: SizedBox.square(
+                    dimension: 28.w,
+                    child: Icon(
+                      Icons.visibility,
+                      size: 18.sp,
+                      color: Colors.white,
+                      shadows: const [
+                        Shadow(
+                          color: Colors.black54,
+                          blurRadius: 4,
+                          offset: Offset(0, 1),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -809,6 +1138,10 @@ class _AssetImagePreviewState extends State<_AssetImagePreview> {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    // 预览无需按原始分辨率解码；限制解码宽度可显著降低内存与掉帧。
+    final decodeWidth = (size.width * dpr * 1.5).round().clamp(720, 2048);
     return FutureBuilder<File?>(
       future: _fileFuture,
       builder: (_, snapshot) {
@@ -822,6 +1155,7 @@ class _AssetImagePreviewState extends State<_AssetImagePreview> {
               file,
               fit: BoxFit.contain,
               gaplessPlayback: true,
+              cacheWidth: decodeWidth,
             ),
           ),
         );

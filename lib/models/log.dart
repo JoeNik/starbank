@@ -19,12 +19,17 @@ class Log extends HiveObject {
   @HiveField(4)
   String babyId;
 
+  /// 同步用唯一 ID（旧数据启动时懒回填）
+  @HiveField(5)
+  String? syncId;
+
   Log({
     required this.timestamp,
     required this.description,
     required this.changeAmount,
     required this.type,
     required this.babyId,
+    this.syncId,
   });
 
   Map<String, dynamic> toJson() => {
@@ -33,6 +38,7 @@ class Log extends HiveObject {
     'changeAmount': changeAmount,
     'type': type,
     'babyId': babyId,
+    if (syncId != null) 'syncId': syncId,
   };
 
   factory Log.fromJson(Map<String, dynamic> json) => Log(
@@ -41,5 +47,6 @@ class Log extends HiveObject {
     changeAmount: (json['changeAmount'] ?? 0).toDouble(),
     type: json['type'],
     babyId: json['babyId'] ?? '1',
+    syncId: json['syncId'] as String?,
   );
 }

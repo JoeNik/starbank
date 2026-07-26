@@ -60,6 +60,27 @@ class UserController extends GetxController {
     _loadBabySpecificData();
   }
 
+  /// 家庭同步应用远端数据后调用：从 Hive 重新加载并刷新界面。
+  void reloadFromStorage() {
+    if (_storage.userBox.isNotEmpty) {
+      final profile = _storage.userBox.getAt(0)!;
+      parentName.value = profile.name;
+      currentInterestRate.value = profile.interestRate;
+    }
+    final currentId = currentBaby.value?.id;
+    babies.assignAll(_storage.babyBox.values);
+    if (babies.isEmpty) {
+      currentBaby.value = null;
+    } else {
+      currentBaby.value =
+          babies.firstWhereOrNull((b) => b.id == currentId) ?? babies[0];
+    }
+    currentBaby.refresh();
+    babies.refresh();
+    actions.assignAll(_storage.actionBox.values);
+    _loadBabySpecificData();
+  }
+
   void addBaby(
     String name,
     String avatar, {

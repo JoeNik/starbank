@@ -810,6 +810,26 @@ class WebDavBackupV2Service {
     }
 
     backupData['genericSettings'] = _filteredSettings();
+    // 家庭同步（Cloudflare 服务端）的端点与账号配置；
+    // 直接读盒避免与 FamilySyncService 的循环依赖。
+    try {
+      final familySyncBox = await Hive.openBox('family_sync_state');
+      backupData['familySyncSettings'] = {
+        for (final key in const [
+          'enabled',
+          'endpoint',
+          'token',
+          'userId',
+          'username',
+          'role',
+          'familyId',
+          'familyName',
+        ])
+          key: familySyncBox.get(key),
+      };
+    } catch (_) {
+      backupData['familySyncSettings'] = <String, dynamic>{};
+    }
     if (includeLocalAppSettings) {
       try {
         final appSettingsBox = await Hive.openBox('app_settings');
@@ -1282,8 +1302,7 @@ class WebDavBackupV2Service {
     final file = await _remoteFile(path, ignoreListFailure: false);
     if (file == null || file.size != expectedSize) {
       final actual = file == null ? 'missing' : file.size.toString();
-      throw StateError(
-          '远端文件大小校验失败: $path (期望 $expectedSize, 实际 $actual)');
+      throw StateError('远端文件大小校验失败: $path (期望 $expectedSize, 实际 $actual)');
     }
   }
 

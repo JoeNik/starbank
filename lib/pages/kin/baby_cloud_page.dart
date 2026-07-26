@@ -31,9 +31,16 @@ class BabyCloudPage extends StatefulWidget {
 }
 
 class _BabyCloudPageState extends State<BabyCloudPage> {
+  static final _dayKeyFormat = DateFormat('yyyy-MM-dd');
+
   final _user = Get.find<UserController>();
   final _cloud = Get.find<BabyCloudService>();
   final _mode = Get.find<AppModeController>();
+
+  // 时间轴分组缓存：数据 revision 未变化时（例如从详情页返回触发的重建）
+  // 直接复用上次的分组结果，避免全量过滤+排序+分组。
+  String? _timelineCacheKey;
+  List<MapEntry<String, List<_BabyCloudTimelineEntry>>>? _timelineCacheGroups;
 
   @override
   void initState() {
@@ -282,15 +289,32 @@ class _BabyCloudPageState extends State<BabyCloudPage> {
 
   Widget _buildTimeline(String babyId) {
     return Obx(() {
-      final allMedia = _cloud.mediaForBaby(babyId);
-      final timelineEntries = _timelineEntries(babyId, allMedia);
-      if (_cloud.currentSource.value == null) {
+      // 读取 revision 注册 Obx 依赖；entries/media 整体刷新时该值自增。
+      final revision = _cloud.timelineRevision.value;
+      final sourceId = _cloud.currentSource.value?.id;
+      if (sourceId == null) {
         return SliverFillRemaining(
           hasScrollBody: false,
           child: _emptyBlock('先配置亲宝宝数据源，再开始备份照片和视频'),
         );
       }
-      if (timelineEntries.isEmpty) {
+      final cacheKey = '$babyId|$sourceId|$revision';
+      List<MapEntry<String, List<_BabyCloudTimelineEntry>>> entries;
+      if (cacheKey == _timelineCacheKey && _timelineCacheGroups != null) {
+        entries = _timelineCacheGroups!;
+      } else {
+        final allMedia = _cloud.mediaForBaby(babyId);
+        final timelineEntries = _timelineEntries(babyId, allMedia);
+        final groups = <String, List<_BabyCloudTimelineEntry>>{};
+        for (final entry in timelineEntries) {
+          final key = _dayKeyFormat.format(entry.takenAt);
+          groups.putIfAbsent(key, () => []).add(entry);
+        }
+        entries = groups.entries.toList();
+        _timelineCacheKey = cacheKey;
+        _timelineCacheGroups = entries;
+      }
+      if (entries.isEmpty) {
         final tasks = _cloud.uploadTasks
             .where((task) =>
                 task.babyId == babyId &&
@@ -324,12 +348,6 @@ class _BabyCloudPageState extends State<BabyCloudPage> {
           child: _emptyBlock('还没有上传照片或视频'),
         );
       }
-      final groups = <String, List<_BabyCloudTimelineEntry>>{};
-      for (final entry in timelineEntries) {
-        final key = DateFormat('yyyy-MM-dd').format(entry.takenAt);
-        groups.putIfAbsent(key, () => []).add(entry);
-      }
-      final entries = groups.entries.toList();
       return SliverPadding(
         padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 24.h),
         sliver: SliverList.builder(

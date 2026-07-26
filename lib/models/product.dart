@@ -22,6 +22,10 @@ class Product extends HiveObject {
   @HiveField(5)
   String? babyId; // Which baby this belongs to
 
+  /// 同步用唯一 ID（旧数据启动时懒回填）
+  @HiveField(6)
+  String? syncId;
+
   Product({
     required this.name,
     required this.price,
@@ -29,6 +33,7 @@ class Product extends HiveObject {
     required this.imagePath,
     this.isRedeemed = false,
     this.babyId,
+    this.syncId,
   });
 
   Map<String, dynamic> toJson() => {
@@ -38,6 +43,7 @@ class Product extends HiveObject {
     'imagePath': imagePath,
     'isRedeemed': isRedeemed,
     'babyId': babyId,
+    if (syncId != null) 'syncId': syncId,
   };
 
   factory Product.fromJson(Map<String, dynamic> json) => Product(
@@ -47,5 +53,6 @@ class Product extends HiveObject {
     imagePath: json['imagePath'],
     isRedeemed: json['isRedeemed'] ?? false,
     babyId: json['babyId'],
+    syncId: json['syncId'] as String?,
   );
 }
