@@ -195,7 +195,9 @@ class StorageService extends GetxService {
   Future<void> _initDefaultData() async {
     if (babyBox.isEmpty) {
       final defaultBaby = Baby(
-        id: '1',
+        // 使用时间戳 ID：固定 ID 会导致多设备家庭同步合并时
+        // 不同设备的默认宝宝被误认为同一个，余额互相串账。
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
         name: '宝宝',
         avatarPath: '', // 使用默认 emoji 头像
         starCount: 10,

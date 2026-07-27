@@ -358,6 +358,10 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
       'manifest': '{}',
       'shadow': '{}',
       'ops': '[]',
+      // 基线对账标记：下一次同步先拉取服务端计数总额，按
+      // 「delta = 本地 − 服务端」修正，而不是把全量本地余额当增量推上去
+      // （否则重复登录会导致余额翻倍）。
+      'baselinePending': true,
     });
     _markAllDirty();
   }
@@ -534,9 +538,10 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
     syncing.value = true;
     lastError.value = '';
     try {
-      // 手动同步与每 N 次自动同步做全量校验；平时只处理脏数据段。
-      var full = manual;
-      if (!manual) {
+      final baseline = _state.get('baselinePending') == true;
+      // 手动同步、基线对账与每 N 次自动同步做全量校验；平时只处理脏数据段。
+      var full = manual || baseline;
+      if (!full) {
         _autoSyncCounter++;
         if (_autoSyncCounter >= _fullVerifyEvery) {
           _autoSyncCounter = 0;
@@ -544,10 +549,18 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
         }
       }
       await _backfillSyncIds();
-      _captureCounterDeltas();
+      if (baseline) {
+        // 登录/合并后的首次同步：先拉服务端，再按差值修正计数，
+        // 避免把本地全量余额重复累加到服务端。
+        await _runBaselineReconcile();
+      } else {
+        _captureCounterDeltas();
+      }
       await _pushOutbox();
       await _pushSections(full: full);
-      await _pullChanges();
+      if (!baseline) {
+        await _pullChanges();
+      }
       lastSyncAt.value = DateTime.now();
       await _state.put('lastSyncAt', lastSyncAt.value!.toIso8601String());
     } on FamilySyncException catch (e) {
@@ -615,7 +628,10 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
   }
 
   /// 对比影子快照，把本地余额变化转成 delta 操作放入 outbox。
-  void _captureCounterDeltas() {
+  ///
+  /// [seedOnly] 为 true 时：只把当前余额写入影子，不生成任何 delta。
+  /// 用于登录合并后的基线对账，避免把本地全量余额当成“从 0 增加”推上云端。
+  void _captureCounterDeltas({bool seedOnly = false}) {
     final shadow = _readShadow();
     final ops = _readOps();
     var changed = false;
@@ -627,7 +643,15 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
         'pocket': baby.pocketMoneyBalance,
       };
       for (final entry in current.entries) {
-        final prev = snap[entry.key] ?? 0.0;
+        if (seedOnly || !snap.containsKey(entry.key)) {
+          // 首次见到这个字段：建立基线，不生成 delta
+          if (snap[entry.key] != entry.value) {
+            snap[entry.key] = entry.value;
+            changed = true;
+          }
+          continue;
+        }
+        final prev = snap[entry.key]!;
         final delta = entry.value - prev;
         if (delta.abs() > 1e-9) {
           ops.add({
@@ -638,16 +662,139 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
           });
           snap[entry.key] = entry.value;
           changed = true;
-        } else if (!snap.containsKey(entry.key)) {
-          snap[entry.key] = entry.value;
-          changed = true;
         }
       }
     }
     if (changed) {
       _writeShadow(shadow);
-      _writeOps(ops);
+      if (!seedOnly) _writeOps(ops);
     }
+  }
+
+  /// 登录 / 合并后的首次同步：
+  /// 1. 先把服务端全部变更拉下来（含计数器总额）
+  /// 2. 以「本地当前余额」为权威，通过 set-counters 覆盖服务端
+  /// 3. 用本地余额重建影子快照，后续只推送真正的增量
+  ///
+  /// 这样即使合并前后本地和服务端余额不同，也不会再把本地余额当成
+  /// “从 0 增加”整包累加到服务端（这正是翻倍的根因）。
+  Future<void> _runBaselineReconcile() async {
+    // 拉服务端最新记录与计数器
+    await _pullChanges();
+    // 本地余额为权威：覆盖服务端计数器
+    final counters = <Map<String, dynamic>>[];
+    final shadow = <String, Map<String, double>>{};
+    for (final baby in _storage.babyBox.values) {
+      final local = <String, double>{
+        'star': baby.starCount.toDouble(),
+        'piggy': baby.piggyBankBalance,
+        'pocket': baby.pocketMoneyBalance,
+      };
+      shadow[baby.id] = Map<String, double>.from(local);
+      for (final entry in local.entries) {
+        counters.add({
+          'babyId': baby.id,
+          'field': entry.key,
+          'total': entry.value,
+        });
+      }
+    }
+    if (counters.isNotEmpty) {
+      await _api('POST', '/api/sync/set-counters',
+          body: {'counters': counters});
+    }
+    await _writeShadow(shadow);
+    // 清空可能残留的错误 delta
+    await _writeOps([]);
+    await _state.put('baselinePending', false);
+  }
+
+  /// 修复因重复累加导致的余额翻倍。
+  ///
+  /// 策略：用本地「星星/银行流水日志」重算每个宝宝的权威余额，
+  /// 写回本地并覆盖服务端计数器。日志缺失时回退为当前本地余额。
+  Future<void> repairCounterBalances() async {
+    if (!enabled.value || !isLoggedIn) {
+      throw FamilySyncException('请先登录家庭同步');
+    }
+    final rebuilt = <String, Map<String, double>>{};
+    // 1) 从日志重算（star/piggy/pocket 流水；interest 进零花钱）
+    for (final log in _storage.logBox.values) {
+      final babyId = log.babyId;
+      if (babyId.isEmpty) continue;
+      final totals = rebuilt.putIfAbsent(
+          babyId, () => {'star': 0, 'piggy': 0, 'pocket': 0});
+      switch (log.type) {
+        case 'star':
+          totals['star'] = (totals['star'] ?? 0) + log.changeAmount;
+          break;
+        case 'piggy':
+          totals['piggy'] = (totals['piggy'] ?? 0) + log.changeAmount;
+          break;
+        case 'pocket':
+          totals['pocket'] = (totals['pocket'] ?? 0) + log.changeAmount;
+          break;
+        case 'interest':
+          // 利息计入零花钱
+          totals['pocket'] = (totals['pocket'] ?? 0) + log.changeAmount;
+          break;
+      }
+    }
+
+    // 2) 写回本地宝宝 + 组装 set-counters 载荷
+    final counters = <Map<String, dynamic>>[];
+    final shadow = _readShadow();
+    _applyingRemote = true;
+    try {
+      for (final baby in _storage.babyBox.values) {
+        final fromLogs = rebuilt[baby.id];
+        // 有日志就用日志合计；没日志就保留当前本地值（避免把真实余额清零）
+        final star = fromLogs != null
+            ? fromLogs['star']!.round().toDouble()
+            : baby.starCount.toDouble();
+        final piggy =
+            fromLogs != null ? fromLogs['piggy']! : baby.piggyBankBalance;
+        final pocket =
+            fromLogs != null ? fromLogs['pocket']! : baby.pocketMoneyBalance;
+
+        var changed = false;
+        if (baby.starCount != star.round()) {
+          baby.starCount = star.round();
+          changed = true;
+        }
+        if ((baby.piggyBankBalance - piggy).abs() > 1e-9) {
+          baby.piggyBankBalance = piggy;
+          changed = true;
+        }
+        if ((baby.pocketMoneyBalance - pocket).abs() > 1e-9) {
+          baby.pocketMoneyBalance = pocket;
+          changed = true;
+        }
+        if (changed) await baby.save();
+
+        shadow[baby.id] = {
+          'star': star,
+          'piggy': piggy,
+          'pocket': pocket,
+        };
+        counters.addAll([
+          {'babyId': baby.id, 'field': 'star', 'total': star},
+          {'babyId': baby.id, 'field': 'piggy', 'total': piggy},
+          {'babyId': baby.id, 'field': 'pocket', 'total': pocket},
+        ]);
+      }
+    } finally {
+      _applyingRemote = false;
+    }
+
+    if (counters.isNotEmpty) {
+      await _api('POST', '/api/sync/set-counters',
+          body: {'counters': counters});
+    }
+    await _writeShadow(shadow);
+    await _writeOps([]);
+    await _state.put('baselinePending', false);
+    _reloadControllers({'babies'});
   }
 
   Future<void> _pushOutbox() async {

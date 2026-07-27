@@ -222,6 +222,10 @@ async function handleApi(request, env, url) {
   if (path === '/api/sync/stats' && method === 'GET') {
     return apiSyncStats(env, auth);
   }
+  // 绝对写入计数器：用于登录合并后的基线对账 / 修复翻倍数据
+  if (path === '/api/sync/set-counters' && method === 'POST') {
+    return apiSetCounters(request, env, auth);
+  }
   throw new HttpError(404, '接口不存在');
 }
 
@@ -504,6 +508,71 @@ async function apiSyncPush(request, env, auth) {
 
   const family = await familyInfo(env, auth.familyId);
   return json({ ok: true, seq: family.last_seq, appliedOps });
+}
+
+/// 将指定宝宝的计数器直接设为绝对值（覆盖，不是累加）。
+/// 用于：首次登录合并对账、修复因重复推送导致的余额翻倍。
+async function apiSetCounters(request, env, auth) {
+  const body = await readBody(request);
+  const counters = Array.isArray(body.counters) ? body.counters : [];
+  if (counters.length === 0) {
+    throw new HttpError(400, 'counters 不能为空');
+  }
+  if (counters.length > 100) {
+    throw new HttpError(400, '单次最多设置 100 个计数器');
+  }
+  const now = nowIso();
+  const stmts = [];
+  for (const c of counters) {
+    if (!c || !c.babyId || !COUNTER_FIELDS.includes(c.field)) {
+      throw new HttpError(400, '计数器缺少 babyId/field');
+    }
+    const total = Number(c.total);
+    if (!Number.isFinite(total)) {
+      throw new HttpError(400, '计数器 total 非法');
+    }
+    const babyId = String(c.babyId);
+    const field = c.field;
+    // 覆盖 totals
+    stmts.push(
+      env.DB.prepare(
+        `INSERT INTO counters (family_id, baby_id, field, total)
+         VALUES (?, ?, ?, ?)
+         ON CONFLICT(family_id, baby_id, field) DO UPDATE SET total = excluded.total`,
+      ).bind(auth.familyId, babyId, field, total),
+    );
+    // 记一条审计 op，后续 delta 推送仍可幂等衔接；不参与累加（applied=1 且 delta=0）
+    stmts.push(
+      env.DB.prepare(
+        `INSERT OR IGNORE INTO counter_ops
+           (op_id, family_id, baby_id, field, delta, user_id, created_at, applied)
+         VALUES (?, ?, ?, ?, 0, ?, ?, 1)`,
+      ).bind(
+        `set:${babyId}:${field}:${now}:${randomHex(4)}`,
+        auth.familyId,
+        babyId,
+        field,
+        auth.userId,
+        now,
+      ),
+    );
+  }
+  for (let i = 0; i < stmts.length; i += 50) {
+    await env.DB.batch(stmts.slice(i, i + 50));
+  }
+  const rows = await env.DB.prepare(
+    'SELECT baby_id, field, total FROM counters WHERE family_id = ?',
+  )
+    .bind(auth.familyId)
+    .all();
+  return json({
+    ok: true,
+    counters: (rows.results || []).map((c) => ({
+      babyId: c.baby_id,
+      field: c.field,
+      total: c.total,
+    })),
+  });
 }
 
 async function apiSyncChanges(env, auth, url) {

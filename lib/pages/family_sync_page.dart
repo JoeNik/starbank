@@ -316,6 +316,17 @@ class _FamilySyncPageState extends State<FamilySyncPage> {
                 ),
               ],
             ),
+            SizedBox(height: 8.h),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _busy || _sync.syncing.value
+                    ? null
+                    : _confirmRepairBalances,
+                icon: const Icon(Icons.healing_outlined, size: 18),
+                label: const Text('修复翻倍的星星/余额'),
+              ),
+            ),
           ],
         ),
       ),
@@ -557,6 +568,33 @@ class _FamilySyncPageState extends State<FamilySyncPage> {
               }
             },
             child: const Text('修改'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmRepairBalances() {
+    Get.dialog(
+      AlertDialog(
+        title: const Text('修复翻倍的星星/余额'),
+        content: const Text(
+          '合并登录后如果星星或银行余额被重复累加翻倍，可以点这里修复。\n\n'
+          '修复方式：按本机「星星足迹 / 银行流水」重新合计每个宝宝的权威金额，'
+          '写回本机并覆盖云端计数器。其他设备下次同步后会自动对齐。\n\n'
+          '注意：如果本机流水本身不完整，请先在数据最全的那台手机上操作。',
+        ),
+        actions: [
+          TextButton(onPressed: Get.back, child: const Text('取消')),
+          ElevatedButton(
+            onPressed: () async {
+              Get.back();
+              await _runBusy(() async {
+                await _sync.repairCounterBalances();
+                ToastUtils.showSuccess('已按流水重算并覆盖云端余额');
+              });
+            },
+            child: const Text('开始修复'),
           ),
         ],
       ),
