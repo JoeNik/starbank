@@ -125,13 +125,19 @@ void main() async {
   }
 
   if (startupError == null) {
+    // 必须先注册：很多页面字段初始化直接 Get.find<TtsService>()。
+    // 即便 init 部分失败，也要保证服务实例可被找到，避免整页崩溃。
     try {
-      final ttsService = TtsService();
+      final ttsService = Get.isRegistered<TtsService>()
+          ? Get.find<TtsService>()
+          : Get.put(TtsService(), permanent: true);
       await ttsService.init();
-      Get.put(ttsService);
     } catch (e, stack) {
       debugPrint('TtsService init failed: $e');
       debugPrint('Stack: $stack');
+      if (!Get.isRegistered<TtsService>()) {
+        Get.put(TtsService(), permanent: true);
+      }
     }
 
     try {

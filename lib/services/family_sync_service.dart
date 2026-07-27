@@ -28,6 +28,7 @@ import '../services/encyclopedia_service.dart';
 import '../services/quiz_service.dart';
 import '../services/storage_service.dart';
 import '../services/story_management_service.dart';
+import '../services/tts_service.dart';
 import '../services/webdav_backup_v2_service.dart';
 import '../utils/sync_ids.dart';
 
@@ -1103,6 +1104,18 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
         debugPrint('FamilySync: 刷新亲宝宝数据源失败: $e');
       }
     }
+    // TTS 配置变更后，让内存中的 TtsService 重新加载，避免页面读到旧配置
+    if (appliedSections.contains('tts_settings') ||
+        appliedSections.contains('cftts_config') ||
+        appliedSections.contains('openai_tts_config')) {
+      try {
+        if (Get.isRegistered<TtsService>()) {
+          unawaited(Get.find<TtsService>().reloadSettings());
+        }
+      } catch (e) {
+        debugPrint('FamilySync: 刷新 TTS 设置失败: $e');
+      }
+    }
   }
 
   // ---------------------------------------------------------------------
@@ -1571,8 +1584,12 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
         final box = await Hive.openBox<CfttsConfig>('cftts_config_box');
         await box.clear();
         for (final item in data) {
-          await box.add(
-              CfttsConfig.fromJson(Map<String, dynamic>.from(item as Map)));
+          try {
+            await box.add(
+                CfttsConfig.fromJson(Map<String, dynamic>.from(item as Map)));
+          } catch (e) {
+            debugPrint('FamilySync: 应用 cftts_config 单条失败: $e');
+          }
         }
       },
     ),
@@ -1593,8 +1610,14 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
             await Hive.openBox<OpenAITtsConfig>('openai_tts_config_box');
         await box.clear();
         for (final item in data) {
-          await box.add(
-              OpenAITtsConfig.fromJson(Map<String, dynamic>.from(item as Map)));
+          try {
+            final map = Map<String, dynamic>.from(item as Map);
+            final config = OpenAITtsConfig.fromJson(map);
+            // 与 WebDAV 恢复一致：按 id 写入，避免 add 产生重复 key
+            await box.put(config.id, config);
+          } catch (e) {
+            debugPrint('FamilySync: 应用 openai_tts_config 单条失败: $e');
+          }
         }
       },
     ),

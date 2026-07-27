@@ -64,9 +64,29 @@ class TtsService extends GetxService {
 
   /// 初始化服务
   Future<TtsService> init() async {
-    _flutterTts = FlutterTts();
-    _audioPlayer = AudioPlayer();
-    _settingsBox = await Hive.openBox('tts_settings');
+    // 即使部分平台 TTS / 配置盒初始化失败，也尽量保证服务可被 Get.find。
+    try {
+      _flutterTts = FlutterTts();
+    } catch (e) {
+      debugPrint('创建 FlutterTts 失败: $e');
+      _flutterTts = FlutterTts();
+    }
+    try {
+      _audioPlayer = AudioPlayer();
+    } catch (e) {
+      debugPrint('创建 AudioPlayer 失败: $e');
+      _audioPlayer = AudioPlayer();
+    }
+
+    try {
+      _settingsBox = await Hive.openBox('tts_settings');
+    } catch (e) {
+      debugPrint('打开 tts_settings 失败，尝试恢复: $e');
+      try {
+        await Hive.deleteBoxFromDisk('tts_settings');
+      } catch (_) {}
+      _settingsBox = await Hive.openBox('tts_settings');
+    }
 
     if (!Hive.isAdapterRegistered(41)) {
       Hive.registerAdapter(CfttsConfigAdapter());
@@ -74,16 +94,41 @@ class TtsService extends GetxService {
     if (!Hive.isAdapterRegistered(42)) {
       Hive.registerAdapter(OpenAITtsConfigAdapter());
     }
-    _cfttsConfigBox = await Hive.openBox<CfttsConfig>('cftts_config_box');
-    _openAITtsConfigBox =
-        await Hive.openBox<OpenAITtsConfig>('openai_tts_config_box');
+    try {
+      _cfttsConfigBox = await Hive.openBox<CfttsConfig>('cftts_config_box');
+    } catch (e) {
+      debugPrint('打开 cftts_config_box 失败，尝试恢复: $e');
+      try {
+        await Hive.deleteBoxFromDisk('cftts_config_box');
+      } catch (_) {}
+      _cfttsConfigBox = await Hive.openBox<CfttsConfig>('cftts_config_box');
+    }
+    try {
+      _openAITtsConfigBox =
+          await Hive.openBox<OpenAITtsConfig>('openai_tts_config_box');
+    } catch (e) {
+      debugPrint('打开 openai_tts_config_box 失败，尝试恢复: $e');
+      try {
+        await Hive.deleteBoxFromDisk('openai_tts_config_box');
+      } catch (_) {}
+      _openAITtsConfigBox =
+          await Hive.openBox<OpenAITtsConfig>('openai_tts_config_box');
+    }
 
-    // 加载保存的设置
-    await _loadSettings();
+    // 加载保存的设置（单独吞错，避免脏数据导致整服务不可用）
+    try {
+      await _loadSettings();
+    } catch (e) {
+      debugPrint('加载 TTS 设置失败: $e');
+    }
 
     // Android 专用配置: 等待播放完成回调，这对于某些引擎的状态同步很重要
     if (GetPlatform.isAndroid) {
-      await _flutterTts.awaitSpeakCompletion(true);
+      try {
+        await _flutterTts.awaitSpeakCompletion(true);
+      } catch (e) {
+        debugPrint('awaitSpeakCompletion 失败: $e');
+      }
     }
 
     // 显式设置中文
@@ -118,38 +163,46 @@ class TtsService extends GetxService {
     }
 
     // 监听播放状态
-    _flutterTts.setStartHandler(() {
-      isSpeaking.value = true;
-      onStartCallback?.call();
-    });
-    _flutterTts.setCompletionHandler(() {
-      isSpeaking.value = false;
-      onProgressCallback = null;
-    });
-    _flutterTts.setCancelHandler(() {
-      isSpeaking.value = false;
-      onProgressCallback = null;
-    });
-    _flutterTts.setErrorHandler((msg) {
-      isSpeaking.value = false;
-      onProgressCallback = null;
-      debugPrint('TTS Error: $msg');
-      if (msg.toString().contains('not bound')) {
-        _resetTts();
-      }
-    });
-
-    _flutterTts
-        .setProgressHandler((String text, int start, int end, String word) {
-      onProgressCallback?.call(start, end);
-    });
-
-    _audioPlayer.playerStateStream.listen((state) {
-      if (state.processingState == ProcessingState.completed) {
+    try {
+      _flutterTts.setStartHandler(() {
+        isSpeaking.value = true;
+        onStartCallback?.call();
+      });
+      _flutterTts.setCompletionHandler(() {
         isSpeaking.value = false;
         onProgressCallback = null;
-      }
-    });
+      });
+      _flutterTts.setCancelHandler(() {
+        isSpeaking.value = false;
+        onProgressCallback = null;
+      });
+      _flutterTts.setErrorHandler((msg) {
+        isSpeaking.value = false;
+        onProgressCallback = null;
+        debugPrint('TTS Error: $msg');
+        if (msg.toString().contains('not bound')) {
+          _resetTts();
+        }
+      });
+
+      _flutterTts
+          .setProgressHandler((String text, int start, int end, String word) {
+        onProgressCallback?.call(start, end);
+      });
+    } catch (e) {
+      debugPrint('注册 TTS 回调失败: $e');
+    }
+
+    try {
+      _audioPlayer.playerStateStream.listen((state) {
+        if (state.processingState == ProcessingState.completed) {
+          isSpeaking.value = false;
+          onProgressCallback = null;
+        }
+      });
+    } catch (e) {
+      debugPrint('监听 audioPlayer 失败: $e');
+    }
 
     isInitialized.value = true;
     return this;
@@ -164,15 +217,39 @@ class TtsService extends GetxService {
     }
   }
 
+  double _asDouble(dynamic value, double fallback) {
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? fallback;
+    return fallback;
+  }
+
+  bool _asBool(dynamic value, bool fallback) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) {
+      final lower = value.toLowerCase();
+      if (lower == 'true' || lower == '1') return true;
+      if (lower == 'false' || lower == '0') return false;
+    }
+    return fallback;
+  }
+
   /// 加载保存的设置
   Future<void> _loadSettings() async {
-    speechRate.value = _settingsBox.get('speech_rate', defaultValue: 0.5);
-    pitch.value = _settingsBox.get('pitch', defaultValue: 1.0);
-    volume.value = _settingsBox.get('volume', defaultValue: 1.0);
-    final savedEngine = _settingsBox.get('tts_engine', defaultValue: '');
+    // 家庭同步/WebDAV 恢复后，settings 盒里可能是 int/string，必须做类型兜底
+    speechRate.value =
+        _asDouble(_settingsBox.get('speech_rate', defaultValue: 0.5), 0.5);
+    pitch.value = _asDouble(_settingsBox.get('pitch', defaultValue: 1.0), 1.0);
+    volume.value =
+        _asDouble(_settingsBox.get('volume', defaultValue: 1.0), 1.0);
+    final savedEngine =
+        _settingsBox.get('tts_engine', defaultValue: '')?.toString() ?? '';
 
     // 加载旧版 use_cftts 兼容值，再优先读取新版 route
-    useCftts.value = _settingsBox.get('use_cftts', defaultValue: false);
+    useCftts.value =
+        _asBool(_settingsBox.get('use_cftts', defaultValue: false), false);
     final savedRoute = _settingsBox.get(
       'tts_global_route',
       defaultValue: useCftts.value ? engineCftts : engineSystem,
