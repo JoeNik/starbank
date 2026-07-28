@@ -1016,7 +1016,16 @@ class WebDavService extends GetxService {
       // Restore Babies
       if (backupData['babies'] != null) {
         for (var item in (backupData['babies'] as List)) {
-          await _storage.babyBox.add(Baby.fromJson(item));
+          if (item is! Map) continue;
+          final map = Map<String, dynamic>.from(item);
+          final baby = Baby.fromJson(map);
+          // 名字是基础字段，空名兜底；头像保留备份里的 base64/路径
+          if (baby.name.trim().isEmpty) {
+            baby.name = '宝宝';
+          }
+          baby.avatarPath =
+              Baby.normalizeIncomingAvatar(baby.avatarPath);
+          await _storage.babyBox.add(baby);
         }
       }
 

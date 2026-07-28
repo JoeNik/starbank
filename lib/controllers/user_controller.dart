@@ -4,6 +4,7 @@ import '../models/baby.dart';
 import '../models/action_item.dart';
 import '../models/log.dart';
 import '../services/storage_service.dart';
+import '../utils/sync_ids.dart';
 import '../widgets/toast_utils.dart';
 
 class UserController extends GetxController {
@@ -30,7 +31,7 @@ class UserController extends GetxController {
       currentInterestRate.value = profile.interestRate;
     }
 
-    babies.assignAll(_storage.babyBox.values);
+    babies.assignAll(_storage.babyBox.values.toList());
     if (babies.isNotEmpty) {
       if (currentBaby.value == null) {
         currentBaby.value = babies[0];
@@ -38,7 +39,7 @@ class UserController extends GetxController {
       _loadBabySpecificData();
     }
 
-    actions.assignAll(_storage.actionBox.values);
+    actions.assignAll(_storage.actionBox.values.toList());
   }
 
   void _loadBabySpecificData() {
@@ -68,16 +69,18 @@ class UserController extends GetxController {
       currentInterestRate.value = profile.interestRate;
     }
     final currentId = currentBaby.value?.id;
-    babies.assignAll(_storage.babyBox.values);
+    // 物化为 List，避免后续 Hive box 变化时 Iterable 视图与 RxList 不同步
+    final loaded = _storage.babyBox.values.toList();
+    babies.assignAll(loaded);
     if (babies.isEmpty) {
       currentBaby.value = null;
     } else {
       currentBaby.value =
-          babies.firstWhereOrNull((b) => b.id == currentId) ?? babies[0];
+          babies.firstWhereOrNull((b) => b.id == currentId) ?? babies.first;
     }
     currentBaby.refresh();
     babies.refresh();
-    actions.assignAll(_storage.actionBox.values);
+    actions.assignAll(_storage.actionBox.values.toList());
     _loadBabySpecificData();
   }
 
@@ -399,18 +402,38 @@ class UserController extends GetxController {
   }
 
   // Action Management
-  void addAction(ActionItem item) {
-    _storage.actionBox.add(item);
+  Future<void> addAction(ActionItem item) async {
+    item.syncId ??= newSyncId();
+    await _storage.actionBox.add(item);
     actions.add(item);
   }
 
-  void deleteAction(int index) {
-    _storage.actionBox.deleteAt(index);
-    actions.removeAt(index);
+  /// 按列表下标删除。必须删「列表里的那个对象」，不能 deleteAt(index)：
+  /// Hive 的下标是 key 序，拖拽排序后与 UI 列表不一定一致。
+  Future<void> deleteAction(int index) async {
+    if (index < 0 || index >= actions.length) return;
+    final action = actions.removeAt(index);
+    try {
+      if (action.isInBox) {
+        await action.delete();
+        return;
+      }
+      final key = _actionBoxKeyOf(action);
+      if (key != null) {
+        await _storage.actionBox.delete(key);
+      }
+    } catch (e) {
+      debugPrint('deleteAction failed: $e');
+    }
   }
 
   /// 更新快捷记录
-  void updateAction(int index, String name, double value, String iconName) {
+  Future<void> updateAction(
+    int index,
+    String name,
+    double value,
+    String iconName,
+  ) async {
     if (index < 0 || index >= actions.length) return;
 
     final action = actions[index];
@@ -418,21 +441,71 @@ class UserController extends GetxController {
     action.value = value;
     action.iconName = iconName;
     action.type = value > 0 ? 'reward' : 'punish';
-    action.save();
+    try {
+      if (action.isInBox) {
+        await action.save();
+      } else {
+        action.syncId ??= newSyncId();
+        await _storage.actionBox.add(action);
+      }
+    } catch (e) {
+      debugPrint('updateAction failed: $e');
+    }
     actions.refresh();
   }
 
-  /// 重新排序快捷记录
-  void reorderAction(int oldIndex, int newIndex) {
+  /// 重新排序快捷记录，并按新顺序持久化到 Hive。
+  ///
+  /// 旧实现有两处致命问题：
+  /// 1. `clear()` 返回 Future 却未 await，随后的 `add` 常被尚未完成的 clear 清掉；
+  /// 2. clear 后再 `add` 同一个 HiveObject 实例不可靠。
+  /// 这里改为：内存先排序 → 快照成新对象 → await clear → 按 0..n 写入 →
+  /// 再把 RxList 绑回 Hive 里的新实例，保证后续编辑/删除可用。
+  Future<void> reorderAction(int oldIndex, int newIndex) async {
+    if (oldIndex < 0 || oldIndex >= actions.length) return;
     if (newIndex > oldIndex) newIndex--;
+    if (newIndex < 0 || newIndex >= actions.length) return;
+    if (oldIndex == newIndex) return;
+
     final item = actions.removeAt(oldIndex);
     actions.insert(newIndex, item);
 
-    // 重新保存到 Hive（需要清空后重新添加来保持顺序）
-    _storage.actionBox.clear();
-    for (var action in actions) {
-      _storage.actionBox.add(action);
+    final ordered = <ActionItem>[
+      for (final a in actions)
+        ActionItem(
+          name: a.name,
+          type: a.type,
+          value: a.value,
+          iconName: a.iconName,
+          syncId: a.syncId ?? newSyncId(),
+        ),
+    ];
+
+    try {
+      await _storage.actionBox.clear();
+      for (var i = 0; i < ordered.length; i++) {
+        await _storage.actionBox.put(i, ordered[i]);
+      }
+      // 重新绑定到 Hive 对象，避免后续 save/delete 打到已脱离 box 的旧实例
+      actions.assignAll(_storage.actionBox.values.toList());
+    } catch (e) {
+      debugPrint('reorderAction failed: $e');
+      // 失败时至少从存储恢复，避免 UI 与磁盘长期不一致
+      actions.assignAll(_storage.actionBox.values.toList());
     }
-    actions.refresh();
+  }
+
+  dynamic _actionBoxKeyOf(ActionItem target) {
+    for (final key in _storage.actionBox.keys) {
+      final value = _storage.actionBox.get(key);
+      if (value == null) continue;
+      if (identical(value, target)) return key;
+      if (target.syncId != null &&
+          target.syncId!.isNotEmpty &&
+          value.syncId == target.syncId) {
+        return key;
+      }
+    }
+    return null;
   }
 }

@@ -688,7 +688,7 @@ class _PinyinLearningPageState extends State<PinyinLearningPage> {
         borderRadius: BorderRadius.circular(18.r),
       ),
       child: Text(
-        '音频来自 hugolpz/audio-cmn，首次播放后会缓存到本机，不参与 WebDAV 备份。部分声母/韵母使用教学示例音节辅助发音。',
+        '音频来自 hugolpz/audio-cmn（含内置纠正）。首次播放后会缓存到本机，不参与 WebDAV 备份。ch/chi 使用内置「吃」音，避免远程音节送气不足听成「知」。',
         style: TextStyle(
           fontSize: 11.sp,
           color: AppTheme.textSub,

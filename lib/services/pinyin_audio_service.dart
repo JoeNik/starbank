@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
@@ -13,10 +14,34 @@ import '../widgets/toast_utils.dart';
 class PinyinAudioService extends GetxService {
   static const String defaultBaseUrl =
       'https://raw.githubusercontent.com/hugolpz/audio-cmn/master/18k-abr/syllabs';
+  /// HSK 单字音频（同仓库）。部分 syllabs 录音送气/音色偏差大时回退到这里。
+  static const String defaultHskBaseUrl =
+      'https://raw.githubusercontent.com/hugolpz/audio-cmn/master/18k-abr/hsk';
   static const String _baseUrlKey = 'audio_base_url';
   static const String _cacheLimitKey = 'cache_limit';
   static const String _cacheIndexFileName = 'cache_index.json';
   static const int defaultCacheLimit = 1000;
+
+  /// 内置纠正音频（打包进 APK）。远程 syllabs 的 chi1 送气不足，听感像「知」。
+  /// 资源来自 audio-cmn 64k HSK 单字（吃/池/尺）与 64k syllabs chi4。
+  static const Map<String, String> _bundledAssetOverrides = {
+    'chi1': 'assets/audio/pinyin/chi1.mp3',
+    'chi2': 'assets/audio/pinyin/chi2.mp3',
+    'chi3': 'assets/audio/pinyin/chi3.mp3',
+    'chi4': 'assets/audio/pinyin/chi4.mp3',
+  };
+
+  /// 远程 HSK 单字备选（内置资源缺失/损坏时用；永不回退到错误的 syllabs chi1）。
+  static const Map<String, List<String>> _hskCharCandidates = {
+    'chi1': ['吃'],
+    'chi2': ['池', '迟'],
+    'chi3': ['尺'],
+  };
+
+  /// 这些 key 的远程 syllabs 录音已知不可用，禁止作为兜底。
+  static const Set<String> _blockRemoteSyllabs = {
+    'chi1',
+  };
 
   late final AudioPlayer _audioPlayer;
   late final Box _settingsBox;
@@ -46,6 +71,7 @@ class PinyinAudioService extends GetxService {
       await _cacheDir.create(recursive: true);
     }
     await _loadCacheIndex();
+    await _purgeBadLegacyChiCache();
     await _trimCacheIfNeeded();
 
     _audioPlayer.playerStateStream.listen((state) {
@@ -58,8 +84,13 @@ class PinyinAudioService extends GetxService {
   }
 
   Uri buildAudioUri(String audioKey) {
+    final key = audioKey.trim();
+    final chars = _hskCharCandidates[key];
+    if (chars != null && chars.isNotEmpty) {
+      return _hskCharUri(chars.first);
+    }
     return Uri.parse(
-        '${_trimTrailingSlash(audioBaseUrl.value)}/cmn-$audioKey.mp3');
+        '${_trimTrailingSlash(audioBaseUrl.value)}/cmn-$key.mp3');
   }
 
   Future<void> play(String audioKey) async {
@@ -244,23 +275,48 @@ class PinyinAudioService extends GetxService {
     bool forceRefresh = false,
     bool showToastOnMissing = true,
   }) async {
-    final cacheFile = _cacheFileFor(audioKey);
-    if (forceRefresh && await cacheFile.exists()) {
-      await cacheFile.delete();
-      _cacheIndex.remove(audioKey);
-      await _saveCacheIndex();
+    final key = audioKey.trim();
+    final cacheKey = _cacheKeyFor(key);
+    final cacheFile = _cacheFileFor(cacheKey);
+
+    if (forceRefresh) {
+      await _deleteCacheEntry(cacheKey);
+      // 旧版无后缀 / hsk_v1 缓存一并清掉
+      await _deleteCacheEntry(key);
+      await _deleteCacheEntry('${key}_hsk_v1');
     }
 
     if (await cacheFile.exists()) {
-      await _touchCache(audioKey);
+      await _touchCache(cacheKey);
       return cacheFile;
     }
 
-    final response = await http
-        .get(buildAudioUri(audioKey))
-        .timeout(const Duration(seconds: 20));
-    if (response.statusCode != 200 || response.bodyBytes.isEmpty) {
-      debugPrint('拼音音频请求失败: ${response.statusCode} ${response.body}');
+    // 1) 内置纠正音频（离线可用，不依赖 GitHub）
+    final bundled = await _materializeBundledAsset(key);
+    if (bundled != null) {
+      return bundled;
+    }
+
+    // 2) 远程 HSK 单字 /（非屏蔽的）syllabs
+    http.Response? response;
+    Object? lastError;
+    for (final uri in _candidateRemoteUris(key)) {
+      try {
+        final res = await http.get(uri).timeout(const Duration(seconds: 20));
+        if (res.statusCode == 200 && res.bodyBytes.isNotEmpty) {
+          response = res;
+          debugPrint('拼音音频命中: $key <- $uri');
+          break;
+        }
+        debugPrint('拼音音频未命中 ${res.statusCode}: $uri');
+      } catch (e) {
+        lastError = e;
+        debugPrint('拼音音频请求异常 $uri: $e');
+      }
+    }
+
+    if (response == null) {
+      debugPrint('拼音音频全部失败 key=$key lastError=$lastError');
       if (showToastOnMissing) {
         ToastUtils.showError('没有找到这个拼音音频，请稍后再试');
       }
@@ -268,9 +324,138 @@ class PinyinAudioService extends GetxService {
     }
 
     await cacheFile.writeAsBytes(response.bodyBytes, flush: true);
-    await _touchCache(audioKey);
+    await _touchCache(cacheKey);
     await _trimCacheIfNeeded();
     return cacheFile;
+  }
+
+  /// 把 APK 内纠正音频拷到缓存目录，供 just_audio 以文件路径播放。
+  Future<File?> _materializeBundledAsset(String audioKey) async {
+    final assetPath = _bundledAssetOverrides[audioKey];
+    if (assetPath == null) return null;
+
+    final cacheKey = _cacheKeyFor(audioKey);
+    final cacheFile = _cacheFileFor(cacheKey);
+    try {
+      final data = await rootBundle.load(assetPath);
+      final bytes = data.buffer.asUint8List();
+      if (bytes.isEmpty) return null;
+      await cacheFile.writeAsBytes(bytes, flush: true);
+      await _touchCache(cacheKey);
+      debugPrint('拼音音频使用内置资源: $audioKey <- $assetPath');
+      return cacheFile;
+    } catch (e) {
+      debugPrint('加载内置拼音音频失败 $assetPath: $e');
+      return null;
+    }
+  }
+
+  List<Uri> _candidateRemoteUris(String audioKey) {
+    final key = audioKey.trim();
+    final uris = <Uri>[];
+
+    // 优先 64k HSK（送气更清晰），再 18k HSK
+    final chars = _hskCharCandidates[key] ?? const <String>[];
+    for (final quality in const ['64k', '18k-abr']) {
+      for (final hanzi in chars) {
+        uris.add(_hskCharUriForQuality(hanzi, quality));
+      }
+    }
+
+    // jsDelivr 镜像（国内 GitHub raw 常慢/失败）
+    for (final hanzi in chars) {
+      final enc = Uri.encodeComponent(hanzi);
+      uris.add(Uri.parse(
+          'https://cdn.jsdelivr.net/gh/hugolpz/audio-cmn@master/64k/hsk/cmn-$enc.mp3'));
+      uris.add(Uri.parse(
+          'https://cdn.jsdelivr.net/gh/hugolpz/audio-cmn@master/18k-abr/hsk/cmn-$enc.mp3'));
+    }
+
+    // 普通音节：syllabs 兜底（chi1 等屏蔽项除外）
+    if (!_blockRemoteSyllabs.contains(key)) {
+      uris.add(Uri.parse(
+          '${_trimTrailingSlash(audioBaseUrl.value)}/cmn-$key.mp3'));
+      // 同品质 64k syllabs
+      final syllabs64 = _syllabsUrlForQuality('64k');
+      uris.add(Uri.parse('$syllabs64/cmn-$key.mp3'));
+    }
+
+    return uris;
+  }
+
+  Uri _hskCharUri(String hanzi) {
+    final base = _hskBaseUrlFromSyllabs(audioBaseUrl.value);
+    return Uri.parse('$base/cmn-${Uri.encodeComponent(hanzi)}.mp3');
+  }
+
+  Uri _hskCharUriForQuality(String hanzi, String quality) {
+    return Uri.parse(
+      'https://raw.githubusercontent.com/hugolpz/audio-cmn/master/'
+      '$quality/hsk/cmn-${Uri.encodeComponent(hanzi)}.mp3',
+    );
+  }
+
+  String _syllabsUrlForQuality(String quality) {
+    return 'https://raw.githubusercontent.com/hugolpz/audio-cmn/master/'
+        '$quality/syllabs';
+  }
+
+  /// 用户若把 baseUrl 改成 64k/24k 的 syllabs，HSK 覆盖也跟同品质目录。
+  String _hskBaseUrlFromSyllabs(String syllabsUrl) {
+    final normalized = _trimTrailingSlash(syllabsUrl);
+    if (normalized.contains('/syllabs')) {
+      return normalized.replaceFirst(RegExp(r'/syllabs$'), '/hsk');
+    }
+    return defaultHskBaseUrl;
+  }
+
+  /// 内置/纠正音频使用独立缓存名，避免沿用错误的旧 syllabs 文件。
+  String _cacheKeyFor(String audioKey) {
+    if (_bundledAssetOverrides.containsKey(audioKey) ||
+        _hskCharCandidates.containsKey(audioKey)) {
+      return '${audioKey}_fix_v2';
+    }
+    return audioKey;
+  }
+
+  Future<void> _purgeBadLegacyChiCache() async {
+    // 启动时清掉已知错误的 chi 旧缓存，强制下次走内置纠正音。
+    const stale = [
+      'chi1',
+      'chi2',
+      'chi3',
+      'chi4',
+      'chi1_hsk_v1',
+      'chi2_hsk_v1',
+      'chi3_hsk_v1',
+      'chi4_hsk_v1',
+    ];
+    var changed = false;
+    for (final key in stale) {
+      final file = _cacheFileFor(key);
+      if (await file.exists()) {
+        try {
+          await file.delete();
+          changed = true;
+        } catch (_) {}
+      }
+      if (_cacheIndex.remove(key) != null) changed = true;
+    }
+    if (changed) {
+      await _saveCacheIndex();
+      cachedCount.value = await _countCacheFiles();
+      debugPrint('已清理旧版 chi 拼音缓存，将使用内置纠正音频');
+    }
+  }
+
+  Future<void> _deleteCacheEntry(String cacheKey) async {
+    final file = _cacheFileFor(cacheKey);
+    if (await file.exists()) {
+      try {
+        await file.delete();
+      } catch (_) {}
+    }
+    _cacheIndex.remove(cacheKey);
   }
 
   File _cacheFileFor(String audioKey) {

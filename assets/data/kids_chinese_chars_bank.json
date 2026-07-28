@@ -1856,7 +1856,7 @@
   {
     "id": "L3_031",
     "character": "长",
-    "pinyin": "zhǎng",
+    "pinyin": "cháng",
     "book_level": 3,
     "stage_name": "社交期（生活与礼貌）",
     "recommended_age": "4-5岁",
@@ -2396,7 +2396,7 @@
   {
     "id": "L4_003",
     "character": "谁",
-    "pinyin": "shuí",
+    "pinyin": "shéi",
     "book_level": 4,
     "stage_name": "认知期（情绪与自然）",
     "recommended_age": "5-6岁",
@@ -4960,15 +4960,6 @@
   },
   {
     "id": "L7_004",
-    "character": "办",
-    "pinyin": "bàn",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_005",
     "character": "报",
     "pinyin": "bào",
     "book_level": 7,
@@ -4977,7 +4968,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_006",
+    "id": "L7_005",
     "character": "杯",
     "pinyin": "bēi",
     "book_level": 7,
@@ -4986,7 +4977,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_007",
+    "id": "L7_006",
     "character": "悲",
     "pinyin": "bēi",
     "book_level": 7,
@@ -4995,25 +4986,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_008",
-    "character": "北",
-    "pinyin": "běi",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_009",
-    "character": "备",
-    "pinyin": "bèi",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_010",
+    "id": "L7_007",
     "character": "本",
     "pinyin": "běn",
     "book_level": 7,
@@ -5022,7 +4995,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_011",
+    "id": "L7_008",
     "character": "必",
     "pinyin": "bì",
     "book_level": 7,
@@ -5031,7 +5004,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_012",
+    "id": "L7_009",
     "character": "闭",
     "pinyin": "bì",
     "book_level": 7,
@@ -5040,7 +5013,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_013",
+    "id": "L7_010",
     "character": "避",
     "pinyin": "bì",
     "book_level": 7,
@@ -5049,7 +5022,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_014",
+    "id": "L7_011",
     "character": "标",
     "pinyin": "biāo",
     "book_level": 7,
@@ -5058,7 +5031,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_015",
+    "id": "L7_012",
     "character": "表",
     "pinyin": "biǎo",
     "book_level": 7,
@@ -5067,7 +5040,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_016",
+    "id": "L7_013",
     "character": "饼",
     "pinyin": "bǐng",
     "book_level": 7,
@@ -5076,7 +5049,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_017",
+    "id": "L7_014",
     "character": "并",
     "pinyin": "bìng",
     "book_level": 7,
@@ -5085,7 +5058,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_018",
+    "id": "L7_015",
     "character": "步",
     "pinyin": "bù",
     "book_level": 7,
@@ -5094,7 +5067,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_019",
+    "id": "L7_016",
     "character": "猜",
     "pinyin": "cāi",
     "book_level": 7,
@@ -5103,7 +5076,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_020",
+    "id": "L7_017",
     "character": "材",
     "pinyin": "cái",
     "book_level": 7,
@@ -5112,7 +5085,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_021",
+    "id": "L7_018",
     "character": "彩",
     "pinyin": "cǎi",
     "book_level": 7,
@@ -5121,7 +5094,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_022",
+    "id": "L7_019",
     "character": "菜",
     "pinyin": "cài",
     "book_level": 7,
@@ -5130,7 +5103,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_023",
+    "id": "L7_020",
     "character": "参",
     "pinyin": "cān",
     "book_level": 7,
@@ -5139,7 +5112,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_024",
+    "id": "L7_021",
     "character": "操",
     "pinyin": "cāo",
     "book_level": 7,
@@ -5148,7 +5121,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_025",
+    "id": "L7_022",
     "character": "册",
     "pinyin": "cè",
     "book_level": 7,
@@ -5157,7 +5130,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_026",
+    "id": "L7_023",
     "character": "查",
     "pinyin": "chá",
     "book_level": 7,
@@ -5166,7 +5139,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_027",
+    "id": "L7_024",
     "character": "察",
     "pinyin": "chá",
     "book_level": 7,
@@ -5175,7 +5148,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_028",
+    "id": "L7_025",
     "character": "拆",
     "pinyin": "chāi",
     "book_level": 7,
@@ -5184,7 +5157,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_029",
+    "id": "L7_026",
     "character": "柴",
     "pinyin": "chái",
     "book_level": 7,
@@ -5193,7 +5166,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_030",
+    "id": "L7_027",
     "character": "乘",
     "pinyin": "chéng",
     "book_level": 7,
@@ -5202,7 +5175,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_031",
+    "id": "L7_028",
     "character": "充",
     "pinyin": "chōng",
     "book_level": 7,
@@ -5211,7 +5184,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_032",
+    "id": "L7_029",
     "character": "抽",
     "pinyin": "chōu",
     "book_level": 7,
@@ -5220,7 +5193,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_033",
+    "id": "L7_030",
     "character": "除",
     "pinyin": "chú",
     "book_level": 7,
@@ -5229,7 +5202,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_034",
+    "id": "L7_031",
     "character": "楚",
     "pinyin": "chǔ",
     "book_level": 7,
@@ -5238,7 +5211,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_035",
+    "id": "L7_032",
     "character": "处",
     "pinyin": "chù",
     "book_level": 7,
@@ -5247,7 +5220,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_036",
+    "id": "L7_033",
     "character": "穿",
     "pinyin": "chuān",
     "book_level": 7,
@@ -5256,7 +5229,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_037",
+    "id": "L7_034",
     "character": "传",
     "pinyin": "chuán",
     "book_level": 7,
@@ -5265,7 +5238,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_038",
+    "id": "L7_035",
     "character": "创",
     "pinyin": "chuàng",
     "book_level": 7,
@@ -5274,7 +5247,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_039",
+    "id": "L7_036",
     "character": "词",
     "pinyin": "cí",
     "book_level": 7,
@@ -5283,7 +5256,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_040",
+    "id": "L7_037",
     "character": "此",
     "pinyin": "cǐ",
     "book_level": 7,
@@ -5292,7 +5265,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_041",
+    "id": "L7_038",
     "character": "村",
     "pinyin": "cūn",
     "book_level": 7,
@@ -5301,7 +5274,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_042",
+    "id": "L7_039",
     "character": "存",
     "pinyin": "cún",
     "book_level": 7,
@@ -5310,7 +5283,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_043",
+    "id": "L7_040",
     "character": "待",
     "pinyin": "dài",
     "book_level": 7,
@@ -5319,7 +5292,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_044",
+    "id": "L7_041",
     "character": "代",
     "pinyin": "dài",
     "book_level": 7,
@@ -5328,7 +5301,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_045",
+    "id": "L7_042",
     "character": "单",
     "pinyin": "dān",
     "book_level": 7,
@@ -5337,7 +5310,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_046",
+    "id": "L7_043",
     "character": "但",
     "pinyin": "dàn",
     "book_level": 7,
@@ -5346,7 +5319,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_047",
+    "id": "L7_044",
     "character": "淡",
     "pinyin": "dàn",
     "book_level": 7,
@@ -5355,7 +5328,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_048",
+    "id": "L7_045",
     "character": "蛋",
     "pinyin": "dàn",
     "book_level": 7,
@@ -5364,7 +5337,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_049",
+    "id": "L7_046",
     "character": "导",
     "pinyin": "dǎo",
     "book_level": 7,
@@ -5373,7 +5346,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_050",
+    "id": "L7_047",
     "character": "岛",
     "pinyin": "dǎo",
     "book_level": 7,
@@ -5382,7 +5355,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_051",
+    "id": "L7_048",
     "character": "底",
     "pinyin": "dǐ",
     "book_level": 7,
@@ -5391,7 +5364,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_052",
+    "id": "L7_049",
     "character": "低",
     "pinyin": "dī",
     "book_level": 7,
@@ -5400,7 +5373,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_053",
+    "id": "L7_050",
     "character": "店",
     "pinyin": "diàn",
     "book_level": 7,
@@ -5409,7 +5382,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_054",
+    "id": "L7_051",
     "character": "调",
     "pinyin": "diào",
     "book_level": 7,
@@ -5418,7 +5391,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_055",
+    "id": "L7_052",
     "character": "读",
     "pinyin": "dú",
     "book_level": 7,
@@ -5427,7 +5400,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_056",
+    "id": "L7_053",
     "character": "短",
     "pinyin": "duǎn",
     "book_level": 7,
@@ -5436,7 +5409,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_057",
+    "id": "L7_054",
     "character": "度",
     "pinyin": "dù",
     "book_level": 7,
@@ -5445,7 +5418,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_058",
+    "id": "L7_055",
     "character": "断",
     "pinyin": "duàn",
     "book_level": 7,
@@ -5454,16 +5427,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_059",
-    "character": "对",
-    "pinyin": "duì",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_060",
+    "id": "L7_056",
     "character": "吨",
     "pinyin": "dūn",
     "book_level": 7,
@@ -5472,7 +5436,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_061",
+    "id": "L7_057",
     "character": "恩",
     "pinyin": "ēn",
     "book_level": 7,
@@ -5481,16 +5445,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_062",
-    "character": "发",
-    "pinyin": "fā",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_063",
+    "id": "L7_058",
     "character": "翻",
     "pinyin": "fān",
     "book_level": 7,
@@ -5499,7 +5454,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_064",
+    "id": "L7_059",
     "character": "凡",
     "pinyin": "fán",
     "book_level": 7,
@@ -5508,7 +5463,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_065",
+    "id": "L7_060",
     "character": "烦",
     "pinyin": "fán",
     "book_level": 7,
@@ -5517,7 +5472,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_066",
+    "id": "L7_061",
     "character": "反",
     "pinyin": "fǎn",
     "book_level": 7,
@@ -5526,7 +5481,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_067",
+    "id": "L7_062",
     "character": "房",
     "pinyin": "fáng",
     "book_level": 7,
@@ -5535,7 +5490,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_068",
+    "id": "L7_063",
     "character": "防",
     "pinyin": "fáng",
     "book_level": 7,
@@ -5544,7 +5499,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_069",
+    "id": "L7_064",
     "character": "肥",
     "pinyin": "féi",
     "book_level": 7,
@@ -5553,7 +5508,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_070",
+    "id": "L7_065",
     "character": "费",
     "pinyin": "fèi",
     "book_level": 7,
@@ -5562,16 +5517,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_071",
-    "character": "分",
-    "pinyin": "fēn",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_072",
+    "id": "L7_066",
     "character": "份",
     "pinyin": "fèn",
     "book_level": 7,
@@ -5580,16 +5526,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_073",
-    "character": "风",
-    "pinyin": "fēng",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_074",
+    "id": "L7_067",
     "character": "丰",
     "pinyin": "fēng",
     "book_level": 7,
@@ -5598,7 +5535,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_075",
+    "id": "L7_068",
     "character": "封",
     "pinyin": "fēng",
     "book_level": 7,
@@ -5607,7 +5544,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_076",
+    "id": "L7_069",
     "character": "蜂",
     "pinyin": "fēng",
     "book_level": 7,
@@ -5616,7 +5553,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_077",
+    "id": "L7_070",
     "character": "服",
     "pinyin": "fú",
     "book_level": 7,
@@ -5625,7 +5562,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_078",
+    "id": "L7_071",
     "character": "福",
     "pinyin": "fú",
     "book_level": 7,
@@ -5634,7 +5571,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_079",
+    "id": "L7_072",
     "character": "抚",
     "pinyin": "fǔ",
     "book_level": 7,
@@ -5643,7 +5580,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_080",
+    "id": "L7_073",
     "character": "斧",
     "pinyin": "fǔ",
     "book_level": 7,
@@ -5652,7 +5589,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_081",
+    "id": "L7_074",
     "character": "父",
     "pinyin": "fù",
     "book_level": 7,
@@ -5661,16 +5598,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_082",
-    "character": "该",
-    "pinyin": "gāi",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_083",
+    "id": "L7_075",
     "character": "改",
     "pinyin": "gǎi",
     "book_level": 7,
@@ -5679,7 +5607,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_084",
+    "id": "L7_076",
     "character": "甘",
     "pinyin": "gān",
     "book_level": 7,
@@ -5688,16 +5616,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_085",
-    "character": "敢",
-    "pinyin": "gǎn",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_086",
+    "id": "L7_077",
     "character": "感",
     "pinyin": "gǎn",
     "book_level": 7,
@@ -5706,16 +5625,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_087",
-    "character": "刚",
-    "pinyin": "gāng",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_088",
+    "id": "L7_078",
     "character": "钢",
     "pinyin": "gāng",
     "book_level": 7,
@@ -5724,16 +5634,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_089",
-    "character": "高",
-    "pinyin": "gāo",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_090",
+    "id": "L7_079",
     "character": "搞",
     "pinyin": "gǎo",
     "book_level": 7,
@@ -5742,7 +5643,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_091",
+    "id": "L7_080",
     "character": "糕",
     "pinyin": "gāo",
     "book_level": 7,
@@ -5751,7 +5652,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_092",
+    "id": "L7_081",
     "character": "膏",
     "pinyin": "gāo",
     "book_level": 7,
@@ -5760,7 +5661,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_093",
+    "id": "L7_082",
     "character": "格",
     "pinyin": "gé",
     "book_level": 7,
@@ -5769,7 +5670,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_094",
+    "id": "L7_083",
     "character": "阁",
     "pinyin": "gé",
     "book_level": 7,
@@ -5778,7 +5679,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_095",
+    "id": "L7_084",
     "character": "各",
     "pinyin": "gè",
     "book_level": 7,
@@ -5787,16 +5688,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_096",
-    "character": "工",
-    "pinyin": "gōng",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_097",
+    "id": "L7_085",
     "character": "功",
     "pinyin": "gōng",
     "book_level": 7,
@@ -5805,7 +5697,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_098",
+    "id": "L7_086",
     "character": "弓",
     "pinyin": "gōng",
     "book_level": 7,
@@ -5814,7 +5706,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_099",
+    "id": "L7_087",
     "character": "沟",
     "pinyin": "gōu",
     "book_level": 7,
@@ -5823,7 +5715,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_100",
+    "id": "L7_088",
     "character": "购",
     "pinyin": "gòu",
     "book_level": 7,
@@ -5832,7 +5724,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_101",
+    "id": "L7_089",
     "character": "孤",
     "pinyin": "gū",
     "book_level": 7,
@@ -5841,7 +5733,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_102",
+    "id": "L7_090",
     "character": "鼓",
     "pinyin": "gǔ",
     "book_level": 7,
@@ -5850,7 +5742,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_103",
+    "id": "L7_091",
     "character": "古",
     "pinyin": "gǔ",
     "book_level": 7,
@@ -5859,7 +5751,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_104",
+    "id": "L7_092",
     "character": "骨",
     "pinyin": "gǔ",
     "book_level": 7,
@@ -5868,7 +5760,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_105",
+    "id": "L7_093",
     "character": "谷",
     "pinyin": "gǔ",
     "book_level": 7,
@@ -5877,7 +5769,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_106",
+    "id": "L7_094",
     "character": "故",
     "pinyin": "gù",
     "book_level": 7,
@@ -5886,7 +5778,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_107",
+    "id": "L7_095",
     "character": "顾",
     "pinyin": "gù",
     "book_level": 7,
@@ -5895,7 +5787,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_108",
+    "id": "L7_096",
     "character": "刮",
     "pinyin": "guā",
     "book_level": 7,
@@ -5904,7 +5796,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_109",
+    "id": "L7_097",
     "character": "挂",
     "pinyin": "guà",
     "book_level": 7,
@@ -5913,7 +5805,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_110",
+    "id": "L7_098",
     "character": "拐",
     "pinyin": "guǎi",
     "book_level": 7,
@@ -5922,7 +5814,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_111",
+    "id": "L7_099",
     "character": "观",
     "pinyin": "guān",
     "book_level": 7,
@@ -5931,7 +5823,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_112",
+    "id": "L7_100",
     "character": "官",
     "pinyin": "guān",
     "book_level": 7,
@@ -5940,7 +5832,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_113",
+    "id": "L7_101",
     "character": "馆",
     "pinyin": "guǎn",
     "book_level": 7,
@@ -5949,7 +5841,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_114",
+    "id": "L7_102",
     "character": "管",
     "pinyin": "guǎn",
     "book_level": 7,
@@ -5958,7 +5850,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_115",
+    "id": "L7_103",
     "character": "惯",
     "pinyin": "guàn",
     "book_level": 7,
@@ -5967,16 +5859,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_116",
-    "character": "光",
-    "pinyin": "guāng",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_117",
+    "id": "L7_104",
     "character": "广",
     "pinyin": "guǎng",
     "book_level": 7,
@@ -5985,7 +5868,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_118",
+    "id": "L7_105",
     "character": "逛",
     "pinyin": "guàng",
     "book_level": 7,
@@ -5994,7 +5877,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_119",
+    "id": "L7_106",
     "character": "规",
     "pinyin": "guī",
     "book_level": 7,
@@ -6003,7 +5886,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_120",
+    "id": "L7_107",
     "character": "鬼",
     "pinyin": "guǐ",
     "book_level": 7,
@@ -6012,7 +5895,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_121",
+    "id": "L7_108",
     "character": "贵",
     "pinyin": "guì",
     "book_level": 7,
@@ -6021,7 +5904,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_122",
+    "id": "L7_109",
     "character": "国",
     "pinyin": "guó",
     "book_level": 7,
@@ -6030,25 +5913,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_123",
-    "character": "果",
-    "pinyin": "guǒ",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_124",
-    "character": "过",
-    "pinyin": "guò",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_125",
+    "id": "L7_110",
     "character": "海",
     "pinyin": "hǎi",
     "book_level": 7,
@@ -6057,16 +5922,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_126",
-    "character": "喊",
-    "pinyin": "hǎn",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_127",
+    "id": "L7_111",
     "character": "汉",
     "pinyin": "hàn",
     "book_level": 7,
@@ -6075,7 +5931,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_128",
+    "id": "L7_112",
     "character": "航",
     "pinyin": "háng",
     "book_level": 7,
@@ -6084,25 +5940,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_129",
-    "character": "行",
-    "pinyin": "xíng",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_130",
-    "character": "好",
-    "pinyin": "hǎo",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_131",
+    "id": "L7_113",
     "character": "号",
     "pinyin": "hào",
     "book_level": 7,
@@ -6111,7 +5949,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_132",
+    "id": "L7_114",
     "character": "合",
     "pinyin": "hé",
     "book_level": 7,
@@ -6120,7 +5958,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_133",
+    "id": "L7_115",
     "character": "何",
     "pinyin": "hé",
     "book_level": 7,
@@ -6129,34 +5967,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_134",
-    "character": "盒",
-    "pinyin": "hé",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_135",
-    "character": "黑",
-    "pinyin": "hēi",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_136",
-    "character": "很",
-    "pinyin": "hěn",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_137",
+    "id": "L7_116",
     "character": "狠",
     "pinyin": "hěn",
     "book_level": 7,
@@ -6165,7 +5976,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_138",
+    "id": "L7_117",
     "character": "恨",
     "pinyin": "hèn",
     "book_level": 7,
@@ -6174,7 +5985,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_139",
+    "id": "L7_118",
     "character": "恒",
     "pinyin": "héng",
     "book_level": 7,
@@ -6183,16 +5994,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_140",
-    "character": "红",
-    "pinyin": "hóng",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_141",
+    "id": "L7_119",
     "character": "宏",
     "pinyin": "hóng",
     "book_level": 7,
@@ -6201,7 +6003,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_142",
+    "id": "L7_120",
     "character": "厚",
     "pinyin": "hòu",
     "book_level": 7,
@@ -6210,34 +6012,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_143",
-    "character": "候",
-    "pinyin": "hòu",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_144",
-    "character": "呼",
-    "pinyin": "hū",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_145",
-    "character": "胡",
-    "pinyin": "hú",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_146",
+    "id": "L7_121",
     "character": "壶",
     "pinyin": "hú",
     "book_level": 7,
@@ -6246,16 +6021,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_147",
-    "character": "湖",
-    "pinyin": "hú",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_148",
+    "id": "L7_122",
     "character": "糊",
     "pinyin": "hú",
     "book_level": 7,
@@ -6264,7 +6030,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_149",
+    "id": "L7_123",
     "character": "互",
     "pinyin": "hù",
     "book_level": 7,
@@ -6273,7 +6039,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_150",
+    "id": "L7_124",
     "character": "护",
     "pinyin": "hù",
     "book_level": 7,
@@ -6282,7 +6048,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_151",
+    "id": "L7_125",
     "character": "户",
     "pinyin": "hù",
     "book_level": 7,
@@ -6291,16 +6057,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_152",
-    "character": "花",
-    "pinyin": "huā",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_153",
+    "id": "L7_126",
     "character": "华",
     "pinyin": "huá",
     "book_level": 7,
@@ -6309,7 +6066,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_154",
+    "id": "L7_127",
     "character": "滑",
     "pinyin": "huá",
     "book_level": 7,
@@ -6318,16 +6075,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_155",
-    "character": "画",
-    "pinyin": "huà",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_156",
+    "id": "L7_128",
     "character": "化",
     "pinyin": "huà",
     "book_level": 7,
@@ -6336,16 +6084,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_157",
-    "character": "话",
-    "pinyin": "huà",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_158",
+    "id": "L7_129",
     "character": "欢",
     "pinyin": "huān",
     "book_level": 7,
@@ -6354,7 +6093,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_159",
+    "id": "L7_130",
     "character": "怀",
     "pinyin": "huái",
     "book_level": 7,
@@ -6363,25 +6102,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_160",
-    "character": "坏",
-    "pinyin": "huài",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_161",
-    "character": "欢",
-    "pinyin": "huān",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_162",
+    "id": "L7_131",
     "character": "环",
     "pinyin": "huán",
     "book_level": 7,
@@ -6390,7 +6111,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_163",
+    "id": "L7_132",
     "character": "幻",
     "pinyin": "huàn",
     "book_level": 7,
@@ -6399,7 +6120,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_164",
+    "id": "L7_133",
     "character": "换",
     "pinyin": "huàn",
     "book_level": 7,
@@ -6408,16 +6129,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_165",
-    "character": "黄",
-    "pinyin": "huáng",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_166",
+    "id": "L7_134",
     "character": "谎",
     "pinyin": "huǎng",
     "book_level": 7,
@@ -6426,16 +6138,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_167",
-    "character": "灰",
-    "pinyin": "huī",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_168",
+    "id": "L7_135",
     "character": "恢",
     "pinyin": "huī",
     "book_level": 7,
@@ -6444,7 +6147,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_169",
+    "id": "L7_136",
     "character": "辉",
     "pinyin": "huī",
     "book_level": 7,
@@ -6453,16 +6156,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_170",
-    "character": "回",
-    "pinyin": "huí",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_171",
+    "id": "L7_137",
     "character": "毁",
     "pinyin": "huǐ",
     "book_level": 7,
@@ -6471,16 +6165,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_172",
-    "character": "会",
-    "pinyin": "huì",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_173",
+    "id": "L7_138",
     "character": "汇",
     "pinyin": "huì",
     "book_level": 7,
@@ -6489,7 +6174,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_174",
+    "id": "L7_139",
     "character": "婚",
     "pinyin": "hūn",
     "book_level": 7,
@@ -6498,7 +6183,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_175",
+    "id": "L7_140",
     "character": "活",
     "pinyin": "huó",
     "book_level": 7,
@@ -6507,16 +6192,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_176",
-    "character": "火",
-    "pinyin": "huǒ",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_177",
+    "id": "L7_141",
     "character": "伙",
     "pinyin": "huǒ",
     "book_level": 7,
@@ -6525,7 +6201,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_178",
+    "id": "L7_142",
     "character": "或",
     "pinyin": "huò",
     "book_level": 7,
@@ -6534,7 +6210,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_179",
+    "id": "L7_143",
     "character": "机",
     "pinyin": "jī",
     "book_level": 7,
@@ -6543,25 +6219,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_180",
-    "character": "鸡",
-    "pinyin": "jī",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_181",
-    "character": "奇",
-    "pinyin": "qí",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_182",
+    "id": "L7_144",
     "character": "及",
     "pinyin": "jí",
     "book_level": 7,
@@ -6570,7 +6228,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_183",
+    "id": "L7_145",
     "character": "级",
     "pinyin": "jí",
     "book_level": 7,
@@ -6579,7 +6237,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_184",
+    "id": "L7_146",
     "character": "极",
     "pinyin": "jí",
     "book_level": 7,
@@ -6588,16 +6246,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_185",
-    "character": "急",
-    "pinyin": "jí",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_186",
+    "id": "L7_147",
     "character": "挤",
     "pinyin": "jǐ",
     "book_level": 7,
@@ -6606,7 +6255,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_187",
+    "id": "L7_148",
     "character": "几",
     "pinyin": "jǐ",
     "book_level": 7,
@@ -6615,16 +6264,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_188",
-    "character": "己",
-    "pinyin": "jǐ",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_189",
+    "id": "L7_149",
     "character": "计",
     "pinyin": "jì",
     "book_level": 7,
@@ -6633,16 +6273,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_190",
-    "character": "记",
-    "pinyin": "jì",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_191",
+    "id": "L7_150",
     "character": "纪",
     "pinyin": "jì",
     "book_level": 7,
@@ -6651,7 +6282,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_192",
+    "id": "L7_151",
     "character": "技",
     "pinyin": "jì",
     "book_level": 7,
@@ -6660,7 +6291,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_193",
+    "id": "L7_152",
     "character": "系",
     "pinyin": "xì",
     "book_level": 7,
@@ -6669,7 +6300,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_194",
+    "id": "L7_153",
     "character": "际",
     "pinyin": "jì",
     "book_level": 7,
@@ -6678,7 +6309,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_195",
+    "id": "L7_154",
     "character": "继",
     "pinyin": "jì",
     "book_level": 7,
@@ -6687,25 +6318,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_196",
-    "character": "家",
-    "pinyin": "jiā",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_197",
-    "character": "加",
-    "pinyin": "jiā",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_198",
+    "id": "L7_155",
     "character": "佳",
     "pinyin": "jiā",
     "book_level": 7,
@@ -6714,16 +6327,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_199",
-    "character": "假",
-    "pinyin": "jiǎ",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_200",
+    "id": "L7_156",
     "character": "价",
     "pinyin": "jià",
     "book_level": 7,
@@ -6732,7 +6336,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_201",
+    "id": "L7_157",
     "character": "架",
     "pinyin": "jià",
     "book_level": 7,
@@ -6741,7 +6345,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_202",
+    "id": "L7_158",
     "character": "简",
     "pinyin": "jiǎn",
     "book_level": 7,
@@ -6750,7 +6354,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_203",
+    "id": "L7_159",
     "character": "减",
     "pinyin": "jiǎn",
     "book_level": 7,
@@ -6759,7 +6363,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_204",
+    "id": "L7_160",
     "character": "检",
     "pinyin": "jiǎn",
     "book_level": 7,
@@ -6768,25 +6372,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_205",
-    "character": "见",
-    "pinyin": "jiàn",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_206",
-    "character": "件",
-    "pinyin": "jiàn",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_207",
+    "id": "L7_161",
     "character": "建",
     "pinyin": "jiàn",
     "book_level": 7,
@@ -6795,7 +6381,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_208",
+    "id": "L7_162",
     "character": "健",
     "pinyin": "jiàn",
     "book_level": 7,
@@ -6804,7 +6390,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_209",
+    "id": "L7_163",
     "character": "交",
     "pinyin": "jiāo",
     "book_level": 7,
@@ -6813,16 +6399,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_210",
-    "character": "浇",
-    "pinyin": "jiāo",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_211",
+    "id": "L7_164",
     "character": "骄",
     "pinyin": "jiāo",
     "book_level": 7,
@@ -6831,7 +6408,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_212",
+    "id": "L7_165",
     "character": "胶",
     "pinyin": "jiāo",
     "book_level": 7,
@@ -6840,16 +6417,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_213",
-    "character": "角",
-    "pinyin": "jiǎo",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_214",
+    "id": "L7_166",
     "character": "脚",
     "pinyin": "jiǎo",
     "book_level": 7,
@@ -6858,7 +6426,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_215",
+    "id": "L7_167",
     "character": "饺",
     "pinyin": "jiǎo",
     "book_level": 7,
@@ -6867,16 +6435,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_216",
-    "character": "叫",
-    "pinyin": "jiào",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_217",
+    "id": "L7_168",
     "character": "较",
     "pinyin": "jiào",
     "book_level": 7,
@@ -6885,16 +6444,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_218",
-    "character": "接",
-    "pinyin": "jiē",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_219",
+    "id": "L7_169",
     "character": "街",
     "pinyin": "jiē",
     "book_level": 7,
@@ -6903,16 +6453,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_220",
-    "character": "节",
-    "pinyin": "jié",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_221",
+    "id": "L7_170",
     "character": "劫",
     "pinyin": "jié",
     "book_level": 7,
@@ -6921,7 +6462,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_222",
+    "id": "L7_171",
     "character": "杰",
     "pinyin": "jié",
     "book_level": 7,
@@ -6930,16 +6471,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_223",
-    "character": "结",
-    "pinyin": "jié",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_224",
+    "id": "L7_172",
     "character": "解",
     "pinyin": "jiě",
     "book_level": 7,
@@ -6948,16 +6480,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_225",
-    "character": "姐",
-    "pinyin": "jiě",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_226",
+    "id": "L7_173",
     "character": "借",
     "pinyin": "jiè",
     "book_level": 7,
@@ -6966,7 +6489,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_227",
+    "id": "L7_174",
     "character": "界",
     "pinyin": "jiè",
     "book_level": 7,
@@ -6975,25 +6498,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_228",
-    "character": "今",
-    "pinyin": "jīn",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_229",
-    "character": "金",
-    "pinyin": "jīn",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_230",
+    "id": "L7_175",
     "character": "斤",
     "pinyin": "jīn",
     "book_level": 7,
@@ -7002,7 +6507,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_231",
+    "id": "L7_176",
     "character": "仅",
     "pinyin": "jǐn",
     "book_level": 7,
@@ -7011,7 +6516,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_232",
+    "id": "L7_177",
     "character": "紧",
     "pinyin": "jǐn",
     "book_level": 7,
@@ -7020,7 +6525,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_233",
+    "id": "L7_178",
     "character": "尽",
     "pinyin": "jǐn",
     "book_level": 7,
@@ -7029,43 +6534,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_234",
-    "character": "进",
-    "pinyin": "jìn",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_235",
-    "character": "近",
-    "pinyin": "jìn",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_236",
-    "character": "京",
-    "pinyin": "jīng",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_237",
-    "character": "经",
-    "pinyin": "jīng",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_238",
+    "id": "L7_179",
     "character": "惊",
     "pinyin": "jīng",
     "book_level": 7,
@@ -7074,16 +6543,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_239",
-    "character": "睛",
-    "pinyin": "jīng",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_240",
+    "id": "L7_180",
     "character": "景",
     "pinyin": "jǐng",
     "book_level": 7,
@@ -7092,7 +6552,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_241",
+    "id": "L7_181",
     "character": "静",
     "pinyin": "jìng",
     "book_level": 7,
@@ -7101,7 +6561,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_242",
+    "id": "L7_182",
     "character": "境",
     "pinyin": "jìng",
     "book_level": 7,
@@ -7110,7 +6570,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_243",
+    "id": "L7_183",
     "character": "纠",
     "pinyin": "jiū",
     "book_level": 7,
@@ -7119,7 +6579,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_244",
+    "id": "L7_184",
     "character": "旧",
     "pinyin": "jiù",
     "book_level": 7,
@@ -7128,16 +6588,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_245",
-    "character": "就",
-    "pinyin": "jiù",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_246",
+    "id": "L7_185",
     "character": "橘",
     "pinyin": "jú",
     "book_level": 7,
@@ -7146,7 +6597,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_247",
+    "id": "L7_186",
     "character": "举",
     "pinyin": "jǔ",
     "book_level": 7,
@@ -7155,7 +6606,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_248",
+    "id": "L7_187",
     "character": "句",
     "pinyin": "jù",
     "book_level": 7,
@@ -7164,16 +6615,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_249",
-    "character": "具",
-    "pinyin": "jù",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_250",
+    "id": "L7_188",
     "character": "聚",
     "pinyin": "jù",
     "book_level": 7,
@@ -7182,7 +6624,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_251",
+    "id": "L7_189",
     "character": "决",
     "pinyin": "jué",
     "book_level": 7,
@@ -7191,7 +6633,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_252",
+    "id": "L7_190",
     "character": "绝",
     "pinyin": "jué",
     "book_level": 7,
@@ -7200,16 +6642,7 @@
     "is_unlocked_default": false
   },
   {
-    "id": "L7_253",
-    "character": "觉",
-    "pinyin": "jué",
-    "book_level": 7,
-    "stage_name": "自主阅读期（学霸拓展）",
-    "recommended_age": "7-8岁",
-    "is_unlocked_default": false
-  },
-  {
-    "id": "L7_254",
+    "id": "L7_191",
     "character": "军",
     "pinyin": "jūn",
     "book_level": 7,

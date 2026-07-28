@@ -111,12 +111,34 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
         await _state.put('lastSeq', 0);
         await _state.put('pullCursorFixV2', true);
       }
+      // 一次性自愈：大图头像曾导致宝宝记录被整条跳过推送。
+      // 清空 babies 清单哈希 + 游标归零，让本机重新推送净化后的宝宝记录，
+      // 并全量重拉补齐其它设备缺失的宝宝实体。
+      if (_state.get('babyAvatarSyncFixV1') != true) {
+        await _state.put('lastSeq', 0);
+        final manifest = _readManifest();
+        manifest.remove('babies');
+        await _writeManifest(manifest);
+        _markDirty('babies');
+        await _state.put('babyAvatarSyncFixV1', true);
+      }
+      // V2：名字+压缩头像作为基础字段重新推送（V1 曾把头像整段剥掉）。
+      if (_state.get('babyAvatarSyncFixV2') != true) {
+        await _state.put('lastSeq', 0);
+        final manifest = _readManifest();
+        manifest.remove('babies');
+        await _writeManifest(manifest);
+        _markDirty('babies');
+        await _state.put('babyAvatarSyncFixV2', true);
+      }
       _startWatchers();
       _startPeriodic();
       // 启动后延迟触发一次同步，避免拖慢冷启动
       Future.delayed(const Duration(seconds: 6), () => syncNow());
     } else {
       await _state.put('pullCursorFixV2', true);
+      await _state.put('babyAvatarSyncFixV1', true);
+      await _state.put('babyAvatarSyncFixV2', true);
     }
     return this;
   }
@@ -855,21 +877,44 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
       final seen = manifest.putIfAbsent(section.name, () => {});
       // 新增/变化
       for (final entry in current.entries) {
-        final hashSource = section.hashSource(entry.value);
-        final hash = _hashPayload(hashSource);
+        var payload = entry.value;
+        // 宝宝段：collect 已把头像压成可同步内容；这里只做体积兜底，
+        // 绝不能因体积把整条宝宝（含名字）跳过。
+        final hashSource = section.hashSource(payload);
+        var hash = _hashPayload(hashSource);
         if (seen[entry.key] != hash) {
-          final size = _canonicalJson(entry.value).length;
+          var size = _canonicalJson(payload).length;
           if (size > _maxRecordPayloadChars) {
-            debugPrint(
-                'FamilySync: 跳过超大记录 ${section.name}/${entry.key} ($size chars)');
-            continue;
+            if (section.name == 'babies') {
+              // 仍超限：尽量保留更小头像；再不行才去头像，但名字必须推上
+              payload = Map<String, dynamic>.from(payload);
+              final avatar = payload['avatarPath']?.toString() ?? '';
+              if (avatar.length > 8000) {
+                payload['avatarPath'] =
+                    await Baby.buildSyncAvatar(avatar, maxChars: 40000);
+              } else {
+                payload['avatarPath'] = '';
+              }
+              size = _canonicalJson(payload).length;
+              if (size > _maxRecordPayloadChars) {
+                payload['avatarPath'] = '';
+                size = _canonicalJson(payload).length;
+              }
+              hash = _hashPayload(section.hashSource(payload));
+              debugPrint(
+                  'FamilySync: 宝宝记录过大，压缩/去头像后推送 ${entry.key} ($size chars)');
+            } else {
+              debugPrint(
+                  'FamilySync: 跳过超大记录 ${section.name}/${entry.key} ($size chars)');
+              continue;
+            }
           }
           pending.add({
             'section': section.name,
             'recordId': entry.key,
             'updatedAt': now,
             'deleted': false,
-            'payload': entry.value,
+            'payload': payload,
           });
           seen[entry.key] = hash;
           manifestChanged = true;
@@ -878,6 +923,14 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
       // 删除（清单中有、当前没有 → 墓碑）
       final removedIds =
           seen.keys.where((id) => !current.containsKey(id)).toList();
+      // 宝宝段：占位宝宝不会出现在 collect 结果里，但本机仍持有该 id，
+      // 绝不能发墓碑，否则会把云端真实名字/头像删掉。
+      if (section.name == 'babies' && removedIds.isNotEmpty) {
+        final localIds = <String>{
+          for (final b in _storage.babyBox.values) b.id,
+        };
+        removedIds.removeWhere(localIds.contains);
+      }
       for (final id in removedIds) {
         pending.add({
           'section': section.name,
@@ -955,12 +1008,18 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
         try {
           for (final raw in records) {
             final record = Map<String, dynamic>.from(raw as Map);
-            final sectionName = record['section'] as String;
-            final recordId = record['recordId'] as String;
+            final sectionName = record['section']?.toString() ?? '';
+            final recordId = record['recordId']?.toString() ?? '';
+            if (sectionName.isEmpty || recordId.isEmpty) continue;
             final deleted = record['deleted'] == true;
-            final payload = record['payload'] == null
-                ? null
-                : Map<String, dynamic>.from(record['payload'] as Map);
+            Map<String, dynamic>? payload;
+            try {
+              payload = _asStringKeyedMap(record['payload']);
+            } catch (e) {
+              debugPrint(
+                  'FamilySync: 解析 $sectionName/$recordId payload 失败: $e');
+              continue;
+            }
 
             final recordSection =
                 _recordSections.firstWhereOrNull((s) => s.name == sectionName);
@@ -1015,10 +1074,80 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
 
     await _state.put('lastSeq', since);
     if (manifestChanged) await _writeManifest(manifest);
+    // 先把「只有流水/计数器、没有宝宝实体」的 ID 物化成占位宝宝，
+    // 再应用计数器；否则切换列表永远看不到这些宝宝。
+    final materialized = await _materializeMissingBabies(counters);
+    if (materialized) {
+      appliedAny = true;
+      appliedSections.add('babies');
+    }
     final countersChanged = _applyCounters(counters);
     if (appliedAny || countersChanged) {
       _reloadControllers(appliedSections);
     }
+  }
+
+  /// 从计数器 / 本地流水 / 商品 / 成长记录中找出尚未存在的 babyId，
+  /// 创建占位宝宝。用于修复「大图头像导致宝宝记录未推送」的历史数据。
+  Future<bool> _materializeMissingBabies(List<dynamic> counters) async {
+    final existing = <String>{
+      for (final b in _storage.babyBox.values) b.id,
+    };
+    final needed = <String>{};
+
+    for (final raw in counters) {
+      try {
+        final c = Map<String, dynamic>.from(raw as Map);
+        final id = c['babyId']?.toString() ?? '';
+        if (id.isNotEmpty) needed.add(id);
+      } catch (_) {}
+    }
+    for (final log in _storage.logBox.values) {
+      if (log.babyId.isNotEmpty) needed.add(log.babyId);
+    }
+    for (final product in _storage.productBox.values) {
+      final id = product.babyId;
+      if (id != null && id.isNotEmpty) needed.add(id);
+    }
+    for (final g in _storage.growthRecordBox.values) {
+      if (g.babyId.isNotEmpty) needed.add(g.babyId);
+    }
+    for (final m in _storage.milestoneRecordBox.values) {
+      if (m.babyId.isNotEmpty) needed.add(m.babyId);
+    }
+
+    final missing = needed.difference(existing);
+    if (missing.isEmpty) return false;
+
+    final nameHints = <String, String>{};
+    for (final log in _storage.logBox.values) {
+      if (!missing.contains(log.babyId)) continue;
+      // 流水描述里偶尔带宝宝名，不强依赖；占位名优先用 ID 后四位
+      nameHints.putIfAbsent(log.babyId, () => '宝宝${_shortId(log.babyId)}');
+    }
+
+    _applyingRemote = true;
+    try {
+      for (final id in missing) {
+        final placeholder = Baby(
+          id: id,
+          name: nameHints[id] ?? '宝宝${_shortId(id)}',
+          avatarPath: '',
+        );
+        await _storage.babyBox.add(placeholder);
+        debugPrint('FamilySync: 补齐缺失宝宝实体 $id (${placeholder.name})');
+      }
+    } finally {
+      _applyingRemote = false;
+    }
+    // 占位宝宝只服务本机切换列表，禁止回推——否则会把「宝宝xxxx」空头像
+    // 以 LWW 覆盖主设备上的真实名字/头像。
+    return true;
+  }
+
+  String _shortId(String id) {
+    if (id.length <= 4) return id;
+    return id.substring(id.length - 4);
   }
 
   /// 服务端计数总额 + 尚未推送的本地 delta = 本地余额
@@ -1041,8 +1170,10 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
     final byBaby = <String, Map<String, double>>{};
     for (final raw in counters) {
       final c = Map<String, dynamic>.from(raw as Map);
-      byBaby.putIfAbsent(
-              c['babyId'] as String, () => {})[c['field'] as String] =
+      final babyId = c['babyId']?.toString() ?? '';
+      final field = c['field']?.toString() ?? '';
+      if (babyId.isEmpty || field.isEmpty) continue;
+      byBaby.putIfAbsent(babyId, () => {})[field] =
           (c['total'] as num).toDouble();
     }
 
@@ -1221,11 +1352,22 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
   late final List<_RecordSection> _recordSections = [
     _RecordSection(
       name: 'babies',
-      collect: () async => {
-        for (final b in _storage.babyBox.values) b.id: b.toJson(),
+      collect: () async {
+        final result = <String, Map<String, dynamic>>{};
+        for (final b in _storage.babyBox.values) {
+          // 同步补齐的占位宝宝（仅有 ID、占位名）不要回推，
+          // 否则会覆盖主设备上的真实名字/头像。
+          if (Baby.isPlaceholderName(b.name) &&
+              Baby.normalizeIncomingAvatar(b.avatarPath).isEmpty) {
+            continue;
+          }
+          result[b.id] = await b.toSyncJson();
+        }
+        return result;
       },
       // 余额由计数器通道同步，宝宝记录的哈希剔除余额字段，
       // 避免每次加星都触发整条宝宝记录推送/LWW 抖动。
+      // 名字与压缩后的头像必须参与哈希，确保基础资料变更会推送。
       hashSource: (json) {
         final copy = Map<String, dynamic>.from(json);
         copy.remove('starCount');
@@ -1241,8 +1383,25 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
           return;
         }
         if (payload == null) return;
-        final incoming = Baby.fromJson(payload);
+        // D1/JSON 反序列化后的 Map 值类型不稳定，统一转 Map<String, dynamic>
+        final map = Map<String, dynamic>.from(payload);
+        if ((map['id']?.toString() ?? '').isEmpty) {
+          map['id'] = id;
+        }
+        final incoming = Baby.fromJson(map);
+        if (incoming.id.isEmpty) {
+          debugPrint('FamilySync: 跳过无 id 的宝宝记录');
+          return;
+        }
+        // 头像：保留压缩 base64 / assets / http；丢弃失效本机路径
+        incoming.avatarPath =
+            Baby.normalizeIncomingAvatar(incoming.avatarPath);
+
         if (existingKey == null) {
+          // 名字兜底
+          if (incoming.name.trim().isEmpty) {
+            incoming.name = '宝宝${id.length > 4 ? id.substring(id.length - 4) : id}';
+          }
           await _storage.babyBox.add(incoming);
         } else {
           final local = _storage.babyBox.get(existingKey)!;
@@ -1251,6 +1410,18 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
             ..starCount = local.starCount
             ..piggyBankBalance = local.piggyBankBalance
             ..pocketMoneyBalance = local.pocketMoneyBalance;
+          // 名字：真实名优先，占位名不覆盖本地已有真名
+          incoming.name = Baby.preferName(incoming.name, local.name);
+          // 头像：远端有可用内容用远端；否则保留本地
+          incoming.avatarPath =
+              Baby.preferAvatar(incoming.avatarPath, local.avatarPath);
+          // 性别/生日：远端空则保留本地
+          if ((incoming.gender.isEmpty || incoming.gender == 'unknown') &&
+              local.gender.isNotEmpty &&
+              local.gender != 'unknown') {
+            incoming.gender = local.gender;
+          }
+          incoming.birthDate ??= local.birthDate;
           await _storage.babyBox.put(existingKey, incoming);
         }
       },
@@ -1709,6 +1880,23 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
       },
     ),
   ];
+
+  /// 把 JSON 反序列化后的动态值稳妥转成 `Map<String, dynamic>`。
+  /// 兼容：null、已经是 Map、被二次 stringify 的 JSON 字符串。
+  Map<String, dynamic>? _asStringKeyedMap(dynamic value) {
+    if (value == null) return null;
+    if (value is Map) {
+      return Map<String, dynamic>.from(value);
+    }
+    if (value is String) {
+      final text = value.trim();
+      if (text.isEmpty) return null;
+      final decoded = jsonDecode(text);
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+    }
+    throw FormatException(
+        '期望 Map，实际为 ${value.runtimeType}');
+  }
 
   dynamic _keyOf(Box box, bool Function(dynamic) test) {
     for (final key in box.keys) {

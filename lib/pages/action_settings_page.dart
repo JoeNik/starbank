@@ -123,8 +123,12 @@ class ActionSettingsPage extends StatelessWidget {
       UserController controller, ActionItem action, int index) {
     final isPositive = action.value > 0;
 
+    // 排序后 index 会变；用 syncId（或内容指纹）做稳定 key，避免 ReorderableListView 错乱
+    final stableKey = action.syncId?.isNotEmpty == true
+        ? action.syncId!
+        : '${action.name}|${action.value}|${action.iconName}|$index';
     return Card(
-      key: ValueKey(action.name + index.toString()),
+      key: ValueKey(stableKey),
       margin: EdgeInsets.only(bottom: 12.h),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
       child: ListTile(
@@ -481,8 +485,8 @@ class ActionSettingsPage extends StatelessWidget {
       textCancel: '取消',
       confirmTextColor: Colors.white,
       buttonColor: Colors.red,
-      onConfirm: () {
-        controller.deleteAction(index);
+      onConfirm: () async {
+        await controller.deleteAction(index);
         Get.back();
       },
     );
