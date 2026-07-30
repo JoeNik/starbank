@@ -30,9 +30,22 @@ class _PoopAIPageState extends State<PoopAIPage> {
   // AI 服务（全局）
   late OpenAIService _openAIService;
 
-  // 时间范围
-  DateTime _startDate = DateTime.now().subtract(const Duration(days: 7));
-  DateTime _endDate = DateTime.now();
+  // 时间范围（均为「自然日」，时分秒已归零，语义为闭区间 [_startDate, _endDate]）
+  DateTime _startDate = _dateOnly(DateTime.now()).subtract(const Duration(days: 6));
+  DateTime _endDate = _dateOnly(DateTime.now());
+
+  /// 去掉时分秒，只保留日期部分
+  static DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
+
+  /// 时间范围覆盖的自然日天数（闭区间，至少 1 天）
+  /// 用 UTC 做差以避免夏令时导致 inDays 少算一天
+  int get _dayCount {
+    final start =
+        DateTime.utc(_startDate.year, _startDate.month, _startDate.day);
+    final end = DateTime.utc(_endDate.year, _endDate.month, _endDate.day);
+    final days = end.difference(start).inDays + 1;
+    return days < 1 ? 1 : days;
+  }
 
   // 记录
   List<PoopRecord> _records = [];
@@ -159,11 +172,15 @@ class _PoopAIPageState extends State<PoopAIPage> {
       return;
     }
 
+    // 闭区间 [_startDate 00:00, _endDate 23:59:59]
+    final rangeStart = _startDate;
+    final rangeEnd = _dateOnly(_endDate).add(const Duration(days: 1));
+
     final records = _recordBox.values
         .where((r) =>
             r.babyId == babyId &&
-            r.dateTime.isAfter(_startDate.subtract(const Duration(days: 1))) &&
-            r.dateTime.isBefore(_endDate.add(const Duration(days: 1))))
+            !r.dateTime.isBefore(rangeStart) &&
+            r.dateTime.isBefore(rangeEnd))
         .toList()
       ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
 
@@ -218,8 +235,8 @@ class _PoopAIPageState extends State<PoopAIPage> {
       }).join('\n');
 
       final userMessage = '''宝宝信息：${baby.name}
-记录时间范围：${DateFormat('yyyy年MM月dd日').format(_startDate)} 至 ${DateFormat('yyyy年MM月dd日').format(_endDate)}
-共 ${_records.length} 条记录
+记录时间范围：${DateFormat('yyyy年MM月dd日').format(_startDate)} 至 ${DateFormat('yyyy年MM月dd日').format(_endDate)}（共 $_dayCount 天）
+共 ${_records.length} 条记录，平均每天 ${(_records.length / _dayCount).toStringAsFixed(1)} 次
 
 排便记录：
 $recordsText''';
@@ -648,12 +665,17 @@ $recordsText''';
   }
 
   Widget _buildQuickDateChip(String label, int days) {
+    final today = _dateOnly(DateTime.now());
+    final start = today.subtract(Duration(days: days - 1));
+    final isActive = _startDate == start && _endDate == today;
     return ActionChip(
       label: Text(label),
+      backgroundColor: isActive ? AppTheme.primary.withValues(alpha: 0.15) : null,
       onPressed: () {
         setState(() {
-          _endDate = DateTime.now();
-          _startDate = DateTime.now().subtract(Duration(days: days));
+          // 「最近 N 天」= 含今天在内的 N 个自然日
+          _endDate = today;
+          _startDate = start;
         });
         _loadRecords();
       },
@@ -661,20 +683,29 @@ $recordsText''';
   }
 
   Future<void> _pickDate(bool isStart) async {
+    final today = _dateOnly(DateTime.now());
     final date = await showDatePicker(
       context: context,
       initialDate: isStart ? _startDate : _endDate,
       firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
+      lastDate: today,
     );
 
     if (date != null) {
       if (!mounted) return;
+      final picked = _dateOnly(date);
       setState(() {
         if (isStart) {
-          _startDate = date;
+          _startDate = picked;
+          // 保证起始日不晚于结束日
+          if (_startDate.isAfter(_endDate)) {
+            _endDate = _startDate;
+          }
         } else {
-          _endDate = date;
+          _endDate = picked;
+          if (_endDate.isBefore(_startDate)) {
+            _startDate = _endDate;
+          }
         }
       });
       _loadRecords();
@@ -682,7 +713,7 @@ $recordsText''';
   }
 
   Widget _buildRecordsSummary() {
-    final days = _endDate.difference(_startDate).inDays + 1;
+    final days = _dayCount;
     return Card(
       color: Colors.brown.shade50,
       child: Padding(
