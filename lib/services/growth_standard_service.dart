@@ -26,24 +26,28 @@ class GrowthStandardBand {
 class GrowthStandardService {
   const GrowthStandardService._();
 
-  static const sourceTitle = '国家卫健委儿童生长标准';
-  static const sourceDescription = '《7岁以下儿童生长标准》';
+  static const nationalSourceTitle = '国家卫健委《7岁以下儿童生长标准》';
+  static const whoSourceTitle = 'WHO 2007 年 5–19 岁生长参考';
+  static const sourceTitle = '国家卫健委与 WHO 儿童生长参考';
+  static const sourceDescription =
+      '0–6 岁采用国家卫健委《7岁以下儿童生长标准》；6 岁后采用 WHO 2007 年 5–19 岁生长参考。'
+      'WHO 身高年龄参考覆盖至 19 岁，体重年龄参考覆盖至 10 岁。';
+  static const whoReferenceUrl =
+      'https://www.who.int/tools/growth-reference-data-for-5to19-years';
 
   static List<GrowthStandardBand> bandsFor({
     required Baby baby,
     required GrowthMetric metric,
   }) {
     if (baby.gender != 'male' && baby.gender != 'female') return const [];
-    final data = _tableFor(metric, baby.gender);
-    return data
-        .map((row) => GrowthStandardBand(
-              ageMonths: row[0].toDouble(),
-              low: row[1].toDouble(),
-              median: row[2].toDouble(),
-              high: row[3].toDouble(),
-              sourceLabel: sourceTitle,
-            ))
-        .toList();
+    final national = _nationalTableFor(metric, baby.gender);
+    final who = _whoTableFor(metric, baby.gender);
+    return [
+      for (final row in national) _bandFromRow(row, nationalSourceTitle),
+      for (final row in who)
+        if (national.isEmpty || row[0] > national.last[0])
+          _bandFromRow(row, whoSourceTitle),
+    ];
   }
 
   static GrowthStandardBand? bandAt({
@@ -65,36 +69,27 @@ class GrowthStandardService {
     required GrowthMetric metric,
     required double ageMonths,
   }) {
-    final bands = bandsFor(baby: baby, metric: metric);
-    if (bands.isEmpty) return null;
-    if (ageMonths < bands.first.ageMonths || ageMonths > bands.last.ageMonths) {
-      return null;
-    }
-    for (var i = 0; i < bands.length - 1; i++) {
-      final a = bands[i];
-      final b = bands[i + 1];
-      if (ageMonths >= a.ageMonths && ageMonths <= b.ageMonths) {
-        final span = b.ageMonths - a.ageMonths;
-        final t = span == 0 ? 0 : (ageMonths - a.ageMonths) / span;
-        double lerp(double x, double y) => x + (y - x) * t;
-        return GrowthStandardBand(
-          ageMonths: ageMonths,
-          low: lerp(a.low, b.low),
-          median: lerp(a.median, b.median),
-          high: lerp(a.high, b.high),
-          sourceLabel: sourceTitle,
-        );
-      }
-    }
-    return bands.last;
+    if (baby.gender != 'male' && baby.gender != 'female') return null;
+    final national = _nationalTableFor(metric, baby.gender);
+    final who = _whoTableFor(metric, baby.gender);
+    final useWho = national.isNotEmpty &&
+        ageMonths > national.last[0].toDouble() &&
+        who.isNotEmpty;
+    final table = useWho ? who : national;
+    final source = useWho ? whoSourceTitle : nationalSourceTitle;
+    return _interpolate(table, ageMonths, source);
   }
 
   static String unavailableReason(GrowthMetric metric, int ageMonths) {
     if (ageMonths < 0) return '请先设置生日和性别后查看国家标准曲线';
     switch (metric) {
       case GrowthMetric.height:
+        if (ageMonths > 228) return 'WHO 身高年龄参考覆盖至 19 岁';
+        break;
       case GrowthMetric.weight:
-        if (ageMonths > 72) return '国家标准暂未覆盖 6 岁以上曲线';
+        if (ageMonths > 120) {
+          return 'WHO 体重年龄参考仅覆盖至 10 岁；青春期建议结合身高评估 BMI';
+        }
         break;
       case GrowthMetric.headCircumference:
         if (ageMonths > 60) return '国家标准头围曲线暂未覆盖 5 岁以上';
@@ -103,7 +98,52 @@ class GrowthStandardService {
     return '请先设置生日和性别后查看国家标准曲线';
   }
 
-  static List<List<num>> _tableFor(GrowthMetric metric, String gender) {
+  static GrowthStandardBand _bandFromRow(
+    List<num> row,
+    String source,
+  ) {
+    return GrowthStandardBand(
+      ageMonths: row[0].toDouble(),
+      low: row[1].toDouble(),
+      median: row[2].toDouble(),
+      high: row[3].toDouble(),
+      sourceLabel: source,
+    );
+  }
+
+  static GrowthStandardBand? _interpolate(
+    List<List<num>> table,
+    double ageMonths,
+    String source,
+  ) {
+    if (table.isEmpty ||
+        ageMonths < table.first[0] ||
+        ageMonths > table.last[0]) {
+      return null;
+    }
+    for (var i = 0; i < table.length - 1; i++) {
+      final a = table[i];
+      final b = table[i + 1];
+      final start = a[0].toDouble();
+      final end = b[0].toDouble();
+      if (ageMonths < start || ageMonths > end) continue;
+      final t = (ageMonths - start) / (end - start);
+      double lerp(num x, num y) => (x + (y - x) * t).toDouble();
+      return GrowthStandardBand(
+        ageMonths: ageMonths,
+        low: lerp(a[1], b[1]),
+        median: lerp(a[2], b[2]),
+        high: lerp(a[3], b[3]),
+        sourceLabel: source,
+      );
+    }
+    return _bandFromRow(table.last, source);
+  }
+
+  static List<List<num>> _nationalTableFor(
+    GrowthMetric metric,
+    String gender,
+  ) {
     final male = gender == 'male';
     switch (metric) {
       case GrowthMetric.height:
@@ -112,6 +152,21 @@ class GrowthStandardService {
         return male ? _weightMale : _weightFemale;
       case GrowthMetric.headCircumference:
         return male ? _headMale : _headFemale;
+    }
+  }
+
+  static List<List<num>> _whoTableFor(
+    GrowthMetric metric,
+    String gender,
+  ) {
+    final male = gender == 'male';
+    switch (metric) {
+      case GrowthMetric.height:
+        return male ? _whoHeightMale : _whoHeightFemale;
+      case GrowthMetric.weight:
+        return male ? _whoWeightMale : _whoWeightFemale;
+      case GrowthMetric.headCircumference:
+        return const [];
     }
   }
 
@@ -215,6 +270,93 @@ class GrowthStandardService {
     [60, 14.11, 18.26, 23.73],
     [66, 14.74, 19.33, 25.29],
     [72, 15.31, 20.37, 26.87],
+  ];
+
+  // WHO 2007 expanded percentile tables, sampled every 6 months.
+  // Columns: age in months, P3, P50, P97. The official monthly source tables:
+  // https://www.who.int/tools/growth-reference-data-for-5to19-years
+  static const _whoHeightMale = [
+    [72, 106.7, 116.0, 125.2],
+    [78, 109.3, 118.9, 128.5],
+    [84, 111.8, 121.7, 131.7],
+    [90, 114.3, 124.5, 134.8],
+    [96, 116.6, 127.3, 137.9],
+    [102, 119.0, 129.9, 140.9],
+    [108, 121.3, 132.6, 143.9],
+    [114, 123.5, 135.2, 146.8],
+    [120, 125.8, 137.8, 149.8],
+    [126, 128.1, 140.4, 152.7],
+    [132, 130.5, 143.1, 155.8],
+    [138, 133.0, 146.0, 159.0],
+    [144, 135.8, 149.1, 162.4],
+    [150, 138.8, 152.4, 166.1],
+    [156, 142.1, 156.0, 170.0],
+    [162, 145.4, 159.7, 173.9],
+    [168, 148.7, 163.2, 177.6],
+    [174, 151.7, 166.3, 180.9],
+    [180, 154.3, 169.0, 183.6],
+    [186, 156.5, 171.1, 185.8],
+    [192, 158.3, 172.9, 187.5],
+    [198, 159.7, 174.2, 188.7],
+    [204, 160.8, 175.2, 189.5],
+    [210, 161.5, 175.8, 190.0],
+    [216, 162.1, 176.1, 190.2],
+    [222, 162.5, 176.4, 190.3],
+    [228, 162.8, 176.5, 190.3],
+  ];
+
+  static const _whoHeightFemale = [
+    [72, 105.5, 115.1, 124.8],
+    [78, 108.0, 118.0, 127.9],
+    [84, 110.5, 120.8, 131.1],
+    [90, 113.1, 123.7, 134.3],
+    [96, 115.7, 126.6, 137.5],
+    [102, 118.3, 129.5, 140.7],
+    [108, 121.0, 132.5, 144.0],
+    [114, 123.8, 135.5, 147.3],
+    [120, 126.6, 138.6, 150.7],
+    [126, 129.5, 141.8, 154.1],
+    [132, 132.5, 145.0, 157.5],
+    [138, 135.5, 148.2, 160.9],
+    [144, 138.4, 151.2, 164.1],
+    [150, 141.0, 154.0, 167.0],
+    [156, 143.3, 156.4, 169.4],
+    [162, 145.2, 158.3, 171.4],
+    [168, 146.7, 159.8, 172.8],
+    [174, 147.9, 160.9, 173.9],
+    [180, 148.7, 161.7, 174.6],
+    [186, 149.3, 162.2, 175.0],
+    [192, 149.8, 162.5, 175.3],
+    [198, 150.0, 162.7, 175.4],
+    [204, 150.3, 162.9, 175.4],
+    [210, 150.5, 163.0, 175.5],
+    [216, 150.6, 163.1, 175.5],
+    [222, 150.8, 163.1, 175.5],
+    [228, 150.9, 163.2, 175.5],
+  ];
+
+  static const _whoWeightMale = [
+    [72, 16.11, 20.51, 26.66],
+    [78, 17.00, 21.68, 28.35],
+    [84, 17.92, 22.89, 30.13],
+    [90, 18.84, 24.14, 32.02],
+    [96, 19.76, 25.42, 34.03],
+    [102, 20.68, 26.74, 36.21],
+    [108, 21.60, 28.11, 38.56],
+    [114, 22.56, 29.57, 41.13],
+    [120, 23.58, 31.16, 43.94],
+  ];
+
+  static const _whoWeightFemale = [
+    [72, 15.51, 20.16, 27.27],
+    [78, 16.25, 21.23, 28.95],
+    [84, 17.05, 22.37, 30.75],
+    [90, 17.93, 23.64, 32.75],
+    [96, 18.90, 25.03, 34.95],
+    [102, 19.96, 26.55, 37.35],
+    [108, 21.12, 28.20, 39.96],
+    [114, 22.35, 29.97, 42.73],
+    [120, 23.68, 31.86, 45.70],
   ];
 
   static const _headMale = [

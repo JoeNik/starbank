@@ -33,6 +33,13 @@ class TuneHubService extends GetxService {
     _storage.saveValue('tunehub_api_key', key);
   }
 
+  /// 家庭同步写回通用设置后刷新内存配置。
+  void reloadFromStorage() {
+    baseUrl.value = _storage.getValue('tunehub_base_url') ??
+        'https://tunehub.sayqz.com/api';
+    apiKey.value = _storage.getValue('tunehub_api_key') ?? '';
+  }
+
   String get _randomApiKey {
     if (apiKey.value.isEmpty) return '';
     final keys =

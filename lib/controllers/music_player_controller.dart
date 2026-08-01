@@ -123,6 +123,14 @@ class MusicPlayerController extends GetxController {
     }
   }
 
+  /// 家庭同步写回歌单盒后刷新收藏与播放历史。
+  void reloadLibraryFromStorage() {
+    favorites.clear();
+    history.clear();
+    _loadFavorites();
+    _loadHistory();
+  }
+
   void toggleFavorite(MusicTrack track) {
     if (isFavorite(track)) {
       favorites.removeWhere((element) => element.id == track.id);

@@ -124,8 +124,11 @@ class AppModeController extends GetxController {
   }
 
   AppMode _readMergedMode() {
-    final raw = _settingsBox?.get(_modeKey) ?? _legacySettingsBox?.get(_modeKey);
-    return raw?.toString() == AppMode.child.name ? AppMode.child : AppMode.parent;
+    final raw =
+        _settingsBox?.get(_modeKey) ?? _legacySettingsBox?.get(_modeKey);
+    return raw?.toString() == AppMode.child.name
+        ? AppMode.child
+        : AppMode.parent;
   }
 
   Future<void> _writeToBoth(String key, dynamic value) async {
@@ -164,6 +167,12 @@ class AppModeController extends GetxController {
     await (_initFuture ??= _initSettings());
   }
 
+  /// 云端同步写回设置盒后，刷新内存中的模式与密码状态。
+  Future<void> reloadFromStorage() async {
+    await ensureInitialized();
+    _refreshCachedState();
+  }
+
   /// 是否是家长模式
   bool get isParentMode => currentMode.value == AppMode.parent;
 
@@ -174,7 +183,8 @@ class AppModeController extends GetxController {
   bool get hasPassword => _hasPassword.value;
 
   /// 获取密码哈希（用于云端备份）
-  String? get passwordHash => _passwordHash.value ?? _readMergedString(_passwordKey);
+  String? get passwordHash =>
+      _passwordHash.value ?? _readMergedString(_passwordKey);
 
   /// 设置密码（SHA256 加密）
   Future<void> setPassword(String password) async {

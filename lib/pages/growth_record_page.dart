@@ -241,12 +241,16 @@ class _GrowthRecordPageState extends State<GrowthRecordPage>
         ),
         SizedBox(height: 18.h),
         Center(
-          child: Text(
-            '曲线根据《${GrowthStandardService.sourceTitle}》绘制',
-            style: TextStyle(
-              fontSize: 14.sp,
-              fontWeight: FontWeight.w800,
-              color: AppTheme.textMain,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20.w),
+            child: Text(
+              _growthReferenceCaption(metric),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.textMain,
+              ),
             ),
           ),
         ),
@@ -514,6 +518,14 @@ class _GrowthRecordPageState extends State<GrowthRecordPage>
     }
   }
 
+  String _growthReferenceCaption(GrowthMetric metric) {
+    return switch (metric) {
+      GrowthMetric.height => '参考数据：国家卫健委 0–6 岁；WHO 6–19 岁',
+      GrowthMetric.weight => '参考数据：国家卫健委 0–6 岁；WHO 6–10 岁',
+      GrowthMetric.headCircumference => '参考数据：国家卫健委 0–5 岁',
+    };
+  }
+
   String _formatGrowthValue(double value) {
     final text = value.toStringAsFixed(2);
     if (text.endsWith('00')) return value.toStringAsFixed(1);
@@ -524,8 +536,11 @@ class _GrowthRecordPageState extends State<GrowthRecordPage>
   void _showGrowthStandardInfo() {
     Get.defaultDialog(
       title: GrowthStandardService.sourceTitle,
-      middleText:
-          '曲线使用${GrowthStandardService.sourceDescription}常用月龄检查点绘制，浅蓝色区域为 3%-97% 参考范围，中间蓝线为 50%。\n\n仅作家庭记录参考，不能替代医生诊断。',
+      middleText: '${GrowthStandardService.sourceDescription}\n\n'
+          '浅蓝色区域为 3%–97% 参考范围，中间蓝线为 50%。'
+          '不同来源的参考曲线分段绘制，不做跨来源连线。'
+          '实测记录超出参考数据覆盖年龄后仍会显示，但该区间没有标准参考带。\n\n'
+          '仅作家庭记录参考，不能替代医生诊断。',
       textConfirm: '知道了',
       onConfirm: Get.back,
     );
@@ -1221,7 +1236,8 @@ class _GrowthChartState extends State<GrowthChart> {
         oldWidget.baby.gender != widget.baby.gender ||
         oldWidget.baby.birthDate != widget.baby.birthDate) {
       _resetViewport();
-    } else if (!widget.records.any((record) => record.id == _selectedRecordId)) {
+    } else if (!widget.records
+        .any((record) => record.id == _selectedRecordId)) {
       _selectedRecordId = null;
     }
   }
@@ -1295,17 +1311,24 @@ class _GrowthChartState extends State<GrowthChart> {
   }
 
   void _ensureViewport(List<GrowthStandardBand> bands) {
-    final fullX = _ChartRange(bands.first.ageMonths, bands.last.ageMonths);
+    final allPoints = _allRecordPoints();
+    final firstMonth = allPoints.isEmpty
+        ? bands.first.ageMonths
+        : math.min(bands.first.ageMonths, allPoints.first.ageMonths);
+    final lastMonth = growthChartMaxAgeMonths(
+      bands.last.ageMonths,
+      allPoints.map((point) => point.ageMonths),
+    );
+    final fullX = _ChartRange(firstMonth, lastMonth);
     final samples = _sampleGrowthBands(
       baby: widget.baby,
       metric: widget.metric,
       range: fullX,
     );
-    final points = _recordPoints(fullX);
     final fullY = _growthValueRange(
       widget.metric,
       samples,
-      points.map((point) => point.value).toList(),
+      allPoints.map((point) => point.value).toList(),
     );
 
     if (_xRange == null ||
@@ -1324,6 +1347,15 @@ class _GrowthChartState extends State<GrowthChart> {
   }
 
   List<_GrowthPoint> _recordPoints(_ChartRange xRange) {
+    return _allRecordPoints()
+        .where(
+          (point) =>
+              point.ageMonths >= xRange.min && point.ageMonths <= xRange.max,
+        )
+        .toList();
+  }
+
+  List<_GrowthPoint> _allRecordPoints() {
     final points = widget.records
         .map((record) {
           final value = _growthMetricValue(record, widget.metric);
@@ -1332,10 +1364,6 @@ class _GrowthChartState extends State<GrowthChart> {
           return _GrowthPoint(age, value, record);
         })
         .whereType<_GrowthPoint>()
-        .where(
-          (point) =>
-              point.ageMonths >= xRange.min && point.ageMonths <= xRange.max,
-        )
         .toList();
     points.sort((a, b) => a.ageMonths.compareTo(b.ageMonths));
     return points;
@@ -1379,7 +1407,8 @@ class _GrowthChartState extends State<GrowthChart> {
     _ChartRange yRange,
   ) {
     return _recordPoints(xRange)
-        .where((point) => point.value >= yRange.min && point.value <= yRange.max)
+        .where(
+            (point) => point.value >= yRange.min && point.value <= yRange.max)
         .toList();
   }
 
@@ -1395,7 +1424,8 @@ class _GrowthChartState extends State<GrowthChart> {
     final point = _visibleRecordPoints(xRange, yRange)
         .firstWhereOrNull((item) => item.record.id == selectedRecordId);
     if (point == null) return null;
-    return _SelectedGrowthPoint(point, _chartOffset(size, xRange, yRange, point));
+    return _SelectedGrowthPoint(
+        point, _chartOffset(size, xRange, yRange, point));
   }
 
   Offset _chartOffset(
@@ -1536,7 +1566,8 @@ class _GrowthPointInfoOverlay extends StatelessWidget {
     final metrics = _growthRecordMetrics(record);
     final note = record.note.trim();
     final horizontalMargin = 8.w;
-    final availableWidth = math.max(0.0, chartSize.width - horizontalMargin * 2);
+    final availableWidth =
+        math.max(0.0, chartSize.width - horizontalMargin * 2);
     final panelWidth = math.min(276.w, availableWidth);
     final left = _clampDouble(
       offset.dx - panelWidth / 2,
@@ -1677,6 +1708,14 @@ class _ChartRange {
   @override
   int get hashCode =>
       Object.hash(min.toStringAsFixed(4), max.toStringAsFixed(4));
+}
+
+@visibleForTesting
+double growthChartMaxAgeMonths(
+  double referenceMaxAgeMonths,
+  Iterable<double> recordAgeMonths,
+) {
+  return recordAgeMonths.fold(referenceMaxAgeMonths, math.max);
 }
 
 Rect _growthChartPlotRect(Size size) {
@@ -1898,8 +1937,8 @@ class _GrowthChartPainter extends CustomPainter {
       metric: metric,
       range: visibleXRange,
     );
-    if (samples.length < 2) {
-      _drawCenteredText(canvas, size, '当前年龄暂不在国家标准范围内');
+    if (samples.isEmpty && points.isEmpty) {
+      _drawCenteredText(canvas, size, '当前可视区间无参考数据或实测记录');
       return;
     }
 
@@ -1922,10 +1961,14 @@ class _GrowthChartPainter extends CustomPainter {
     _drawGrid(canvas, rect, visibleXRange, visibleYRange);
     canvas.save();
     canvas.clipRect(rect);
-    _drawStandardBand(canvas, samples, chartPoint);
+    if (samples.length >= 2) {
+      _drawStandardBand(canvas, samples, chartPoint);
+    }
     _drawRecordLine(canvas, points, chartPoint);
     canvas.restore();
-    _drawPercentileLabels(canvas, rect, samples.last, chartPoint);
+    if (samples.isNotEmpty) {
+      _drawPercentileLabels(canvas, rect, samples.last, chartPoint);
+    }
   }
 
   void _drawGrid(
@@ -1991,6 +2034,26 @@ class _GrowthChartPainter extends CustomPainter {
   }
 
   void _drawStandardBand(
+    Canvas canvas,
+    List<GrowthStandardBand> samples,
+    Offset Function(double month, double value) point,
+  ) {
+    final segments = <List<GrowthStandardBand>>[];
+    for (final sample in samples) {
+      if (segments.isEmpty ||
+          segments.last.last.sourceLabel != sample.sourceLabel) {
+        segments.add([sample]);
+      } else {
+        segments.last.add(sample);
+      }
+    }
+    for (final segment in segments) {
+      if (segment.length < 2) continue;
+      _drawStandardBandSegment(canvas, segment, point);
+    }
+  }
+
+  void _drawStandardBandSegment(
     Canvas canvas,
     List<GrowthStandardBand> samples,
     Offset Function(double month, double value) point,
@@ -2117,7 +2180,7 @@ class _GrowthChartPainter extends CustomPainter {
       _drawText(
         canvas,
         item.$1,
-        Offset(rect.right + 8, p.dy),
+        Offset(math.min(rect.right + 8, p.dx + 8), p.dy),
         style,
         align: _TextAlign.leftCenter,
       );

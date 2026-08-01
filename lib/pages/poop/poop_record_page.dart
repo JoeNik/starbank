@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -6,6 +8,7 @@ import 'package:intl/intl.dart';
 import '../../models/poop_record.dart';
 import '../../controllers/user_controller.dart';
 import '../../controllers/app_mode_controller.dart';
+import '../../services/storage_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/toast_utils.dart';
 import 'poop_ai_page.dart';
@@ -31,6 +34,7 @@ class _PoopRecordPageState extends State<PoopRecordPage> {
   final Rx<DateTime> _displayMonth = DateTime.now().obs;
 
   late Box<PoopRecord> _recordBox;
+  StreamSubscription<BoxEvent>? _recordSubscription;
   bool _isLoading = true;
   String? _loadError;
 
@@ -42,11 +46,11 @@ class _PoopRecordPageState extends State<PoopRecordPage> {
 
   Future<void> _initData() async {
     try {
-      // 注册适配器（如果还未注册）
-      if (!Hive.isAdapterRegistered(11)) {
-        Hive.registerAdapter(PoopRecordAdapter());
-      }
-      _recordBox = await Hive.openBox<PoopRecord>('poop_records');
+      _recordBox = Get.find<StorageService>().poopRecordBox;
+      _recordSubscription = _recordBox.watch().listen((_) {
+        if (!mounted) return;
+        _tryLoadRecords(showToast: false);
+      });
       _tryLoadRecords(showToast: false);
       if (!mounted) return;
       setState(() => _isLoading = false);
@@ -60,6 +64,12 @@ class _PoopRecordPageState extends State<PoopRecordPage> {
       });
       ToastUtils.showError('便便记录数据读取失败');
     }
+  }
+
+  @override
+  void dispose() {
+    _recordSubscription?.cancel();
+    super.dispose();
   }
 
   void _loadRecords() {
@@ -775,7 +785,8 @@ class _PoopRecordPageState extends State<PoopRecordPage> {
     return _clampDateTime(candidate, firstDate, now);
   }
 
-  DateTime _clampDateTime(DateTime value, DateTime firstDate, DateTime lastDate) {
+  DateTime _clampDateTime(
+      DateTime value, DateTime firstDate, DateTime lastDate) {
     if (value.isBefore(firstDate)) {
       return firstDate;
     }

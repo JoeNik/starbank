@@ -9,6 +9,7 @@ import '../../models/ai_chat.dart';
 import '../../models/openai_config.dart';
 import '../../controllers/user_controller.dart';
 import '../../services/openai_service.dart';
+import '../../services/storage_service.dart';
 import '../../theme/app_theme.dart';
 import '../openai_settings_page.dart';
 import '../../widgets/toast_utils.dart';
@@ -31,7 +32,8 @@ class _PoopAIPageState extends State<PoopAIPage> {
   late OpenAIService _openAIService;
 
   // 时间范围（均为「自然日」，时分秒已归零，语义为闭区间 [_startDate, _endDate]）
-  DateTime _startDate = _dateOnly(DateTime.now()).subtract(const Duration(days: 6));
+  DateTime _startDate =
+      _dateOnly(DateTime.now()).subtract(const Duration(days: 6));
   DateTime _endDate = _dateOnly(DateTime.now());
 
   /// 去掉时分秒，只保留日期部分
@@ -104,14 +106,11 @@ class _PoopAIPageState extends State<PoopAIPage> {
       _openAIService = Get.find<OpenAIService>();
 
       // 打开数据库
-      if (!Hive.isAdapterRegistered(11)) {
-        Hive.registerAdapter(PoopRecordAdapter());
-      }
       if (!Hive.isAdapterRegistered(12)) {
         Hive.registerAdapter(AIChatAdapter());
       }
 
-      _recordBox = await Hive.openBox<PoopRecord>('poop_records');
+      _recordBox = Get.find<StorageService>().poopRecordBox;
       _chatBox = await Hive.openBox<AIChat>('ai_chats');
       _settingsBox = await Hive.openBox('poop_ai_settings');
 
@@ -242,11 +241,8 @@ class _PoopAIPageState extends State<PoopAIPage> {
 $recordsText''';
 
       // 取最近 N 条历史（时间升序，最旧的在前，作为早期上下文）
-      final contextHistory = _chatHistory
-          .take(_maxHistoryContext)
-          .toList()
-          .reversed
-          .toList();
+      final contextHistory =
+          _chatHistory.take(_maxHistoryContext).toList().reversed.toList();
 
       // 构建多轮消息数组
       final messages = <Map<String, dynamic>>[
@@ -401,7 +397,8 @@ $recordsText''';
                     SizedBox(width: 6.w),
                     Text(
                       '将结合最近 ${_chatHistory.length.clamp(1, _maxHistoryContext)} 次历史分析，给出趋势性建议',
-                      style: TextStyle(fontSize: 12.sp, color: Colors.purple.shade700),
+                      style: TextStyle(
+                          fontSize: 12.sp, color: Colors.purple.shade700),
                     ),
                   ],
                 ),
@@ -670,7 +667,8 @@ $recordsText''';
     final isActive = _startDate == start && _endDate == today;
     return ActionChip(
       label: Text(label),
-      backgroundColor: isActive ? AppTheme.primary.withValues(alpha: 0.15) : null,
+      backgroundColor:
+          isActive ? AppTheme.primary.withValues(alpha: 0.15) : null,
       onPressed: () {
         setState(() {
           // 「最近 N 天」= 含今天在内的 N 个自然日

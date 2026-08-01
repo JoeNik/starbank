@@ -14,7 +14,6 @@ import '../controllers/app_mode_controller.dart';
 import '../models/cftts_config.dart';
 import '../models/openai_config.dart';
 import '../models/openai_tts_config.dart';
-import '../models/poop_record.dart';
 import '../services/encyclopedia_service.dart';
 import '../services/quiz_service.dart';
 import '../services/story_management_service.dart';
@@ -769,7 +768,7 @@ class WebDavBackupV2Service {
         _storage.babyBox.values.map((e) => e.toJson()).toList();
 
     try {
-      final poopBox = await Hive.openBox<PoopRecord>('poop_records');
+      final poopBox = _storage.poopRecordBox;
       backupData['poopRecords'] =
           poopBox.values.map((e) => e.toJson()).toList();
     } catch (_) {

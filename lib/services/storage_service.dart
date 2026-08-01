@@ -16,6 +16,7 @@ import '../models/encyclopedia_config.dart';
 import '../models/encyclopedia_explanation_cache.dart';
 import '../models/growth_record.dart';
 import '../models/milestone_record.dart';
+import '../models/poop_record.dart';
 import '../models/baby_cloud_source.dart';
 import '../models/baby_cloud_media.dart';
 import '../models/baby_cloud_upload_task.dart';
@@ -30,6 +31,7 @@ class StorageService extends GetxService {
   late Box<Playlist> playlistBox;
   late Box<GrowthRecord> growthRecordBox;
   late Box<MilestoneRecord> milestoneRecordBox;
+  late Box<PoopRecord> poopRecordBox;
   late Box<BabyCloudSource> babyCloudSourceBox;
   late Box<BabyCloudMedia> babyCloudMediaBox;
   late Box<BabyCloudEntry> babyCloudEntryBox;
@@ -52,6 +54,7 @@ class StorageService extends GetxService {
     _registerAdapter(BabyAdapter(), 'BabyAdapter');
     _registerAdapter(MusicTrackAdapter(), 'MusicTrackAdapter');
     _registerAdapter(PlaylistAdapter(), 'PlaylistAdapter');
+    _registerAdapter(PoopRecordAdapter(), 'PoopRecordAdapter');
     debugPrint('✅ 基础适配器注册完成');
 
     // Quiz and Story Adapters (安全注册,避免重复)
@@ -143,6 +146,7 @@ class StorageService extends GetxService {
     growthRecordBox = await _openRecoverableBox<GrowthRecord>('growth_records');
     milestoneRecordBox =
         await _openRecoverableBox<MilestoneRecord>('milestone_records');
+    poopRecordBox = await Hive.openBox<PoopRecord>('poop_records');
     babyCloudSourceBox =
         await _openRecoverableBox<BabyCloudSource>('baby_cloud_sources');
     babyCloudMediaBox =

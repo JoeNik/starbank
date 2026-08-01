@@ -680,6 +680,7 @@ class QuizService extends GetxService {
     return {
       'config': config.value?.toJson(),
       'questions': questions.map((q) => q.toJson()).toList(),
+      'playRecords': Map<String, dynamic>.from(_playRecordBox.toMap()),
     };
   }
 
@@ -703,6 +704,15 @@ class QuizService extends GetxService {
         await _questionBox.put(question.id, question);
       }
       questions.assignAll(_questionBox.values.toList());
+    }
+
+    if (data['playRecords'] != null) {
+      await _playRecordBox.clear();
+      final records = Map<String, dynamic>.from(data['playRecords'] as Map);
+      for (final entry in records.entries) {
+        await _playRecordBox.put(entry.key, entry.value);
+      }
+      _loadTodayPlayCount();
     }
   }
 }

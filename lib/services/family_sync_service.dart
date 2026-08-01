@@ -8,27 +8,37 @@ import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
+import '../controllers/app_mode_controller.dart';
+import '../controllers/music_player_controller.dart';
 import '../controllers/user_controller.dart';
 import '../models/action_item.dart';
 import '../models/ai_chat.dart';
 import '../models/baby.dart';
 import '../models/baby_cloud_source.dart';
 import '../models/cftts_config.dart';
+import '../models/encyclopedia_config.dart';
+import '../models/encyclopedia_question.dart';
 import '../models/growth_record.dart';
 import '../models/log.dart';
 import '../models/milestone_record.dart';
+import '../models/music/playlist.dart';
+import '../models/new_year_story.dart';
 import '../models/openai_config.dart';
 import '../models/openai_tts_config.dart';
 import '../models/poop_record.dart';
 import '../models/product.dart';
+import '../models/quiz_config.dart';
+import '../models/quiz_question.dart';
 import '../models/story_session.dart';
 import '../models/user_profile.dart';
 import '../services/baby_cloud_service.dart';
 import '../services/encyclopedia_service.dart';
+import '../services/pinyin_audio_service.dart';
 import '../services/quiz_service.dart';
 import '../services/storage_service.dart';
 import '../services/story_management_service.dart';
 import '../services/tts_service.dart';
+import '../services/tunehub_service.dart';
 import '../services/webdav_backup_v2_service.dart';
 import '../utils/sync_ids.dart';
 
@@ -53,6 +63,7 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
   // 除 v2 备份白名单外，家庭同步额外纳入的 settingsBox 键
   static const List<String> _extraSettingsKeys = [
     'baby_cloud_auto_cache_cleanup_days',
+    'parent_password_hash',
   ];
   // 每 N 次自动同步做一次全量校验（兜底未被监听捕获的变更）；手动同步总是全量
   static const int _fullVerifyEvery = 5;
@@ -347,10 +358,8 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
       await _storage.productBox.clear();
       await _storage.growthRecordBox.clear();
       await _storage.milestoneRecordBox.clear();
-      try {
-        final poopBox = await Hive.openBox<PoopRecord>('poop_records');
-        await poopBox.clear();
-      } catch (_) {}
+      await _storage.poopRecordBox.clear();
+      await _storage.playlistBox.clear();
       try {
         final chatBox = await Hive.openBox<dynamic>('ai_chats');
         await chatBox.clear();
@@ -479,6 +488,8 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
     watch(_storage.productBox, 'products');
     watch(_storage.growthRecordBox, 'growth_records');
     watch(_storage.milestoneRecordBox, 'milestone_records');
+    watch(_storage.poopRecordBox, 'poop_records');
+    watch(_storage.playlistBox, 'music_playlists');
     watch(_storage.babyCloudSourceBox, 'baby_cloud_sources');
     watch(_storage.userBox, 'user_profile');
     // settingsBox 里有大量高频写入的本地状态键（浏览位置等），
@@ -486,20 +497,52 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
     _watchSubs.add(_storage.settingsBox.watch().listen((event) {
       if (_applyingRemote) return;
       final key = event.key?.toString() ?? '';
-      if (WebDavBackupV2Service.shouldBackupGenericSetting(key)) {
+      if (WebDavBackupV2Service.shouldBackupGenericSetting(key) ||
+          _extraSettingsKeys.contains(key)) {
         _markDirty('settings');
       }
     }));
-    // 便便记录：其他页面均以 Box<PoopRecord> 打开，这里保持同类型
-    unawaited(() async {
-      try {
-        final box = Hive.isBoxOpen('poop_records')
-            ? Hive.box<PoopRecord>('poop_records')
-            : await Hive.openBox<PoopRecord>('poop_records');
-        if (_watchSubs.isEmpty) return; // 已 stop
-        watch(box, 'poop_records');
-      } catch (_) {}
-    }());
+
+    void watchIfOpen<T>(String boxName, String section) {
+      if (Hive.isBoxOpen(boxName)) {
+        watch(Hive.box<T>(boxName), section);
+      }
+    }
+
+    // 对应服务均在 FamilySyncService 之前完成初始化；直接监听已打开的盒，
+    // 避免配置与内容变更要等到周期性全量校验才同步。
+    watchIfOpen<AIChat>('ai_chats', 'ai_chats');
+    watchIfOpen<StorySession>('story_sessions', 'story_sessions');
+    watchIfOpen<dynamic>('tts_settings', 'tts_settings');
+    watchIfOpen<dynamic>('poop_ai_settings', 'poop_ai_settings');
+    watchIfOpen<dynamic>('growth_record_settings', 'growth_record_settings');
+    watchIfOpen<dynamic>(
+      'milestone_record_settings',
+      'milestone_record_settings',
+    );
+    watchIfOpen<dynamic>('story_game_config', 'story_game_config');
+    watchIfOpen<dynamic>('hanzi_learning_config', 'hanzi_learning_config');
+    watchIfOpen<OpenAIConfig>('openai_configs', 'openai_configs');
+    watchIfOpen<CfttsConfig>('cftts_config_box', 'cftts_config');
+    watchIfOpen<OpenAITtsConfig>(
+      'openai_tts_config_box',
+      'openai_tts_config',
+    );
+    watchIfOpen<QuizConfig>('quiz_config', 'quiz');
+    watchIfOpen<QuizQuestion>('quiz_questions', 'quiz');
+    watchIfOpen<dynamic>('quiz_play_record', 'quiz_play');
+    watchIfOpen<EncyclopediaConfig>('encyclopedia_config', 'encyclopedia');
+    watchIfOpen<EncyclopediaQuestion>(
+      'encyclopedia_questions',
+      'encyclopedia',
+    );
+    watchIfOpen<dynamic>('encyclopedia_play_record', 'encyclopedia_play');
+    watchIfOpen<NewYearStory>('new_year_stories', 'new_year_stories');
+    watchIfOpen<dynamic>('custom_riddles', 'custom_riddles');
+    watchIfOpen<dynamic>('app_settings', 'app_settings');
+    watchIfOpen<dynamic>('tunehub_config', 'tunehub_config');
+    watchIfOpen<dynamic>('player_settings', 'player_settings');
+    watchIfOpen<dynamic>('pinyin_audio_settings', 'pinyin_audio_settings');
     // 测验题库 / 百科题库通过服务内存列表感知变化
     if (Get.isRegistered<QuizService>()) {
       _everWorkers.add(ever(Get.find<QuizService>().questions, (_) {
@@ -511,7 +554,7 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
         if (!_applyingRemote) _markDirty('encyclopedia');
       }));
     }
-    // 其余数据段（AI 聊天/故事/各类配置盒）由周期性全量校验兜底
+    // 未在当前启动流程打开的可选盒仍由周期性全量校验兜底。
   }
 
   void _stopWatchers() {
@@ -1115,6 +1158,9 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
     for (final m in _storage.milestoneRecordBox.values) {
       if (m.babyId.isNotEmpty) needed.add(m.babyId);
     }
+    for (final p in _storage.poopRecordBox.values) {
+      if (p.babyId.isNotEmpty) needed.add(p.babyId);
+    }
 
     final missing = needed.difference(existing);
     if (missing.isEmpty) return false;
@@ -1247,6 +1293,37 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
         debugPrint('FamilySync: 刷新 TTS 设置失败: $e');
       }
     }
+    if (appliedSections.contains('music_playlists')) {
+      try {
+        if (Get.isRegistered<MusicPlayerController>()) {
+          Get.find<MusicPlayerController>().reloadLibraryFromStorage();
+        }
+      } catch (e) {
+        debugPrint('FamilySync: 刷新音乐收藏/历史失败: $e');
+      }
+    }
+    if (appliedSections.contains('settings') ||
+        appliedSections.contains('app_settings')) {
+      try {
+        if (Get.isRegistered<AppModeController>()) {
+          unawaited(Get.find<AppModeController>().reloadFromStorage());
+        }
+        if (Get.isRegistered<TuneHubService>()) {
+          Get.find<TuneHubService>().reloadFromStorage();
+        }
+      } catch (e) {
+        debugPrint('FamilySync: 刷新应用设置失败: $e');
+      }
+    }
+    if (appliedSections.contains('pinyin_audio_settings')) {
+      try {
+        if (Get.isRegistered<PinyinAudioService>()) {
+          unawaited(Get.find<PinyinAudioService>().reloadSettings());
+        }
+      } catch (e) {
+        debugPrint('FamilySync: 刷新拼音音频设置失败: $e');
+      }
+    }
   }
 
   // ---------------------------------------------------------------------
@@ -1309,11 +1386,11 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
           _storage.growthRecordBox.values.map((e) => e.toJson()).toList(),
       'milestoneRecords':
           _storage.milestoneRecordBox.values.map((e) => e.toJson()).toList(),
+      'poopRecords':
+          _storage.poopRecordBox.values.map((e) => e.toJson()).toList(),
+      'musicPlaylists':
+          _storage.playlistBox.values.map((e) => e.toJson()).toList(),
     };
-    try {
-      final poopBox = await Hive.openBox<PoopRecord>('poop_records');
-      data['poopRecords'] = poopBox.values.map((e) => e.toJson()).toList();
-    } catch (_) {}
     await file.writeAsString(jsonEncode(data), flush: true);
     return file.path;
   }
@@ -1394,13 +1471,13 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
           return;
         }
         // 头像：保留压缩 base64 / assets / http；丢弃失效本机路径
-        incoming.avatarPath =
-            Baby.normalizeIncomingAvatar(incoming.avatarPath);
+        incoming.avatarPath = Baby.normalizeIncomingAvatar(incoming.avatarPath);
 
         if (existingKey == null) {
           // 名字兜底
           if (incoming.name.trim().isEmpty) {
-            incoming.name = '宝宝${id.length > 4 ? id.substring(id.length - 4) : id}';
+            incoming.name =
+                '宝宝${id.length > 4 ? id.substring(id.length - 4) : id}';
           }
           await _storage.babyBox.add(incoming);
         } else {
@@ -1539,23 +1616,31 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
     ),
     _RecordSection(
       name: 'poop_records',
-      collect: () async {
-        try {
-          final box = await Hive.openBox<PoopRecord>('poop_records');
-          return {for (final p in box.values) p.id: p.toJson()};
-        } catch (_) {
-          return {};
-        }
+      collect: () async => {
+        for (final p in _storage.poopRecordBox.values) p.id: p.toJson(),
       },
       apply: (id, payload, deleted) async {
-        final box = await Hive.openBox<PoopRecord>('poop_records');
         if (deleted) {
-          // 便便记录以 id 作为 Hive key 存储
-          await box.delete(id);
+          await _storage.poopRecordBox.delete(id);
           return;
         }
         if (payload == null) return;
-        await box.put(id, PoopRecord.fromJson(payload));
+        await _storage.poopRecordBox.put(id, PoopRecord.fromJson(payload));
+      },
+    ),
+    _RecordSection(
+      name: 'music_playlists',
+      collect: () async => {
+        for (final p in _storage.playlistBox.values) p.id: p.toJson(),
+      },
+      apply: (id, payload, deleted) async {
+        if (deleted) {
+          await _storage.playlistBox.delete(id);
+          return;
+        }
+        if (payload == null) return;
+        final playlist = Playlist.fromJson(payload);
+        await _storage.playlistBox.put(playlist.id, playlist);
       },
     ),
     _RecordSection(
@@ -1681,14 +1766,28 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
     ),
     _SnapshotSection(
       name: 'user_profile',
-      collect: () async =>
-          _storage.userBox.values.map((e) => e.toJson()).toList(),
+      collect: () async {
+        final result = <Map<String, dynamic>>[];
+        for (final profile in _storage.userBox.values) {
+          final json = profile.toJson();
+          json['avatarPath'] = await Baby.buildSyncAvatar(profile.avatarPath);
+          result.add(json);
+        }
+        return result;
+      },
       apply: (data) async {
         if (data is! List || data.isEmpty) return;
+        final localProfiles = _storage.userBox.values.toList();
         await _storage.userBox.clear();
-        for (final item in data) {
-          await _storage.userBox.add(
-              UserProfile.fromJson(Map<String, dynamic>.from(item as Map)));
+        for (var i = 0; i < data.length; i++) {
+          final incoming = UserProfile.fromJson(
+            Map<String, dynamic>.from(data[i] as Map),
+          );
+          final localAvatar =
+              i < localProfiles.length ? localProfiles[i].avatarPath : '';
+          incoming.avatarPath =
+              Baby.preferAvatar(incoming.avatarPath, localAvatar);
+          await _storage.userBox.add(incoming);
         }
       },
     ),
@@ -1699,17 +1798,17 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
       'milestone_record_settings',
       'story_game_config',
       'hanzi_learning_config',
+      'app_settings',
+      'tunehub_config',
+      'player_settings',
+      'pinyin_audio_settings',
     ])
       _SnapshotSection(
         name: boxName,
         collect: () async {
-          try {
-            final box = await Hive.openBox(boxName);
-            return Map<String, dynamic>.from(
-                box.toMap().map((k, v) => MapEntry(k.toString(), v)));
-          } catch (_) {
-            return <String, dynamic>{};
-          }
+          final box = await Hive.openBox(boxName);
+          return Map<String, dynamic>.from(
+              box.toMap().map((k, v) => MapEntry(k.toString(), v)));
         },
         apply: (data) async {
           if (data is! Map) return;
@@ -1797,16 +1896,40 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
       collect: () async {
         if (!Get.isRegistered<QuizService>()) return <String, dynamic>{};
         final quiz = Get.find<QuizService>();
+        final data = quiz.exportData();
+        data.remove('playRecords');
+        final questions = (data['questions'] as List<dynamic>).map((item) {
+          final json = Map<String, dynamic>.from(item as Map);
+          // 题图是可再生成的本地缓存，不进入家庭同步。
+          json
+            ..['imagePath'] = null
+            ..['imageStatus'] = null
+            ..['imageError'] = null;
+          return json;
+        }).toList();
         return {
-          // 直接导出题目 JSON：AI 生成的图片不做 base64 内联、不参与同步
-          'questions': quiz.questions.map((q) => q.toJson()).toList(),
-          if (quiz.config.value != null) 'config': quiz.config.value!.toJson(),
+          ...data,
+          'questions': questions,
         };
       },
       apply: (data) async {
         if (data is! Map || !Get.isRegistered<QuizService>()) return;
         await Get.find<QuizService>()
             .importData(Map<String, dynamic>.from(data));
+      },
+    ),
+    _SnapshotSection(
+      name: 'quiz_play',
+      collect: () async {
+        if (!Get.isRegistered<QuizService>()) return <String, dynamic>{};
+        final data = Get.find<QuizService>().exportData();
+        return {'playRecords': data['playRecords']};
+      },
+      apply: (data) async {
+        if (data is! Map || !Get.isRegistered<QuizService>()) return;
+        await Get.find<QuizService>().importData(
+          {'playRecords': data['playRecords']},
+        );
       },
     ),
     _SnapshotSection(
@@ -1894,8 +2017,7 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
       final decoded = jsonDecode(text);
       if (decoded is Map) return Map<String, dynamic>.from(decoded);
     }
-    throw FormatException(
-        '期望 Map，实际为 ${value.runtimeType}');
+    throw FormatException('期望 Map，实际为 ${value.runtimeType}');
   }
 
   dynamic _keyOf(Box box, bool Function(dynamic) test) {

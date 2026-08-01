@@ -214,10 +214,7 @@ class WebDavService extends GetxService {
 
       // 备份便便记录
       try {
-        if (!Hive.isAdapterRegistered(11)) {
-          Hive.registerAdapter(PoopRecordAdapter());
-        }
-        final poopBox = await Hive.openBox<PoopRecord>('poop_records');
+        final poopBox = _storage.poopRecordBox;
         final recordCount = poopBox.length;
         debugPrint('Backup: Found $recordCount poop records');
 
@@ -1023,8 +1020,7 @@ class WebDavService extends GetxService {
           if (baby.name.trim().isEmpty) {
             baby.name = '宝宝';
           }
-          baby.avatarPath =
-              Baby.normalizeIncomingAvatar(baby.avatarPath);
+          baby.avatarPath = Baby.normalizeIncomingAvatar(baby.avatarPath);
           await _storage.babyBox.add(baby);
         }
       }
@@ -1046,7 +1042,7 @@ class WebDavService extends GetxService {
         String? lastError;
 
         try {
-          final poopBox = await Hive.openBox<PoopRecord>('poop_records');
+          final poopBox = _storage.poopRecordBox;
           await poopBox.clear();
 
           final list = backupData['poopRecords'] as List;

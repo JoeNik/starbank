@@ -14,6 +14,7 @@ import '../widgets/toast_utils.dart';
 class PinyinAudioService extends GetxService {
   static const String defaultBaseUrl =
       'https://raw.githubusercontent.com/hugolpz/audio-cmn/master/18k-abr/syllabs';
+
   /// HSK 单字音频（同仓库）。部分 syllabs 录音送气/音色偏差大时回退到这里。
   static const String defaultHskBaseUrl =
       'https://raw.githubusercontent.com/hugolpz/audio-cmn/master/18k-abr/hsk';
@@ -89,8 +90,7 @@ class PinyinAudioService extends GetxService {
     if (chars != null && chars.isNotEmpty) {
       return _hskCharUri(chars.first);
     }
-    return Uri.parse(
-        '${_trimTrailingSlash(audioBaseUrl.value)}/cmn-$key.mp3');
+    return Uri.parse('${_trimTrailingSlash(audioBaseUrl.value)}/cmn-$key.mp3');
   }
 
   Future<void> play(String audioKey) async {
@@ -213,6 +213,18 @@ class PinyinAudioService extends GetxService {
     cacheLimit.value = normalizedLimit;
     await _settingsBox.put(_baseUrlKey, audioBaseUrl.value);
     await _settingsBox.put(_cacheLimitKey, cacheLimit.value);
+    await _trimCacheIfNeeded();
+  }
+
+  /// 家庭同步写回设置盒后刷新内存配置。
+  Future<void> reloadSettings() async {
+    audioBaseUrl.value =
+        _settingsBox.get(_baseUrlKey, defaultValue: defaultBaseUrl).toString();
+    final storedLimit = _settingsBox.get(
+      _cacheLimitKey,
+      defaultValue: defaultCacheLimit,
+    );
+    cacheLimit.value = (storedLimit as num).toInt();
     await _trimCacheIfNeeded();
   }
 
@@ -373,8 +385,8 @@ class PinyinAudioService extends GetxService {
 
     // 普通音节：syllabs 兜底（chi1 等屏蔽项除外）
     if (!_blockRemoteSyllabs.contains(key)) {
-      uris.add(Uri.parse(
-          '${_trimTrailingSlash(audioBaseUrl.value)}/cmn-$key.mp3'));
+      uris.add(
+          Uri.parse('${_trimTrailingSlash(audioBaseUrl.value)}/cmn-$key.mp3'));
       // 同品质 64k syllabs
       final syllabs64 = _syllabsUrlForQuality('64k');
       uris.add(Uri.parse('$syllabs64/cmn-$key.mp3'));
