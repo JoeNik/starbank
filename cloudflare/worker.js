@@ -26,6 +26,33 @@ const MAX_PUSH_OPS = 500;
 // 免费版 Worker 单请求 CPU 限额较低，分页取小值
 const PULL_PAGE_SIZE = 100;
 const COUNTER_FIELDS = ['star', 'piggy', 'pocket'];
+const SYNC_META_SECTION = '__sync_meta__';
+const SYNC_META_RECORD_ID = 'authority';
+
+// 每一条写 SQL 都在数据库内再次核对同步世代与覆盖令牌，避免请求在
+// “检查状态”之后恰好撞上主号覆盖，导致旧设备的数据回灌。
+const SYNC_WRITE_GUARD = `(
+  (? = 0 AND NOT EXISTS (
+    SELECT 1 FROM records sync_meta
+     WHERE sync_meta.family_id = ?
+       AND sync_meta.section = '${SYNC_META_SECTION}'
+       AND sync_meta.record_id = '${SYNC_META_RECORD_ID}'
+  ))
+  OR EXISTS (
+    SELECT 1 FROM records sync_meta
+     WHERE sync_meta.family_id = ?
+       AND sync_meta.section = '${SYNC_META_SECTION}'
+       AND sync_meta.record_id = '${SYNC_META_RECORD_ID}'
+       AND CAST(json_extract(sync_meta.payload, '$.epoch') AS INTEGER) = ?
+       AND (
+         json_extract(sync_meta.payload, '$.replacing') = 0
+         OR (
+           json_extract(sync_meta.payload, '$.authorityToken') = ?
+           AND json_extract(sync_meta.payload, '$.ownerUserId') = ?
+         )
+       )
+  )
+)`;
 
 export default {
   async fetch(request, env) {
@@ -215,6 +242,15 @@ async function handleApi(request, env, url) {
   }
   if (path === '/api/sync/push' && method === 'POST') {
     return apiSyncPush(request, env, auth);
+  }
+  if (path === '/api/sync/status' && method === 'GET') {
+    return apiSyncStatus(env, auth);
+  }
+  if (path === '/api/sync/authoritative/start' && method === 'POST') {
+    return apiAuthoritativeStart(request, env, auth);
+  }
+  if (path === '/api/sync/authoritative/finish' && method === 'POST') {
+    return apiAuthoritativeFinish(request, env, auth);
   }
   if (path === '/api/sync/changes' && method === 'GET') {
     return apiSyncChanges(env, auth, url);
@@ -407,8 +443,193 @@ async function apiRemoveMember(request, env, auth) {
 // 同步
 // ---------------------------------------------------------------------------
 
+async function syncAuthorityState(env, familyId) {
+  const row = await env.DB.prepare(
+    `SELECT payload FROM records
+      WHERE family_id = ? AND section = ? AND record_id = ?`,
+  )
+    .bind(familyId, SYNC_META_SECTION, SYNC_META_RECORD_ID)
+    .first();
+  if (!row) {
+    return {
+      epoch: 0,
+      replacing: false,
+      authorityToken: '',
+      ownerUserId: '',
+      startRequestId: '',
+    };
+  }
+  let payload;
+  try {
+    payload = JSON.parse(row.payload);
+  } catch (_) {
+    throw new HttpError(500, '同步世代元数据损坏');
+  }
+  const epoch = Number(payload.epoch);
+  if (!Number.isInteger(epoch) || epoch < 1 || typeof payload.replacing !== 'boolean') {
+    throw new HttpError(500, '同步世代元数据非法');
+  }
+  return {
+    epoch,
+    replacing: payload.replacing,
+    authorityToken: String(payload.authorityToken || ''),
+    ownerUserId: String(payload.ownerUserId || ''),
+    startRequestId: String(payload.startRequestId || ''),
+  };
+}
+
+function parseRequestEpoch(raw) {
+  const epoch = raw === undefined || raw === null ? 0 : Number(raw);
+  if (!Number.isInteger(epoch) || epoch < 0) {
+    throw new HttpError(400, 'epoch 参数非法');
+  }
+  return epoch;
+}
+
+function requireSyncWriteAccess(body, state, auth) {
+  const epoch = parseRequestEpoch(body.epoch);
+  if (epoch !== state.epoch) {
+    throw new HttpError(409, '同步世代已更新，请先重新下载主号数据');
+  }
+  const authorityToken = String(body.authorityToken || '');
+  if (state.replacing && (
+    auth.role !== 'owner' ||
+    state.ownerUserId !== auth.userId ||
+    authorityToken !== state.authorityToken
+  )) {
+    throw new HttpError(409, '主号正在覆盖云端数据，请稍后同步');
+  }
+  return { epoch, authorityToken };
+}
+
+function syncGuardBindings(auth, epoch, authorityToken) {
+  return [
+    epoch,
+    auth.familyId,
+    auth.familyId,
+    epoch,
+    authorityToken,
+    auth.userId,
+  ];
+}
+
+function publicSyncStatus(state) {
+  return { epoch: state.epoch, replacing: state.replacing };
+}
+
+async function apiSyncStatus(env, auth) {
+  const state = await syncAuthorityState(env, auth.familyId);
+  const family = await familyInfo(env, auth.familyId);
+  return json({ ...publicSyncStatus(state), seq: family.last_seq });
+}
+
+async function apiAuthoritativeStart(request, env, auth) {
+  requireOwner(auth);
+  const body = await readBody(request);
+  requireFields(body, ['requestId']);
+  const requestId = String(body.requestId);
+  const current = await syncAuthorityState(env, auth.familyId);
+
+  // 网络重试必须幂等：同一请求已经创建覆盖锁时，直接返回原令牌。
+  if (
+    current.replacing &&
+    current.ownerUserId === auth.userId &&
+    current.startRequestId === requestId
+  ) {
+    const family = await familyInfo(env, auth.familyId);
+    return json({
+      ok: true,
+      epoch: current.epoch,
+      authorityToken: current.authorityToken,
+      seq: family.last_seq,
+    });
+  }
+
+  const epoch = current.epoch + 1;
+  const authorityToken = randomHex(24);
+  const now = nowIso();
+  const payload = JSON.stringify({
+    epoch,
+    replacing: true,
+    authorityToken,
+    ownerUserId: auth.userId,
+    startRequestId: requestId,
+  });
+
+  // D1 batch 是原子事务：清空旧世代、重置游标并写入覆盖锁一次完成。
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM records WHERE family_id = ?').bind(auth.familyId),
+    env.DB.prepare('DELETE FROM counters WHERE family_id = ?').bind(auth.familyId),
+    env.DB.prepare('DELETE FROM counter_ops WHERE family_id = ?').bind(auth.familyId),
+    env.DB.prepare('UPDATE families SET last_seq = 1 WHERE id = ?').bind(auth.familyId),
+    env.DB.prepare(
+      `INSERT INTO records
+        (family_id, section, record_id, seq, updated_at, deleted, payload, updated_by)
+       VALUES (?, ?, ?, 1, ?, 0, ?, ?)`,
+    ).bind(
+      auth.familyId,
+      SYNC_META_SECTION,
+      SYNC_META_RECORD_ID,
+      now,
+      payload,
+      auth.userId,
+    ),
+  ]);
+  return json({ ok: true, epoch, authorityToken, seq: 1 });
+}
+
+async function apiAuthoritativeFinish(request, env, auth) {
+  requireOwner(auth);
+  const body = await readBody(request);
+  requireFields(body, ['epoch', 'authorityToken']);
+  const epoch = parseRequestEpoch(body.epoch);
+  const authorityToken = String(body.authorityToken);
+  const current = await syncAuthorityState(env, auth.familyId);
+  if (
+    current.epoch !== epoch ||
+    current.ownerUserId !== auth.userId ||
+    current.authorityToken !== authorityToken
+  ) {
+    throw new HttpError(409, '覆盖会话已失效，请重新开始');
+  }
+  if (current.replacing) {
+    const payload = JSON.stringify({
+      epoch,
+      replacing: false,
+      authorityToken,
+      ownerUserId: auth.userId,
+      startRequestId: current.startRequestId,
+    });
+    await env.DB.prepare(
+      `UPDATE records SET payload = ?, updated_at = ?, updated_by = ?
+        WHERE family_id = ? AND section = ? AND record_id = ?
+          AND CAST(json_extract(payload, '$.epoch') AS INTEGER) = ?
+          AND json_extract(payload, '$.authorityToken') = ?`,
+    )
+      .bind(
+        payload,
+        nowIso(),
+        auth.userId,
+        auth.familyId,
+        SYNC_META_SECTION,
+        SYNC_META_RECORD_ID,
+        epoch,
+        authorityToken,
+      )
+      .run();
+  }
+  const finalState = await syncAuthorityState(env, auth.familyId);
+  if (finalState.epoch !== epoch || finalState.replacing) {
+    throw new HttpError(409, '覆盖会话已被新的操作替代');
+  }
+  const family = await familyInfo(env, auth.familyId);
+  return json({ ok: true, epoch, seq: family.last_seq });
+}
+
 async function apiSyncPush(request, env, auth) {
   const body = await readBody(request);
+  const initialState = await syncAuthorityState(env, auth.familyId);
+  const access = requireSyncWriteAccess(body, initialState, auth);
   const records = Array.isArray(body.records) ? body.records : [];
   const ops = Array.isArray(body.ops) ? body.ops : [];
   if (records.length > MAX_PUSH_RECORDS) {
@@ -421,10 +642,18 @@ async function apiSyncPush(request, env, auth) {
   let seq = null;
   if (records.length > 0) {
     const row = await env.DB.prepare(
-      'UPDATE families SET last_seq = last_seq + 1 WHERE id = ? RETURNING last_seq',
+      `UPDATE families SET last_seq = last_seq + 1
+        WHERE id = ? AND ${SYNC_WRITE_GUARD}
+        RETURNING last_seq`,
     )
-      .bind(auth.familyId)
+      .bind(
+        auth.familyId,
+        ...syncGuardBindings(auth, access.epoch, access.authorityToken),
+      )
       .first();
+    if (!row) {
+      throw new HttpError(409, '同步世代已更新，请重新下载主号数据');
+    }
     seq = row.last_seq;
 
     const stmts = [];
@@ -432,10 +661,13 @@ async function apiSyncPush(request, env, auth) {
       if (!r || !r.section || !r.recordId || !r.updatedAt) {
         throw new HttpError(400, '记录缺少 section/recordId/updatedAt');
       }
+      if (String(r.section) === SYNC_META_SECTION) {
+        throw new HttpError(400, '禁止写入同步内部元数据');
+      }
       stmts.push(
         env.DB.prepare(
           `INSERT INTO records (family_id, section, record_id, seq, updated_at, deleted, payload, updated_by)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+           SELECT ?, ?, ?, ?, ?, ?, ?, ? WHERE ${SYNC_WRITE_GUARD}
            ON CONFLICT(family_id, section, record_id) DO UPDATE SET
              seq = excluded.seq,
              updated_at = excluded.updated_at,
@@ -454,6 +686,7 @@ async function apiSyncPush(request, env, auth) {
             ? null
             : JSON.stringify(r.payload),
           auth.userId,
+          ...syncGuardBindings(auth, access.epoch, access.authorityToken),
         ),
       );
     }
@@ -480,7 +713,7 @@ async function apiSyncPush(request, env, auth) {
       stmts.push(
         env.DB.prepare(
           `INSERT OR IGNORE INTO counter_ops (op_id, family_id, baby_id, field, delta, user_id, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+           SELECT ?, ?, ?, ?, ?, ?, ? WHERE ${SYNC_WRITE_GUARD}`,
         ).bind(
           String(op.opId),
           auth.familyId,
@@ -489,6 +722,7 @@ async function apiSyncPush(request, env, auth) {
           delta,
           auth.userId,
           now,
+          ...syncGuardBindings(auth, access.epoch, access.authorityToken),
         ),
         env.DB.prepare(
           `INSERT INTO counters (family_id, baby_id, field, total)
@@ -506,14 +740,23 @@ async function apiSyncPush(request, env, auth) {
     }
   }
 
+  const finalState = await syncAuthorityState(env, auth.familyId);
+  requireSyncWriteAccess(body, finalState, auth);
   const family = await familyInfo(env, auth.familyId);
-  return json({ ok: true, seq: family.last_seq, appliedOps });
+  return json({
+    ok: true,
+    epoch: finalState.epoch,
+    seq: family.last_seq,
+    appliedOps,
+  });
 }
 
 /// 将指定宝宝的计数器直接设为绝对值（覆盖，不是累加）。
 /// 用于：首次登录合并对账、修复因重复推送导致的余额翻倍。
 async function apiSetCounters(request, env, auth) {
   const body = await readBody(request);
+  const initialState = await syncAuthorityState(env, auth.familyId);
+  const access = requireSyncWriteAccess(body, initialState, auth);
   const counters = Array.isArray(body.counters) ? body.counters : [];
   if (counters.length === 0) {
     throw new HttpError(400, 'counters 不能为空');
@@ -537,16 +780,22 @@ async function apiSetCounters(request, env, auth) {
     stmts.push(
       env.DB.prepare(
         `INSERT INTO counters (family_id, baby_id, field, total)
-         VALUES (?, ?, ?, ?)
+         SELECT ?, ?, ?, ? WHERE ${SYNC_WRITE_GUARD}
          ON CONFLICT(family_id, baby_id, field) DO UPDATE SET total = excluded.total`,
-      ).bind(auth.familyId, babyId, field, total),
+      ).bind(
+        auth.familyId,
+        babyId,
+        field,
+        total,
+        ...syncGuardBindings(auth, access.epoch, access.authorityToken),
+      ),
     );
     // 记一条审计 op，后续 delta 推送仍可幂等衔接；不参与累加（applied=1 且 delta=0）
     stmts.push(
       env.DB.prepare(
         `INSERT OR IGNORE INTO counter_ops
            (op_id, family_id, baby_id, field, delta, user_id, created_at, applied)
-         VALUES (?, ?, ?, ?, 0, ?, ?, 1)`,
+         SELECT ?, ?, ?, ?, 0, ?, ?, 1 WHERE ${SYNC_WRITE_GUARD}`,
       ).bind(
         `set:${babyId}:${field}:${now}:${randomHex(4)}`,
         auth.familyId,
@@ -554,12 +803,15 @@ async function apiSetCounters(request, env, auth) {
         field,
         auth.userId,
         now,
+        ...syncGuardBindings(auth, access.epoch, access.authorityToken),
       ),
     );
   }
   for (let i = 0; i < stmts.length; i += 50) {
     await env.DB.batch(stmts.slice(i, i + 50));
   }
+  const finalState = await syncAuthorityState(env, auth.familyId);
+  requireSyncWriteAccess(body, finalState, auth);
   const rows = await env.DB.prepare(
     'SELECT baby_id, field, total FROM counters WHERE family_id = ?',
   )
@@ -567,6 +819,7 @@ async function apiSetCounters(request, env, auth) {
     .all();
   return json({
     ok: true,
+    epoch: finalState.epoch,
     counters: (rows.results || []).map((c) => ({
       babyId: c.baby_id,
       field: c.field,
@@ -576,6 +829,14 @@ async function apiSetCounters(request, env, auth) {
 }
 
 async function apiSyncChanges(env, auth, url) {
+  const initialState = await syncAuthorityState(env, auth.familyId);
+  const epoch = parseRequestEpoch(url.searchParams.get('epoch'));
+  if (epoch !== initialState.epoch) {
+    throw new HttpError(409, '同步世代已更新，请先重新下载主号数据');
+  }
+  if (initialState.replacing) {
+    throw new HttpError(409, '主号正在覆盖云端数据，请稍后同步');
+  }
   const since = Number(url.searchParams.get('since') || '0');
   if (!Number.isFinite(since) || since < 0) {
     throw new HttpError(400, 'since 参数非法');
@@ -590,7 +851,7 @@ async function apiSyncChanges(env, auth, url) {
     stmt = env.DB.prepare(
       `SELECT section, record_id, seq, updated_at, deleted, payload
          FROM records
-        WHERE family_id = ?1
+        WHERE family_id = ?1 AND section != '${SYNC_META_SECTION}'
           AND (seq > ?2
                OR (seq = ?2 AND (section > ?3
                     OR (section = ?3 AND record_id > ?4))))
@@ -601,7 +862,7 @@ async function apiSyncChanges(env, auth, url) {
     stmt = env.DB.prepare(
       `SELECT section, record_id, seq, updated_at, deleted, payload
          FROM records
-        WHERE family_id = ?1 AND seq > ?2
+        WHERE family_id = ?1 AND section != '${SYNC_META_SECTION}' AND seq > ?2
         ORDER BY seq, section, record_id
         LIMIT ?3`,
     ).bind(auth.familyId, since, PULL_PAGE_SIZE + 1);
@@ -620,7 +881,12 @@ async function apiSyncChanges(env, auth, url) {
     .all();
 
   const family = await familyInfo(env, auth.familyId);
+  const finalState = await syncAuthorityState(env, auth.familyId);
+  if (finalState.epoch !== epoch || finalState.replacing) {
+    throw new HttpError(409, '同步世代在下载期间发生变化，请重新同步');
+  }
   return json({
+    epoch,
     seq: family.last_seq,
     nextSince: last ? last.seq : since,
     nextSection: last ? last.section : null,
@@ -643,9 +909,9 @@ async function apiSyncChanges(env, auth, url) {
 
 async function apiSyncStats(env, auth) {
   const recordCount = await env.DB.prepare(
-    'SELECT COUNT(*) AS n FROM records WHERE family_id = ?',
+    'SELECT COUNT(*) AS n FROM records WHERE family_id = ? AND section != ?',
   )
-    .bind(auth.familyId)
+    .bind(auth.familyId, SYNC_META_SECTION)
     .first();
   const opCount = await env.DB.prepare(
     'SELECT COUNT(*) AS n FROM counter_ops WHERE family_id = ?',
@@ -653,7 +919,9 @@ async function apiSyncStats(env, auth) {
     .bind(auth.familyId)
     .first();
   const family = await familyInfo(env, auth.familyId);
+  const state = await syncAuthorityState(env, auth.familyId);
   return json({
+    ...publicSyncStatus(state),
     seq: family.last_seq,
     recordCount: recordCount.n,
     counterOpCount: opCount.n,

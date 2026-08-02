@@ -21,6 +21,9 @@ import '../models/baby_cloud_source.dart';
 import '../models/baby_cloud_media.dart';
 import '../models/baby_cloud_upload_task.dart';
 import '../models/baby_cloud_entry.dart';
+import '../models/ai_chat.dart';
+import '../models/story_session.dart';
+import '../models/story_game_config.dart';
 
 class StorageService extends GetxService {
   late Box<UserProfile> userBox;
@@ -32,6 +35,9 @@ class StorageService extends GetxService {
   late Box<GrowthRecord> growthRecordBox;
   late Box<MilestoneRecord> milestoneRecordBox;
   late Box<PoopRecord> poopRecordBox;
+  late Box<AIChat> aiChatBox;
+  late Box<StorySession> storySessionBox;
+  late Box<dynamic> customRiddlesBox;
   late Box<BabyCloudSource> babyCloudSourceBox;
   late Box<BabyCloudMedia> babyCloudMediaBox;
   late Box<BabyCloudEntry> babyCloudEntryBox;
@@ -55,6 +61,9 @@ class StorageService extends GetxService {
     _registerAdapter(MusicTrackAdapter(), 'MusicTrackAdapter');
     _registerAdapter(PlaylistAdapter(), 'PlaylistAdapter');
     _registerAdapter(PoopRecordAdapter(), 'PoopRecordAdapter');
+    _registerAdapter(AIChatAdapter(), 'AIChatAdapter');
+    _registerAdapter(StorySessionAdapter(), 'StorySessionAdapter');
+    _registerAdapter(StoryGameConfigAdapter(), 'StoryGameConfigAdapter');
     debugPrint('✅ 基础适配器注册完成');
 
     // Quiz and Story Adapters (安全注册,避免重复)
@@ -147,6 +156,9 @@ class StorageService extends GetxService {
     milestoneRecordBox =
         await _openRecoverableBox<MilestoneRecord>('milestone_records');
     poopRecordBox = await Hive.openBox<PoopRecord>('poop_records');
+    aiChatBox = await Hive.openBox<AIChat>('ai_chats');
+    storySessionBox = await Hive.openBox<StorySession>('story_sessions');
+    customRiddlesBox = await Hive.openBox<dynamic>('custom_riddles');
     babyCloudSourceBox =
         await _openRecoverableBox<BabyCloudSource>('baby_cloud_sources');
     babyCloudMediaBox =

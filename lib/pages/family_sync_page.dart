@@ -327,6 +327,23 @@ class _FamilySyncPageState extends State<FamilySyncPage> {
                 label: const Text('修复翻倍的星星/余额'),
               ),
             ),
+            if (_sync.isOwner) ...[
+              SizedBox(height: 8.h),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red.shade700,
+                    side: BorderSide(color: Colors.red.shade300),
+                  ),
+                  onPressed: _busy || _sync.syncing.value
+                      ? null
+                      : _confirmAuthoritativeSync,
+                  icon: const Icon(Icons.cloud_upload_outlined, size: 18),
+                  label: const Text('强制以本机数据覆盖云端'),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -599,6 +616,62 @@ class _FamilySyncPageState extends State<FamilySyncPage> {
         ],
       ),
     );
+  }
+
+  void _confirmAuthoritativeSync() {
+    final confirmController = TextEditingController();
+    var confirmed = false;
+    Get.dialog<void>(
+      StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('强制以主号本机数据为准'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '云端全部家庭同步数据会被清除，并由当前主号手机完整重传。'
+                '子号下次同步时会先保存本地安全快照，再清除本机同步数据并重新下载。\n\n'
+                '请只在当前手机的数据最完整、最准确时执行。操作开始后不要关闭应用。',
+              ),
+              SizedBox(height: 14.h),
+              const Text('请输入“主号覆盖”确认：'),
+              SizedBox(height: 6.h),
+              TextField(
+                controller: confirmController,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  hintText: '主号覆盖',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+                onChanged: (value) {
+                  setDialogState(() => confirmed = value.trim() == '主号覆盖');
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: Get.back, child: const Text('取消')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: confirmed
+                  ? () async {
+                      Get.back();
+                      await _runBusy(() async {
+                        final backupPath = await _sync.forceOwnerDataToCloud();
+                        ToastUtils.showSuccess(
+                          '主号数据已完整覆盖云端\n本地安全快照: $backupPath',
+                        );
+                      });
+                    }
+                  : null,
+              child: const Text('确认覆盖'),
+            ),
+          ],
+        ),
+      ),
+    ).whenComplete(confirmController.dispose);
   }
 
   void _confirmLogout() {

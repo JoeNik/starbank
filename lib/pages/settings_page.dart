@@ -13,7 +13,7 @@ import 'tts_settings_page.dart';
 
 import 'package:package_info_plus/package_info_plus.dart';
 
-const String appVersion = '2.7.24';
+const String appVersion = '2.7.25';
 
 /// 应用设置页面
 class SettingsPage extends StatelessWidget {

@@ -33,6 +33,7 @@ import '../models/story_session.dart';
 import '../models/user_profile.dart';
 import '../services/baby_cloud_service.dart';
 import '../services/encyclopedia_service.dart';
+import '../services/openai_service.dart';
 import '../services/pinyin_audio_service.dart';
 import '../services/quiz_service.dart';
 import '../services/storage_service.dart';
@@ -70,6 +71,20 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
   // 单条记录/快照的 payload 上限（字符数），防止大对象打爆 Worker CPU 限额
   static const int _maxRecordPayloadChars = 300000;
   static const int _maxSnapshotPayloadChars = 600000;
+  static const List<String> _dynamicSyncBoxNames = [
+    'tts_settings',
+    'poop_ai_settings',
+    'growth_record_settings',
+    'milestone_record_settings',
+    'story_game_config',
+    'hanzi_learning_config',
+    'quiz_play_record',
+    'encyclopedia_play_record',
+    'app_settings',
+    'tunehub_config',
+    'player_settings',
+    'pinyin_audio_settings',
+  ];
 
   final StorageService _storage = Get.find<StorageService>();
 
@@ -98,6 +113,7 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
   bool get isLoggedIn => (_state.get('token') as String? ?? '').isNotEmpty;
   bool get isOwner => role.value == 'owner';
   String get _token => _state.get('token') as String? ?? '';
+  int get _syncEpoch => (_state.get('syncEpoch') as num?)?.toInt() ?? 0;
 
   Future<FamilySyncService> init() async {
     _state = await Hive.openBox(_stateBoxName);
@@ -142,6 +158,7 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
         _markDirty('babies');
         await _state.put('babyAvatarSyncFixV2', true);
       }
+      await _openDynamicSyncBoxes();
       _startWatchers();
       _startPeriodic();
       // 启动后延迟触发一次同步，避免拖慢冷启动
@@ -313,6 +330,7 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
         'familyName': familyDisplayName!.trim(),
     });
     await _saveAuth(data);
+    await _state.put('syncEpoch', 0);
     await _resetSyncCursor();
     await _enableInternal();
     // 首次全量上传在后台进行，账号页展示同步进度，不阻塞注册流程
@@ -331,6 +349,8 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
     await _saveAuth(data);
 
     final stats = await _api('GET', '/api/sync/stats');
+    final serverEpoch = (stats['epoch'] as num?)?.toInt() ?? 0;
+    await _state.put('syncEpoch', serverEpoch);
     final cloudHasData = (stats['recordCount'] as num? ?? 0) > 0 ||
         (stats['counterOpCount'] as num? ?? 0) > 0;
     final localHasData = _storage.babyBox.isNotEmpty ||
@@ -350,27 +370,7 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
   /// 首次合并选择：以云端为准（本地核心数据先做安全快照再被替换）。
   Future<String> adoptCloud() async {
     final backupPath = await _writeLocalSafetySnapshot();
-    _applyingRemote = true;
-    try {
-      await _storage.babyBox.clear();
-      await _storage.logBox.clear();
-      await _storage.actionBox.clear();
-      await _storage.productBox.clear();
-      await _storage.growthRecordBox.clear();
-      await _storage.milestoneRecordBox.clear();
-      await _storage.poopRecordBox.clear();
-      await _storage.playlistBox.clear();
-      try {
-        final chatBox = await Hive.openBox<dynamic>('ai_chats');
-        await chatBox.clear();
-      } catch (_) {}
-      try {
-        final sessionBox = await Hive.openBox<dynamic>('story_sessions');
-        await sessionBox.clear();
-      } catch (_) {}
-    } finally {
-      _applyingRemote = false;
-    }
+    await _clearSynchronizedData();
     await _resetSyncCursor();
     await _enableInternal();
     unawaited(syncNow());
@@ -424,8 +424,15 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
   Future<void> _enableInternal() async {
     enabled.value = true;
     await _state.put('enabled', true);
+    await _openDynamicSyncBoxes();
     _startWatchers();
     _startPeriodic();
+  }
+
+  Future<void> _openDynamicSyncBoxes() async {
+    for (final boxName in _dynamicSyncBoxNames) {
+      await Hive.openBox<dynamic>(boxName);
+    }
   }
 
   /// 退出登录并停用同步（本地数据保留）。
@@ -511,8 +518,8 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
 
     // 对应服务均在 FamilySyncService 之前完成初始化；直接监听已打开的盒，
     // 避免配置与内容变更要等到周期性全量校验才同步。
-    watchIfOpen<AIChat>('ai_chats', 'ai_chats');
-    watchIfOpen<StorySession>('story_sessions', 'story_sessions');
+    watch(_storage.aiChatBox, 'ai_chats');
+    watch(_storage.storySessionBox, 'story_sessions');
     watchIfOpen<dynamic>('tts_settings', 'tts_settings');
     watchIfOpen<dynamic>('poop_ai_settings', 'poop_ai_settings');
     watchIfOpen<dynamic>('growth_record_settings', 'growth_record_settings');
@@ -538,7 +545,7 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
     );
     watchIfOpen<dynamic>('encyclopedia_play_record', 'encyclopedia_play');
     watchIfOpen<NewYearStory>('new_year_stories', 'new_year_stories');
-    watchIfOpen<dynamic>('custom_riddles', 'custom_riddles');
+    watch(_storage.customRiddlesBox, 'custom_riddles');
     watchIfOpen<dynamic>('app_settings', 'app_settings');
     watchIfOpen<dynamic>('tunehub_config', 'tunehub_config');
     watchIfOpen<dynamic>('player_settings', 'player_settings');
@@ -604,6 +611,12 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
     syncing.value = true;
     lastError.value = '';
     try {
+      final adoptedNewEpoch = await _synchronizeEpoch();
+      if (adoptedNewEpoch) {
+        lastSyncAt.value = DateTime.now();
+        await _state.put('lastSyncAt', lastSyncAt.value!.toIso8601String());
+        return;
+      }
       final baseline = _state.get('baselinePending') == true;
       // 手动同步、基线对账与每 N 次自动同步做全量校验；平时只处理脏数据段。
       var full = manual || baseline;
@@ -644,6 +657,45 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
         _scheduleSync();
       }
     }
+  }
+
+  /// 每轮同步先确认服务端世代。主号做过权威覆盖后，旧世代设备必须
+  /// 先清除本机同步域并完整下载，绝不能先把旧数据推回云端。
+  Future<bool> _synchronizeEpoch() async {
+    final status = await _api('GET', '/api/sync/status');
+    final serverEpoch = (status['epoch'] as num?)?.toInt();
+    if (serverEpoch == null || serverEpoch < 0) {
+      throw FamilySyncException('服务端返回了非法同步世代');
+    }
+    if (status['replacing'] == true) {
+      throw FamilySyncException('主号正在覆盖云端数据，请稍后再同步');
+    }
+    final localEpoch = _syncEpoch;
+    if (serverEpoch < localEpoch) {
+      throw FamilySyncException('服务端同步世代早于本机，已停止上传以保护数据');
+    }
+    if (serverEpoch == localEpoch) return false;
+
+    final backupPath = await _writeLocalSafetySnapshot();
+    await _state.put('lastSafetySnapshot', backupPath);
+    _stopWatchers();
+    try {
+      await _clearSynchronizedData();
+      _dirtySections.clear();
+      await _state.putAll({
+        'syncEpoch': serverEpoch,
+        'lastSeq': 0,
+        'manifest': '{}',
+        'shadow': '{}',
+        'ops': '[]',
+        'dirty': '[]',
+        'baselinePending': false,
+      });
+      await _pullChanges();
+    } finally {
+      _startWatchers();
+    }
+    return true;
   }
 
   Future<void> _backfillSyncIds() async {
@@ -766,8 +818,7 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
       }
     }
     if (counters.isNotEmpty) {
-      await _api('POST', '/api/sync/set-counters',
-          body: {'counters': counters});
+      await _setCounters(counters);
     }
     await _writeShadow(shadow);
     // 清空可能残留的错误 delta
@@ -783,6 +834,7 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
     if (!enabled.value || !isLoggedIn) {
       throw FamilySyncException('请先登录家庭同步');
     }
+    await _synchronizeEpoch();
     final rebuilt = <String, Map<String, double>>{};
     // 1) 从日志重算（star/piggy/pocket 流水；interest 进零花钱）
     for (final log in _storage.logBox.values) {
@@ -854,8 +906,7 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
     }
 
     if (counters.isNotEmpty) {
-      await _api('POST', '/api/sync/set-counters',
-          body: {'counters': counters});
+      await _setCounters(counters);
     }
     await _writeShadow(shadow);
     await _writeOps([]);
@@ -867,9 +918,131 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
     var ops = _readOps();
     while (ops.isNotEmpty) {
       final batch = ops.take(150).toList();
-      await _api('POST', '/api/sync/push', body: {'ops': batch});
+      await _api('POST', '/api/sync/push', body: {
+        'epoch': _syncEpoch,
+        'ops': batch,
+      });
       ops = ops.skip(batch.length).toList();
       await _writeOps(ops);
+    }
+  }
+
+  Future<void> _setCounters(
+    List<Map<String, dynamic>> counters, {
+    String authorityToken = '',
+  }) async {
+    for (var i = 0; i < counters.length; i += 90) {
+      final batch = counters.skip(i).take(90).toList();
+      await _api('POST', '/api/sync/set-counters', body: {
+        'epoch': _syncEpoch,
+        if (authorityToken.isNotEmpty) 'authorityToken': authorityToken,
+        'counters': batch,
+      });
+    }
+  }
+
+  /// 仅主号可执行：以当前主号手机上的完整同步域为唯一权威，清除云端
+  /// 旧记录后全量重传。新世代会阻止子号把覆盖前的本地旧数据回灌。
+  Future<String> forceOwnerDataToCloud() async {
+    if (!enabled.value || !isLoggedIn) {
+      throw FamilySyncException('请先登录家庭同步');
+    }
+    if (!isOwner) {
+      throw FamilySyncException('只有主号可以强制覆盖云端数据');
+    }
+    if (_syncRunning) {
+      throw FamilySyncException('当前同步尚未完成，请稍后再试');
+    }
+
+    _syncRunning = true;
+    syncing.value = true;
+    lastError.value = '';
+    String? authorityToken;
+    try {
+      final backupPath = await _writeLocalSafetySnapshot();
+      await _state.put('lastSafetySnapshot', backupPath);
+      await _backfillSyncIds();
+
+      final start = await _api(
+        'POST',
+        '/api/sync/authoritative/start',
+        body: {'requestId': newSyncId()},
+      );
+      final epoch = (start['epoch'] as num?)?.toInt();
+      authorityToken = start['authorityToken']?.toString();
+      if (epoch == null ||
+          epoch < 1 ||
+          authorityToken == null ||
+          authorityToken.isEmpty) {
+        throw FamilySyncException('服务端未返回有效的覆盖会话');
+      }
+
+      _dirtySections.clear();
+      await _state.putAll({
+        'syncEpoch': epoch,
+        'lastSeq': 0,
+        'manifest': '{}',
+        'shadow': '{}',
+        'ops': '[]',
+        'dirty': '[]',
+        'baselinePending': false,
+      });
+      _markAllDirty();
+      await _pushSections(
+        full: true,
+        force: true,
+        authorityToken: authorityToken,
+      );
+
+      final counters = <Map<String, dynamic>>[];
+      final shadow = <String, Map<String, double>>{};
+      for (final baby in _storage.babyBox.values) {
+        final values = <String, double>{
+          'star': baby.starCount.toDouble(),
+          'piggy': baby.piggyBankBalance,
+          'pocket': baby.pocketMoneyBalance,
+        };
+        shadow[baby.id] = Map<String, double>.from(values);
+        for (final entry in values.entries) {
+          counters.add({
+            'babyId': baby.id,
+            'field': entry.key,
+            'total': entry.value,
+          });
+        }
+      }
+      if (counters.isNotEmpty) {
+        await _setCounters(counters, authorityToken: authorityToken);
+      }
+
+      final finish = await _api(
+        'POST',
+        '/api/sync/authoritative/finish',
+        body: {
+          'epoch': epoch,
+          'authorityToken': authorityToken,
+        },
+      );
+      await _writeShadow(shadow);
+      await _writeOps([]);
+      await _state.put('lastSeq', (finish['seq'] as num?)?.toInt() ?? 0);
+      lastSyncAt.value = DateTime.now();
+      await _state.put('lastSyncAt', lastSyncAt.value!.toIso8601String());
+      return backupPath;
+    } on FamilySyncException catch (e) {
+      lastError.value = e.message;
+      rethrow;
+    } catch (e) {
+      lastError.value = '强制覆盖失败: $e';
+      throw FamilySyncException(lastError.value);
+    } finally {
+      _lastSyncEndedAt = DateTime.now();
+      _syncRunning = false;
+      syncing.value = false;
+      if (_syncQueued) {
+        _syncQueued = false;
+        _scheduleSync();
+      }
     }
   }
 
@@ -886,143 +1059,165 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
     return _state.put('manifest', jsonEncode(manifest));
   }
 
-  Future<void> _pushSections({required bool full}) async {
+  Future<void> _pushSections({
+    required bool full,
+    bool force = false,
+    String authorityToken = '',
+  }) async {
     // full=false 时只收集被标脏的数据段，避免每次同步都全量序列化+哈希。
     final targets =
         full ? _allSectionNames.toSet() : Set<String>.from(_dirtySections);
     if (targets.isEmpty) return;
 
-    final manifest = _readManifest();
-    final pending = <Map<String, dynamic>>[];
-    var manifestChanged = false;
+    // 先消费本轮脏标记。若上传过程中同一段再次变化，watcher 会重新标脏，
+    // 不能在上传结束时把这次新变化一并清掉。
+    _dirtySections.removeAll(targets);
+    _persistDirty();
 
-    Future<void> flush() async {
-      if (pending.isEmpty) return;
-      for (var i = 0; i < pending.length; i += _pushBatchSize) {
-        final batch = pending.skip(i).take(_pushBatchSize).toList();
-        await _api('POST', '/api/sync/push', body: {'records': batch});
+    try {
+      final manifest = _readManifest();
+      final pending = <Map<String, dynamic>>[];
+      var manifestChanged = false;
+
+      Future<void> flush() async {
+        if (pending.isEmpty) return;
+        for (var i = 0; i < pending.length; i += _pushBatchSize) {
+          final batch = pending.skip(i).take(_pushBatchSize).toList();
+          await _api('POST', '/api/sync/push', body: {
+            'epoch': _syncEpoch,
+            if (authorityToken.isNotEmpty) 'authorityToken': authorityToken,
+            'records': batch,
+          });
+        }
+        pending.clear();
       }
-      pending.clear();
-    }
 
-    final now = DateTime.now().toUtc().toIso8601String();
+      final now = DateTime.now().toUtc().toIso8601String();
 
-    // 记录级数据段
-    for (final section in _recordSections) {
-      if (!targets.contains(section.name)) continue;
-      Map<String, Map<String, dynamic>> current;
-      try {
-        current = await section.collect();
-      } catch (e) {
-        debugPrint('FamilySync: 采集 ${section.name} 失败: $e');
-        continue;
-      }
-      final seen = manifest.putIfAbsent(section.name, () => {});
-      // 新增/变化
-      for (final entry in current.entries) {
-        var payload = entry.value;
-        // 宝宝段：collect 已把头像压成可同步内容；这里只做体积兜底，
-        // 绝不能因体积把整条宝宝（含名字）跳过。
-        final hashSource = section.hashSource(payload);
-        var hash = _hashPayload(hashSource);
-        if (seen[entry.key] != hash) {
-          var size = _canonicalJson(payload).length;
-          if (size > _maxRecordPayloadChars) {
-            if (section.name == 'babies') {
-              // 仍超限：尽量保留更小头像；再不行才去头像，但名字必须推上
-              payload = Map<String, dynamic>.from(payload);
-              final avatar = payload['avatarPath']?.toString() ?? '';
-              if (avatar.length > 8000) {
-                payload['avatarPath'] =
-                    await Baby.buildSyncAvatar(avatar, maxChars: 40000);
-              } else {
-                payload['avatarPath'] = '';
-              }
-              size = _canonicalJson(payload).length;
-              if (size > _maxRecordPayloadChars) {
-                payload['avatarPath'] = '';
-                size = _canonicalJson(payload).length;
-              }
-              hash = _hashPayload(section.hashSource(payload));
-              debugPrint(
-                  'FamilySync: 宝宝记录过大，压缩/去头像后推送 ${entry.key} ($size chars)');
-            } else {
-              debugPrint(
-                  'FamilySync: 跳过超大记录 ${section.name}/${entry.key} ($size chars)');
-              continue;
-            }
+      // 记录级数据段
+      for (final section in _recordSections) {
+        if (!targets.contains(section.name)) continue;
+        Map<String, Map<String, dynamic>> current;
+        try {
+          current = await section.collect();
+        } catch (e) {
+          debugPrint('FamilySync: 采集 ${section.name} 失败: $e');
+          if (force) {
+            throw FamilySyncException('采集 ${section.name} 失败，已停止权威覆盖');
           }
+          _dirtySections.add(section.name);
+          continue;
+        }
+        final seen = manifest.putIfAbsent(section.name, () => {});
+        // 新增/变化
+        for (final entry in current.entries) {
+          var payload = entry.value;
+          // 宝宝段：collect 已把头像压成可同步内容；这里只做体积兜底，
+          // 绝不能因体积把整条宝宝（含名字）跳过。
+          final hashSource = section.hashSource(payload);
+          var hash = _hashPayload(hashSource);
+          if (force || seen[entry.key] != hash) {
+            var size = _canonicalJson(payload).length;
+            if (size > _maxRecordPayloadChars) {
+              if (section.name == 'babies') {
+                // 仍超限：尽量保留更小头像；再不行才去头像，但名字必须推上
+                payload = Map<String, dynamic>.from(payload);
+                final avatar = payload['avatarPath']?.toString() ?? '';
+                if (avatar.length > 8000) {
+                  payload['avatarPath'] =
+                      await Baby.buildSyncAvatar(avatar, maxChars: 40000);
+                } else {
+                  payload['avatarPath'] = '';
+                }
+                size = _canonicalJson(payload).length;
+                if (size > _maxRecordPayloadChars) {
+                  payload['avatarPath'] = '';
+                  size = _canonicalJson(payload).length;
+                }
+                hash = _hashPayload(section.hashSource(payload));
+                debugPrint(
+                    'FamilySync: 宝宝记录过大，压缩/去头像后推送 ${entry.key} ($size chars)');
+              } else {
+                throw FamilySyncException(
+                    '记录 ${section.name}/${entry.key} 过大，已停止同步，避免静默漏数据');
+              }
+            }
+            pending.add({
+              'section': section.name,
+              'recordId': entry.key,
+              'updatedAt': now,
+              'deleted': false,
+              'payload': payload,
+            });
+            seen[entry.key] = hash;
+            manifestChanged = true;
+          }
+        }
+        // 删除（清单中有、当前没有 → 墓碑）
+        final removedIds =
+            seen.keys.where((id) => !current.containsKey(id)).toList();
+        // 宝宝段：占位宝宝不会出现在 collect 结果里，但本机仍持有该 id，
+        // 绝不能发墓碑，否则会把云端真实名字/头像删掉。
+        if (section.name == 'babies' && removedIds.isNotEmpty) {
+          final localIds = <String>{
+            for (final b in _storage.babyBox.values) b.id,
+          };
+          removedIds.removeWhere(localIds.contains);
+        }
+        for (final id in removedIds) {
           pending.add({
             'section': section.name,
-            'recordId': entry.key,
+            'recordId': id,
             'updatedAt': now,
-            'deleted': false,
-            'payload': payload,
+            'deleted': true,
+            'payload': null,
           });
-          seen[entry.key] = hash;
+          seen.remove(id);
           manifestChanged = true;
         }
       }
-      // 删除（清单中有、当前没有 → 墓碑）
-      final removedIds =
-          seen.keys.where((id) => !current.containsKey(id)).toList();
-      // 宝宝段：占位宝宝不会出现在 collect 结果里，但本机仍持有该 id，
-      // 绝不能发墓碑，否则会把云端真实名字/头像删掉。
-      if (section.name == 'babies' && removedIds.isNotEmpty) {
-        final localIds = <String>{
-          for (final b in _storage.babyBox.values) b.id,
-        };
-        removedIds.removeWhere(localIds.contains);
-      }
-      for (final id in removedIds) {
-        pending.add({
-          'section': section.name,
-          'recordId': id,
-          'updatedAt': now,
-          'deleted': true,
-          'payload': null,
-        });
-        seen.remove(id);
-        manifestChanged = true;
-      }
-    }
 
-    // 快照数据段（整段一条记录）
-    for (final section in _snapshotSections) {
-      if (!targets.contains(section.name)) continue;
-      dynamic payload;
-      try {
-        payload = await section.collect();
-      } catch (e) {
-        debugPrint('FamilySync: 采集 ${section.name} 失败: $e');
-        continue;
-      }
-      final hash = _hashPayload(payload);
-      final seen = manifest.putIfAbsent(section.name, () => {});
-      if (seen['all'] != hash) {
-        final size = _canonicalJson(payload).length;
-        if (size > _maxSnapshotPayloadChars) {
-          debugPrint('FamilySync: 跳过超大快照 ${section.name} ($size chars)');
+      // 快照数据段（整段一条记录）
+      for (final section in _snapshotSections) {
+        if (!targets.contains(section.name)) continue;
+        dynamic payload;
+        try {
+          payload = await section.collect();
+        } catch (e) {
+          debugPrint('FamilySync: 采集 ${section.name} 失败: $e');
+          if (force) {
+            throw FamilySyncException('采集 ${section.name} 失败，已停止权威覆盖');
+          }
+          _dirtySections.add(section.name);
           continue;
         }
-        pending.add({
-          'section': section.name,
-          'recordId': 'all',
-          'updatedAt': now,
-          'deleted': false,
-          'payload': {'data': payload},
-        });
-        seen['all'] = hash;
-        manifestChanged = true;
+        final hash = _hashPayload(payload);
+        final seen = manifest.putIfAbsent(section.name, () => {});
+        if (force || seen['all'] != hash) {
+          final size = _canonicalJson(payload).length;
+          if (size > _maxSnapshotPayloadChars) {
+            throw FamilySyncException('快照 ${section.name} 过大，已停止同步，避免静默漏数据');
+          }
+          pending.add({
+            'section': section.name,
+            'recordId': 'all',
+            'updatedAt': now,
+            'deleted': false,
+            'payload': {'data': payload},
+          });
+          seen['all'] = hash;
+          manifestChanged = true;
+        }
       }
-    }
 
-    await flush();
-    if (manifestChanged) await _writeManifest(manifest);
-    // 推送成功后清除本轮处理过的脏标记
-    if (_dirtySections.isNotEmpty) {
-      _dirtySections.removeAll(targets);
+      await flush();
+      if (manifestChanged) await _writeManifest(manifest);
       _persistDirty();
+    } catch (_) {
+      // 网络/服务端/采集任一步失败，都保留整轮目标以便下次完整重试。
+      _dirtySections.addAll(targets);
+      _persistDirty();
+      rethrow;
     }
   }
 
@@ -1039,6 +1234,7 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
 
     while (true) {
       final data = await _api('GET', '/api/sync/changes', query: {
+        'epoch': '$_syncEpoch',
         'since': '$since',
         if (sinceSection != null) 'sinceSection': sinceSection,
         if (sinceRecord != null) 'sinceRecord': sinceRecord,
@@ -1293,6 +1489,15 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
         debugPrint('FamilySync: 刷新 TTS 设置失败: $e');
       }
     }
+    if (appliedSections.contains('openai_configs')) {
+      try {
+        if (Get.isRegistered<OpenAIService>()) {
+          Get.find<OpenAIService>().loadConfigs();
+        }
+      } catch (e) {
+        debugPrint('FamilySync: 刷新 OpenAI 配置失败: $e');
+      }
+    }
     if (appliedSections.contains('music_playlists')) {
       try {
         if (Get.isRegistered<MusicPlayerController>()) {
@@ -1354,6 +1559,7 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
       'role': data['role']?.toString() ?? '',
       'familyId': data['familyId']?.toString() ?? '',
       'familyName': data['familyName']?.toString() ?? '',
+      'syncEpoch': 0,
     });
     // 同步游标是设备本地状态：恢复后从零开始重新拉取校验
     await _resetSyncCursor();
@@ -1373,11 +1579,86 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
 
   // -------------------- 首次合并的本地安全快照 --------------------
 
+  Future<void> _clearSynchronizedData() async {
+    await _openDynamicSyncBoxes();
+    _applyingRemote = true;
+    try {
+      await _storage.babyBox.clear();
+      await _storage.logBox.clear();
+      await _storage.actionBox.clear();
+      await _storage.productBox.clear();
+      await _storage.growthRecordBox.clear();
+      await _storage.milestoneRecordBox.clear();
+      await _storage.poopRecordBox.clear();
+      await _storage.playlistBox.clear();
+      await _storage.babyCloudSourceBox.clear();
+      await _storage.userBox.clear();
+      await _storage.aiChatBox.clear();
+      await _storage.storySessionBox.clear();
+      await _storage.customRiddlesBox.clear();
+
+      final settingKeys = _storage.settingsBox.keys.where((rawKey) {
+        final key = rawKey.toString();
+        return WebDavBackupV2Service.shouldBackupGenericSetting(key) ||
+            _extraSettingsKeys.contains(key);
+      }).toList();
+      await _storage.settingsBox.deleteAll(settingKeys);
+
+      for (final boxName in _dynamicSyncBoxNames) {
+        await Hive.box<dynamic>(boxName).clear();
+      }
+      await (await Hive.openBox<OpenAIConfig>('openai_configs')).clear();
+      await (await Hive.openBox<CfttsConfig>('cftts_config_box')).clear();
+      await (await Hive.openBox<OpenAITtsConfig>('openai_tts_config_box'))
+          .clear();
+      await (await Hive.openBox<QuizConfig>('quiz_config')).clear();
+      await (await Hive.openBox<QuizQuestion>('quiz_questions')).clear();
+      await (await Hive.openBox<EncyclopediaConfig>('encyclopedia_config'))
+          .clear();
+      await (await Hive.openBox<EncyclopediaQuestion>(
+        'encyclopedia_questions',
+      ))
+          .clear();
+      await (await Hive.openBox<NewYearStory>('new_year_stories')).clear();
+
+      if (Get.isRegistered<OpenAIService>()) {
+        Get.find<OpenAIService>().loadConfigs();
+      }
+      if (Get.isRegistered<QuizService>()) {
+        final quiz = Get.find<QuizService>();
+        quiz
+          ..config.value = null
+          ..questions.clear()
+          ..todayPlayCount.value = 0;
+      }
+      if (Get.isRegistered<EncyclopediaService>()) {
+        final encyclopedia = Get.find<EncyclopediaService>();
+        encyclopedia
+          ..config.value = null
+          ..questions.clear()
+          ..todayPlayCount.value = 0;
+      }
+    } finally {
+      _applyingRemote = false;
+    }
+  }
+
   Future<String> _writeLocalSafetySnapshot() async {
     final dir = await getApplicationDocumentsDirectory();
     final file = File(
         '${dir.path}${Platform.pathSeparator}family_sync_backup_${DateTime.now().millisecondsSinceEpoch}.json');
+    final recordSections = <String, dynamic>{};
+    for (final section in _recordSections) {
+      recordSections[section.name] = await section.collect();
+    }
+    final snapshotSections = <String, dynamic>{};
+    for (final section in _snapshotSections) {
+      snapshotSections[section.name] = await section.collect();
+    }
     final data = <String, dynamic>{
+      'format': 'starbank-family-sync-safety-v2',
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'syncEpoch': _syncEpoch,
       'babies': _storage.babyBox.values.map((e) => e.toJson()).toList(),
       'logs': _storage.logBox.values.map((e) => e.toJson()).toList(),
       'actions': _storage.actionBox.values.map((e) => e.toJson()).toList(),
@@ -1390,6 +1671,8 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
           _storage.poopRecordBox.values.map((e) => e.toJson()).toList(),
       'musicPlaylists':
           _storage.playlistBox.values.map((e) => e.toJson()).toList(),
+      'recordSections': recordSections,
+      'snapshotSections': snapshotSections,
     };
     await file.writeAsString(jsonEncode(data), flush: true);
     return file.path;
@@ -1662,29 +1945,15 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
     _RecordSection(
       name: 'ai_chats',
       collect: () async {
-        try {
-          final box = await Hive.openBox<dynamic>('ai_chats');
-          final result = <String, Map<String, dynamic>>{};
-          for (final e in box.values) {
-            try {
-              final chat = e as AIChat;
-              result[chat.id] = chat.toJson();
-            } catch (_) {}
-          }
-          return result;
-        } catch (_) {
-          return {};
+        final result = <String, Map<String, dynamic>>{};
+        for (final chat in _storage.aiChatBox.values) {
+          result[chat.id] = chat.toJson();
         }
+        return result;
       },
       apply: (id, payload, deleted) async {
-        final box = await Hive.openBox<dynamic>('ai_chats');
-        final key = _keyOf(box, (dynamic c) {
-          try {
-            return (c as AIChat).id == id;
-          } catch (_) {
-            return false;
-          }
-        });
+        final box = _storage.aiChatBox;
+        final key = _keyOf(box, (dynamic c) => (c as AIChat).id == id);
         if (deleted) {
           if (key != null) await box.delete(key);
           return;
@@ -1701,29 +1970,15 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
     _RecordSection(
       name: 'story_sessions',
       collect: () async {
-        try {
-          final box = await Hive.openBox<dynamic>('story_sessions');
-          final result = <String, Map<String, dynamic>>{};
-          for (final e in box.values) {
-            try {
-              final session = e as StorySession;
-              result[session.id] = session.toJson();
-            } catch (_) {}
-          }
-          return result;
-        } catch (_) {
-          return {};
+        final result = <String, Map<String, dynamic>>{};
+        for (final session in _storage.storySessionBox.values) {
+          result[session.id] = session.toJson();
         }
+        return result;
       },
       apply: (id, payload, deleted) async {
-        final box = await Hive.openBox<dynamic>('story_sessions');
-        final key = _keyOf(box, (dynamic s) {
-          try {
-            return (s as StorySession).id == id;
-          } catch (_) {
-            return false;
-          }
-        });
+        final box = _storage.storySessionBox;
+        final key = _keyOf(box, (dynamic s) => (s as StorySession).id == id);
         if (deleted) {
           if (key != null) await box.delete(key);
           return;
@@ -1755,6 +2010,15 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
       },
       apply: (data) async {
         if (data is! Map) return;
+        final incomingKeys = data.keys.map((key) => key.toString()).toSet();
+        final removedKeys = _storage.settingsBox.keys.where((rawKey) {
+          final key = rawKey.toString();
+          final synchronized =
+              WebDavBackupV2Service.shouldBackupGenericSetting(key) ||
+                  _extraSettingsKeys.contains(key);
+          return synchronized && !incomingKeys.contains(key);
+        }).toList();
+        await _storage.settingsBox.deleteAll(removedKeys);
         for (final entry in data.entries) {
           final key = entry.key.toString();
           if (WebDavBackupV2Service.shouldBackupGenericSetting(key) ||
@@ -1776,7 +2040,7 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
         return result;
       },
       apply: (data) async {
-        if (data is! List || data.isEmpty) return;
+        if (data is! List) return;
         final localProfiles = _storage.userBox.values.toList();
         await _storage.userBox.clear();
         for (var i = 0; i < data.length; i++) {
@@ -1980,22 +2244,19 @@ class FamilySyncService extends GetxService with WidgetsBindingObserver {
       },
       apply: (data) async {
         if (data is! List) return;
+        final box = await Hive.openBox<NewYearStory>('new_year_stories');
+        await box.clear();
         await StoryManagementService.instance.restoreStories(data);
       },
     ),
     _SnapshotSection(
       name: 'custom_riddles',
       collect: () async {
-        try {
-          final box = await Hive.openBox('custom_riddles');
-          return box.values.toList();
-        } catch (_) {
-          return <dynamic>[];
-        }
+        return _storage.customRiddlesBox.values.toList();
       },
       apply: (data) async {
         if (data is! List) return;
-        final box = await Hive.openBox('custom_riddles');
+        final box = _storage.customRiddlesBox;
         await box.clear();
         for (final item in data) {
           await box.add(item);
