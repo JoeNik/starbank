@@ -54,3 +54,9 @@ temp_*.log
 .gemini/播放器逻辑优化总结.md
 .gemini/QQ音乐搜索调试功能.md
 .claude/settings.local.json
+
+# 拼音音频排查用的临时脚本与样本（本地保留，不入库）
+tools/
+
+# Claude agent worktree 运行时元数据
+.claude/worktrees/
