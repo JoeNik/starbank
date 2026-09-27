@@ -30,6 +30,7 @@ import 'models/encyclopedia_config.dart';
 import 'models/encyclopedia_explanation_cache.dart';
 import 'services/hanzi_learning_service.dart';
 import 'services/baby_cloud_service.dart';
+import 'pages/entertainment/weiqi/weiqi_service.dart';
 // import 'package:just_audio_background/just_audio_background.dart';
 
 import 'pages/home_page.dart';
@@ -182,6 +183,11 @@ void main() async {
       final hanziService = HanziLearningService();
       Get.put(hanziService);
       await hanziService.init();
+
+      // 棋妙岛围棋（纯学习模块，无金币；失败不阻塞启动）
+      final weiqiService = WeiqiService();
+      Get.put(weiqiService);
+      await weiqiService.init();
 
       debugPrint('Quiz, Story and Hanzi services initialized');
     } catch (e, stack) {

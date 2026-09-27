@@ -12,6 +12,7 @@ import 'entertainment/hanzi_learning/hanzi_learning_page.dart';
 import 'entertainment/encyclopedia/encyclopedia_page.dart';
 import 'entertainment/pinyin_learning/pinyin_learning_page.dart';
 import 'entertainment/math/math_calculator_page.dart';
+import 'entertainment/weiqi/weiqi_home_page.dart';
 
 /// 娱乐模块入口页面
 class EntertainmentPage extends StatelessWidget {
@@ -196,6 +197,14 @@ class EntertainmentPage extends StatelessWidget {
                         subtitle: '计算器和练习题',
                         color: const Color(0xFFFFD166),
                         onTap: () => Get.to(() => const MathCalculatorPage()),
+                      ),
+                      // 棋妙岛围棋（纯学习模块，无金币）
+                      _buildFeatureCard(
+                        emoji: '⚫',
+                        title: '棋妙岛围棋',
+                        subtitle: '会讲故事的围棋课',
+                        color: const Color(0xFF34B37E),
+                        onTap: () => Get.to(() => const WeiqiHomePage()),
                       ),
                     ],
                   ),
