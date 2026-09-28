@@ -22,33 +22,36 @@ Future<void> showWqOpponentPicker(BuildContext context) async {
     backgroundColor: Colors.transparent,
     builder: (ctx) {
       return Padding(
-        padding: EdgeInsets.only(
-          left: 20.w,
-          right: 20.w,
-          bottom: MediaQuery.of(ctx).padding.bottom + 12.h,
+        padding: const EdgeInsets.only(
+          left: 20,
+          right: 20,
+          bottom: 12,
         ),
         child: Align(
           alignment: Alignment.bottomCenter,
           child: FittedBox(
             fit: BoxFit.scaleDown,
             child: Container(
-              padding: EdgeInsets.all(18.w),
+              width: 320,
+              padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
                 color: WqTheme.cream,
-                borderRadius: BorderRadius.circular(28.r),
+                borderRadius: BorderRadius.circular(28),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-              Text(
+              const Text(
                 '今天和谁下一盘？',
+                textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 18.sp,
+                fontSize: 18,
                 fontWeight: FontWeight.w900,
                 color: WqTheme.ink,
               ),
             ),
-              SizedBox(height: 14.h),
+              const SizedBox(height: 14),
               _opponentOption(
                 ctx,
                 panda: const WqPanda(mood: WqPandaMood.happy, size: 52),
@@ -60,7 +63,7 @@ Future<void> showWqOpponentPicker(BuildContext context) async {
                   Get.to(() => const WeiqiPlayPage(opponent: WqOpponent.ai));
                 },
               ),
-              SizedBox(height: 10.h),
+              const SizedBox(height: 10),
               _opponentOption(
                 ctx,
                 panda: Container(
@@ -101,42 +104,42 @@ Widget _opponentOption(
 }) {
   return Material(
     color: Colors.white,
-    borderRadius: BorderRadius.circular(20.r),
+    borderRadius: BorderRadius.circular(20),
     child: InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(20.r),
+      borderRadius: BorderRadius.circular(20),
       child: Container(
-        padding: EdgeInsets.all(12.w),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20.r),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(color: const Color(0x0F23324D)),
         ),
         child: Row(
           children: [
             Container(
-              width: 56.w,
-              height: 56.w,
+              width: 56,
+              height: 56,
               decoration: BoxDecoration(color: color, shape: BoxShape.circle),
               child: Center(child: panda),
             ),
-            SizedBox(width: 12.w),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     title,
-                    style: TextStyle(
-                      fontSize: 16.sp,
+                    style: const TextStyle(
+                      fontSize: 16,
                       fontWeight: FontWeight.w800,
                       color: WqTheme.ink,
                     ),
                   ),
-                  SizedBox(height: 2.h),
+                  const SizedBox(height: 2),
                   Text(
                     subtitle,
-                    style: TextStyle(
-                      fontSize: 12.sp,
+                    style: const TextStyle(
+                      fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: WqTheme.inkSoft,
                     ),

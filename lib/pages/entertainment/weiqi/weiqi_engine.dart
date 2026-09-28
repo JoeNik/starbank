@@ -178,8 +178,8 @@ class WqSimCap {
 class WqAi {
   WqAi._();
 
-  static int? pickMove(WqGame g, int color, double skill) {
-    final rnd = Random();
+  static int? pickMove(WqGame g, int color, double skill, {Random? rnd}) {
+    final random = rnd ?? Random();
     final s = g.s;
     final pMiss = (1 - skill) * 0.55 + 0.06;
     final scored = <_Scored>[];
@@ -187,7 +187,7 @@ class WqAi {
       if (s[i] != 0) continue;
       final r = g.simCap(i, color);
       if (r == null) continue;
-      double sc = rnd.nextDouble() * 6;
+      double sc = random.nextDouble() * 6;
       sc += r.cap.length * 100;
       if (r.myLibs == 1) sc -= 85; // 不主动送吃
       // 打吃对方（对方大组更优先）
@@ -229,11 +229,11 @@ class WqAi {
     }
     if (scored.isEmpty) return null;
     scored.sort((a, b) => b.sc.compareTo(a.sc));
-    if (rnd.nextDouble() < pMiss) {
+    if (random.nextDouble() < pMiss) {
       // 犯错：从「平庸着法」里挑一个不算太离谱的
       final soft = scored.where((m) => m.missSafe > -40).toList();
       final pool = soft.isNotEmpty ? soft : scored;
-      return pool[min(pool.length - 1, 1 + rnd.nextInt(4))].i;
+      return pool[min(pool.length - 1, 1 + random.nextInt(4))].i;
     }
     return scored[0].i;
   }

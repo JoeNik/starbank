@@ -76,7 +76,14 @@ void main() {
     }
   }
 
-  for (final screen in [const Size(375, 812), const Size(360, 640), const Size(320, 568)]) {
+  for (final screen in [
+    const Size(375, 812),
+    const Size(360, 640),
+    const Size(320, 568),
+    const Size(800, 600),
+    const Size(640, 480),
+    const Size(500, 400),
+  ]) {
     testWidgets('溢出检查 $screen', (tester) async {
       tester.view.physicalSize = screen;
       tester.view.devicePixelRatio = 1.0;

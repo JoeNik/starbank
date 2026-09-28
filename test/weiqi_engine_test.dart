@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:star_bank/pages/entertainment/weiqi/weiqi_data.dart';
 import 'package:star_bank/pages/entertainment/weiqi/weiqi_engine.dart';
@@ -93,7 +95,7 @@ void main() {
       g.tryPlay(p(5, 2), 1);
       g.tryPlay(p(7, 2), 1);
       g.tryPlay(p(6, 1), 1);
-      final mv = WqAi.pickMove(g, 1, 1.0); // skill=1 不犯错
+      final mv = WqAi.pickMove(g, 1, 1.0, rnd: Random(42)); // 固定种子，稳定不犯错
       expect(mv, p(6, 3));
     });
 

@@ -83,7 +83,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     // 再点领取奖励 → 不应再被拦截（这正是用户报告的 bug 场景）
-    await tapText(tester, '领取奖励 ✦');
+    await tapText(tester, '完成本课 ✦');
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('先完成这一步的小任务哦～'), findsNothing,
         reason: '提子挑战完成后，领取奖励不应再被拦截');
@@ -117,7 +117,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
     await tapPoint(tester, 4, 5);
     await tester.pump(const Duration(milliseconds: 300));
-    await tapText(tester, '领取奖励 ✦');
+    await tapText(tester, '完成本课 ✦');
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('课程完成！'), findsOneWidget);
 
@@ -131,8 +131,10 @@ void main() {
         reason: '「和棋棋下一盘」按钮也必须在屏幕内');
 
     // 核心回归 2：点击「继续闯关 ›」应进入第 2 课
+    // （跳转在面板 pop 之后的帧回调里执行，需要多 pump 几帧）
     await tapText(tester, '继续闯关 ›');
-    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 600));
     expect(find.text('课程完成！'), findsNothing, reason: '结算面板应已关闭');
     expect(find.textContaining('第2课'), findsWidgets,
         reason: '应进入第 2 课（逃出去！）');

@@ -228,78 +228,94 @@ class _WeiqiCoursePageState extends State<WeiqiCoursePage> {
       enableDrag: false,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Padding(
-        // 底部安全区 + FittedBox：视口放不下时整体等比缩小，
-        // 保证两个按钮在任何屏幕（含桌面小窗口）都完整可见、可点
+        // 底部安全区；内容全部使用固定逻辑尺寸（不用 .sp/.w/.h），
+        // 手机与桌面窗口观感一致；FittedBox 仅在极端小窗口下等比缩小兜底
         padding: EdgeInsets.only(
-          left: 16.w,
-          right: 16.w,
-          bottom: MediaQuery.of(ctx).padding.bottom + 12.h,
+          left: 16,
+          right: 16,
+          bottom: MediaQuery.of(ctx).padding.bottom + 12,
         ),
         child: Align(
           alignment: Alignment.bottomCenter,
           child: FittedBox(
             fit: BoxFit.scaleDown,
             child: Container(
+              width: 300,
               padding:
-                  EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
                 color: WqTheme.cream,
-                borderRadius: BorderRadius.circular(28.r),
+                borderRadius: BorderRadius.circular(28),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                const WqPanda(mood: WqPandaMood.cheer, size: 58),
-                SizedBox(height: 4.h),
-                Text(
-                  '课程完成！',
-                  style: TextStyle(
-                      fontSize: 20.sp,
-                      fontWeight: FontWeight.w900,
-                      color: WqTheme.ink),
-                ),
-                Text(
-                  '${lesson.island} · 第${lesson.no}课 「${lesson.title}」',
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.w700,
-                      color: WqTheme.inkSoft),
-                ),
-                SizedBox(height: 6.h),
-                WqStarsRow(stars: stars, pop: true, size: 26),
-                SizedBox(height: 8.h),
-                WqChip(text: '学会：${lesson.teaches.join(' · ')}'),
-                SizedBox(height: 12.h),
-                WqPrimaryButton(
-                  text: _nextLessonText(),
-                  height: 46.h,
-                  fontSize: 15.sp,
-                  onTap: () {
-                    Navigator.of(ctx).pop();
-                    if (widget.lessonIndex + 1 < wqLessons.length) {
-                      Get.off(() => WeiqiCoursePage(
-                          lessonIndex: widget.lessonIndex + 1));
-                    } else {
-                      Get.back();
-                    }
-                  },
-                ),
-                SizedBox(height: 8.h),
-                WqGhostButton(
-                  text: '和棋棋下一盘巩固一下',
-                  height: 42.h,
-                  fontSize: 13.5.sp,
-                  onTap: () {
-                    Navigator.of(ctx).pop();
-                    _showOpponentPicker();
-                  },
-                ),
-              ],
+                  const Center(
+                      widthFactor: 1,
+                      child: WqPanda(mood: WqPandaMood.cheer, size: 58)),
+                  const SizedBox(height: 4),
+                  const Text(
+                    '课程完成！',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        color: WqTheme.ink),
+                  ),
+                  Text(
+                    '${lesson.island} · 第${lesson.no}课 「${lesson.title}」',
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: WqTheme.inkSoft),
+                  ),
+                  const SizedBox(height: 6),
+                  Center(
+                      widthFactor: 1,
+                      child: WqStarsRow(stars: stars, pop: true, size: 26)),
+                  const SizedBox(height: 8),
+                  Center(
+                    widthFactor: 1,
+                    child: WqChip(
+                      text: '学会：${lesson.teaches.join(' · ')}',
+                      fixedFontSize: 11.5,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  WqPrimaryButton(
+                    text: _nextLessonText(),
+                    height: 46,
+                    fontSize: 15,
+                    onTap: () {
+                      Navigator.of(ctx).pop();
+                      if (widget.lessonIndex + 1 < wqLessons.length) {
+                        // 帧后跳转：先让结算面板的 pop 完成，避免路由过渡冲突
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          Get.off(() => WeiqiCoursePage(
+                              lessonIndex: widget.lessonIndex + 1));
+                        });
+                      } else {
+                        Get.back();
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  WqGhostButton(
+                    text: '和棋棋下一盘巩固一下',
+                    height: 42,
+                    fontSize: 13.5,
+                    onTap: () {
+                      Navigator.of(ctx).pop();
+                      _showOpponentPicker();
+                    },
+                  ),
+                ],
+              ),
             ),
-          ),
           ),
         ),
       ),
@@ -483,7 +499,7 @@ class _WeiqiCoursePageState extends State<WeiqiCoursePage> {
                     flex: 2,
                     child: WqPrimaryButton(
                       text: _step == lesson.steps.length - 1
-                          ? '领取奖励 ✦'
+                          ? '完成本课 ✦'
                           : '下一步 ›',
                       height: 46.h,
                       fontSize: 15.sp,

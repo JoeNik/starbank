@@ -210,12 +210,16 @@ class WqPrimaryButton extends StatelessWidget {
             ],
           ),
           child: Center(
-            child: Text(
-              text,
-              style: TextStyle(
-                fontSize: fontSize ?? 16.sp,
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                text,
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: fontSize ?? 16.sp,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                ),
               ),
             ),
           ),
@@ -257,12 +261,16 @@ class WqGhostButton extends StatelessWidget {
             ],
           ),
           child: Center(
-            child: Text(
-              text,
-              style: TextStyle(
-                fontSize: fontSize ?? 14.5.sp,
-                fontWeight: FontWeight.w800,
-                color: WqTheme.greenDeep,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                text,
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: fontSize ?? 14.5.sp,
+                  fontWeight: FontWeight.w800,
+                  color: WqTheme.greenDeep,
+                ),
               ),
             ),
           ),
@@ -278,6 +286,7 @@ class WqChip extends StatelessWidget {
   final Color bg;
   final Color fg;
   final Widget? icon;
+  final double? fixedFontSize; // 弹层内用固定字号，不随视口缩放
 
   const WqChip({
     super.key,
@@ -285,6 +294,7 @@ class WqChip extends StatelessWidget {
     this.bg = WqTheme.greenSoft,
     this.fg = WqTheme.greenDeep,
     this.icon,
+    this.fixedFontSize,
   });
 
   factory WqChip.sun({required String text, Widget? icon}) => WqChip(
@@ -323,7 +333,7 @@ class WqChip extends StatelessWidget {
           Text(
             text,
             style: TextStyle(
-              fontSize: 11.5.sp,
+              fontSize: fixedFontSize ?? 11.5.sp,
               fontWeight: FontWeight.w800,
               color: fg,
             ),
