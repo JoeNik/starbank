@@ -39,6 +39,7 @@ void main() {
     FlutterError.onError = (details) {
       final msg = details.exceptionAsString();
       final first = msg.split('\n').first;
+      if (!first.contains('overflowed')) return;
       final ctxLines = details.informationCollector == null
           ? ''
           : details.informationCollector!().join(' | ');

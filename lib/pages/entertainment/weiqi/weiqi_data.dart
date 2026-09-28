@@ -22,6 +22,9 @@ enum WqGoal {
 
   /// 一手同时打吃 ≥2 块对方棋组（双打）
   doubleAtari,
+
+  /// 把 [goalPoint] 与 [goalPoint2] 两块棋切断（不再同组）
+  cut,
 }
 
 /// 演示操作
@@ -63,7 +66,8 @@ class WqMoveQuiz {
   final WqGoal goal;
   final int minCapture;
   final int minLibs;
-  final int? goalPoint; // escape 目标棋组参照点
+  final int? goalPoint; // escape 目标棋组参照点 / cut 第一块
+  final int? goalPoint2; // cut 第二块
   final String prompt;
   final String doneText;
   final List<String> hints; // 失败时的引导
@@ -74,6 +78,7 @@ class WqMoveQuiz {
     this.minCapture = 1,
     this.minLibs = 2,
     this.goalPoint,
+    this.goalPoint2,
     required this.prompt,
     required this.doneText,
     required this.hints,
@@ -137,6 +142,7 @@ class WqPuzzle {
   final int minCapture;
   final int minLibs;
   final int? goalPoint;
+  final int? goalPoint2;
   final int zoneCenter; // L1 提示：区域微光中心
   final int answerPoint; // L2/L3 提示：闪烁点/演示点
   final List<String> hints;
@@ -153,6 +159,7 @@ class WqPuzzle {
     this.minCapture = 1,
     this.minLibs = 2,
     this.goalPoint,
+    this.goalPoint2,
     required this.zoneCenter,
     required this.answerPoint,
     required this.hints,
@@ -559,6 +566,112 @@ final List<WqLesson> wqLessons = [
       ),
     ],
   ),
+
+  // ---------- L8 打二还一 ----------
+  WqLesson(
+    id: 'l8',
+    island: '第②岛 吃子竞技场',
+    no: 8,
+    glyph: '二',
+    title: '打二还一',
+    subtitle: '提了又被提',
+    teaches: ['打二还一'],
+    steps: [
+      WqStep(
+        caption: '两颗小白兵',
+        bubble: '看！白棋两颗小兵连在一起，被围得只剩最后一口气了！',
+        ops: [
+          _put(3, 4, _w), _put(4, 3, _w), _put(4, 5, _w),
+          _put(5, 4, _w), _put(6, 4, _w),
+          _put(5, 3, _b), _put(5, 5, _b),
+          _put(7, 4, _b), _put(6, 3, _b), _put(6, 5, _b),
+        ],
+      ),
+      WqStep(
+        caption: '一手提两颗',
+        bubble: '黑棋一手提走两颗！可是注意——刚下的这颗子，自己也只剩一口气了。',
+        ops: [_put(4, 4, _b)],
+        captureDemo: [_p(5, 4), _p(6, 4)],
+      ),
+      WqStep(
+        caption: '马上提回来',
+        bubble: '白棋立刻提回来！你提我两颗，我还你一颗——这就是「打二还一」。',
+        ops: [_put(5, 4, _w)],
+        captureDemo: [_p(4, 4)],
+      ),
+      WqStep(
+        caption: '你来打二还一',
+        bubble: '轮到你啦：找到那个能一手提走两颗白棋的点！',
+        ops: [
+          WqOp.reset(),
+          _put(3, 4, _w), _put(4, 3, _w), _put(4, 5, _w),
+          _put(5, 4, _w), _put(6, 4, _w),
+          _put(5, 3, _b), _put(5, 5, _b),
+          _put(7, 4, _b), _put(6, 3, _b), _put(6, 5, _b),
+        ],
+        moveQuiz: WqMoveQuiz(
+          playerColor: _b,
+          goal: WqGoal.capture,
+          minCapture: 2,
+          prompt: '点白棋两颗小兵的最后一口气，一手提两颗！',
+          doneText: '打二还一！提来提去，两边都不吃亏哦。',
+          hints: [
+            '两颗白棋连在一起，它们的最后一口气是哪一个点？',
+            '两颗白棋左边紧挨着的那个交叉点！',
+          ],
+        ),
+      ),
+    ],
+  ),
+
+  // ---------- L9 切断 ----------
+  WqLesson(
+    id: 'l9',
+    island: '第②岛 吃子竞技场',
+    no: 9,
+    glyph: '切',
+    title: '一刀两断',
+    subtitle: '断点 · 切断',
+    teaches: ['断点', '切断'],
+    steps: [
+      WqStep(
+        caption: '认识断点',
+        bubble: '两颗白棋中间隔着一个空点——这个点叫「断点」，它们还没有真正连上哦！',
+        ops: [_put(4, 4, _w), _put(6, 4, _w)],
+      ),
+      WqStep(
+        caption: '断点是弱点',
+        bubble: '黑棋从上下把白棋包住。白棋想连起来救命——中间的断点就是它们的希望。',
+        ops: [_put(4, 3, _b), _put(4, 5, _b), _put(6, 3, _b), _put(6, 5, _b)],
+      ),
+      WqStep(
+        caption: '一刀两断',
+        bubble: '黑棋站上断点！两颗白棋被切成两段，谁也救不了谁啦。',
+        ops: [_put(5, 4, _b)],
+      ),
+      WqStep(
+        caption: '你来切断',
+        bubble: '轮到你出手：找到断点，把白棋切成两段！',
+        ops: [
+          WqOp.reset(),
+          _put(4, 4, _w), _put(6, 4, _w),
+          _put(4, 3, _b), _put(4, 5, _b), _put(6, 3, _b), _put(6, 5, _b),
+        ],
+        moveQuiz: WqMoveQuiz(
+          playerColor: _b,
+          goal: WqGoal.cut,
+          goalPoint: _p(4, 4),
+          goalPoint2: _p(6, 4),
+          prompt: '点断点，把两颗白棋切成两段！',
+          doneText: '切断成功！记住：自己的断点也要及时连上哦。',
+          hints: [
+            '两颗白棋中间的空点在哪里？',
+            '就是它们正中间的那个交叉点！',
+          ],
+        ),
+      ),
+    ],
+  ),
 ];
 
 // ============================================================
@@ -721,6 +834,51 @@ final List<WqPuzzle> wqPuzzles = [
     ],
     okText: '逃出来啦！往中间跑，气就多啦。',
   ),
+  WqPuzzle(
+    id: 'pz9',
+    tag: '打二还一 · L2',
+    title: '一手提两颗',
+    voice: '白棋两颗小兵只剩最后一口气啦！找到它，一手提走两颗！',
+    setup: [
+      _put(3, 4, _w), _put(4, 3, _w), _put(4, 5, _w),
+      _put(5, 4, _w), _put(6, 4, _w),
+      _put(5, 3, _b), _put(5, 5, _b),
+      _put(7, 4, _b), _put(6, 3, _b), _put(6, 5, _b),
+    ],
+    playerColor: _b,
+    goal: WqGoal.capture,
+    minCapture: 2,
+    zoneCenter: _p(5, 4),
+    answerPoint: _p(4, 4),
+    hints: [
+      '两颗白棋连在一起……它们共同的最后一口气在哪里？',
+      '两颗白棋左边紧挨着的那个交叉点！',
+      '看棋棋变魔法——记住这种感觉哦！',
+    ],
+    okText: '提走两颗！小心：这手棋自己也只剩一口气了哦。',
+  ),
+  WqPuzzle(
+    id: 'pz10',
+    tag: '双打题 · L2',
+    title: '上下齐提',
+    voice: '上下两颗白棋各只剩一口气，而且共用同一个点！一手把它们都提走！',
+    setup: [
+      _put(4, 3, _w), _put(4, 5, _w),
+      _put(3, 3, _b), _put(5, 3, _b), _put(4, 2, _b),
+      _put(3, 5, _b), _put(5, 5, _b), _put(4, 6, _b),
+    ],
+    playerColor: _b,
+    goal: WqGoal.capture,
+    minCapture: 2,
+    zoneCenter: _p(4, 4),
+    answerPoint: _p(4, 4),
+    hints: [
+      '两颗白棋的最后一口气，是不是同一个点？',
+      '它们正中间的那个交叉点！',
+      '看棋棋变魔法——记住这种感觉哦！',
+    ],
+    okText: '好球！上下两颗一起提走！',
+  ),
 ];
 
 /// 判断挑战是否达成
@@ -731,6 +889,7 @@ bool wqCheckGoal(
   int minCapture = 1,
   int minLibs = 2,
   int? goalPoint,
+  int? goalPoint2,
   List<int> captured = const [],
 }) {
   switch (goal) {
@@ -739,6 +898,15 @@ bool wqCheckGoal(
     case WqGoal.escape:
       if (goalPoint == null || g.s[goalPoint] == 0) return false;
       return g.libsOf(g.groupAt(goalPoint)).length >= minLibs;
+    case WqGoal.cut:
+      if (goalPoint == null ||
+          goalPoint2 == null ||
+          g.s[goalPoint] == 0 ||
+          g.s[goalPoint2] == 0) {
+        return false;
+      }
+      // 两块棋不再同组 = 切断成功
+      return !g.groupAt(goalPoint).contains(goalPoint2);
     case WqGoal.doubleAtari:
       final opp = 3 - playerColor;
       final seen = <int>{};

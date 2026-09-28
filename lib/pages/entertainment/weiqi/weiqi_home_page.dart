@@ -61,13 +61,8 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
                     _playCta(),
                     SizedBox(height: 18.h),
                     _sectionTitle('🗺️ 课程地图'),
-                    SizedBox(height: 8.h),
-                    _IslandMap(
-                      stars: _svc.lessonStars,
-                      unlockedCount: _unlockedCount(),
-                      current: _currentIndex(),
-                      onNodeTap: _onNodeTap,
-                    ),
+                    SizedBox(height: 10.h),
+                    ..._buildIslandSections(),
                     SizedBox(height: 16.h),
                     _entries(),
                   ],
@@ -76,6 +71,53 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
         ],
       ),
     );
+  }
+
+  /// 分岛分节：每岛一个彩色标题 + 独立小地图，
+  /// 节点在节内蛇形均匀分布，杜绝标题/标签与节点重叠
+  List<Widget> _buildIslandSections() {
+    final islands = <String>[];
+    for (final l in wqLessons) {
+      if (!islands.contains(l.island)) islands.add(l.island);
+    }
+    const islandColors = [Color(0xFF5FAEE3), WqTheme.grape];
+    final widgets = <Widget>[];
+    for (var i = 0; i < islands.length; i++) {
+      final indices = <int>[];
+      for (var k = 0; k < wqLessons.length; k++) {
+        if (wqLessons[k].island == islands[i]) indices.add(k);
+      }
+      widgets.add(
+        Row(
+          children: [
+            _IslandTag(
+              text: islands[i],
+              color: islandColors[i % islandColors.length],
+            ),
+            SizedBox(width: 8.w),
+            Expanded(
+              child: Divider(
+                color: (islandColors[i % islandColors.length])
+                    .withValues(alpha: 0.3),
+                thickness: 1.5,
+              ),
+            ),
+          ],
+        ),
+      );
+      widgets.add(SizedBox(height: 6.h));
+      widgets.add(
+        _IslandMap(
+          stars: _svc.lessonStars,
+          unlockedCount: _unlockedCount(),
+          current: _currentIndex(),
+          onNodeTap: _onNodeTap,
+          lessonIndices: indices,
+        ),
+      );
+      widgets.add(SizedBox(height: 12.h));
+    }
+    return widgets;
   }
 
   int _unlockedCount() {
@@ -531,23 +573,16 @@ class _IslandMap extends StatefulWidget {
   final int current;
   final void Function(int index) onNodeTap;
 
+  /// 本岛包含的全局课程序号（每节 1~5 个节点）
+  final List<int> lessonIndices;
+
   const _IslandMap({
     required this.stars,
     required this.unlockedCount,
     required this.current,
     required this.onNodeTap,
+    required this.lessonIndices,
   });
-
-  /// 节点位置（百分比，参照原型的蜿蜒路径）
-  static const List<Offset> _pos = [
-    Offset(0.26, 0.05),
-    Offset(0.66, 0.15),
-    Offset(0.24, 0.28),
-    Offset(0.64, 0.41),
-    Offset(0.24, 0.54),
-    Offset(0.64, 0.66),
-    Offset(0.30, 0.79),
-  ];
 
   @override
   State<_IslandMap> createState() => _IslandMapState();
@@ -570,10 +605,17 @@ class _IslandMapState extends State<_IslandMap>
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (context, box) {
       final w = box.maxWidth;
-      final h = w * 1.18; // 地图高度随宽度，保证节点不挤
-      final centers = _IslandMap._pos
-          .map((p) => Offset(p.dx * w, p.dy * h))
-          .toList();
+      final n = widget.lessonIndices.length;
+      // 节点在节内蛇形均匀分布：垂直间距 96px，首尾各留 52px，
+      // 保证奖章+标签不与相邻节点或分节标题重叠
+      const gap = 96.0;
+      final h = 52.0 * 2 + gap * (n - 1);
+      final centers = <Offset>[];
+      for (var k = 0; k < n; k++) {
+        final x = (k.isEven ? 0.26 : 0.66) * w;
+        final y = 52.0 + gap * k;
+        centers.add(Offset(x, y));
+      }
       return SizedBox(
         height: h,
         child: Stack(
@@ -585,49 +627,20 @@ class _IslandMapState extends State<_IslandMap>
                 painter: _MapPathPainter(centers: centers),
               ),
             ),
-            // 岛屿标签
-            _islandTag(w, h, '第①岛 气之森林', 0.02, 0.355, const Color(0xFF5FAEE3)),
-            _islandTag(w, h, '第②岛 吃子竞技场', 0.47, 0.585, WqTheme.grape),
             // 课程节点
-            for (var i = 0; i < wqLessons.length; i++)
+            for (var k = 0; k < widget.lessonIndices.length; k++)
               Positioned(
-                left: _IslandMap._pos[i].dx * w,
-                top: _IslandMap._pos[i].dy * h,
+                left: centers[k].dx,
+                top: centers[k].dy,
                 child: FractionalTranslation(
                   translation: const Offset(-0.5, -0.5),
-                  child: _node(i),
+                  child: _node(widget.lessonIndices[k]),
                 ),
               ),
           ],
         ),
       );
     });
-  }
-
-  Widget _islandTag(double w, double h, String text, double dx, double dy,
-      Color color) {
-    return Positioned(
-      left: dx * w,
-      top: dy * h,
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 11.w, vertical: 5.h),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(999),
-          boxShadow: const [
-            BoxShadow(color: Color(0x1A23324D), blurRadius: 8, offset: Offset(0, 3)),
-          ],
-        ),
-        child: Text(
-          text,
-          style: TextStyle(
-            fontSize: 10.5.sp,
-            fontWeight: FontWeight.w900,
-            color: Colors.white,
-          ),
-        ),
-      ),
-    );
   }
 
   Widget _node(int i) {
@@ -772,4 +785,36 @@ class _MapPathPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _MapPathPainter old) => old.centers != centers;
+}
+
+
+/// 岛屿分节标题的彩色胶囊
+class _IslandTag extends StatelessWidget {
+  final String text;
+  final Color color;
+
+  const _IslandTag({required this.text, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 5.h),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(999),
+        boxShadow: const [
+          BoxShadow(
+              color: Color(0x1A23324D), blurRadius: 8, offset: Offset(0, 3)),
+        ],
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 11.sp,
+          fontWeight: FontWeight.w900,
+          color: Colors.white,
+        ),
+      ),
+    );
+  }
 }

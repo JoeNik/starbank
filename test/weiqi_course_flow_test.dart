@@ -126,7 +126,7 @@ void main() {
     final btnRect = tester.getRect(find.text('继续闯关 ›'));
     expect(btnRect.bottom, lessThan(screenH),
         reason: '「继续闯关」按钮必须在屏幕内（这是用户报告的 bug：按钮被推出屏外导致点击无效）');
-    expect(tester.getRect(find.text('和棋棋下一盘巩固一下')).bottom,
+    expect(tester.getRect(find.text('和棋棋下一盘')).bottom,
         lessThan(screenH),
         reason: '「和棋棋下一盘」按钮也必须在屏幕内');
 

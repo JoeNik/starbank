@@ -96,6 +96,7 @@ class _WeiqiPuzzlePageState extends State<WeiqiPuzzlePage> {
       minCapture: pz.minCapture,
       minLibs: pz.minLibs,
       goalPoint: pz.goalPoint,
+      goalPoint2: pz.goalPoint2,
       captured: r.captured,
     );
     if (done) {

@@ -189,6 +189,7 @@ class _WeiqiCoursePageState extends State<WeiqiCoursePage> {
       minCapture: quiz.minCapture,
       minLibs: quiz.minLibs,
       goalPoint: quiz.goalPoint,
+      goalPoint2: quiz.goalPoint2,
       captured: r.captured,
     );
     if (!done) {
@@ -293,11 +294,8 @@ class _WeiqiCoursePageState extends State<WeiqiCoursePage> {
                     onTap: () {
                       Navigator.of(ctx).pop();
                       if (widget.lessonIndex + 1 < wqLessons.length) {
-                        // 帧后跳转：先让结算面板的 pop 完成，避免路由过渡冲突
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          Get.off(() => WeiqiCoursePage(
-                              lessonIndex: widget.lessonIndex + 1));
-                        });
+                        Get.off(() => WeiqiCoursePage(
+                            lessonIndex: widget.lessonIndex + 1));
                       } else {
                         Get.back();
                       }
@@ -305,7 +303,7 @@ class _WeiqiCoursePageState extends State<WeiqiCoursePage> {
                   ),
                   const SizedBox(height: 8),
                   WqGhostButton(
-                    text: '和棋棋下一盘巩固一下',
+                    text: '和棋棋下一盘',
                     height: 42,
                     fontSize: 13.5,
                     onTap: () {
@@ -440,7 +438,7 @@ class _WeiqiCoursePageState extends State<WeiqiCoursePage> {
             // 棋盘
             Expanded(
               child: Padding(
-                padding: EdgeInsets.fromLTRB(14.w, 0, 14.w, 10.h),
+                padding: EdgeInsets.fromLTRB(14.w, 0, 14.w, 14.h),
                 child: WeiqiBoardView(
                   controller: boardCtrl,
                   stones: _game.s,
@@ -478,7 +476,7 @@ class _WeiqiCoursePageState extends State<WeiqiCoursePage> {
             ),
             // 底部操作（对应原型 .lesson-actions，紧凑不裁切）
             Padding(
-              padding: EdgeInsets.fromLTRB(14.w, 0, 14.w, 10.h),
+              padding: EdgeInsets.fromLTRB(14.w, 0, 14.w, 14.h),
               child: Row(
                 children: [
                   WqIconButton(
@@ -502,7 +500,7 @@ class _WeiqiCoursePageState extends State<WeiqiCoursePage> {
                       text: _step == lesson.steps.length - 1
                           ? '完成本课 ✦'
                           : '下一步 ›',
-                      height: 46.h,
+                      height: 44.h,
                       fontSize: 15.sp,
                       onTap: _next,
                     ),
