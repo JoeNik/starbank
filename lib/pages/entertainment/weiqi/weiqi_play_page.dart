@@ -21,57 +21,70 @@ Future<void> showWqOpponentPicker(BuildContext context) async {
     context: context,
     backgroundColor: Colors.transparent,
     builder: (ctx) {
-      return Container(
-        margin: EdgeInsets.all(20.w),
-        padding: EdgeInsets.all(18.w),
-        decoration: BoxDecoration(
-          color: WqTheme.cream,
-          borderRadius: BorderRadius.circular(28.r),
+      return Padding(
+        padding: EdgeInsets.only(
+          left: 20.w,
+          right: 20.w,
+          bottom: MediaQuery.of(ctx).padding.bottom + 12.h,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '今天和谁下一盘？',
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Container(
+              padding: EdgeInsets.all(18.w),
+              decoration: BoxDecoration(
+                color: WqTheme.cream,
+                borderRadius: BorderRadius.circular(28.r),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+              Text(
+                '今天和谁下一盘？',
               style: TextStyle(
                 fontSize: 18.sp,
                 fontWeight: FontWeight.w900,
                 color: WqTheme.ink,
               ),
             ),
-            SizedBox(height: 14.h),
-            _opponentOption(
-              ctx,
-              panda: const WqPanda(mood: WqPandaMood.happy, size: 52),
-              title: '和棋棋下',
-              subtitle: '棋棋会陪你慢慢下，还会悄悄犯错哦',
-              color: WqTheme.greenSoft,
-              onTap: () {
-                Navigator.of(ctx).pop();
-                Get.to(() => const WeiqiPlayPage(opponent: WqOpponent.ai));
-              },
-            ),
-            SizedBox(height: 10.h),
-            _opponentOption(
-              ctx,
-              panda: Container(
-                width: 52,
-                height: 52,
-                decoration: const BoxDecoration(
-                  color: WqTheme.sunSoft,
-                  shape: BoxShape.circle,
-                ),
-                child: const Center(child: Text('👪', style: TextStyle(fontSize: 26))),
+              SizedBox(height: 14.h),
+              _opponentOption(
+                ctx,
+                panda: const WqPanda(mood: WqPandaMood.happy, size: 52),
+                title: '和棋棋下',
+                subtitle: '棋棋会陪你慢慢下，还会悄悄犯错哦',
+                color: WqTheme.greenSoft,
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  Get.to(() => const WeiqiPlayPage(opponent: WqOpponent.ai));
+                },
               ),
-              title: '和家长下',
-              subtitle: '同一部手机轮流落子 · 先提 3 颗获胜',
-              color: WqTheme.sunSoft,
-              onTap: () {
-                Navigator.of(ctx).pop();
-                Get.to(() => const WeiqiPlayPage(opponent: WqOpponent.parent));
-              },
-            ),
-          ],
+              SizedBox(height: 10.h),
+              _opponentOption(
+                ctx,
+                panda: Container(
+                  width: 52,
+                  height: 52,
+                  decoration: const BoxDecoration(
+                    color: WqTheme.sunSoft,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Center(
+                      child: Text('👪', style: TextStyle(fontSize: 26))),
+                ),
+                title: '和家长下',
+                subtitle: '同一部手机轮流落子 · 先提 3 颗获胜',
+                color: WqTheme.sunSoft,
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  Get.to(() => const WeiqiPlayPage(opponent: WqOpponent.parent));
+                },
+              ),
+            ],
+          ),
+        ),
+          ),
         ),
       );
     },
@@ -486,6 +499,21 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
 
   // ================= 悔棋 / 结束 =================
 
+  Future<void> _confirmRestart() async {
+    if (_history.isEmpty && !_over) {
+      _resetGame(); // 还没落子，直接重开
+      return;
+    }
+    final ok = await _confirm(
+      title: '要重新开始吗？',
+      body: '这盘棋的进度会清空，复盘卡也不会生成哦。',
+      okText: '重新开始',
+      cancelText: '继续下',
+    );
+    if (!ok) return;
+    _resetGame();
+  }
+
   Future<void> _undo() async {
     if (_over) return;
     if (_history.isEmpty) {
@@ -793,24 +821,25 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
                           }
                         }),
                     SizedBox(width: 8.w),
-                    Container(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 12.w, vertical: 7.h),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(999),
-                        boxShadow: const [
-                          BoxShadow(
-                              color: Color(0x14233240),
-                              blurRadius: 6,
-                              offset: Offset(0, 2)),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                                horizontal: 8.w, vertical: 3.h),
+                    Expanded(
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 10.w, vertical: 7.h),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(999),
+                          boxShadow: const [
+                            BoxShadow(
+                                color: Color(0x14233240),
+                                blurRadius: 6,
+                                offset: Offset(0, 2)),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 8.w, vertical: 3.h),
                             decoration: BoxDecoration(
                               color: _turn == 1 || _isAi
                                   ? const Color(0xFF2E2E38)
@@ -831,18 +860,29 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
                             ),
                           ),
                           SizedBox(width: 8.w),
-                          Text(
-                            '先提 $_winCaptures 颗获胜',
-                            style: TextStyle(
-                              fontSize: 12.sp,
-                              fontWeight: FontWeight.w800,
-                              color: WqTheme.inkSoft,
+                            Flexible(
+                              child: Text(
+                                '先提 $_winCaptures 颗获胜',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 11.5.sp,
+                                  fontWeight: FontWeight.w800,
+                                  color: WqTheme.inkSoft,
+                                ),
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                    const Spacer(),
+                    SizedBox(width: 8.w),
+                    WqIconButton(
+                      icon: Icons.replay_rounded,
+                      size: 40,
+                      onTap: _confirmRestart,
+                    ),
+                    SizedBox(width: 6.w),
                     WqIconButton(
                       icon: WqSfx.enabled
                           ? Icons.volume_up_rounded
@@ -869,6 +909,10 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
                           mood: _mood,
                           maxLines: 3,
                           tail: true,
+                          onReplay: () {
+                            WqSfx.pop();
+                            _svc.speak(_bubbleText);
+                          },
                         ),
                       ),
                     ],

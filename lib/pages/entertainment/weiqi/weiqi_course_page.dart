@@ -227,64 +227,79 @@ class _WeiqiCoursePageState extends State<WeiqiCoursePage> {
       isDismissible: false,
       enableDrag: false,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        margin: EdgeInsets.all(20.w),
-        padding: EdgeInsets.all(18.w),
-        decoration: BoxDecoration(
-          color: WqTheme.cream,
-          borderRadius: BorderRadius.circular(28.r),
+      builder: (ctx) => Padding(
+        // 底部安全区 + FittedBox：视口放不下时整体等比缩小，
+        // 保证两个按钮在任何屏幕（含桌面小窗口）都完整可见、可点
+        padding: EdgeInsets.only(
+          left: 16.w,
+          right: 16.w,
+          bottom: MediaQuery.of(ctx).padding.bottom + 12.h,
         ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const WqPanda(mood: WqPandaMood.cheer, size: 72),
-              SizedBox(height: 6.h),
-              Text(
-                '课程完成！',
-                style: TextStyle(
-                    fontSize: 21.sp,
-                    fontWeight: FontWeight.w900,
-                    color: WqTheme.ink),
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Container(
+              padding:
+                  EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+              decoration: BoxDecoration(
+                color: WqTheme.cream,
+                borderRadius: BorderRadius.circular(28.r),
               ),
-              Text(
-                '${lesson.island} · 第${lesson.no}课 「${lesson.title}」',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    fontSize: 12.5.sp,
-                    fontWeight: FontWeight.w700,
-                    color: WqTheme.inkSoft),
-              ),
-              SizedBox(height: 8.h),
-              WqStarsRow(stars: stars, pop: true, size: 28),
-              SizedBox(height: 10.h),
-              WqChip(text: '学会：${lesson.teaches.join(' · ')}'),
-              SizedBox(height: 14.h),
-              WqPrimaryButton(
-                text: _nextLessonText(),
-                height: 46.h,
-                fontSize: 15.sp,
-                onTap: () {
-                  Navigator.of(ctx).pop();
-                  if (widget.lessonIndex + 1 < wqLessons.length) {
-                    Get.off(() =>
-                        WeiqiCoursePage(lessonIndex: widget.lessonIndex + 1));
-                  } else {
-                    Get.back();
-                  }
-                },
-              ),
-              SizedBox(height: 10.h),
-              WqGhostButton(
-                text: '和棋棋下一盘巩固一下',
-                height: 42.h,
-                fontSize: 13.5.sp,
-                onTap: () {
-                  Navigator.of(ctx).pop();
-                  _showOpponentPicker();
-                },
-              ),
-            ],
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                const WqPanda(mood: WqPandaMood.cheer, size: 58),
+                SizedBox(height: 4.h),
+                Text(
+                  '课程完成！',
+                  style: TextStyle(
+                      fontSize: 20.sp,
+                      fontWeight: FontWeight.w900,
+                      color: WqTheme.ink),
+                ),
+                Text(
+                  '${lesson.island} · 第${lesson.no}课 「${lesson.title}」',
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w700,
+                      color: WqTheme.inkSoft),
+                ),
+                SizedBox(height: 6.h),
+                WqStarsRow(stars: stars, pop: true, size: 26),
+                SizedBox(height: 8.h),
+                WqChip(text: '学会：${lesson.teaches.join(' · ')}'),
+                SizedBox(height: 12.h),
+                WqPrimaryButton(
+                  text: _nextLessonText(),
+                  height: 46.h,
+                  fontSize: 15.sp,
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    if (widget.lessonIndex + 1 < wqLessons.length) {
+                      Get.off(() => WeiqiCoursePage(
+                          lessonIndex: widget.lessonIndex + 1));
+                    } else {
+                      Get.back();
+                    }
+                  },
+                ),
+                SizedBox(height: 8.h),
+                WqGhostButton(
+                  text: '和棋棋下一盘巩固一下',
+                  height: 42.h,
+                  fontSize: 13.5.sp,
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    _showOpponentPicker();
+                  },
+                ),
+              ],
+            ),
+          ),
           ),
         ),
       ),
@@ -397,6 +412,10 @@ class _WeiqiCoursePageState extends State<WeiqiCoursePage> {
                   mood: _quizDone ? WqPandaMood.cheer : WqPandaMood.happy,
                   maxLines: 4,
                   tail: true,
+                  onReplay: () {
+                    WqSfx.pop();
+                    _svc.speak(_extraBubble.isEmpty ? st.bubble : _extraBubble);
+                  },
                 ),
               ),
             ),

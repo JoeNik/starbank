@@ -92,4 +92,51 @@ void main() {
     // 让庆祝彩带等挂起的 Timer 走完，避免测试收尾报 pending timer
     await tester.pump(const Duration(seconds: 3));
   });
+
+  testWidgets('领取奖励 → 继续闯关 → 进入第 2 课', (tester) async {
+    await tester.pumpWidget(
+      ScreenUtilInit(
+        designSize: const Size(375, 812),
+        builder: (context, child) => GetMaterialApp(
+          home: const WeiqiCoursePage(lessonIndex: 0),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 400));
+
+    for (var i = 0; i < 6; i++) {
+      await tapText(tester, '下一步 ›');
+      await tester.pump(const Duration(milliseconds: 150));
+    }
+    await tapPoint(tester, 3, 4);
+    await tapPoint(tester, 5, 4);
+    await tapPoint(tester, 4, 3);
+    await tapPoint(tester, 4, 5);
+    await tester.pump(const Duration(milliseconds: 200));
+    await tapText(tester, '下一步 ›');
+    await tester.pump(const Duration(milliseconds: 200));
+    await tapPoint(tester, 4, 5);
+    await tester.pump(const Duration(milliseconds: 300));
+    await tapText(tester, '领取奖励 ✦');
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('课程完成！'), findsOneWidget);
+
+    // 核心回归 1：结算面板两个按钮必须在可视区域内（无需滚动即可点）
+    final screenH = (tester.view.physicalSize / tester.view.devicePixelRatio).height;
+    final btnRect = tester.getRect(find.text('继续闯关 ›'));
+    expect(btnRect.bottom, lessThan(screenH),
+        reason: '「继续闯关」按钮必须在屏幕内（这是用户报告的 bug：按钮被推出屏外导致点击无效）');
+    expect(tester.getRect(find.text('和棋棋下一盘巩固一下')).bottom,
+        lessThan(screenH),
+        reason: '「和棋棋下一盘」按钮也必须在屏幕内');
+
+    // 核心回归 2：点击「继续闯关 ›」应进入第 2 课
+    await tapText(tester, '继续闯关 ›');
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('课程完成！'), findsNothing, reason: '结算面板应已关闭');
+    expect(find.textContaining('第2课'), findsWidgets,
+        reason: '应进入第 2 课（逃出去！）');
+
+    await tester.pump(const Duration(seconds: 3));
+  });
 }

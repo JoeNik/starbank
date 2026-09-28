@@ -39,7 +39,11 @@ void main() {
     FlutterError.onError = (details) {
       final msg = details.exceptionAsString();
       final first = msg.split('\n').first;
-      if (!errors.contains(first)) errors.add(first);
+      final ctxLines = details.informationCollector == null
+          ? ''
+          : details.informationCollector!().join(' | ');
+      final key = '$first :: $ctxLines';
+      if (!errors.contains(key)) errors.add(key);
     };
     try {
       await tester.pumpWidget(

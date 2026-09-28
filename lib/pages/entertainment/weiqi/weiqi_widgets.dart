@@ -14,6 +14,7 @@ class WqBubble extends StatelessWidget {
 
   final int maxLines;
   final bool tail;
+  final VoidCallback? onReplay; // 语音重播：点击气泡里的小喇叭重听一遍
 
   const WqBubble({
     super.key,
@@ -22,6 +23,7 @@ class WqBubble extends StatelessWidget {
     this.mood = WqPandaMood.happy,
     this.maxLines = 4,
     this.tail = false,
+    this.onReplay,
   });
 
   @override
@@ -60,6 +62,20 @@ class WqBubble extends StatelessWidget {
                     SizedBox(width: 4.w),
                     const _SpeakWave(),
                   ],
+                  const Spacer(),
+                  if (onReplay != null)
+                    GestureDetector(
+                      onTap: onReplay,
+                      behavior: HitTestBehavior.opaque,
+                      child: Padding(
+                        padding: EdgeInsets.all(3.w),
+                        child: Icon(
+                          Icons.volume_up_rounded,
+                          size: 16,
+                          color: WqTheme.greenDeep,
+                        ),
+                      ),
+                    ),
                 ],
               ),
               SizedBox(height: 2.h),
