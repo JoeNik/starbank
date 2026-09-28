@@ -23,7 +23,9 @@ jobs:
           java-version: '17'
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        # 锁定精确版本：v4.0.2+ 停止安装已被 Google 移除的 tools 包
+        # （浮动 @v3 会卡在 "Failed to find package 'tools'"）
+        uses: android-actions/setup-android@v4.0.4
 
       - name: Install Android NDK
         run: sdkmanager --install "ndk;28.2.13676358"
