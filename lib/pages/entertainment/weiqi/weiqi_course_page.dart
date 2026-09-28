@@ -330,7 +330,8 @@ class _WeiqiCoursePageState extends State<WeiqiCoursePage> {
   }
 
   void _showOpponentPicker() {
-    showWqOpponentPicker(context);
+    // 从课程结算进入的对局：结束后直接回棋妙岛主页
+    showWqOpponentPicker(context, exitToHomeAfterGame: true);
   }
 
   @override

@@ -15,8 +15,13 @@ import 'weiqi_service.dart';
 import 'weiqi_theme.dart';
 import 'weiqi_widgets.dart';
 
-/// 对手选择底部弹层（课程结算页与模块首页共用）
-Future<void> showWqOpponentPicker(BuildContext context) async {
+/// 对手选择底部弹层（课程结算页与模块首页共用）。
+/// [exitToHomeAfterGame]：从课程结算进入时传 true，
+/// 对局结束点「回小岛休息一下」会连课程页一起退出，直接回到棋妙岛主页。
+Future<void> showWqOpponentPicker(
+  BuildContext context, {
+  bool exitToHomeAfterGame = false,
+}) async {
   await showModalBottomSheet(
     context: context,
     backgroundColor: Colors.transparent,
@@ -60,7 +65,10 @@ Future<void> showWqOpponentPicker(BuildContext context) async {
                 color: WqTheme.greenSoft,
                 onTap: () {
                   Navigator.of(ctx).pop();
-                  Get.to(() => const WeiqiPlayPage(opponent: WqOpponent.ai));
+                  Get.to(() => WeiqiPlayPage(
+                        opponent: WqOpponent.ai,
+                        exitToHome: exitToHomeAfterGame,
+                      ));
                 },
               ),
               const SizedBox(height: 10),
@@ -81,7 +89,10 @@ Future<void> showWqOpponentPicker(BuildContext context) async {
                 color: WqTheme.sunSoft,
                 onTap: () {
                   Navigator.of(ctx).pop();
-                  Get.to(() => const WeiqiPlayPage(opponent: WqOpponent.parent));
+                  Get.to(() => WeiqiPlayPage(
+                        opponent: WqOpponent.parent,
+                        exitToHome: exitToHomeAfterGame,
+                      ));
                 },
               ),
             ],
@@ -161,7 +172,14 @@ enum WqOpponent { ai, parent }
 class WeiqiPlayPage extends StatefulWidget {
   final WqOpponent opponent;
 
-  const WeiqiPlayPage({super.key, this.opponent = WqOpponent.ai});
+  /// 从课程结算进入的对局：结束时「回小岛休息一下」直接回到棋妙岛主页
+  final bool exitToHome;
+
+  const WeiqiPlayPage({
+    super.key,
+    this.opponent = WqOpponent.ai,
+    this.exitToHome = false,
+  });
 
   @override
   State<WeiqiPlayPage> createState() => _WeiqiPlayPageState();
@@ -700,7 +718,10 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
                 text: '回小岛休息一下',
                 onTap: () {
                   Get.back(); // 关闭结算
-                  Get.back(); // 返回上一页
+                  Get.back(); // 退出对局
+                  if (widget.exitToHome) {
+                    Get.back(); // 从课程结算进入：连课程页一起退出，回到课程地图
+                  }
                 },
               ),
             ],
