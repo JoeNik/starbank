@@ -5,7 +5,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
-import 'package:star_bank/pages/entertainment/weiqi/weiqi_board.dart';
 import 'package:star_bank/pages/entertainment/weiqi/weiqi_course_page.dart';
 import 'package:star_bank/pages/entertainment/weiqi/weiqi_service.dart';
 
@@ -29,7 +28,7 @@ void main() {
 
   /// 把棋盘交叉点 (x, y) 换算成全局坐标并点击
   Future<void> tapPoint(WidgetTester tester, int x, int y) async {
-    final rect = tester.getRect(find.byType(WeiqiBoardView));
+    final rect = tester.getRect(find.byKey(const ValueKey('wq-board-square')));
     const pad = 6.2;
     final step = (100 - pad * 2) / 8;
     final dx = rect.left + rect.width * ((pad + x * step) / 100);

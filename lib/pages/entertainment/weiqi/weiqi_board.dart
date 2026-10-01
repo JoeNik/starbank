@@ -156,133 +156,144 @@ class _WeiqiBoardViewState extends State<WeiqiBoardView>
 
   @override
   Widget build(BuildContext context) {
-    return AspectRatio(
-      aspectRatio: 1,
-      child: LayoutBuilder(builder: (context, box) {
-        final size = Size(box.maxWidth, box.maxWidth);
-        return GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTapUp: widget.onPointTap == null
-              ? null
-              : (d) => _handleTap(d.localPosition, size),
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
-                  gradient: const RadialGradient(
-                    center: Alignment(-0.6, -0.8),
-                    radius: 1.4,
-                    colors: [Color(0xFFF2CD8C), WqTheme.boardA, WqTheme.boardB],
-                    stops: [0, 0.45, 1],
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF8C5E2D).withValues(alpha: 0.45),
-                      offset: const Offset(0, 6),
-                      blurRadius: 0,
+    // 口袋挂在棋盘上/下边缘之外，不再遮挡棋盘角上的交叉点；
+    // 板边 = min(可用宽, 可用高 - 口袋条)，Column 只包内容，绝不溢出
+    return LayoutBuilder(builder: (context, outer) {
+      final maxW = outer.maxWidth;
+      final maxH = outer.maxHeight;
+      final boardSize = maxH.isFinite
+          ? math.min(maxW, math.max(0.0, maxH - 64))
+          : maxW;
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 2),
+          Align(
+            alignment: Alignment.centerRight,
+            child: _pocketPill(color: 2, count: widget.capByBlack),
+          ),
+          const SizedBox(height: 4),
+          SizedBox(
+            key: const ValueKey('wq-board-square'),
+            width: boardSize,
+            height: boardSize,
+            child: LayoutBuilder(builder: (context, box) {
+              final size = Size(box.maxWidth, box.maxWidth);
+              return GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTapUp: widget.onPointTap == null
+                    ? null
+                    : (d) => _handleTap(d.localPosition, size),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        gradient: const RadialGradient(
+                          center: Alignment(-0.6, -0.8),
+                          radius: 1.4,
+                          colors: [
+                            Color(0xFFF2CD8C),
+                            WqTheme.boardA,
+                            WqTheme.boardB
+                          ],
+                          stops: [0, 0.45, 1],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF8C5E2D)
+                                .withValues(alpha: 0.45),
+                            offset: const Offset(0, 6),
+                            blurRadius: 0,
+                          ),
+                          BoxShadow(
+                            color: WqTheme.line.withValues(alpha: 0.16),
+                            offset: const Offset(0, 10),
+                            blurRadius: 16,
+                          ),
+                        ],
+                      ),
+                      child: CustomPaint(
+                        size: size,
+                        painter: _BoardPainter(
+                          n: widget.n,
+                          stones: widget.stones,
+                          lastMove: widget.lastMove,
+                          breathePoints: widget.breathePoints,
+                          breatheWarn: widget.breatheWarn,
+                          blinkPoints: widget.blinkPoints,
+                          glowCenter: widget.glowCenter,
+                          glowRadius: widget.glowRadius,
+                          pulse: _pulse,
+                          pop: _pop,
+                          popPoint: _popPoint,
+                          ghost: _ghost ?? widget.ghostStone,
+                          ghostColor: _ghostColor,
+                          ghostStones: widget.ghostStones,
+                        ),
+                      ),
                     ),
-                    BoxShadow(
-                      color: WqTheme.line.withValues(alpha: 0.16),
-                      offset: const Offset(0, 10),
-                      blurRadius: 16,
-                    ),
+                    // 提子飞行动画层（飞向棋盘外的口袋）
+                    ..._flies.map((f) => AnimatedBuilder(
+                          animation: f.ctrl,
+                          builder: (context, _) {
+                            final t = Curves.easeInOutCubic
+                                .transform(f.ctrl.value);
+                            final start = _pointOffset(f.point, size);
+                            final end = Offset(
+                              f.color == 2
+                                  ? size.width * 0.90
+                                  : size.width * 0.10,
+                              f.color == 2 ? -8 : size.height + 8,
+                            );
+                            final pos = Offset.lerp(start, end, t)!;
+                            final scale = 1 - 0.68 * t;
+                            return Positioned(
+                              left: pos.dx - size.width * 0.047,
+                              top: pos.dy - size.width * 0.047,
+                              child: Transform.scale(
+                                scale: scale,
+                                child: Opacity(
+                                  opacity: (1 - t).clamp(0.0, 1.0),
+                                  child: SizedBox(
+                                    width: size.width * 0.094,
+                                    height: size.width * 0.094,
+                                    child: CustomPaint(
+                                      painter: _StonePainter(
+                                          color: f.color,
+                                          boardSize: size.width),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        )),
                   ],
                 ),
-                child: CustomPaint(
-                  size: size,
-                  painter: _BoardPainter(
-                    n: widget.n,
-                    stones: widget.stones,
-                    lastMove: widget.lastMove,
-                    breathePoints: widget.breathePoints,
-                    breatheWarn: widget.breatheWarn,
-                    blinkPoints: widget.blinkPoints,
-                    glowCenter: widget.glowCenter,
-                    glowRadius: widget.glowRadius,
-                    pulse: _pulse,
-                    pop: _pop,
-                    popPoint: _popPoint,
-                    ghost: _ghost ?? widget.ghostStone,
-                    ghostColor: _ghostColor,
-                    ghostStones: widget.ghostStones,
-                  ),
-                ),
-              ),
-              // 提子飞行动画层
-              ..._flies.map((f) => AnimatedBuilder(
-                    animation: f.ctrl,
-                    builder: (context, _) {
-                      final t = Curves.easeInOutCubic.transform(f.ctrl.value);
-                      final start = _pointOffset(f.point, size);
-                      final end = Offset(
-                        f.color == 2 ? size.width * 0.88 : size.width * 0.12,
-                        f.color == 2 ? size.height * 0.10 : size.height * 0.90,
-                      );
-                      final pos = Offset.lerp(start, end, t)!;
-                      final scale = 1 - 0.68 * t;
-                      return Positioned(
-                        left: pos.dx - size.width * 0.047,
-                        top: pos.dy - size.width * 0.047,
-                        child: Transform.scale(
-                          scale: scale,
-                          child: Opacity(
-                            opacity: (1 - t).clamp(0.0, 1.0),
-                            child: SizedBox(
-                              width: size.width * 0.094,
-                              height: size.width * 0.094,
-                              child: CustomPaint(
-                                painter: _StonePainter(
-                                    color: f.color, boardSize: size.width),
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  )),
-              // 提子口袋
-              _pocket(
-                color: 2,
-                count: widget.capByBlack,
-                left: 8,
-                bottom: 8,
-                size: size,
-              ),
-              _pocket(
-                color: 1,
-                count: widget.capByWhite,
-                right: 8,
-                top: 8,
-                size: size,
-              ),
-            ],
+              );
+            }),
           ),
-        );
-      }),
-    );
+          const SizedBox(height: 4),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: _pocketPill(color: 1, count: widget.capByWhite),
+          ),
+          const SizedBox(height: 2),
+        ],
+      );
+    });
   }
 
-  Widget _pocket({
-    required int color,
-    required int count,
-    double? left,
-    double? right,
-    double? top,
-    double? bottom,
-    required Size size,
-  }) {
-    return Positioned(
-      left: left?.toDouble(),
-      right: right?.toDouble(),
-      top: top?.toDouble(),
-      bottom: bottom?.toDouble(),
-      child: Container(
+  Widget _pocketPill({required int color, required int count}) {
+    return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 6),
         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.92),
+          color: Colors.white.withValues(alpha: 0.95),
           borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: const Color(0x14233240)),
           boxShadow: const [
             BoxShadow(
               color: Color(0x14233240),
@@ -321,8 +332,7 @@ class _WeiqiBoardViewState extends State<WeiqiBoardView>
             ),
           ],
         ),
-      ),
-    );
+      );
   }
 }
 

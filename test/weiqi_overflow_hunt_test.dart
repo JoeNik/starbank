@@ -6,7 +6,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:star_bank/controllers/app_mode_controller.dart';
-import 'package:star_bank/pages/entertainment/weiqi/weiqi_board.dart';
 import 'package:star_bank/pages/entertainment/weiqi/weiqi_course_page.dart';
 import 'package:star_bank/pages/entertainment/weiqi/weiqi_home_page.dart';
 import 'package:star_bank/pages/entertainment/weiqi/weiqi_parent_page.dart';
@@ -63,7 +62,7 @@ void main() {
   }
 
   Future<void> tapPoint(WidgetTester tester, double fx, double fy) async {
-    final rect = tester.getRect(find.byType(WeiqiBoardView));
+    final rect = tester.getRect(find.byKey(const ValueKey('wq-board-square')));
     await tester.tapAt(
         Offset(rect.left + rect.width * fx, rect.top + rect.height * fy));
     await tester.pump(const Duration(milliseconds: 150));

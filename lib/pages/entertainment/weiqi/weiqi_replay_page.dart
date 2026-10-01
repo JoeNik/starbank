@@ -152,6 +152,30 @@ class _WeiqiReplayPageState extends State<WeiqiReplayPage> {
                 ),
               ),
             ),
+            // 进度滑杆：直接拖到想看的第几手
+            if (total > 0)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 0, 10, 0),
+                child: SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    trackHeight: 3,
+                    thumbShape:
+                        const RoundSliderThumbShape(enabledThumbRadius: 9),
+                    overlayShape:
+                        const RoundSliderOverlayShape(overlayRadius: 15),
+                  ),
+                  child: Slider(
+                    value: _idx.toDouble(),
+                    min: 0,
+                    max: total.toDouble(),
+                    divisions: total > 1 ? total : null,
+                    activeColor: WqTheme.green,
+                    inactiveColor: const Color(0xFFE2E7EF),
+                    label: '第 $_idx 手',
+                    onChanged: (v) => _seek(v.round()),
+                  ),
+                ),
+              ),
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
               child: Row(
