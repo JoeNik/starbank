@@ -25,6 +25,8 @@ class WeiqiBoardView extends StatefulWidget {
   final Set<int> blinkPoints;
   final int? ghostStone; // 演示幽灵子
   final int ghostColor;
+  /// 提子讲解残影：点 → 棋子颜色，半透明重现刚被提走的棋子
+  final Map<int, int> ghostStones;
   final int? glowCenter; // 区域微光中心（索引）
   final double glowRadius; // 区域半径（百分比）
   final void Function(int point)? onPointTap;
@@ -42,6 +44,7 @@ class WeiqiBoardView extends StatefulWidget {
     this.blinkPoints = const {},
     this.ghostStone,
     this.ghostColor = 1,
+    this.ghostStones = const {},
     this.glowCenter,
     this.glowRadius = 22,
     this.onPointTap,
@@ -203,6 +206,7 @@ class _WeiqiBoardViewState extends State<WeiqiBoardView>
                     popPoint: _popPoint,
                     ghost: _ghost ?? widget.ghostStone,
                     ghostColor: _ghostColor,
+                    ghostStones: widget.ghostStones,
                   ),
                 ),
               ),
@@ -344,6 +348,7 @@ class _BoardPainter extends CustomPainter {
   final int popPoint;
   final int? ghost;
   final int ghostColor;
+  final Map<int, int> ghostStones;
 
   _BoardPainter({
     required this.n,
@@ -359,6 +364,7 @@ class _BoardPainter extends CustomPainter {
     required this.popPoint,
     required this.ghost,
     required this.ghostColor,
+    required this.ghostStones,
   }) : super(repaint: Listenable.merge([pulse, pop]));
 
   static const double _pad = 6.2;
@@ -379,6 +385,20 @@ class _BoardPainter extends CustomPainter {
     _paintBlink(canvas, size);
     if (ghost != null) {
       _paintOneStone(canvas, size, ghost!, ghostColor, alpha: 0.55);
+    }
+    // 提子讲解残影：半透明重现被提走的棋子并描一圈提示环
+    for (final e in ghostStones.entries) {
+      if (stones[e.key] != 0) continue;
+      _paintOneStone(canvas, size, e.key, e.value, alpha: 0.5);
+      final c = _pt(e.key, size);
+      canvas.drawCircle(
+        c,
+        size.width * 0.055,
+        Paint()
+          ..color = WqTheme.coral.withValues(alpha: 0.85)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = size.width * 0.009,
+      );
     }
   }
 
@@ -559,6 +579,7 @@ class _BoardPainter extends CustomPainter {
         old.glowCenter != glowCenter ||
         old.glowRadius != glowRadius ||
         old.popPoint != popPoint ||
+        old.ghostStones.length != ghostStones.length ||
         old.ghost != ghost ||
         old.ghostColor != ghostColor ||
         old.breathePoints.length != breathePoints.length ||

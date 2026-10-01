@@ -26,6 +26,43 @@ class WeiqiService extends GetxService {
   /// 藏宝箱（做错的题，复习答对后移出）
   final RxSet<String> wrongPuzzles = <String>{}.obs;
 
+  // ================= 最近一局（主页「上局复盘」入口） =================
+
+  Map<String, dynamic>? _lastGame;
+
+  /// 保存最近一局的回放数据（每手颜色/落点 + 关键手讲解）
+  void saveLastGame(
+      List<({int color, int point})> moves, Map<int, String> notes) {
+    _lastGame = {
+      'moves': [for (final m in moves) {'c': m.color, 'p': m.point}],
+      'notes': {for (final e in notes.entries) e.key.toString(): e.value},
+      'playedAt': DateTime.now().toIso8601String(),
+    };
+    _save();
+  }
+
+  Map<String, dynamic>? get lastGame => _lastGame;
+
+  /// 从持久化数据恢复回放参数；无记录返回 null
+  ({List<({int color, int point})> moves, Map<int, String> notes})?
+      loadLastGame() {
+    final g = _lastGame;
+    if (g == null) return null;
+    final moves = <({int color, int point})>[
+      for (final m in (g['moves'] as List))
+        (
+          color: (m['c'] as num).toInt(),
+          point: (m['p'] as num).toInt(),
+        )
+    ];
+    final notes = <int, String>{
+      for (final e in ((g['notes'] as Map?) ?? const {}).entries)
+        int.parse(e.key.toString()): e.value.toString(),
+    };
+    if (moves.isEmpty) return null;
+    return (moves: moves, notes: notes);
+  }
+
   // ---- 对局记录（陪下） ----
   final RxInt playWins = 0.obs;
   final RxInt playLosses = 0.obs;
@@ -316,6 +353,8 @@ class WeiqiService extends GetxService {
           }
         });
       }
+      final last = data['lastGame'];
+      if (last is Map) _lastGame = Map<String, dynamic>.from(last);
       voiceOn.value = data['voiceOn'] as bool? ?? true;
       remindOn.value = data['remindOn'] as bool? ?? true;
       sfxOn.value = data['sfxOn'] as bool? ?? true;
@@ -335,6 +374,7 @@ class WeiqiService extends GetxService {
         'playLosses': playLosses.value,
         'playDraws': playDraws.value,
         'dailyActivity': dailyActivity,
+        'lastGame': _lastGame,
         'voiceOn': voiceOn.value,
         'remindOn': remindOn.value,
         'sfxOn': sfxOn.value,

@@ -10,6 +10,7 @@ import 'weiqi_data.dart';
 import 'weiqi_parent_page.dart';
 import 'weiqi_panda.dart';
 import 'weiqi_play_page.dart';
+import 'weiqi_replay_page.dart';
 import 'weiqi_puzzle_page.dart';
 import 'weiqi_service.dart';
 import 'weiqi_sfx.dart';
@@ -60,6 +61,10 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
                     SizedBox(height: 12.h),
                     _playCta(),
                     SizedBox(height: 18.h),
+                    if (_svc.loadLastGame() != null) ...[
+                      _lastGameEntry(),
+                      SizedBox(height: 12.h),
+                    ],
                     _sectionTitle('🗺️ 课程地图'),
                     SizedBox(height: 10.h),
                     ..._buildIslandSections(),
@@ -231,6 +236,67 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
           ),
         ),
       ],
+    );
+  }
+
+  /// 上一局复盘入口：终局后随时可以回来逐步回顾
+  Widget _lastGameEntry() {
+    final last = _svc.loadLastGame();
+    if (last == null) return const SizedBox.shrink();
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(20.r),
+      child: InkWell(
+        onTap: () => Get.to(() => WeiqiReplayPage(
+              moves: last.moves,
+              notes: last.notes,
+            )),
+        borderRadius: BorderRadius.circular(20.r),
+        child: Container(
+          padding: EdgeInsets.all(12.w),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20.r),
+            border: Border.all(color: WqTheme.green.withValues(alpha: 0.35)),
+            boxShadow: const [
+              BoxShadow(
+                  color: Color(0x1A23324D), blurRadius: 16, offset: Offset(0, 6)),
+            ],
+          ),
+          child: Row(
+            children: [
+              const WqPanda(mood: WqPandaMood.think, size: 44),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '上局复盘 · 学一手',
+                      style: TextStyle(
+                        fontSize: 14.5.sp,
+                        fontWeight: FontWeight.w800,
+                        color: WqTheme.ink,
+                      ),
+                    ),
+                    SizedBox(height: 2.h),
+                    Text(
+                      '一步一步回看刚下的棋，棋棋讲解每一手',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.w600,
+                        color: WqTheme.inkSoft,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: WqTheme.inkFaint),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

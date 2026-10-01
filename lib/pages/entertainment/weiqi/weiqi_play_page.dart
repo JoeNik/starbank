@@ -12,6 +12,7 @@ import 'weiqi_engine.dart';
 import 'weiqi_panda.dart';
 import 'weiqi_sfx.dart';
 import 'weiqi_service.dart';
+import 'weiqi_replay_page.dart';
 import 'weiqi_theme.dart';
 import 'weiqi_widgets.dart';
 
@@ -205,6 +206,16 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
   String? _improvement;
   Timer? _aiTimer;
 
+  /// 对局回放：每一手（颜色 + 落点）与关键手的讲解
+  final List<({int color, int point})> _replayMoves = [];
+  final Map<int, String> _replayNotes = {};
+  /// 孩子的棋被打吃时的最后一口气（警示小灯）
+  Set<int> _dangerLibs = {};
+
+  /// 提子现场讲解：残影（点→色）+ 计时器
+  Map<int, int> _explainGhosts = {};
+  Timer? _explainTimer;
+
   final WqBoardController _boardCtrl = WqBoardController();
   Set<int> _blink = {};
   int? _glowCenter;
@@ -223,6 +234,7 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
   @override
   void dispose() {
     _aiTimer?.cancel();
+    _explainTimer?.cancel();
     _svc.stopSpeak();
     super.dispose();
   }
@@ -241,6 +253,11 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
     _pendingCapture = false;
     _milestones.clear();
     _improvement = null;
+    _replayMoves.clear();
+    _replayNotes.clear();
+    _dangerLibs = {};
+    _explainGhosts = {};
+    _explainTimer?.cancel();
     _blink = {};
     _glowCenter = null;
     _say(
@@ -297,12 +314,19 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
     WqSfx.stone();
     HapticFeedback.lightImpact();
     _helpStage = 0;
+    _explainTimer?.cancel();
+    _explainGhosts = {};
+    final myIdx = _replayMoves.length;
+    _replayMoves.add((color: 1, point: i));
     if (r.captured.isNotEmpty) {
       WqSfx.capture();
       _boardCtrl.flyCaptures(r.captured, 2);
       _milestones.add(r.captured.length > 1
           ? '一手提走 ${r.captured.length} 颗棋子，好一个双打！'
           : '提子成功！你把白棋的呼吸全堵住啦～');
+      _replayNotes[myIdx] = r.captured.length > 1
+          ? '这一手提走 ${r.captured.length} 颗，好棋！'
+          : '这一手把白棋的气全堵住了，提子成功！';
       _say(
         r.captured.length > 1
             ? '哇！一手提走 ${r.captured.length} 颗，这是「双打」的好棋呀！'
@@ -317,15 +341,22 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
         final grp = _game.groupAt(_ownAtariBefore!);
         if (grp.isNotEmpty && _game.libsOf(grp).length >= 2) {
           _milestones.add('被包围的士兵成功逃出来啦，会「长气」了！');
+          _replayNotes[myIdx] = '这一手让被包围的士兵长出了气，逃出去啦！';
         }
         _ownAtariBefore = null;
       }
       // 机会溜走：之前有可提的白子却没提
       if (_pendingCapture) {
         _improvement ??= '白棋的士兵曾只剩一口气，机会悄悄溜走了——下次看到「打吃」，先一手提走它！';
+        _replayNotes[myIdx] ??= '这一手之前，白棋有子只剩一口气——错过了一手提子的机会，看到打吃要先提哦';
         _pendingCapture = false;
       }
+      // 自己的棋落入打吃
+      if (_atariLibsOf(1).isNotEmpty) {
+        _replayNotes[myIdx] ??= '这手棋之后，自己的棋只剩一口气了——落子前先数一数气哦';
+      }
     }
+    _updateDanger();
     if (_game.stoneCount() >= _maxStones) return _endGame('review');
     if (_isAi) {
       _aiTurn();
@@ -348,11 +379,13 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
     }
     WqSfx.stone();
     HapticFeedback.lightImpact();
+    _replayMoves.add((color: 2, point: i));
     if (r.captured.isNotEmpty) {
       WqSfx.capture();
       _boardCtrl.flyCaptures(r.captured, 1);
       if (_game.capWhite >= _winCaptures) return _endGame('lose');
     }
+    _updateDanger();
     _turn = 1;
     _say('轮到你啦！', WqPandaMood.happy, speakIt: false);
     setState(() {});
@@ -388,16 +421,20 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
         if (mv == null) return _endGame('review');
         final r = _game.tryPlay(mv, 2);
         WqSfx.stone();
+        final aiIdx = _replayMoves.length;
+        if (r.ok) {
+          _replayMoves.add((color: 2, point: mv));
+        }
         if (r.ok && r.captured.isNotEmpty) {
           WqSfx.capture();
           _boardCtrl.flyCaptures(r.captured, 1);
           _improvement ??= '有一手棋你的士兵被白棋提走了——下次落子前，先数一数自己还有几口气。';
-          _say(
-            r.captured.length > 1
-                ? '哎呀，白棋一手提走了 ${r.captured.length} 颗黑棋……别灰心，我们下局赢回来！'
-                : '白棋提走了一颗黑棋。没关系，棋棋觉得你刚才有一手特别棒！',
-            WqPandaMood.sad,
-            speakIt: true,
+          _replayNotes[aiIdx] = '棋棋提走了你 ${r.captured.length} 颗棋子——下棋前先数一数自己的气哦';
+          _showCaptureExplanation(
+            captured: r.captured,
+            capturedColor: 1,
+            movePoint: mv,
+            moverColor: 2,
           );
           if (_game.capWhite >= _winCaptures) return _endGame('lose');
         } else {
@@ -413,6 +450,7 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
           }
           _pendingCapture = atari;
         }
+        _updateDanger();
         if (_game.capBlack >= _winCaptures) return _endGame('win');
         if (_game.capWhite >= _winCaptures) return _endGame('lose');
         if (_game.stoneCount() >= _maxStones) return _endGame('review');
@@ -437,6 +475,62 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
     '这步棋有股安静的力气～',
     '唔，白棋得小心一点了。',
   ];
+
+  /// 找出 [color] 方所有只剩一口气的棋组，返回它们的最后一口气集合
+  Set<int> _atariLibsOf(int color) {
+    final libs = <int>{};
+    final seen = <int>{};
+    for (var j = 0; j < _game.n * _game.n; j++) {
+      if (_game.s[j] == color && !seen.contains(j)) {
+        final gg = _game.groupAt(j);
+        seen.addAll(gg);
+        final lb = _game.libsOf(gg);
+        if (lb.length == 1) libs.addAll(lb);
+      }
+    }
+    return libs;
+  }
+
+  /// 落子后刷新「被打吃」警示小灯（孩子的棋快没气时点亮，帮初学者看见危险）
+  void _updateDanger() {
+    _dangerLibs = _atariLibsOf(1);
+    if (mounted) setState(() {});
+  }
+
+  /// 提子现场讲解：被提的棋子以半透明残影重现、落子点闪烁，
+  /// 棋棋用一句话解释「为什么被提」。孩子落子或 2.4 秒后自动消散。
+  void _showCaptureExplanation({
+    required List<int> captured,
+    required int capturedColor,
+    required int movePoint,
+    required int moverColor,
+  }) {
+    _explainTimer?.cancel();
+    final who = moverColor == 1 ? '你' : '棋棋';
+    final n = captured.length;
+    final String text;
+    if (capturedColor == 1) {
+      text = '$who下了最后一口气那个点——你的 $n 颗黑棋没有气了，就被提走啦。'
+          '下次落子前，先数一数自己的气哦！';
+    } else {
+      text = n > 1
+          ? '一手堵住最后一口气，$n 颗白棋一起被提走，这就是「双打」的力量！'
+          : '把白棋的最后一口气堵住，它就被提走啦！';
+    }
+    _explainGhosts = {for (final pt in captured) pt: capturedColor};
+    _blink = {movePoint};
+    _mood = capturedColor == 1 ? WqPandaMood.think : WqPandaMood.cheer;
+    _bubbleText = text;
+    _svc.speak(text);
+    setState(() {});
+    _explainTimer = Timer(const Duration(milliseconds: 2400), () {
+      if (!mounted) return;
+      setState(() {
+        _explainGhosts = {};
+        if (_blink.isNotEmpty) _blink = {};
+      });
+    });
+  }
 
   // ================= 求助（三层引导） =================
 
@@ -633,6 +727,9 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
     final win = result == 'win' ||
         (result == 'review' && _game.capBlack >= _game.capWhite);
     _svc.recordGame(result: result == 'win' ? 'win' : (result == 'lose' ? 'lose' : 'draw'));
+    if (_replayMoves.isNotEmpty) {
+      _svc.saveLastGame(_replayMoves, _replayNotes);
+    }
     if (win) {
       WqSfx.star();
     } else {
@@ -706,6 +803,20 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
                 improve: true,
               ),
               SizedBox(height: 14.h),
+              if (_replayMoves.isNotEmpty)
+                WqGhostButton(
+                  text: '重看棋局 · 学一手',
+                  height: 42.h,
+                  fontSize: 13.5.sp,
+                  onTap: () {
+                    Get.back(); // 关闭结算，留在对局页进入回放
+                    Get.to(() => WeiqiReplayPage(
+                          moves: _replayMoves,
+                          notes: _replayNotes,
+                        ));
+                  },
+                ),
+              if (_replayMoves.isNotEmpty) SizedBox(height: 8.h),
               WqPrimaryButton(
                 text: win ? '再来一局！' : '我们再战一局！',
                 onTap: () {
@@ -957,6 +1068,10 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
                       glowRadius: 22,
                       ghostStone: _ghostStone,
                       ghostColor: 1,
+                      ghostStones: _explainGhosts,
+                      breathePoints:
+                          _isAi && _svc.remindOn.value ? _dangerLibs : const {},
+                      breatheWarn: true,
                       capByBlack: _game.capBlack,
                       capByWhite: _game.capWhite,
                       onPointTap: _onTap,
