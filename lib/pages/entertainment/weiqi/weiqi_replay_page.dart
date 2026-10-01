@@ -221,7 +221,8 @@ class _WeiqiReplayPageState extends State<WeiqiReplayPage> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+              padding: EdgeInsets.fromLTRB(
+                  14, 0, 14, MediaQuery.of(context).padding.bottom + 12),
               child: Row(
                 children: [
                   Expanded(

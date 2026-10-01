@@ -163,8 +163,10 @@ class _SpeakWaveState extends State<_SpeakWave>
   }
 }
 
-/// 主操作按钮（竹绿立体按钮）
-class WqPrimaryButton extends StatelessWidget {
+/// 主操作按钮（竹绿立体按钮）。
+/// 不用 Ink 渲染（InkFeature 在滚动/变换布局下会错位被裁），
+/// 改为纯 Container + 按压缩放反馈。
+class WqPrimaryButton extends StatefulWidget {
   final String text;
   final VoidCallback? onTap;
   final Color? color;
@@ -183,16 +185,28 @@ class WqPrimaryButton extends StatelessWidget {
   });
 
   @override
+  State<WqPrimaryButton> createState() => _WqPrimaryButtonState();
+}
+
+class _WqPrimaryButtonState extends State<WqPrimaryButton> {
+  bool _pressed = false;
+
+  @override
   Widget build(BuildContext context) {
-    final c = color ?? WqTheme.greenBright;
-    final d = deep ?? WqTheme.greenDeep;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(999),
-        child: Ink(
-          height: height ?? 50.h,
+    final c = widget.color ?? WqTheme.greenBright;
+    final d = widget.deep ?? WqTheme.greenDeep;
+    return GestureDetector(
+      onTapDown: widget.onTap == null ? null : (_) => setState(() => _pressed = true),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: _pressed ? 0.96 : 1.0,
+        duration: const Duration(milliseconds: 90),
+        curve: Curves.easeOut,
+        child: Container(
+          height: widget.height ?? 50,
+          alignment: Alignment.center,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(999),
             gradient: LinearGradient(
@@ -200,23 +214,31 @@ class WqPrimaryButton extends StatelessWidget {
               end: Alignment.bottomCenter,
               colors: [c, d],
             ),
-            boxShadow: [
-              BoxShadow(color: d, offset: const Offset(0, 5), blurRadius: 0),
-              BoxShadow(
-                color: d.withValues(alpha: 0.28),
-                offset: const Offset(0, 10),
-                blurRadius: 20,
-              ),
-            ],
+            boxShadow: _pressed
+                ? [
+                    BoxShadow(
+                        color: d.withValues(alpha: 0.25),
+                        offset: const Offset(0, 2),
+                        blurRadius: 6),
+                  ]
+                : [
+                    BoxShadow(color: d, offset: const Offset(0, 5), blurRadius: 0),
+                    BoxShadow(
+                      color: d.withValues(alpha: 0.28),
+                      offset: const Offset(0, 10),
+                      blurRadius: 20,
+                    ),
+                  ],
           ),
-          child: Center(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18),
               child: Text(
-                text,
+                widget.text,
                 maxLines: 1,
                 style: TextStyle(
-                  fontSize: fontSize ?? 16.sp,
+                  fontSize: widget.fontSize ?? 16,
                   fontWeight: FontWeight.w800,
                   color: Colors.white,
                 ),
@@ -230,7 +252,7 @@ class WqPrimaryButton extends StatelessWidget {
 }
 
 /// 幽灵按钮（白底描边）
-class WqGhostButton extends StatelessWidget {
+class WqGhostButton extends StatefulWidget {
   final String text;
   final VoidCallback? onTap;
   final double? height;
@@ -240,36 +262,56 @@ class WqGhostButton extends StatelessWidget {
       {super.key, required this.text, this.onTap, this.height, this.fontSize});
 
   @override
+  State<WqGhostButton> createState() => _WqGhostButtonState();
+}
+
+class _WqGhostButtonState extends State<WqGhostButton> {
+  bool _pressed = false;
+
+  @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(999),
-        child: Ink(
-          height: height ?? 44.h,
+    return GestureDetector(
+      onTapDown: widget.onTap == null ? null : (_) => setState(() => _pressed = true),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: _pressed ? 0.96 : 1.0,
+        duration: const Duration(milliseconds: 90),
+        curve: Curves.easeOut,
+        child: Container(
+          height: widget.height ?? 44,
+          alignment: Alignment.center,
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: WqTheme.green, width: 2),
-            boxShadow: const [
+            border: Border.all(
+                color:
+                    widget.onTap == null ? const Color(0xFFD8DEE8) : WqTheme.green,
+                width: 2),
+            boxShadow: [
               BoxShadow(
-                color: Color(0x3F34B37E),
-                offset: Offset(0, 4),
-                blurRadius: 0,
+                color: widget.onTap == null
+                    ? const Color(0x1123324D)
+                    : const Color(0x3F34B37E),
+                offset: Offset(0, widget.onTap == null ? 1 : 3),
+                blurRadius: widget.onTap == null ? 4 : 0,
               ),
             ],
           ),
-          child: Center(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
-                text,
+                widget.text,
                 maxLines: 1,
                 style: TextStyle(
-                  fontSize: fontSize ?? 14.5.sp,
+                  fontSize: widget.fontSize ?? 14.5,
                   fontWeight: FontWeight.w800,
-                  color: WqTheme.greenDeep,
+                  color: widget.onTap == null
+                      ? WqTheme.inkFaint
+                      : WqTheme.greenDeep,
                 ),
               ),
             ),
