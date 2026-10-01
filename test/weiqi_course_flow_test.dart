@@ -94,15 +94,20 @@ void main() {
   });
 
   testWidgets('领取奖励 → 继续闯关 → 进入第 2 课', (tester) async {
+    // 复刻真机路由：课程页通过 Get.to 推入（路由名 /WeiqiCoursePage），
+    // 若 GetX preventDuplicates 未关闭，Get.off 到同名页面会被静默拦截
     await tester.pumpWidget(
       ScreenUtilInit(
         designSize: const Size(375, 812),
         builder: (context, child) => GetMaterialApp(
-          home: const WeiqiCoursePage(lessonIndex: 0),
+          home: const Scaffold(body: Center(child: Text('娱乐乐园'))),
         ),
       ),
     );
-    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump(const Duration(milliseconds: 100));
+    Get.to(() => const WeiqiCoursePage(lessonIndex: 0));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 500));
 
     for (var i = 0; i < 6; i++) {
       await tapText(tester, '下一步 ›');

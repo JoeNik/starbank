@@ -294,8 +294,13 @@ class _WeiqiCoursePageState extends State<WeiqiCoursePage> {
                     onTap: () {
                       Navigator.of(ctx).pop();
                       if (widget.lessonIndex + 1 < wqLessons.length) {
-                        Get.off(() => WeiqiCoursePage(
-                            lessonIndex: widget.lessonIndex + 1));
+                        // preventDuplicates:false：同一页面类型的连续闯关
+                        // 会被 GetX 的防重复路由机制静默拦截
+                        Get.off(
+                          () => WeiqiCoursePage(
+                              lessonIndex: widget.lessonIndex + 1),
+                          preventDuplicates: false,
+                        );
                       } else {
                         Get.back();
                       }
