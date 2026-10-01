@@ -5,6 +5,7 @@ import 'weiqi_board.dart';
 import 'weiqi_engine.dart';
 import 'weiqi_panda.dart';
 import 'weiqi_sfx.dart';
+import 'weiqi_play_page.dart';
 import 'weiqi_theme.dart';
 import 'weiqi_widgets.dart';
 
@@ -17,10 +18,14 @@ class WeiqiReplayPage extends StatefulWidget {
   /// 关键手的讲解：着手序号（0 基）→ 讲解文字
   final Map<int, String> notes;
 
+  /// 讲解标记：着手序号 → 要圈出的「最后一口气」位置
+  final Map<int, int> marks;
+
   const WeiqiReplayPage({
     super.key,
     required this.moves,
     this.notes = const {},
+    this.marks = const {},
   });
 
   @override
@@ -63,7 +68,10 @@ class _WeiqiReplayPageState extends State<WeiqiReplayPage> {
     final move = widget.moves[_idx - 1];
     final who = move.color == 1 ? '你' : '棋棋';
     final note = widget.notes[_idx - 1];
-    if (note != null) return '第 $_idx 手（$who）：$note';
+    if (note != null) {
+      final hasMark = widget.marks.containsKey(_idx - 1);
+      return '第 $_idx 手（$who）：$note${hasMark ? '（棋盘上橙色圈就是它）' : ''}';
+    }
     return '第 $_idx 手（$who）落子，稳稳的一步。';
   }
 
@@ -147,6 +155,9 @@ class _WeiqiReplayPageState extends State<WeiqiReplayPage> {
                 child: WeiqiBoardView(
                   stones: _game.s,
                   lastMove: _idx > 0 ? widget.moves[_idx - 1].point : -1,
+                  blinkPoints: _idx > 0 && widget.marks.containsKey(_idx - 1)
+                      ? {widget.marks[_idx - 1]!}
+                      : const {},
                   capByBlack: _game.capBlack,
                   capByWhite: _game.capWhite,
                 ),
@@ -177,7 +188,7 @@ class _WeiqiReplayPageState extends State<WeiqiReplayPage> {
                 ),
               ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 6),
               child: Row(
                 children: [
                   WqIconButton(
@@ -204,6 +215,41 @@ class _WeiqiReplayPageState extends State<WeiqiReplayPage> {
                       color: atEnd ? WqTheme.inkFaint : WqTheme.greenBright,
                       deep: atEnd ? WqTheme.inkSoft : WqTheme.greenDeep,
                       onTap: atEnd ? null : () => _seek(_idx + 1),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: WqPrimaryButton(
+                      text: '再来一局',
+                      height: 44,
+                      fontSize: 14,
+                      onTap: () {
+                        // 一路退回棋妙岛主页，再开新局（无论从复盘卡还是主页进入）
+                        Get.until((route) =>
+                            route.isFirst ||
+                            route.settings.name == '/WeiqiHomePage');
+                        Get.to(() =>
+                            const WeiqiPlayPage(opponent: WqOpponent.ai));
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: WqGhostButton(
+                      text: '返回小岛',
+                      height: 44,
+                      fontSize: 14,
+                      onTap: () {
+                        Get.until((route) =>
+                            route.isFirst ||
+                            route.settings.name == '/WeiqiHomePage');
+                      },
                     ),
                   ),
                 ],

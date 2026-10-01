@@ -209,6 +209,8 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
   /// 对局回放：每一手（颜色 + 落点）与关键手的讲解
   final List<({int color, int point})> _replayMoves = [];
   final Map<int, String> _replayNotes = {};
+  /// 讲解标记：着手序号 → 棋盘上要圈出的「最后一口气」位置
+  final Map<int, int> _replayMarks = {};
   /// 孩子的棋被打吃时的最后一口气（警示小灯）
   Set<int> _dangerLibs = {};
 
@@ -255,6 +257,7 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
     _improvement = null;
     _replayMoves.clear();
     _replayNotes.clear();
+    _replayMarks.clear();
     _dangerLibs = {};
     _explainGhosts = {};
     _explainTimer?.cancel();
@@ -317,6 +320,8 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
     _explainTimer?.cancel();
     _explainGhosts = {};
     final myIdx = _replayMoves.length;
+    // 落子前先看一眼：白棋是否有只剩一口气的子（错过机会时，回放要圈出那口气）
+    final whiteAtariLibs = _atariLibsOf(2);
     _replayMoves.add((color: 1, point: i));
     if (r.captured.isNotEmpty) {
       WqSfx.capture();
@@ -348,12 +353,17 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
       // 机会溜走：之前有可提的白子却没提
       if (_pendingCapture) {
         _improvement ??= '白棋的士兵曾只剩一口气，机会悄悄溜走了——下次看到「打吃」，先一手提走它！';
-        _replayNotes[myIdx] ??= '这一手之前，白棋有子只剩一口气——错过了一手提子的机会，看到打吃要先提哦';
+        _replayNotes[myIdx] ??= '这一手之前，白棋有子只剩一口气——橙色圈就是那口气，应该在这里一手提掉哦';
+        if (whiteAtariLibs.isNotEmpty) {
+          _replayMarks[myIdx] = whiteAtariLibs.first;
+        }
         _pendingCapture = false;
       }
       // 自己的棋落入打吃
-      if (_atariLibsOf(1).isNotEmpty) {
-        _replayNotes[myIdx] ??= '这手棋之后，自己的棋只剩一口气了——落子前先数一数气哦';
+      final myAtariLibs = _atariLibsOf(1);
+      if (myAtariLibs.isNotEmpty) {
+        _replayNotes[myIdx] ??= '这手棋之后，自己的棋只剩一口气了——橙色圈就是那口气，被堵住就会被提走哦';
+        _replayMarks[myIdx] = myAtariLibs.first;
       }
     }
     _updateDanger();
@@ -429,7 +439,8 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
           WqSfx.capture();
           _boardCtrl.flyCaptures(r.captured, 1);
           _improvement ??= '有一手棋你的士兵被白棋提走了——下次落子前，先数一数自己还有几口气。';
-          _replayNotes[aiIdx] = '棋棋提走了你 ${r.captured.length} 颗棋子——下棋前先数一数自己的气哦';
+          _replayNotes[aiIdx] = '棋棋下了橙色圈这个点，堵住了你最后的气——${r.captured.length} 颗黑棋被提走了';
+          _replayMarks[aiIdx] = mv;
           _showCaptureExplanation(
             captured: r.captured,
             capturedColor: 1,
@@ -728,7 +739,7 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
         (result == 'review' && _game.capBlack >= _game.capWhite);
     _svc.recordGame(result: result == 'win' ? 'win' : (result == 'lose' ? 'lose' : 'draw'));
     if (_replayMoves.isNotEmpty) {
-      _svc.saveLastGame(_replayMoves, _replayNotes);
+      _svc.saveLastGame(_replayMoves, _replayNotes, _replayMarks);
     }
     if (win) {
       WqSfx.star();
@@ -813,6 +824,7 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
                     Get.to(() => WeiqiReplayPage(
                           moves: _replayMoves,
                           notes: _replayNotes,
+                          marks: _replayMarks,
                         ));
                   },
                 ),
@@ -1012,6 +1024,21 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
                       ),
                     ),
                     SizedBox(width: 8.w),
+                    Obx(() => WqIconButton(
+                          icon: _svc.atariLightsOn.value
+                              ? Icons.lightbulb_rounded
+                              : Icons.lightbulb_outline_rounded,
+                          size: 40,
+                          color: _svc.atariLightsOn.value
+                              ? WqTheme.sunDeep
+                              : WqTheme.inkFaint,
+                          onTap: () {
+                            _svc.atariLightsOn.value =
+                                !_svc.atariLightsOn.value;
+                            _updateDanger();
+                          },
+                        )),
+                    SizedBox(width: 6.w),
                     WqIconButton(
                       icon: Icons.replay_rounded,
                       size: 40,
@@ -1069,8 +1096,11 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
                       ghostStone: _ghostStone,
                       ghostColor: 1,
                       ghostStones: _explainGhosts,
-                      breathePoints:
-                          _isAi && _svc.remindOn.value ? _dangerLibs : const {},
+                      breathePoints: _isAi &&
+                              _svc.remindOn.value &&
+                              _svc.atariLightsOn.value
+                          ? _dangerLibs
+                          : const {},
                       breatheWarn: true,
                       capByBlack: _game.capBlack,
                       capByWhite: _game.capWhite,

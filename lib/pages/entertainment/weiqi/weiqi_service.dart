@@ -32,10 +32,12 @@ class WeiqiService extends GetxService {
 
   /// 保存最近一局的回放数据（每手颜色/落点 + 关键手讲解）
   void saveLastGame(
-      List<({int color, int point})> moves, Map<int, String> notes) {
+      List<({int color, int point})> moves, Map<int, String> notes,
+      [Map<int, int> marks = const {}]) {
     _lastGame = {
       'moves': [for (final m in moves) {'c': m.color, 'p': m.point}],
       'notes': {for (final e in notes.entries) e.key.toString(): e.value},
+      'marks': {for (final e in marks.entries) e.key.toString(): e.value},
       'playedAt': DateTime.now().toIso8601String(),
     };
     _save();
@@ -44,7 +46,8 @@ class WeiqiService extends GetxService {
   Map<String, dynamic>? get lastGame => _lastGame;
 
   /// 从持久化数据恢复回放参数；无记录返回 null
-  ({List<({int color, int point})> moves, Map<int, String> notes})?
+  ({List<({int color, int point})> moves, Map<int, String> notes,
+          Map<int, int> marks})?
       loadLastGame() {
     final g = _lastGame;
     if (g == null) return null;
@@ -59,8 +62,12 @@ class WeiqiService extends GetxService {
       for (final e in ((g['notes'] as Map?) ?? const {}).entries)
         int.parse(e.key.toString()): e.value.toString(),
     };
+    final marks = <int, int>{
+      for (final e in ((g['marks'] as Map?) ?? const {}).entries)
+        int.parse(e.key.toString()): (e.value as num).toInt(),
+    };
     if (moves.isEmpty) return null;
-    return (moves: moves, notes: notes);
+    return (moves: moves, notes: notes, marks: marks);
   }
 
   // ---- 对局记录（陪下） ----
@@ -76,6 +83,7 @@ class WeiqiService extends GetxService {
   final RxBool voiceOn = true.obs; // 语音讲解
   final RxBool remindOn = true.obs; // 对局中失误提醒
   final RxBool sfxOn = true.obs; // 音效
+  final RxBool atariLightsOn = true.obs; // 对局中被打吃警示灯
   final RxDouble aiSkill = 0.82.obs; // 棋棋棋力（0~1）
 
   WeiqiService() {
@@ -88,6 +96,7 @@ class WeiqiService extends GetxService {
       WqSfx.enabled = v;
       _save();
     });
+    atariLightsOn.listen((v) => _save());
     aiSkill.listen((v) => _save());
   }
 
@@ -355,6 +364,7 @@ class WeiqiService extends GetxService {
       }
       final last = data['lastGame'];
       if (last is Map) _lastGame = Map<String, dynamic>.from(last);
+      atariLightsOn.value = data['atariLightsOn'] as bool? ?? true;
       voiceOn.value = data['voiceOn'] as bool? ?? true;
       remindOn.value = data['remindOn'] as bool? ?? true;
       sfxOn.value = data['sfxOn'] as bool? ?? true;
@@ -375,7 +385,8 @@ class WeiqiService extends GetxService {
         'playDraws': playDraws.value,
         'dailyActivity': dailyActivity,
         'lastGame': _lastGame,
-        'voiceOn': voiceOn.value,
+        'atariLightsOn': atariLightsOn.value,
+      'voiceOn': voiceOn.value,
         'remindOn': remindOn.value,
         'sfxOn': sfxOn.value,
         'aiSkill': aiSkill.value,

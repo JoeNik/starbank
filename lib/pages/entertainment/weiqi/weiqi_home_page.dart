@@ -250,6 +250,7 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
         onTap: () => Get.to(() => WeiqiReplayPage(
               moves: last.moves,
               notes: last.notes,
+              marks: last.marks,
             )),
         borderRadius: BorderRadius.circular(20.r),
         child: Container(

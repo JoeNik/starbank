@@ -233,9 +233,14 @@ class _ParentReportBody extends StatelessWidget {
                         (v) => svc.voiceOn.value = v,
                       )),
                   Obx(() => _switchRow(
-                        '对局中失误提醒',
+                        '对局中失误提醒（语音）',
                         svc.remindOn.value,
                         (v) => svc.remindOn.value = v,
+                      )),
+                  Obx(() => _switchRow(
+                        '被打吃警示灯（棋盘橙灯）',
+                        svc.atariLightsOn.value,
+                        (v) => svc.atariLightsOn.value = v,
                       )),
                   Obx(() => _switchRow(
                         '音效（落子/提子）',
