@@ -25,6 +25,12 @@ enum WqGoal {
 
   /// 把 [goalPoint] 与 [goalPoint2] 两块棋切断（不再同组）
   cut,
+
+  /// 让任一对方棋组只剩 1 口气（打吃）
+  atari,
+
+  /// 让 [goalPoint] 与 [goalPoint2] 两块己方棋连成同一组（连接）
+  connect,
 }
 
 /// 演示操作
@@ -672,6 +678,177 @@ final List<WqLesson> wqLessons = [
       ),
     ],
   ),
+
+  // ---------- L10 互相打吃 ----------
+  WqLesson(
+    id: 'l10',
+    island: '第②岛 吃子竞技场',
+    no: 10,
+    glyph: '互',
+    title: '先下手为强',
+    subtitle: '互相打吃',
+    teaches: ['互相打吃'],
+    steps: [
+      WqStep(
+        caption: '两边都危险',
+        bubble: '看！黑棋两颗和白棋一颗，都只剩同一口气（闪烁的点）——谁先占到那口气，谁就赢！',
+        ops: [
+          _put(4, 3, _w), _put(5, 3, _w), _put(3, 4, _w), _put(6, 4, _w),
+          _put(5, 5, _w),
+          _put(4, 4, _b), _put(5, 4, _b), _put(6, 5, _b), _put(5, 6, _b),
+        ],
+        breathe: [_p(4, 5)],
+        warn: true,
+      ),
+      WqStep(
+        caption: '先下先赢',
+        bubble: '黑棋先占到那口气——不但自己连成一体变安全，还把白棋提走啦！这叫「互相打吃，先下手为强」。',
+        ops: [_put(4, 5, _b)],
+        captureDemo: [_p(5, 5)],
+      ),
+      WqStep(
+        caption: '你来抢先',
+        bubble: '轮到你：找到那口决定胜负的气，先下手为强！',
+        ops: [
+          WqOp.reset(),
+          _put(4, 3, _w), _put(5, 3, _w), _put(3, 4, _w), _put(6, 4, _w),
+          _put(5, 5, _w),
+          _put(4, 4, _b), _put(5, 4, _b), _put(6, 5, _b), _put(5, 6, _b),
+        ],
+        moveQuiz: WqMoveQuiz(
+          playerColor: _b,
+          goal: WqGoal.capture,
+          prompt: '黑白双方都只剩一口气！点那口气，先下手为强！',
+          doneText: '抢先成功！互相打吃时，先下的一方总是赢家。',
+          hints: [
+            '数一数：黑棋两颗和白棋一颗，是不是剩下同一口气？',
+            '就是两颗黑棋下面、白棋左边的那个交叉点！',
+          ],
+        ),
+      ),
+    ],
+  ),
+
+  // ---------- L11 赶向边线 ----------
+  WqLesson(
+    id: 'l11',
+    island: '第②岛 吃子竞技场',
+    no: 11,
+    glyph: '赶',
+    title: '赶到墙角',
+    subtitle: '打吃方向 · 边线追击',
+    teaches: ['打吃方向', '边线'],
+    steps: [
+      WqStep(
+        caption: '白棋有2口气',
+        bubble: '白棋小兵还有 2 口气。往哪边打吃，决定了它逃得掉还是逃不掉！',
+        ops: [_put(4, 1, _w), _put(3, 1, _b), _put(5, 1, _b)],
+        breathe: [_p(4, 0), _p(4, 2)],
+      ),
+      WqStep(
+        caption: '往边线赶',
+        bubble: '黑棋堵住靠中间的气——白棋只能往边线逃。墙边可是死路！',
+        ops: [_put(4, 2, _b)],
+        breathe: [_p(4, 0)],
+        warn: true,
+      ),
+      WqStep(
+        caption: '逃到墙边',
+        bubble: '白棋逃到边线——可是边线没有退路，它只剩 2 口气了。',
+        ops: [_put(4, 0, _w)],
+        breathe: [_p(3, 0), _p(5, 0)],
+      ),
+      WqStep(
+        caption: '再打吃',
+        bubble: '黑棋继续追！白棋只剩最后 1 口气，退无可退。',
+        ops: [_put(3, 0, _b)],
+        breathe: [_p(5, 0)],
+        warn: true,
+      ),
+      WqStep(
+        caption: '关门！',
+        bubble: '堵住最后一口气——两颗白棋一起被提走！记住：把敌人往边线赶，是最常用的吃子办法。',
+        ops: [_put(5, 0, _b)],
+        captureDemo: [_p(4, 0), _p(4, 1)],
+      ),
+      WqStep(
+        caption: '你来赶',
+        bubble: '轮到你：往边线方向打吃，开始追击！',
+        ops: [
+          WqOp.reset(),
+          _put(4, 1, _w), _put(3, 1, _b), _put(5, 1, _b),
+        ],
+        moveQuiz: WqMoveQuiz(
+          playerColor: _b,
+          goal: WqGoal.atari,
+          prompt: '往边线方向打吃白棋，让它只剩 1 口气！',
+          doneText: '打吃成功！白棋只能往墙边逃——接下来一路追到底就能提走它。',
+          hints: [
+            '白棋有 2 口气：一个靠边线，一个靠中间。堵哪个才对？',
+            '堵靠中间的那个点，把它往墙上赶！',
+          ],
+        ),
+      ),
+    ],
+  ),
+
+  // ---------- L12 连成一体 ----------
+  WqLesson(
+    id: 'l12',
+    island: '第③岛 连接大峡谷',
+    no: 12,
+    glyph: '连',
+    title: '手拉手',
+    subtitle: '断点 · 连接',
+    teaches: ['连接', '保护断点'],
+    steps: [
+      WqStep(
+        caption: '中间的缺口',
+        bubble: '两颗黑兵中间有个缺口，白棋在上面和下面虎视眈眈——这个缺口就是「断点」！',
+        ops: [
+          _put(4, 4, _b), _put(6, 4, _b),
+          _put(5, 3, _w), _put(5, 5, _w),
+        ],
+      ),
+      WqStep(
+        caption: '被切断了',
+        bubble: '白棋插进缺口！两颗黑兵被切成两半，各自作战，力气就小了。',
+        ops: [_put(5, 4, _w)],
+      ),
+      WqStep(
+        caption: '手拉手',
+        bubble: '看正确答案：黑棋自己站上缺口，三颗连成一体——气变多了，白棋再也切不开！',
+        ops: [
+          WqOp.reset(),
+          _put(4, 4, _b), _put(6, 4, _b),
+          _put(5, 3, _w), _put(5, 5, _w),
+          _put(5, 4, _b),
+        ],
+        breathe: [_p(4, 3), _p(6, 3), _p(4, 5), _p(6, 5), _p(3, 4), _p(7, 4)],
+      ),
+      WqStep(
+        caption: '你来连接',
+        bubble: '轮到你：抢在白棋前面，让两颗黑兵手拉手！',
+        ops: [
+          WqOp.reset(),
+          _put(4, 4, _b), _put(6, 4, _b),
+          _put(5, 3, _w), _put(5, 5, _w),
+        ],
+        moveQuiz: WqMoveQuiz(
+          playerColor: _b,
+          goal: WqGoal.connect,
+          goalPoint: _p(4, 4),
+          goalPoint2: _p(6, 4),
+          prompt: '点缺口，让两颗黑兵连成一体！',
+          doneText: '手拉手成功！连在一起的棋气更多，白棋再也切不开啦。',
+          hints: [
+            '两颗黑兵中间的空点在哪里？',
+            '就是上下两颗白棋之间的那个交叉点！',
+          ],
+        ),
+      ),
+    ],
+  ),
 ];
 
 // ============================================================
@@ -879,6 +1056,49 @@ final List<WqPuzzle> wqPuzzles = [
     ],
     okText: '好球！上下两颗一起提走！',
   ),
+  WqPuzzle(
+    id: 'pz11',
+    tag: '互相打吃 · L2',
+    title: '先下手为强',
+    voice: '黑白双方都只剩同一口气！谁先占到谁就赢——你执黑，快抢先！',
+    setup: [
+      _put(4, 3, _w), _put(5, 3, _w), _put(3, 4, _w), _put(6, 4, _w),
+      _put(5, 5, _w),
+      _put(4, 4, _b), _put(5, 4, _b), _put(6, 5, _b), _put(5, 6, _b),
+    ],
+    playerColor: _b,
+    goal: WqGoal.capture,
+    zoneCenter: _p(4, 5),
+    answerPoint: _p(4, 5),
+    hints: [
+      '数一数双方剩下的气——是不是同一口气？',
+      '就是两颗黑棋下面、紧挨着白棋的那个点！',
+      '看棋棋变魔法——记住这种感觉哦！',
+    ],
+    okText: '抢先成功！互相打吃，先下手为强！',
+  ),
+  WqPuzzle(
+    id: 'pz12',
+    tag: '连接题 · L2',
+    title: '手拉手',
+    voice: '两颗黑兵中间的缺口被白棋盯着！抢先把它们连成一体！',
+    setup: [
+      _put(4, 4, _b), _put(6, 4, _b),
+      _put(5, 3, _w), _put(5, 5, _w),
+    ],
+    playerColor: _b,
+    goal: WqGoal.connect,
+    goalPoint: _p(4, 4),
+    goalPoint2: _p(6, 4),
+    zoneCenter: _p(5, 4),
+    answerPoint: _p(5, 4),
+    hints: [
+      '两颗黑兵中间的空点，就是连接点！',
+      '上下两颗白棋之间的那个交叉点！',
+      '看棋棋变魔法——记住这种感觉哦！',
+    ],
+    okText: '手拉手！连成一体气更多，切不断啦！',
+  ),
 ];
 
 /// 判断挑战是否达成
@@ -907,6 +1127,20 @@ bool wqCheckGoal(
       }
       // 两块棋不再同组 = 切断成功
       return !g.groupAt(goalPoint).contains(goalPoint2);
+    case WqGoal.atari:
+      final seenA = <int>{};
+      for (var j = 0; j < g.n * g.n; j++) {
+        if (g.s[j] == 3 - playerColor && !seenA.contains(j)) {
+          final gg = g.groupAt(j);
+          seenA.addAll(gg);
+          if (g.libsOf(gg).length == 1) return true;
+        }
+      }
+      return false;
+    case WqGoal.connect:
+      if (goalPoint == null || goalPoint2 == null) return false;
+      if (g.s[goalPoint] == 0 || g.s[goalPoint2] == 0) return false;
+      return g.groupAt(goalPoint).contains(goalPoint2);
     case WqGoal.doubleAtari:
       final opp = 3 - playerColor;
       final seen = <int>{};

@@ -178,6 +178,7 @@ void main() {
           minCapture: pz.minCapture,
           minLibs: pz.minLibs,
           goalPoint: pz.goalPoint,
+          goalPoint2: pz.goalPoint2,
           captured: r.captured,
         );
         expect(done, isTrue, reason: '${pz.id} 答案点未达成目标');

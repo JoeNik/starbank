@@ -218,6 +218,10 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
   Map<int, int> _explainGhosts = {};
   Timer? _explainTimer;
 
+  /// 点棋问棋棋：正在检视的棋组的气（绿色小灯展示）
+  Set<int> _inspectLibs = {};
+  Timer? _blinkTimer;
+
   final WqBoardController _boardCtrl = WqBoardController();
   Set<int> _blink = {};
   int? _glowCenter;
@@ -237,6 +241,7 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
   void dispose() {
     _aiTimer?.cancel();
     _explainTimer?.cancel();
+    _blinkTimer?.cancel();
     _svc.stopSpeak();
     super.dispose();
   }
@@ -261,6 +266,8 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
     _dangerLibs = {};
     _explainGhosts = {};
     _explainTimer?.cancel();
+    _inspectLibs = {};
+    _blinkTimer?.cancel();
     _blink = {};
     _glowCenter = null;
     _say(
@@ -285,10 +292,10 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
   void _onTap(int i) {
     if (_over || _busy) return;
     if (_game.s[i] != 0) {
-      WqSfx.oops();
-      ToastUtils.showInfo('这里已经有棋子啦');
+      _inspect(i); // 点棋问棋棋：查看这块棋的气
       return;
     }
+    _inspectLibs = {};
     if (_isAi ? false : _turn == 2) {
       _parentMove(i);
       return;
@@ -319,6 +326,7 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
     _helpStage = 0;
     _explainTimer?.cancel();
     _explainGhosts = {};
+    _inspectLibs = {};
     final myIdx = _replayMoves.length;
     // 落子前先看一眼：白棋是否有只剩一口气的子（错过机会时，回放要圈出那口气）
     final whiteAtariLibs = _atariLibsOf(2);
@@ -403,6 +411,15 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
 
   // ================= AI（棋棋） =================
 
+  /// 开局库：前几手在星位/小目附近随机落子，避免每局一模一样
+  int? _openingMove() {
+    if (_game.stoneCount() > 2) return null;
+    const openings = [20, 24, 56, 60, 30, 32, 48, 50, 40];
+    final candidates =
+        openings.where((pt) => _game.s[pt] == 0).toList()..shuffle();
+    return candidates.isEmpty ? null : candidates.first;
+  }
+
   void _aiTurn() {
     _busy = true;
     // 关怀提醒：孩子的棋被打吃
@@ -427,7 +444,9 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
       _say('棋棋想一下……', WqPandaMood.think, speakIt: false);
       _aiTimer = Timer(Duration(milliseconds: 700 + math.Random().nextInt(600)), () {
         if (!mounted || _over) return;
-        final mv = WqAi.pickMove(_game, 2, _svc.aiSkill.value);
+        final mv = _openingMove() ??
+            WqAi.pickMove(_game, 2, _svc.aiSkill.value,
+                rnd: math.Random());
         if (mv == null) return _endGame('review');
         final r = _game.tryPlay(mv, 2);
         WqSfx.stone();
@@ -466,7 +485,21 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
         if (_game.capWhite >= _winCaptures) return _endGame('lose');
         if (_game.stoneCount() >= _maxStones) return _endGame('review');
         _busy = false;
-        if (r.ok && r.captured.isEmpty) {
+        final newDanger = _atariLibsOf(1);
+        if (r.ok &&
+            r.captured.isEmpty &&
+            newDanger.isNotEmpty &&
+            _svc.remindOn.value) {
+          // 打吃预告：高亮那口气 + 讲解，帮初学者看见威胁
+          _blink = {newDanger.first};
+          _say('棋棋打吃你的黑棋啦！闪烁的这口气再被堵住，棋子就会被提走——点自己的棋看看怎么救！',
+              WqPandaMood.think,
+              speakIt: true);
+          _blinkTimer?.cancel();
+          _blinkTimer = Timer(const Duration(milliseconds: 3000), () {
+            if (mounted) setState(() => _blink = {});
+          });
+        } else if (r.ok && r.captured.isEmpty) {
           if (math.Random().nextDouble() < 0.38) {
             _say(_encouragements[math.Random().nextInt(_encouragements.length)],
                 WqPandaMood.happy, speakIt: false);
@@ -486,6 +519,39 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
     '这步棋有股安静的力气～',
     '唔，白棋得小心一点了。',
   ];
+
+  /// 点棋问棋棋：点任意棋子，高亮它所在棋组的全部气（绿色小灯），
+  /// 棋棋口头解释这块棋的安全状况——初学者每一步的疑惑随时可查。
+  void _inspect(int i) {
+    final color = _game.s[i];
+    final grp = _game.groupAt(i);
+    final libs = _game.libsOf(grp);
+    final isMine = color == 1;
+    final n = libs.length;
+    final String text;
+    if (n == 0) return;
+    if (n == 1) {
+      text = isMine
+          ? '这块黑棋只剩 1 口气啦（亮着的点）！再被堵住就会被提走——快逃跑或者反提！'
+          : '这块白棋只剩 1 口气（亮着的点）！下在那里就能把它提走！';
+    } else if (n == 2) {
+      text = isMine
+          ? '这块黑棋有 2 口气（亮起的点），暂时安全，但要小心被打吃。'
+          : '这块白棋有 2 口气（亮起的点）。堵住 1 口就是打吃，2 口全堵住就能提走它！';
+    } else {
+      text = isMine
+          ? '这块黑棋手拉手连成一体，共有 $n 口气（亮起的点），很安全！'
+          : '这块白棋有 $n 口气（亮起的点）。棋子越多、气越多，越难被吃。';
+    }
+    _explainTimer?.cancel();
+    _explainGhosts = {};
+    _blink = {};
+    _blinkTimer?.cancel();
+    _mood = n == 1 && isMine ? WqPandaMood.think : WqPandaMood.happy;
+    _bubbleText = text;
+    _svc.speak(text);
+    setState(() => _inspectLibs = libs);
+  }
 
   /// 找出 [color] 方所有只剩一口气的棋组，返回它们的最后一口气集合
   Set<int> _atariLibsOf(int color) {
@@ -1096,12 +1162,14 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
                       ghostStone: _ghostStone,
                       ghostColor: 1,
                       ghostStones: _explainGhosts,
-                      breathePoints: _isAi &&
-                              _svc.remindOn.value &&
-                              _svc.atariLightsOn.value
-                          ? _dangerLibs
-                          : const {},
-                      breatheWarn: true,
+                      breathePoints: _inspectLibs.isNotEmpty
+                          ? _inspectLibs
+                          : (_isAi &&
+                                  _svc.remindOn.value &&
+                                  _svc.atariLightsOn.value
+                              ? _dangerLibs
+                              : const {}),
+                      breatheWarn: _inspectLibs.isEmpty,
                       capByBlack: _game.capBlack,
                       capByWhite: _game.capWhite,
                       onPointTap: _onTap,

@@ -7,6 +7,7 @@ import 'package:get/get.dart';
 import '../../../controllers/app_mode_controller.dart';
 import 'weiqi_course_page.dart';
 import 'weiqi_data.dart';
+import 'weiqi_glossary_page.dart';
 import 'weiqi_parent_page.dart';
 import 'weiqi_panda.dart';
 import 'weiqi_play_page.dart';
@@ -70,6 +71,8 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
                     ..._buildIslandSections(),
                     SizedBox(height: 16.h),
                     _entries(),
+                    SizedBox(height: 12.w),
+                    _glossaryEntry(),
                   ],
                 )),
           ),
@@ -557,6 +560,68 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
           ),
         ),
       ],
+    );
+  }
+
+  /// 围棋小词典全宽入口
+  Widget _glossaryEntry() {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(20.r),
+      child: InkWell(
+        onTap: () => Get.to(() => const WeiqiGlossaryPage()),
+        borderRadius: BorderRadius.circular(20.r),
+        child: Container(
+          padding: EdgeInsets.all(12.w),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20.r),
+            border: Border.all(color: const Color(0x0F23324D)),
+            boxShadow: const [
+              BoxShadow(color: Color(0x1A23324D), blurRadius: 16, offset: Offset(0, 6)),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40.w,
+                height: 40.w,
+                decoration: BoxDecoration(
+                  color: WqTheme.sunSoft,
+                  borderRadius: BorderRadius.circular(13.r),
+                ),
+                child: const Center(child: Text('📖', style: TextStyle(fontSize: 20))),
+              ),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '围棋小词典',
+                      style: TextStyle(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w800,
+                        color: WqTheme.ink,
+                      ),
+                    ),
+                    Text(
+                      '忘了术语随时查 · 故事化解释',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 10.5.sp,
+                        fontWeight: FontWeight.w600,
+                        color: WqTheme.inkFaint,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: WqTheme.inkFaint),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
