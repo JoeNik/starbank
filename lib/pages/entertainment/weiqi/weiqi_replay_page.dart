@@ -21,11 +21,19 @@ class WeiqiReplayPage extends StatefulWidget {
   /// 讲解标记：着手序号 → 要圈出的「最后一口气」位置
   final Map<int, int> marks;
 
+  /// 每手评级：着手序号 → great/good/ok/miss/danger
+  final Map<int, String> grades;
+
+  /// 更好的下法：着手序号 → 建议落点
+  final Map<int, int> better;
+
   const WeiqiReplayPage({
     super.key,
     required this.moves,
     this.notes = const {},
     this.marks = const {},
+    this.grades = const {},
+    this.better = const {},
   });
 
   @override
@@ -67,12 +75,66 @@ class _WeiqiReplayPageState extends State<WeiqiReplayPage> {
     }
     final move = widget.moves[_idx - 1];
     final who = move.color == 1 ? '你' : '棋棋';
-    final note = widget.notes[_idx - 1];
-    if (note != null) {
-      final hasMark = widget.marks.containsKey(_idx - 1);
-      return '第 $_idx 手（$who）：$note${hasMark ? '（棋盘上橙色圈就是它）' : ''}';
+    final idx = _idx - 1;
+    final note = widget.notes[idx];
+    final grade = _gradeIcon(idx);
+    final prefix = move.color == 1
+        ? (grade.isEmpty ? '' : '$grade ')
+        : '🤍 ';
+    if (_idx >= widget.moves.length && widget.grades.isNotEmpty) {
+      // 终局总评
+      var great = 0, good = 0, miss = 0, danger = 0;
+      widget.grades.forEach((_, g) {
+        switch (g) {
+          case 'great':
+            great++;
+            break;
+          case 'good':
+            good++;
+            break;
+          case 'miss':
+            miss++;
+            break;
+          case 'danger':
+            danger++;
+            break;
+        }
+      });
+      final String verdict;
+      if (miss == 0 && danger == 0) {
+        verdict = '几乎没漏掉机会，下得非常漂亮！';
+      } else if (miss + danger <= 2) {
+        verdict = '整体下得不错，再抓住 ${miss + danger} 个机会就更完美啦！';
+      } else {
+        verdict = '下一次试试：看到打吃先提子、自己的棋只剩一口气先逃跑！';
+      }
+      return '本局回顾完啦！✨好手 $great 次，👍打吃 $good 次，'
+          '💡错过提子 $miss 次，⚠️危险 $danger 次。$verdict';
     }
-    return '第 $_idx 手（$who）落子，稳稳的一步。';
+    if (note != null) {
+      final hasMark = widget.marks.containsKey(idx);
+      final hasBetter = widget.better.containsKey(idx);
+      return '第 $_idx 手（$who）$prefix：$note'
+          '${hasBetter ? '（橙色圈是更好的下法）' : hasMark ? '（棋盘上橙色圈就是它）' : ''}';
+    }
+    return '第 $_idx 手（$who）$prefix落子，稳稳的一步。';
+  }
+
+  /// 该手的评级图标（仅孩子的手）
+  String _gradeIcon(int idx) {
+    final g = widget.grades[idx];
+    switch (g) {
+      case 'great':
+        return '✨';
+      case 'good':
+        return '👍';
+      case 'miss':
+        return '💡';
+      case 'danger':
+        return '⚠️';
+      default:
+        return '';
+    }
   }
 
   WqPandaMood get _mood {
@@ -155,8 +217,13 @@ class _WeiqiReplayPageState extends State<WeiqiReplayPage> {
                 child: WeiqiBoardView(
                   stones: _game.s,
                   lastMove: _idx > 0 ? widget.moves[_idx - 1].point : -1,
-                  blinkPoints: _idx > 0 && widget.marks.containsKey(_idx - 1)
-                      ? {widget.marks[_idx - 1]!}
+                  blinkPoints: _idx > 0
+                      ? {
+                          if (widget.better.containsKey(_idx - 1))
+                            widget.better[_idx - 1]!
+                          else if (widget.marks.containsKey(_idx - 1))
+                            widget.marks[_idx - 1]!,
+                        }
                       : const {},
                   capByBlack: _game.capBlack,
                   capByWhite: _game.capWhite,

@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 
 import '../../../controllers/app_mode_controller.dart';
+import 'weiqi_engine.dart';
 import 'weiqi_panda.dart';
 import 'weiqi_service.dart';
 import 'weiqi_theme.dart';
@@ -250,12 +251,14 @@ class _ParentReportBody extends StatelessWidget {
                   Obx(() => _chipsRow(
                         '棋棋棋力',
                         [
-                          ('温和', 0.68),
-                          ('标准', 0.82),
-                          ('厉害', 0.92),
+                          for (final lv in wqAiLevels) (lv.name, lv.skill),
                         ],
-                        svc.aiSkill.value,
-                        (v) => svc.aiSkill.value = v,
+                        wqAiLevels[svc.aiLevelIndex.value
+                                .clamp(0, wqAiLevels.length - 1)]
+                            .skill,
+                        (v) => svc.aiLevelIndex.value = wqAiLevels
+                            .indexWhere((lv) => lv.skill == v)
+                            .clamp(0, wqAiLevels.length - 1),
                       )),
                 ],
               ),

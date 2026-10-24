@@ -57,7 +57,91 @@ Future<void> showWqOpponentPicker(
                 color: WqTheme.ink,
               ),
             ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 10),
+              // 棋棋今天的状态：4 档棋力
+              Obx(() {
+                final sel = Get.find<WeiqiService>().aiLevelIndex.value;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '棋棋今天的状态',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                        color: WqTheme.inkSoft,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        for (var k = 0; k < wqAiLevels.length; k++)
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => Get.find<WeiqiService>()
+                                  .aiLevelIndex
+                                  .value = k,
+                              child: Container(
+                                margin: EdgeInsets.only(
+                                    right: k == wqAiLevels.length - 1 ? 0 : 5),
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 7, horizontal: 2),
+                                decoration: BoxDecoration(
+                                  color: sel == k
+                                      ? WqTheme.greenSoft
+                                      : const Color(0xFFF0F2F7),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: sel == k
+                                        ? WqTheme.green
+                                        : Colors.transparent,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      wqAiLevels[k].name,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w900,
+                                        color: sel == k
+                                            ? WqTheme.greenDeep
+                                            : WqTheme.inkFaint,
+                                      ),
+                                    ),
+                                    Text(
+                                      wqAiLevels[k].persona,
+                                      style: TextStyle(
+                                        fontSize: 8.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: sel == k
+                                            ? WqTheme.greenDeep
+                                            : WqTheme.inkFaint,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      wqAiLevels[sel].desc,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: WqTheme.inkFaint,
+                      ),
+                    ),
+                  ],
+                );
+              }),
+              const SizedBox(height: 12),
               _opponentOption(
                 ctx,
                 panda: const WqPanda(mood: WqPandaMood.happy, size: 52),
@@ -211,6 +295,10 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
   final Map<int, String> _replayNotes = {};
   /// 讲解标记：着手序号 → 棋盘上要圈出的「最后一口气」位置
   final Map<int, int> _replayMarks = {};
+  /// 每手评级：着手序号 → great/good/ok/miss/danger
+  final Map<int, String> _replayGrades = {};
+  /// 更好的下法：着手序号 → 建议落点
+  final Map<int, int> _replayBetter = {};
   /// 孩子的棋被打吃时的最后一口气（警示小灯）
   Set<int> _dangerLibs = {};
 
@@ -263,6 +351,8 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
     _replayMoves.clear();
     _replayNotes.clear();
     _replayMarks.clear();
+    _replayGrades.clear();
+    _replayBetter.clear();
     _dangerLibs = {};
     _explainGhosts = {};
     _explainTimer?.cancel();
@@ -330,6 +420,9 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
     final myIdx = _replayMoves.length;
     // 落子前先看一眼：白棋是否有只剩一口气的子（错过机会时，回放要圈出那口气）
     final whiteAtariLibs = _atariLibsOf(2);
+    // 落子前威胁快照：可提的点 / 该逃的点（用于每手评级与「更好的下法」）
+    final threatBefore = WqAi.hintTarget(_game, 1);
+    final enemyAtariBefore = _atariLibsOf(2).isNotEmpty;
     _replayMoves.add((color: 1, point: i));
     if (r.captured.isNotEmpty) {
       WqSfx.capture();
@@ -340,6 +433,7 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
       _replayNotes[myIdx] = r.captured.length > 1
           ? '这一手提走 ${r.captured.length} 颗，好棋！'
           : '这一手把白棋的气全堵住了，提子成功！';
+      _replayGrades[myIdx] = 'great';
       _say(
         r.captured.length > 1
             ? '哇！一手提走 ${r.captured.length} 颗，这是「双打」的好棋呀！'
@@ -355,8 +449,39 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
         if (grp.isNotEmpty && _game.libsOf(grp).length >= 2) {
           _milestones.add('被包围的士兵成功逃出来啦，会「长气」了！');
           _replayNotes[myIdx] = '这一手让被包围的士兵长出了气，逃出去啦！';
+          _replayGrades[myIdx] = 'great';
         }
         _ownAtariBefore = null;
+      }
+      // 每手评级：错过提子 / 自己处于危险 / 打吃 / 普通
+      if (_replayGrades[myIdx] == null) {
+        if (threatBefore != null &&
+            threatBefore.type == 'capture' &&
+            i != threatBefore.pt) {
+          _replayGrades[myIdx] = 'miss';
+          _replayBetter[myIdx] = threatBefore.pt;
+          _replayNotes[myIdx] ??=
+              '其实橙色圈那个点能一手提走白棋——看到打吃，先提为敬！';
+          _replayMarks[myIdx] = threatBefore.pt;
+        } else if (threatBefore != null &&
+            threatBefore.type == 'escape' &&
+            i != threatBefore.pt) {
+          final grp = _game.groupAt(threatBefore.grp.first);
+          if (grp.isNotEmpty && _game.libsOf(grp).length <= 1) {
+            _replayGrades[myIdx] = 'danger';
+            _replayBetter[myIdx] = threatBefore.pt;
+            _replayNotes[myIdx] ??=
+                '自己的棋还剩一口气！更好的下法是橙色圈先逃出去（或反提对方）';
+            _replayMarks[myIdx] = threatBefore.pt;
+          } else {
+            _replayGrades[myIdx] = 'ok';
+          }
+        } else if (!enemyAtariBefore && _atariLibsOf(2).isNotEmpty) {
+          _replayGrades[myIdx] = 'good';
+          _replayNotes[myIdx] ??= '这一手打吃了白棋——它的气只剩最后一口啦！';
+        } else {
+          _replayGrades[myIdx] = 'ok';
+        }
       }
       // 机会溜走：之前有可提的白子却没提
       if (_pendingCapture) {
@@ -444,15 +569,27 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
       _say('棋棋想一下……', WqPandaMood.think, speakIt: false);
       _aiTimer = Timer(Duration(milliseconds: 700 + math.Random().nextInt(600)), () {
         if (!mounted || _over) return;
+        final level = wqAiLevels[_svc.aiLevelIndex.value
+            .clamp(0, wqAiLevels.length - 1)];
         final mv = _openingMove() ??
-            WqAi.pickMove(_game, 2, _svc.aiSkill.value,
-                rnd: math.Random());
+            WqAi.pickMove(_game, 2, level.skill, rnd: math.Random());
         if (mv == null) return _endGame('review');
         final r = _game.tryPlay(mv, 2);
         WqSfx.stone();
         final aiIdx = _replayMoves.length;
+        final whiteAtariBeforeAi = _atariLibsOf(2).isNotEmpty;
         if (r.ok) {
           _replayMoves.add((color: 2, point: mv));
+        }
+        if (r.ok && r.captured.isEmpty) {
+          // AI 意图讲解：打吃 / 逃子 / 稳健
+          final newAtari = _atariLibsOf(1).isNotEmpty;
+          final aiSavedSelf = whiteAtariBeforeAi && _atariLibsOf(2).isEmpty;
+          _replayNotes[aiIdx] ??= newAtari
+              ? '棋棋在打吃你的棋——想一路把气堵光提掉它'
+              : aiSavedSelf
+                  ? '棋棋在逃自己被打吃的棋，不让白棋白白牺牲'
+                  : '棋棋在稳稳行棋：连接自己的棋、寻找下一步机会';
         }
         if (r.ok && r.captured.isNotEmpty) {
           WqSfx.capture();
@@ -805,7 +942,8 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
         (result == 'review' && _game.capBlack >= _game.capWhite);
     _svc.recordGame(result: result == 'win' ? 'win' : (result == 'lose' ? 'lose' : 'draw'));
     if (_replayMoves.isNotEmpty) {
-      _svc.saveLastGame(_replayMoves, _replayNotes, _replayMarks);
+      _svc.saveLastGame(
+          _replayMoves, _replayNotes, _replayMarks, _replayGrades, _replayBetter);
     }
     if (win) {
       WqSfx.star();
@@ -891,6 +1029,8 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
                           moves: _replayMoves,
                           notes: _replayNotes,
                           marks: _replayMarks,
+                          grades: _replayGrades,
+                          better: _replayBetter,
                         ));
                   },
                 ),
@@ -1128,7 +1268,33 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      WqPanda(mood: _mood, size: 56),
+                      Column(
+                        children: [
+                          WqPanda(mood: _mood, size: 56),
+                          if (_isAi)
+                            Container(
+                              margin: const EdgeInsets.only(top: 3),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: WqTheme.sunSoft,
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Obx(() {
+                                final lv = wqAiLevels[_svc.aiLevelIndex.value
+                                    .clamp(0, wqAiLevels.length - 1)];
+                                return Text(
+                                  '棋棋·${lv.persona}',
+                                  style: const TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w900,
+                                    color: WqTheme.sunDeep,
+                                  ),
+                                );
+                              }),
+                            ),
+                        ],
+                      ),
                       SizedBox(width: 8.w),
                       Expanded(
                         child: WqBubble(

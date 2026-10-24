@@ -33,11 +33,15 @@ class WeiqiService extends GetxService {
   /// 保存最近一局的回放数据（每手颜色/落点 + 关键手讲解）
   void saveLastGame(
       List<({int color, int point})> moves, Map<int, String> notes,
-      [Map<int, int> marks = const {}]) {
+      [Map<int, int> marks = const {},
+      Map<int, String> grades = const {},
+      Map<int, int> better = const {}]) {
     _lastGame = {
       'moves': [for (final m in moves) {'c': m.color, 'p': m.point}],
       'notes': {for (final e in notes.entries) e.key.toString(): e.value},
       'marks': {for (final e in marks.entries) e.key.toString(): e.value},
+      'grades': {for (final e in grades.entries) e.key.toString(): e.value},
+      'better': {for (final e in better.entries) e.key.toString(): e.value},
       'playedAt': DateTime.now().toIso8601String(),
     };
     _save();
@@ -47,7 +51,7 @@ class WeiqiService extends GetxService {
 
   /// 从持久化数据恢复回放参数；无记录返回 null
   ({List<({int color, int point})> moves, Map<int, String> notes,
-          Map<int, int> marks})?
+          Map<int, int> marks, Map<int, String> grades, Map<int, int> better})?
       loadLastGame() {
     final g = _lastGame;
     if (g == null) return null;
@@ -66,8 +70,22 @@ class WeiqiService extends GetxService {
       for (final e in ((g['marks'] as Map?) ?? const {}).entries)
         int.parse(e.key.toString()): (e.value as num).toInt(),
     };
+    final grades = <int, String>{
+      for (final e in ((g['grades'] as Map?) ?? const {}).entries)
+        int.parse(e.key.toString()): e.value.toString(),
+    };
+    final better = <int, int>{
+      for (final e in ((g['better'] as Map?) ?? const {}).entries)
+        int.parse(e.key.toString()): (e.value as num).toInt(),
+    };
     if (moves.isEmpty) return null;
-    return (moves: moves, notes: notes, marks: marks);
+    return (
+      moves: moves,
+      notes: notes,
+      marks: marks,
+      grades: grades,
+      better: better
+    );
   }
 
   // ---- 对局记录（陪下） ----
@@ -84,7 +102,7 @@ class WeiqiService extends GetxService {
   final RxBool remindOn = true.obs; // 对局中失误提醒
   final RxBool sfxOn = true.obs; // 音效
   final RxBool atariLightsOn = true.obs; // 对局中被打吃警示灯
-  final RxDouble aiSkill = 0.82.obs; // 棋棋棋力（0~1）
+  final RxInt aiLevelIndex = 1.obs; // 棋棋棋力档位（0初级/1中级/2高级/3职业级）
 
   WeiqiService() {
     voiceOn.listen((v) {
@@ -97,7 +115,7 @@ class WeiqiService extends GetxService {
       _save();
     });
     atariLightsOn.listen((v) => _save());
-    aiSkill.listen((v) => _save());
+    aiLevelIndex.listen((v) => _save());
   }
 
   Future<WeiqiService> init() async {
@@ -368,7 +386,7 @@ class WeiqiService extends GetxService {
       voiceOn.value = data['voiceOn'] as bool? ?? true;
       remindOn.value = data['remindOn'] as bool? ?? true;
       sfxOn.value = data['sfxOn'] as bool? ?? true;
-      aiSkill.value = (data['aiSkill'] as num?)?.toDouble() ?? 0.82;
+      aiLevelIndex.value = (data['aiLevelIndex'] as num?)?.toInt() ?? 1;
     } catch (e) {
       debugPrint('棋妙岛进度加载失败(忽略): $e');
     }
@@ -389,7 +407,7 @@ class WeiqiService extends GetxService {
       'voiceOn': voiceOn.value,
         'remindOn': remindOn.value,
         'sfxOn': sfxOn.value,
-        'aiSkill': aiSkill.value,
+        'aiLevelIndex': aiLevelIndex.value,
       };
       _box?.put('data', jsonEncode(data));
     } catch (e) {

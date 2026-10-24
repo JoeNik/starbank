@@ -181,7 +181,8 @@ class WqAi {
   static int? pickMove(WqGame g, int color, double skill, {Random? rnd}) {
     final random = rnd ?? Random();
     final s = g.s;
-    final pMiss = (1 - skill) * 0.55 + 0.06;
+    // 职业级（skill≥0.99）完全不失手；其余档位保留一点基础失误率
+    final pMiss = skill >= 0.99 ? 0.0 : (1 - skill) * 0.55 + 0.06;
     final scored = <_Scored>[];
     for (var i = 0; i < g.n * g.n; i++) {
       if (s[i] != 0) continue;
@@ -281,6 +282,24 @@ class WqAi {
     return null;
   }
 }
+
+/// 棋棋的棋力档位
+class WqAiLevel {
+  final String name; // 档位名（初级/中级/高级/职业级）
+  final String persona; // 形象名（对局中显示）
+  final String desc; // 一句话介绍
+  final double skill;
+
+  const WqAiLevel(this.name, this.persona, this.desc, this.skill);
+}
+
+/// 陪下棋力档位（对齐围棋协会级位的意象）
+const List<WqAiLevel> wqAiLevels = [
+  WqAiLevel('初级', '新手村', '常常看漏打吃，最适合刚学会规则的你', 0.55),
+  WqAiLevel('中级', '上进生', '很少放跑猎物，会主动打吃你的棋', 0.75),
+  WqAiLevel('高级', '小高手', '抢先提子、寸步不让，需要认真应对', 0.88),
+  WqAiLevel('职业级', '职业范', '一步不漏，把它当成大 Boss 挑战吧', 1.0),
+];
 
 class _Scored {
   final int i;

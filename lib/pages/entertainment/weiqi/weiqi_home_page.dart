@@ -254,6 +254,8 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
               moves: last.moves,
               notes: last.notes,
               marks: last.marks,
+              grades: last.grades,
+              better: last.better,
             )),
         borderRadius: BorderRadius.circular(20.r),
         child: Container(
