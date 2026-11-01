@@ -65,6 +65,102 @@ class MainActivity : AudioServiceActivity() {
             }
         }
         dispatchAliyunOAuthIntent(intent)
+
+        // 公共下载目录写入通道(MediaStore / 旧版直写),音频文件落盘在子线程做,避免卡主线程
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            PUBLIC_STORAGE_CHANNEL,
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "sdkInt" -> result.success(android.os.Build.VERSION.SDK_INT)
+
+                "saveToDownload" -> {
+                    val bytes = call.argument<ByteArray>("bytes") ?: ByteArray(0)
+                    val fileName = call.argument<String>("fileName") ?: "file"
+                    val subDir = call.argument<String>("subDir") ?: ""
+                    val mime = call.argument<String>("mime") ?: "application/octet-stream"
+                    val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+                    Thread {
+                        try {
+                            val savedName = saveToPublicDownload(bytes, fileName, subDir, mime)
+                            mainHandler.post { result.success(savedName) }
+                        } catch (error: Exception) {
+                            mainHandler.post {
+                                result.error("SAVE_TO_DOWNLOAD_FAILED", error.message, null)
+                            }
+                        }
+                    }.start()
+                }
+
+                else -> result.notImplemented()
+            }
+        }
+    }
+
+    /// 把字节保存到公共下载目录 Download/<subDir>,返回实际落盘文件名。
+    /// API 29+ 走 MediaStore.Downloads(无需存储权限,系统自动重名去重);
+    /// 更早版本直接写公共 Download 目录(依赖已授予的 WRITE_EXTERNAL_STORAGE)。
+    private fun saveToPublicDownload(
+        bytes: ByteArray,
+        fileName: String,
+        subDir: String,
+        mime: String,
+    ): String {
+        val safeSub = subDir.trim('/').replace("..", "")
+        return if (android.os.Build.VERSION.SDK_INT >= 29) {
+            val values = android.content.ContentValues().apply {
+                put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                put(android.provider.MediaStore.MediaColumns.MIME_TYPE, mime)
+                put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, "Download/$safeSub")
+                put(android.provider.MediaStore.MediaColumns.IS_PENDING, 1)
+            }
+            val resolver = contentResolver
+            val uri = resolver.insert(
+                android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                values,
+            ) ?: throw IllegalStateException("MediaStore 插入失败")
+            try {
+                resolver.openOutputStream(uri)?.use { it.write(bytes) }
+                    ?: throw IllegalStateException("无法打开输出流")
+                values.clear()
+                values.put(android.provider.MediaStore.MediaColumns.IS_PENDING, 0)
+                resolver.update(uri, values, null, null)
+            } catch (e: Exception) {
+                runCatching { resolver.delete(uri, null, null) }
+                throw e
+            }
+            // MediaStore 自动重名去重(追加 " (1)"),查回实际落盘名
+            resolver.query(
+                uri,
+                arrayOf(android.provider.MediaStore.MediaColumns.DISPLAY_NAME),
+                null, null, null,
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val idx = cursor.getColumnIndex(android.provider.MediaStore.MediaColumns.DISPLAY_NAME)
+                    if (idx >= 0) return cursor.getString(idx)
+                }
+            }
+            fileName
+        } else {
+            val base = android.os.Environment.getExternalStoragePublicDirectory(
+                android.os.Environment.DIRECTORY_DOWNLOADS,
+            )
+            val dir = if (safeSub.isEmpty()) base else java.io.File(base, safeSub)
+            if (!dir.exists() && !dir.mkdirs()) {
+                throw IllegalStateException("无法创建目录 ${dir.absolutePath}")
+            }
+            var target = java.io.File(dir, fileName)
+            var n = 1
+            while (target.exists()) {
+                val dot = fileName.lastIndexOf('.')
+                val stem = if (dot > 0) fileName.substring(0, dot) else fileName
+                val ext = if (dot > 0) fileName.substring(dot) else ""
+                target = java.io.File(dir, "$stem ($n)$ext")
+                n++
+            }
+            java.io.FileOutputStream(target).use { it.write(bytes) }
+            target.name
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -89,5 +185,6 @@ class MainActivity : AudioServiceActivity() {
     companion object {
         private const val BACKGROUND_NETWORK_CHANNEL = "star_bank/background_network_service"
         private const val ALIYUN_OAUTH_CHANNEL = "star_bank/aliyun_oauth"
+        private const val PUBLIC_STORAGE_CHANNEL = "star_bank/public_storage"
     }
 }

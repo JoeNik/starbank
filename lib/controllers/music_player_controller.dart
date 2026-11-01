@@ -1,19 +1,34 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:just_audio/just_audio.dart';
 // import 'package:just_audio_background/just_audio_background.dart';
 import 'package:audio_service/audio_service.dart';
+import 'package:http/http.dart' as http;
+import 'package:permission_handler/permission_handler.dart';
 import '../models/music/music_track.dart';
 import '../models/music/playlist.dart';
+import '../services/public_storage_service.dart';
 import '../services/tunehub_service.dart';
+import '../services/chksz_music_service.dart';
+import '../services/music_source.dart';
 import '../services/storage_service.dart';
+import '../widgets/music_cover_image.dart';
 
 import '../services/music_service.dart';
 import '../services/music_cache_service.dart';
 
 class MusicPlayerController extends GetxController {
   final TuneHubService _tuneHubService = Get.find<TuneHubService>();
+
+  /// 注册中心为可选项:热重载或异常场景下缺失时回退 TuneHub,不让播放瘫痪
+  MusicSourceRegistry? get _sourceRegistry =>
+      Get.isRegistered<MusicSourceRegistry>()
+          ? Get.find<MusicSourceRegistry>()
+          : null;
   final StorageService _storage = Get.find<StorageService>();
   final MusicService _musicService = Get.find<MusicService>();
   late final MusicCacheService _cacheService;
@@ -47,12 +62,22 @@ class MusicPlayerController extends GetxController {
   Timer? _sleepTimer;
   final RxInt sleepTimerMinutes = 0.obs; // 0 = off
 
+  // 当前播放音质档位(如 exhigh / hires),空表示未知;UI 层负责转显示名
+  final RxString currentAudioQuality = ''.obs;
+
+  // === 歌曲下载(保存到公共下载目录) ===
+  final PublicStorageService _publicStorage = PublicStorageService();
+  final RxBool isDownloading = false.obs;
+  static const String downloadSubDir = 'starBank/music';
+
   @override
   void onInit() {
     super.onInit();
     _cacheService = Get.find<MusicCacheService>();
     _loadFavorites();
     _loadHistory();
+    _restoreQueue();
+    _restorePlayMode();
     unawaited(_musicService.ensureNotificationPermission());
 
     // 异步初始化播放器监听，防止因 Service 未就绪导致的阻塞或 Crash
@@ -188,7 +213,54 @@ class MusicPlayerController extends GetxController {
   void playWithList(List<MusicTrack> list, MusicTrack track) {
     if (list.isEmpty) return;
     playlist.assignAll(list);
+    _persistQueue();
     playTrack(track);
+  }
+
+  /// 按平台与当前音源路由解析:
+  /// - netease → 当前激活音源(ChKSz/TuneHub),失败回退 TuneHub
+  /// - 其他平台(酷我/QQ) → 仅 TuneHub 支持
+  Future<Map<String, dynamic>> _resolveTrackSource(
+      MusicTrack track, int taskId) async {
+    if (track.platform == 'netease') {
+      final active = _sourceRegistry?.active;
+      if (active != null && active.id != _tuneHubService.id) {
+        try {
+          final res = await active.parseTrack(track.platform, track.id);
+          final url = res['url']?.toString() ?? '';
+          if (url.isNotEmpty) return res;
+          debugPrint(
+              '⚠️ [PlayTrack #$taskId] ${active.displayName} 解析为空,回退 TuneHub');
+        } catch (e) {
+          debugPrint(
+              '⚠️ [PlayTrack #$taskId] ${active.displayName} 解析异常: $e,回退 TuneHub');
+        }
+      }
+    }
+    return _tuneHubService.parseTrack(track.platform, track.id);
+  }
+
+  /// 异步补拉歌词(ChKSz 的歌词为独立接口),成功后刷新歌词视图
+  Future<void> _fetchLyricsAsync(MusicTrack track, int taskId) async {
+    try {
+      final source = _sourceRegistry?.byId('chksz');
+      if (source is! ChkSzMusicService) return;
+      final lrc = await source.fetchLyric(track.id);
+      if (lrc['lrc'] == null || lrc['lrc']!.isEmpty) return;
+      // 已被新的切歌任务取代时丢弃
+      if (taskId != _currentPlayTaskId) return;
+      track.lyricContent = lrc['lrc'];
+      _parseLyrics(track.lyricContent, translation: lrc['tlyric']);
+      debugPrint('🎤 [PlayTrack #$taskId] 歌词补拉成功 (${lyrics.length} 行)');
+    } catch (e) {
+      debugPrint('⚠️ [PlayTrack #$taskId] 歌词补拉失败: $e');
+    }
+  }
+
+  String _brToLabel(dynamic br) {
+    final v = (br is num) ? br.toInt() : int.tryParse('$br');
+    if (v == null || v <= 0) return '';
+    return '${(v / 1000).round()}K';
   }
 
   // Ensure Player is Initialized & Listeners Attached
@@ -306,6 +378,9 @@ class MusicPlayerController extends GetxController {
     // 辅助函数: 检查当前任务是否仍然有效
     bool isTaskValid() => taskId == _currentPlayTaskId;
 
+    // 重置音质标签(缓存播放时无解析响应)
+    currentAudioQuality.value = '';
+
     // 1. 预处理：获取播放链接
     String? playUrl;
     bool fromCache = false;
@@ -341,7 +416,7 @@ class MusicPlayerController extends GetxController {
     if (playUrl == null && !fromCache) {
       debugPrint('🌐 [PlayTrack #$taskId] 开始解析在线链接...');
       try {
-        final res = await _tuneHubService.parseTrack(track.platform, track.id);
+        final res = await _resolveTrackSource(track, taskId);
         if (!isTaskValid()) {
           debugPrint('🔄 [PlayTrack #$taskId] 任务已取消(URL解析后)');
           _isTransitioning = false;
@@ -355,7 +430,17 @@ class MusicPlayerController extends GetxController {
           if (res['cover'] != null) track.coverUrl = res['cover'];
           if (res['lyrics'] != null) track.lyricContent = res['lyrics'];
           _parseLyrics(track.lyricContent);
-          debugPrint('🌐 [PlayTrack #$taskId] 在线链接解析成功');
+
+          // 记录实际命中的音质档位
+          final level = res['level']?.toString() ?? '';
+          currentAudioQuality.value = level.isNotEmpty ? level : _brToLabel(res['br']);
+          debugPrint('🌐 [PlayTrack #$taskId] 在线链接解析成功 (音质: ${currentAudioQuality.value})');
+
+          // ChKSz 的歌词是独立接口,异步补拉,不阻塞播放
+          if ((track.lyricContent == null || track.lyricContent!.isEmpty) &&
+              track.platform == 'netease') {
+            unawaited(_fetchLyricsAsync(track, taskId));
+          }
         }
       } catch (e) {
         debugPrint('❌ [PlayTrack #$taskId] 链接解析异常: $e');
@@ -453,6 +538,7 @@ class MusicPlayerController extends GetxController {
       _syncAudioServiceQueue(currentDuration: resolvedDuration);
 
       addToHistory(track);
+      _persistQueue();
       debugPrint(
           '✅ [PlayTrack #$taskId] 播放成功: ${track.title} ${fromCache ? "(缓存)" : "(在线)"}');
 
@@ -482,6 +568,48 @@ class MusicPlayerController extends GetxController {
   // Play Mode
   final Rx<PlayMode> playMode = PlayMode.sequence.obs;
 
+  // === 播放队列持久化(重启后恢复队列/进度索引/播放模式) ===
+  static const String _queueStorageKey = 'music_queue_tracks';
+  static const String _queueIndexKey = 'music_queue_index';
+  static const String _playModeStorageKey = 'player_play_mode';
+
+  void _persistQueue() {
+    try {
+      _storage.saveValue(_queueStorageKey,
+          jsonEncode(playlist.map((t) => t.toJson()).toList()));
+      _storage.saveValue(_queueIndexKey, currentIndex.value.toString());
+    } catch (e) {
+      debugPrint('⚠️ [Queue] 队列持久化失败: $e');
+    }
+  }
+
+  void _restoreQueue() {
+    try {
+      final raw = _storage.getValue(_queueStorageKey);
+      if (raw == null || raw.isEmpty) return;
+      final list = jsonDecode(raw) as List?;
+      if (list == null || list.isEmpty) return;
+      final restored = list
+          .map((e) =>
+              MusicTrack.fromJson(Map<String, dynamic>.from(e as Map)))
+          .toList();
+      playlist.assignAll(restored);
+      final idx =
+          int.tryParse(_storage.getValue(_queueIndexKey) ?? '0') ?? 0;
+      currentIndex.value = idx.clamp(0, restored.length - 1);
+      debugPrint('✅ [Queue] 已恢复播放队列 ${restored.length} 首');
+    } catch (e) {
+      debugPrint('⚠️ [Queue] 播放队列恢复失败: $e');
+    }
+  }
+
+  void _restorePlayMode() {
+    final saved = int.tryParse(_storage.getValue(_playModeStorageKey) ?? '');
+    if (saved != null && saved >= 0 && saved < PlayMode.values.length) {
+      playMode.value = PlayMode.values[saved];
+    }
+  }
+
   void changePlayMode() {
     switch (playMode.value) {
       case PlayMode.sequence:
@@ -494,6 +622,7 @@ class MusicPlayerController extends GetxController {
         playMode.value = PlayMode.sequence;
         break;
     }
+    _storage.saveValue(_playModeStorageKey, playMode.value.index.toString());
   }
 
   void playNext({bool isAuto = false}) {
@@ -548,6 +677,62 @@ class MusicPlayerController extends GetxController {
     playTrack(playlist[prevIndex], targetIndex: prevIndex);
   }
 
+  /// 将歌曲插入当前播放歌曲之后(下一首播放)
+  void playNextInQueue(MusicTrack track) {
+    if (playlist.isEmpty) {
+      playWithList([track], track);
+      return;
+    }
+    final exists =
+        playlist.any((t) => t.id == track.id && t.platform == track.platform);
+    if (exists) {
+      Get.snackbar('提示', '这首歌已经在播放列表里啦');
+      return;
+    }
+    playlist.insert(currentIndex.value + 1, track);
+    _syncAudioServiceQueue();
+    _persistQueue();
+    Get.snackbar('下一首播放', '${track.title} - ${track.artist}');
+  }
+
+  /// 从播放队列中移除指定歌曲
+  void removeTrackAt(int index) {
+    if (index < 0 || index >= playlist.length) return;
+    final wasCurrent = index == currentIndex.value;
+    playlist.removeAt(index);
+
+    if (playlist.isEmpty) {
+      _musicService.stop();
+      currentIndex.value = 0;
+      position.value = Duration.zero;
+      duration.value = Duration.zero;
+      isPlaying.value = false;
+      _persistQueue();
+      return;
+    }
+    if (wasCurrent) {
+      // 播放移除位置处的下一首(索引越界时回退到列表末尾)
+      int nextIndex = index;
+      if (nextIndex >= playlist.length) nextIndex = playlist.length - 1;
+      playTrack(playlist[nextIndex], targetIndex: nextIndex);
+    } else if (index < currentIndex.value) {
+      currentIndex.value--;
+      _syncAudioServiceQueue();
+    }
+    _persistQueue();
+  }
+
+  /// 清空播放队列并停止播放
+  void clearPlaylist() {
+    _musicService.stop();
+    playlist.clear();
+    currentIndex.value = 0;
+    position.value = Duration.zero;
+    duration.value = Duration.zero;
+    isPlaying.value = false;
+    _persistQueue();
+  }
+
   void togglePlay() {
     if (isPlaying.value) {
       _musicService.pause();
@@ -558,6 +743,87 @@ class MusicPlayerController extends GetxController {
 
   void seek(Duration pos) {
     _musicService.seek(pos);
+  }
+
+  // === 歌曲下载:保存到公共下载目录 Download/starBank/music ===
+
+  /// 音频来源优先复用已缓存(解密)文件,其次解析在线链接并带平台头下载
+  Future<void> downloadTrack(MusicTrack track) async {
+    if (isDownloading.value) return;
+    isDownloading.value = true;
+    try {
+      Uint8List? bytes;
+
+      // 1. 优先读本地缓存里已解密的音频
+      if (_cacheService.isInitialized && _cacheService.isCached(track)) {
+        try {
+          final cachedPath = await _cacheService.getCachedFilePath(track);
+          if (cachedPath != null) {
+            final f = File(cachedPath);
+            if (await f.exists()) bytes = await f.readAsBytes();
+          }
+        } catch (e) {
+          debugPrint('⚠️ [Download] 读取缓存失败,改走在线下载: $e');
+        }
+      }
+
+      // 2. 无缓存时解析在线链接(与播放同一路径)并下载
+      if (bytes == null) {
+        var url = (track.url != null && track.url!.startsWith('http'))
+            ? track.url!
+            : '';
+        if (url.isEmpty) {
+          final res = await _resolveTrackSource(track, 0);
+          url = res['url']?.toString() ?? '';
+        }
+        if (url.isEmpty) {
+          Get.snackbar('下载失败', '暂时拿不到这首歌的音频链接');
+          return;
+        }
+        if (track.platform == 'netease' && url.startsWith('http://')) {
+          url = url.replaceFirst('http://', 'https://');
+        }
+        final resp = await http
+            .get(Uri.parse(url), headers: _getHeaders(track))
+            .timeout(const Duration(minutes: 5));
+        if (resp.statusCode != 200 || resp.bodyBytes.isEmpty) {
+          Get.snackbar('下载失败', '音频下载出错 (HTTP ${resp.statusCode})');
+          return;
+        }
+        bytes = resp.bodyBytes;
+      }
+
+      // 3. API 29 以下需要存储权限;29+ MediaStore 免权限
+      final sdk = await _publicStorage.sdkInt();
+      if (sdk > 0 && sdk < 29) {
+        final status = await Permission.storage.request();
+        if (!status.isGranted) {
+          Get.snackbar('下载失败', '需要存储权限才能保存到下载目录');
+          return;
+        }
+      }
+
+      // 4. 文件名过滤系统保留字符
+      final safeName =
+          '${track.title} - ${track.artist}'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_').trim();
+      final fileName = safeName.isEmpty
+          ? 'song_${track.platform}_${track.id}.mp3'
+          : '$safeName.mp3';
+
+      final savedName = await _publicStorage.saveToDownload(
+        bytes: bytes,
+        fileName: fileName,
+        subDir: downloadSubDir,
+        mimeType: PublicStorageService.audioMime(fileName),
+      );
+      Get.snackbar('下载完成', 'Download/$downloadSubDir/$savedName',
+          snackPosition: SnackPosition.BOTTOM);
+    } catch (e) {
+      debugPrint('❌ [Download] 下载失败: $e');
+      Get.snackbar('下载失败', '$e', snackPosition: SnackPosition.BOTTOM);
+    } finally {
+      isDownloading.value = false;
+    }
   }
 
   // Timer logic
@@ -578,31 +844,59 @@ class MusicPlayerController extends GetxController {
   final RxList<LyricLine> lyrics = <LyricLine>[].obs;
   final RxInt currentLyricIndex = 0.obs;
 
-  void _parseLyrics(String? content) {
+  void _parseLyrics(String? content, {String? translation}) {
     lyrics.clear();
     currentLyricIndex.value = 0;
     if (content == null || content.isEmpty) return;
 
-    // Regex to match [mm:ss.SS] or [mm:ss.SSS]
-    final regExp = RegExp(r'^\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)');
-    final lines = content.split('\n');
+    // 兼容 [mm:ss.SS] / [mm:ss.SSS],支持一行多个时间标签
+    final tagRegExp = RegExp(r'\[(\d{1,2}):(\d{2})[.:](\d{2,3})\]');
 
-    for (final line in lines) {
-      final match = regExp.firstMatch(line);
-      if (match != null) {
-        final min = int.parse(match.group(1)!);
-        final sec = int.parse(match.group(2)!);
-        final msStr = match.group(3)!;
-        // Normalize milliseconds: .1 -> 100, .12 -> 120, .123 -> 123
-        final ms = int.parse(msStr.padRight(3, '0'));
+    List<LyricLine> parse(String text) {
+      final result = <LyricLine>[];
+      for (final line in text.split('\n')) {
+        final matches = tagRegExp.allMatches(line).toList();
+        if (matches.isEmpty) continue;
+        final body = line.replaceAll(tagRegExp, '').trim();
+        if (body.isEmpty) continue;
+        for (final m in matches) {
+          final min = int.parse(m.group(1)!);
+          final sec = int.parse(m.group(2)!);
+          final msStr = m.group(3)!;
+          // 百分秒 → 毫秒:.12 -> 120
+          final ms = int.parse(msStr.padRight(3, '0'));
+          result.add(LyricLine(
+            Duration(minutes: min, seconds: sec, milliseconds: ms),
+            body,
+          ));
+        }
+      }
+      result.sort((a, b) => a.startTime.compareTo(b.startTime));
+      return result;
+    }
 
-        final time = Duration(minutes: min, seconds: sec, milliseconds: ms);
-        final text = match.group(4)!.trim();
-        // Skip empty lines if desired, or keep them for spacing
-        // Keeping them is better for fidelity
-        lyrics.add(LyricLine(time, text));
+    final parsed = parse(content);
+
+    // 翻译歌词按时间就近合并(1 秒内取最接近的一条)
+    if (translation != null &&
+        translation.trim().isNotEmpty &&
+        parsed.isNotEmpty) {
+      final transLines = parse(translation);
+      for (final line in parsed) {
+        LyricLine? best;
+        var bestDelta = const Duration(seconds: 1);
+        for (final t in transLines) {
+          final delta = (t.startTime - line.startTime).abs();
+          if (delta <= bestDelta) {
+            bestDelta = delta;
+            best = t;
+          }
+        }
+        line.translation = best?.content;
       }
     }
+
+    lyrics.addAll(parsed);
   }
 
   @override
@@ -636,6 +930,14 @@ class MusicPlayerController extends GetxController {
   }
 
   MediaItem _toMediaItem(MusicTrack track, {Duration? duration}) {
+    // 网易封面统一 https,避免系统媒体组件加载明文图片失败
+    String? artUri = track.coverUrl;
+    if (artUri != null &&
+        artUri.isNotEmpty &&
+        track.platform == 'netease' &&
+        artUri.startsWith('http://')) {
+      artUri = artUri.replaceFirst('http://', 'https://');
+    }
     return MediaItem(
       id: '${track.platform}:${track.id}',
       title: track.title,
@@ -645,9 +947,11 @@ class MusicPlayerController extends GetxController {
           (track.durationMs != null
               ? Duration(milliseconds: track.durationMs!)
               : null),
-      artUri: track.coverUrl != null && track.coverUrl!.isNotEmpty
-          ? Uri.tryParse(track.coverUrl!)
+      artUri: (artUri != null && artUri.isNotEmpty)
+          ? Uri.tryParse(artUri)
           : null,
+      // 网易图片 CDN 封 Dart 开头的 UA;通知栏封面走原生加载(替换语义),带完整浏览器头
+      artHeaders: nativeCoverHeadersFor(artUri),
       extras: {
         'platform': track.platform,
         'trackId': track.id,
@@ -675,7 +979,10 @@ class LyricLine {
   final Duration startTime;
   final String content;
 
-  LyricLine(this.startTime, this.content);
+  /// 翻译歌词(与原文时间就近合并后回填)
+  String? translation;
+
+  LyricLine(this.startTime, this.content, {this.translation});
 }
 
 enum PlayMode {

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:get/get.dart';
@@ -12,6 +14,8 @@ import 'controllers/user_controller.dart';
 import 'controllers/shop_controller.dart';
 import 'controllers/app_mode_controller.dart';
 import 'services/tunehub_service.dart';
+import 'services/chksz_music_service.dart';
+import 'services/music_source.dart';
 import 'services/family_sync_service.dart';
 import 'services/music_service.dart';
 import 'services/music_cache_service.dart';
@@ -40,6 +44,19 @@ import 'pages/shop_page.dart';
 import 'pages/entertainment_page.dart';
 import 'pages/record_page.dart';
 import 'navigation/app_route_observer.dart';
+import 'widgets/music_cover_image.dart' show kNeteaseBrowserUa;
+
+/// 全局把 Dart HttpClient 默认 UA 换成浏览器 UA。
+/// 网易图片 CDN 会 403 掉以 "Dart/" 开头的 UA,而 dart:io 的 headers.add
+/// 对 User-Agent 是追加语义,无法在单请求层覆盖默认值,只能在此统一替换。
+class AppHttpOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    final client = super.createHttpClient(context);
+    client.userAgent = kNeteaseBrowserUa;
+    return client;
+  }
+}
 
 // 版本号位置
 // 两个地方需要同步更新：
@@ -50,6 +67,9 @@ import 'navigation/app_route_observer.dart';
 //  第 9 行：const String appVersion = '2.0.0';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 必须在首个网络请求前生效(网易图片 CDN 按 UA 指纹 403)
+  HttpOverrides.global = AppHttpOverrides();
 
   // JustAudioBackground is DISABLED to fix Android 14 Crashes.
   // Do not initialize it.
@@ -200,6 +220,20 @@ void main() async {
 
       final musicCacheService = Get.put(MusicCacheService(), permanent: true);
       await musicCacheService.initialize();
+
+      // 音源注册:必须在 MusicPlayerController 之前,且任一音源初始化失败
+      // 都不能阻断 Controller 注册(否则整个音乐模块瘫痪)
+      final sourceRegistry = Get.put(MusicSourceRegistry(), permanent: true);
+      if (Get.isRegistered<TuneHubService>()) {
+        sourceRegistry.register(Get.find<TuneHubService>());
+      }
+      try {
+        final chkszMusicService = Get.put(ChkSzMusicService(), permanent: true);
+        sourceRegistry.register(chkszMusicService);
+      } catch (e, stack) {
+        debugPrint('ChkSzMusicService init failed: $e Stack: $stack');
+      }
+      sourceRegistry.restore();
 
       Get.put(MusicPlayerController(), permanent: true);
       debugPrint('Music services initialized');

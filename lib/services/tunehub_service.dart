@@ -7,8 +7,9 @@ import '../models/music/tunehub_method.dart';
 import 'android_background_network_service.dart';
 import 'storage_service.dart';
 import '../utils/remote_json.dart';
+import 'music_source.dart';
 
-class TuneHubService extends GetxService {
+class TuneHubService extends GetxService implements MusicSource {
   final StorageService _storage = Get.find<StorageService>();
 
   final RxString baseUrl = ''.obs;
@@ -17,6 +18,19 @@ class TuneHubService extends GetxService {
   // 用于存储最后一次搜索的调试信息
   String _lastSearchDebugInfo = '';
   String get lastSearchDebugInfo => _lastSearchDebugInfo;
+
+  // === MusicSource 接口实现 ===
+  @override
+  String get id => 'tunehub';
+
+  @override
+  String get displayName => 'TuneHub';
+
+  @override
+  bool get isConfigured => baseUrl.value.isNotEmpty;
+
+  @override
+  String get lastDebugInfo => _lastSearchDebugInfo;
 
   @override
   void onInit() {
@@ -229,6 +243,7 @@ class TuneHubService extends GetxService {
 
   // --- High Level APIs ---
 
+  @override
   Future<List<MusicTrack>> searchMusic(String keyword,
       {String platform = 'kuwo', int page = 1}) async {
     final vars = {
@@ -445,7 +460,13 @@ class TuneHubService extends GetxService {
     return (singer ?? '未知歌手').toString();
   }
 
-  Future<Map<String, dynamic>> parseTrack(String platform, String id) async {
+  @override
+  Future<Map<String, dynamic>> parseTrack(
+    String platform,
+    String id, {
+    String? level,
+  }) async {
+    // level 参数仅为满足统一音源接口签名,TuneHub 固定 128k
     // 强制使用 TuneHub 自身的 Parse 接口，绕过不稳定的 Method 配置代理
     // 这样能确保所有的请求都走统一的 Key 轮询，且 Params 格式绝对正确
     if (baseUrl.value.isNotEmpty) {
