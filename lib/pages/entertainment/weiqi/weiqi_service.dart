@@ -103,6 +103,7 @@ class WeiqiService extends GetxService {
   final RxBool sfxOn = true.obs; // 音效
   final RxBool atariLightsOn = true.obs; // 对局中被打吃警示灯
   final RxInt aiLevelIndex = 1.obs; // 棋棋棋力档位（0初级/1中级/2高级/3职业级）
+  final RxInt winCaptures = 3.obs; // 提子目标：先提走对方几颗算赢（家长小屋可调 2~5）
 
   WeiqiService() {
     voiceOn.listen((v) {
@@ -116,6 +117,7 @@ class WeiqiService extends GetxService {
     });
     atariLightsOn.listen((v) => _save());
     aiLevelIndex.listen((v) => _save());
+    winCaptures.listen((v) => _save());
   }
 
   Future<WeiqiService> init() async {
@@ -387,6 +389,8 @@ class WeiqiService extends GetxService {
       remindOn.value = data['remindOn'] as bool? ?? true;
       sfxOn.value = data['sfxOn'] as bool? ?? true;
       aiLevelIndex.value = (data['aiLevelIndex'] as num?)?.toInt() ?? 1;
+      winCaptures.value =
+          ((data['winCaptures'] as num?)?.toInt() ?? 3).clamp(2, 5);
     } catch (e) {
       debugPrint('棋妙岛进度加载失败(忽略): $e');
     }
@@ -408,6 +412,7 @@ class WeiqiService extends GetxService {
         'remindOn': remindOn.value,
         'sfxOn': sfxOn.value,
         'aiLevelIndex': aiLevelIndex.value,
+        'winCaptures': winCaptures.value,
       };
       _box?.put('data', jsonEncode(data));
     } catch (e) {

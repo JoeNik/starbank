@@ -32,6 +32,7 @@ class WqBubble extends StatelessWidget {
       clipBehavior: Clip.none,
       children: [
         Container(
+          clipBehavior: Clip.antiAlias,
           padding: EdgeInsets.fromLTRB(12.w, 8.h, 12.w, 8.h),
           decoration: BoxDecoration(
             color: Colors.white,
@@ -68,10 +69,11 @@ class WqBubble extends StatelessWidget {
                       onTap: onReplay,
                       behavior: HitTestBehavior.opaque,
                       child: Padding(
-                        padding: EdgeInsets.all(3.w),
+                        // 热区加大到 ~34px,孩子手指也容易点中
+                        padding: EdgeInsets.all(8.w),
                         child: Icon(
                           Icons.volume_up_rounded,
-                          size: 16,
+                          size: 18,
                           color: WqTheme.greenDeep,
                         ),
                       ),
@@ -79,15 +81,18 @@ class WqBubble extends StatelessWidget {
                 ],
               ),
               SizedBox(height: 2.h),
-              Text(
-                text,
-                maxLines: maxLines,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 13.5.sp,
-                  fontWeight: FontWeight.w600,
-                  height: 1.55,
-                  color: WqTheme.ink,
+              // Flexible：高度被压缩时文字自动让位，气泡永不溢出
+              Flexible(
+                child: Text(
+                  text,
+                  maxLines: maxLines,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13.5.sp,
+                    fontWeight: FontWeight.w600,
+                    height: 1.55,
+                    color: WqTheme.ink,
+                  ),
                 ),
               ),
             ],

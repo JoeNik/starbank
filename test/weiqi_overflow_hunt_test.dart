@@ -49,6 +49,7 @@ void main() {
       await tester.pumpWidget(
         ScreenUtilInit(
           designSize: const Size(375, 812),
+          minTextAdapt: true,
           builder: (context, child) => GetMaterialApp(home: page),
         ),
       );
@@ -122,7 +123,9 @@ void main() {
 
       // ---- 课程交互全流程（到结算面板 + 对手选择） ----
       await pumpAndCollect(tester, const WeiqiCoursePage(lessonIndex: 0));
-      for (var i = 0; i < 6; i++) {
+      // L1 现有 9 步（含开场「你好，围棋！」），前 7 步是演示讲解，
+      // 连点 7 次进入第 8 步找气问答
+      for (var i = 0; i < 7; i++) {
         await tapText(tester, '下一步 ›');
         await tester.pump(const Duration(milliseconds: 100));
       }
@@ -171,7 +174,9 @@ void main() {
           if (!errs.contains(first)) errs.add(first);
         };
         try {
-          await tapText(tester, '结束'); // 3+1 复盘卡
+          await tapText(tester, '结束'); // 终局：停在盘面，不弹结算
+          await tester.pump(const Duration(milliseconds: 400));
+          await tapText(tester, '看看战报'); // 手动打开结算卡
           await tester.pump(const Duration(milliseconds: 400));
         } finally {
           FlutterError.onError = original;

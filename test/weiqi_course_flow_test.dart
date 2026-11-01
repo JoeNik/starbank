@@ -46,6 +46,7 @@ void main() {
     await tester.pumpWidget(
       ScreenUtilInit(
         designSize: const Size(375, 812),
+        minTextAdapt: true,
         builder: (context, child) => GetMaterialApp(
           home: const WeiqiCoursePage(lessonIndex: 0),
         ),
@@ -53,12 +54,12 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 400));
 
-    // 步骤 1-6 都是演示，连点 6 次下一步
-    for (var i = 0; i < 6; i++) {
+    // 步骤 1-7 都是演示讲解（含开场的「你好，围棋！」），连点 7 次下一步
+    for (var i = 0; i < 7; i++) {
       await tapText(tester, '下一步 ›');
       await tester.pump(const Duration(milliseconds: 150));
     }
-    // 现在应处于第 7 步「动手试试」（找气问答）
+    // 现在应处于第 8 步「动手试试」（找气问答）
     expect(find.text('已点亮 0 / 4 个气点'), findsOneWidget,
         reason: '应进入找气问答步骤');
 
@@ -98,6 +99,7 @@ void main() {
     await tester.pumpWidget(
       ScreenUtilInit(
         designSize: const Size(375, 812),
+        minTextAdapt: true,
         builder: (context, child) => GetMaterialApp(
           home: const Scaffold(body: Center(child: Text('娱乐乐园'))),
         ),
@@ -108,7 +110,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 500));
 
-    for (var i = 0; i < 6; i++) {
+    for (var i = 0; i < 7; i++) {
       await tapText(tester, '下一步 ›');
       await tester.pump(const Duration(milliseconds: 150));
     }

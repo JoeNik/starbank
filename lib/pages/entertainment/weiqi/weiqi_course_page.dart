@@ -397,7 +397,7 @@ class _WeiqiCoursePageState extends State<WeiqiCoursePage> {
                 ],
               ),
             ),
-            // 进度点（对应原型 .progress-dots）
+            // 进度点（对应原型 .progress-dots，可点按直接跳到某一步）
             Padding(
               padding: EdgeInsets.symmetric(vertical: 7.h),
               child: Row(
@@ -405,18 +405,29 @@ class _WeiqiCoursePageState extends State<WeiqiCoursePage> {
                 children: List.generate(lesson.steps.length, (k) {
                   final cur = k == _step;
                   final done = k < _step;
-                  return AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    margin: EdgeInsets.symmetric(horizontal: 2.5.w),
-                    width: cur ? 18.w : 7.w,
-                    height: 7.h,
-                    decoration: BoxDecoration(
-                      color: cur
-                          ? WqTheme.green
-                          : done
-                              ? WqTheme.greenSoft
-                              : const Color(0xFFE2E7EF),
-                      borderRadius: BorderRadius.circular(6.r),
+                  return GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      _svc.stopSpeak();
+                      _applyStep(k);
+                    },
+                    child: Padding(
+                      // 扩大热区：细点周围也可点中
+                      padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 6.h),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        margin: EdgeInsets.symmetric(horizontal: 2.5.w),
+                        width: cur ? 18.w : 7.w,
+                        height: 7.h,
+                        decoration: BoxDecoration(
+                          color: cur
+                              ? WqTheme.green
+                              : done
+                                  ? WqTheme.greenSoft
+                                  : const Color(0xFFE2E7EF),
+                          borderRadius: BorderRadius.circular(6.r),
+                        ),
+                      ),
                     ),
                   );
                 }),

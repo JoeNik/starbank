@@ -260,6 +260,12 @@ class _ParentReportBody extends StatelessWidget {
                             .indexWhere((lv) => lv.skill == v)
                             .clamp(0, wqAiLevels.length - 1),
                       )),
+                  Obx(() => _countChipsRow(
+                        '提子目标（先提几颗算赢）',
+                        const [2, 3, 4, 5],
+                        svc.winCaptures.value,
+                        (v) => svc.winCaptures.value = v,
+                      )),
                 ],
               ),
             ),
@@ -387,6 +393,76 @@ class _ParentReportBody extends StatelessWidget {
           activeThumbColor: WqTheme.green,
         ),
       ],
+    );
+  }
+
+  /// 整数选项行（如提子目标），带一行说明
+  Widget _countChipsRow(
+    String label,
+    List<int> options,
+    int current,
+    ValueChanged<int> onChanged,
+  ) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 8.h),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 13.5.sp,
+                    fontWeight: FontWeight.w800,
+                    color: WqTheme.ink,
+                  ),
+                ),
+              ),
+              Row(
+                children: options
+                    .map((v) => Padding(
+                          padding: EdgeInsets.only(left: 6.w),
+                          child: GestureDetector(
+                            onTap: () => onChanged(v),
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 14.w, vertical: 6.h),
+                              decoration: BoxDecoration(
+                                color: current == v
+                                    ? WqTheme.greenSoft
+                                    : const Color(0xFFF0F2F7),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                '$v',
+                                style: TextStyle(
+                                  fontSize: 12.sp,
+                                  fontWeight: FontWeight.w800,
+                                  color: current == v
+                                      ? WqTheme.greenDeep
+                                      : WqTheme.inkFaint,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ))
+                    .toList(),
+              ),
+            ],
+          ),
+          SizedBox(height: 2.h),
+          Text(
+            '陪下对局的目标：谁先把对方提走这么多颗棋子就赢，默认 3',
+            style: TextStyle(
+              fontSize: 11.sp,
+              fontWeight: FontWeight.w600,
+              color: WqTheme.inkFaint,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

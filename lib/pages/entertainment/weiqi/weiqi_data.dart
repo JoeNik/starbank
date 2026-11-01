@@ -189,37 +189,47 @@ final List<WqLesson> wqLessons = [
     teaches: ['气', '打吃', '提子'],
     steps: [
       WqStep(
+        caption: '你好，围棋！',
+        bubble:
+            '欢迎来到棋妙岛！围棋是两个人玩的游戏：轮流把棋子放到横竖线交叉的小圆点上，黑棋先下，白棋后下。先跟棋棋认识一下棋盘吧！',
+        ops: [],
+      ),
+      WqStep(
         caption: '认识棋盘',
-        bubble: '棋盘上每一个交叉点，都可以站一颗棋子士兵。看，白棋小士兵来啦！',
+        bubble:
+            '看，棋盘上横线和竖线交叉出一个个小圆点——每个交叉点都能站一颗棋子士兵。白棋小士兵来啦！',
         ops: [_put(4, 4, _w)],
       ),
       WqStep(
         caption: '气 = 呼吸',
-        bubble: '它紧挨着的 4 个空点，闪着绿色的小灯——这就是它的「气」，就像士兵的呼吸！',
+        bubble:
+            '白棋紧挨着的 4 个空点闪着绿色小灯——这就是它的「气」！棋子像士兵一样要呼吸，伸出手指一起数：1、2、3、4！',
         breathe: [_p(3, 4), _p(5, 4), _p(4, 3), _p(4, 5)],
       ),
       WqStep(
         caption: '气变少了',
-        bubble: '黑棋站上了一个呼吸口！白棋现在只剩 3 口气啦。数一数？',
+        bubble: '黑棋站上了一个呼吸口！白棋现在只剩 3 口气啦。用手指点着数一数：1、2、3。',
         ops: [_put(3, 4, _b)],
         breathe: [_p(5, 4), _p(4, 3), _p(4, 5)],
       ),
       WqStep(
         caption: '越来越紧张',
-        bubble: '又被堵住一个，只剩 2 口气了……白棋有点紧张。',
+        bubble: '又被堵住一个，只剩 2 口气了……气越少越危险，白棋开始紧张了。',
         ops: [_put(5, 4, _b)],
         breathe: [_p(4, 3), _p(4, 5)],
       ),
       WqStep(
         caption: '打吃！',
-        bubble: '只剩最后一口气！这叫「打吃」——就像有人捂住了士兵的鼻子，好危险！',
+        bubble:
+            '只剩最后一口气！这叫「打吃」——就像有人捂住了士兵的鼻子，再堵一口，士兵就要被抬走啦！',
         ops: [_put(4, 3, _b)],
         breathe: [_p(4, 5)],
         warn: true,
       ),
       WqStep(
         caption: '提子！',
-        bubble: '最后一口气也被堵住——气全没了，白棋就被「提」走啦！看它飞进了口袋。',
+        bubble:
+            '最后一口气也被堵住——气全没了，白棋就被「提」走啦！看它飞进口袋。把对方的棋提走，就是吃子棋的目标！',
         ops: [_put(4, 5, _b)],
         captureDemo: [_p(4, 4)],
       ),
@@ -266,30 +276,32 @@ final List<WqLesson> wqLessons = [
     steps: [
       WqStep(
         caption: '被夹住了',
-        bubble: '白棋小士兵被两面夹击！它还剩几口气？一起数一数。',
+        bubble: '白棋小士兵被两面夹击！它的气还剩几口？伸出手指，和棋棋一起数一数。',
         ops: [_put(4, 4, _w), _put(3, 4, _b), _put(5, 4, _b)],
       ),
       WqStep(
         caption: '两口气',
-        bubble: '对，还有 2 口气。被围住的士兵只要还有气，就不怕！',
+        bubble: '对，还剩 2 口气！被围住的士兵不用怕：只要还有气，就还活着。',
         breathe: [_p(4, 3), _p(4, 5)],
       ),
       WqStep(
         caption: '打吃！',
-        bubble: '黑棋又堵住一口——只剩最后 1 口气了，这叫「打吃」，快想想办法！',
+        bubble:
+            '黑棋又堵住一口——只剩最后 1 口气了，这叫「打吃」！再被堵就被提走了，快帮白棋想想办法！',
         ops: [_put(4, 3, _b)],
         breathe: [_p(4, 5)],
         warn: true,
       ),
       WqStep(
         caption: '长出去！',
-        bubble: '白棋往下长了一步！连成两颗，有 3 口气啦。逃跑的秘诀 = 让自己多口气。',
+        bubble:
+            '白棋往下长了一步！两颗连在一起，气变成 3 口啦。逃跑的秘诀：往空的地方「长」，让自己多口气。',
         ops: [_put(4, 5, _w)],
         breathe: [_p(3, 5), _p(5, 5), _p(4, 6)],
       ),
       WqStep(
         caption: '你来救它',
-        bubble: '这次换你来当救兵！帮白棋士兵逃出去吧。',
+        bubble: '这次换你来当救兵！白棋士兵只剩最后一口气了，帮它逃出去吧。',
         ops: [WqOp.reset(), _put(4, 4, _w), _put(3, 4, _b), _put(5, 4, _b), _put(4, 3, _b)],
         moveQuiz: WqMoveQuiz(
           playerColor: _w,
@@ -319,19 +331,21 @@ final List<WqLesson> wqLessons = [
     steps: [
       WqStep(
         caption: '认识边线',
-        bubble: '棋盘最外圈的一条线叫「边线」，像一圈围墙。站在边线上的士兵，只有 3 口气！',
+        bubble:
+            '棋盘最外圈的线叫「边线」，像一圈围墙。数数看：边线上的士兵只有 3 口气，比中间的士兵少一口！',
         ops: [_put(4, 0, _w)],
         breathe: [_p(3, 0), _p(5, 0), _p(4, 1)],
       ),
       WqStep(
         caption: '角上更少',
-        bubble: '角上的士兵更可怜，只有 2 口气。所以下棋要先占角、再占边，中间最后来！',
+        bubble:
+            '角落里的士兵更可怜，只有 2 口气。所以下棋有个口诀：先占角、再占边、中间最后来！',
         ops: [WqOp.reset(), _put(0, 0, _w)],
         breathe: [_p(1, 0), _p(0, 1)],
       ),
       WqStep(
         caption: '赶到边线',
-        bubble: '黑棋把白棋往边线赶——靠墙的士兵，最容易被打吃！',
+        bubble: '黑棋把白棋往边线赶——越靠墙气越少，士兵越容易被提走！',
         ops: [WqOp.reset(), _put(4, 0, _w), _put(3, 0, _b), _put(5, 0, _b)],
         breathe: [_p(4, 1)],
         warn: true,
@@ -860,7 +874,7 @@ final List<WqPuzzle> wqPuzzles = [
     id: 'pz1',
     tag: '吃子题 · L1',
     title: '一手提子',
-    voice: '白棋的士兵只剩一口气啦！点一个能把它的气全堵住的地方。',
+    voice: '白棋的士兵被黑棋围得只剩最后一口气啦！点紧挨着它的那个空点，把气全堵住，就能提走它！',
     setup: [_put(6, 2, _w), _put(5, 2, _b), _put(7, 2, _b), _put(6, 1, _b)],
     playerColor: _b,
     goal: WqGoal.capture,
@@ -877,7 +891,7 @@ final List<WqPuzzle> wqPuzzles = [
     id: 'pz2',
     tag: '逃子题 · L1',
     title: '帮士兵逃出来',
-    voice: '白棋士兵被打吃了！你执白——点一个让它能多口气、逃出去的地方。',
+    voice: '白棋士兵被堵得只剩最后一口气了，这叫「打吃」！你执白棋——点一个能让它多一口气、逃出去的地方。',
     setup: [_put(4, 4, _w), _put(3, 4, _b), _put(5, 4, _b)],
     playerColor: _w,
     goal: WqGoal.escape,
@@ -896,7 +910,7 @@ final List<WqPuzzle> wqPuzzles = [
     id: 'pz3',
     tag: '吃子题 · L2',
     title: '一口气提两颗',
-    voice: '两颗相连的白棋只剩最后一口气啦！找到它，一口气提走两颗！',
+    voice: '两颗连在一起的白棋只剩最后一口气啦！找到紧挨着它们的那个空点，一手提走两颗！',
     setup: [
       _put(3, 4, _w), _put(4, 4, _w),
       _put(2, 4, _b), _put(5, 4, _b),
@@ -917,7 +931,7 @@ final List<WqPuzzle> wqPuzzles = [
     id: 'pz4',
     tag: '逃子题 · L2',
     title: '接力逃跑',
-    voice: '两颗白棋只剩最后一口气！你执白，帮它们一起逃出去！',
+    voice: '两颗白棋只剩最后一口气！你执白，点一个能让整队都多口气的地方，一起逃出去！',
     setup: [
       _put(3, 4, _w), _put(4, 4, _w),
       _put(2, 4, _b), _put(5, 4, _b),

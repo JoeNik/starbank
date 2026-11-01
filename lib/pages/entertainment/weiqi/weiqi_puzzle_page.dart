@@ -113,7 +113,7 @@ class _WeiqiPuzzlePageState extends State<WeiqiPuzzlePage> {
       WqSfx.star();
       WqConfetti.burst(context, count: 30);
       _svc.speak(pz.okText);
-      _timer = Timer(const Duration(milliseconds: 1800), _next);
+      // 不自动跳题：等孩子看清楚棋盘，自己点「下一题」继续
     } else {
       // 不达标：收回这步棋，温柔提示
       _game.restoreFrom(snap);
@@ -122,6 +122,152 @@ class _WeiqiPuzzlePageState extends State<WeiqiPuzzlePage> {
       ToastUtils.showInfo('再想一想，先数一数气！');
       setState(() {});
     }
+  }
+
+  /// 做不出先跳过：题目进藏宝箱，不惩罚，直接看下一题
+  void _skip() {
+    WqSfx.pop();
+    _svc.recordPuzzle(pz.id, false);
+    ToastUtils.showInfo('没关系，这题先进藏宝箱，下次再来！');
+    _next();
+  }
+
+  /// 打开错题藏宝箱：列出做错的题，点哪题跳哪题
+  void _openTreasureBox() {
+    final wrong = _svc.wrongPuzzles.toList();
+    if (wrong.isEmpty) {
+      WqSfx.pop();
+      ToastUtils.showInfo('藏宝箱空空如也，快去闯关吧！');
+      return;
+    }
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            bottom: MediaQuery.of(ctx).padding.bottom + 12,
+          ),
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: Container(
+              width: 320,
+              // 高度上限 6 成屏：题目多时列表内部滚动，弹层永不溢出
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(ctx).size.height * 0.6,
+              ),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: WqTheme.cream,
+                borderRadius: BorderRadius.circular(28),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    '🎁 错题藏宝箱',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w900,
+                      color: WqTheme.ink,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    '点一道题，马上再挑战一次！',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: WqTheme.inkSoft,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Flexible(
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: wrong.length,
+                      itemBuilder: (ctx, k) {
+                        final idx =
+                            wqPuzzles.indexWhere((p) => p.id == wrong[k]);
+                        if (idx < 0) return const SizedBox.shrink();
+                        final p = wqPuzzles[idx];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Material(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            child: InkWell(
+                              onTap: () {
+                                Navigator.of(ctx).pop();
+                                _loadPuzzle(idx, speak: true);
+                              },
+                              borderRadius: BorderRadius.circular(16),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 10),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                      color: const Color(0x14233240)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 30,
+                                      height: 30,
+                                      decoration: const BoxDecoration(
+                                        color: WqTheme.coralSoft,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                        '${idx + 1}',
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w900,
+                                          color: Color(0xFFC2492B),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        p.title,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontSize: 13.5,
+                                          fontWeight: FontWeight.w800,
+                                          color: WqTheme.ink,
+                                        ),
+                                      ),
+                                    ),
+                                    WqChip(text: p.tag),
+                                    const SizedBox(width: 6),
+                                    const Icon(Icons.chevron_right_rounded,
+                                        size: 20, color: WqTheme.inkFaint),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   void _next() {
@@ -314,67 +460,90 @@ class _WeiqiPuzzlePageState extends State<WeiqiPuzzlePage> {
               padding: EdgeInsets.fromLTRB(14.w, 6.h, 14.w, 4.h),
               child: Row(
                 children: [
-                  Expanded(
-                    child: WqGhostButton(
-                      text: '💡 问棋棋（${3 - _hints > 0 ? 3 - _hints : 0} 层提示）',
-                      height: 42.h,
-                      fontSize: 13.sp,
-                      onTap: _useHint,
+                  if (_solved)
+                    Expanded(
+                      child: WqPrimaryButton(
+                        text: _n < wqPuzzles.length - 1 ? '下一题 ›' : '完成闯关 ✦',
+                        height: 44.h,
+                        fontSize: 15.sp,
+                        onTap: _next,
+                      ),
+                    )
+                  else ...[
+                    Expanded(
+                      child: WqGhostButton(
+                        text: '💡 问棋棋（${3 - _hints > 0 ? 3 - _hints : 0} 层提示）',
+                        height: 42.h,
+                        fontSize: 13.sp,
+                        onTap: _useHint,
+                      ),
                     ),
-                  ),
-                  SizedBox(width: 8.w),
-                  WqIconButton(
-                    icon: Icons.replay_rounded,
-                    size: 42,
-                    onTap: () => _loadPuzzle(_n, speak: false),
-                  ),
+                    SizedBox(width: 8.w),
+                    WqIconButton(
+                      icon: Icons.skip_next_rounded,
+                      size: 42,
+                      onTap: _skip,
+                    ),
+                    SizedBox(width: 8.w),
+                    WqIconButton(
+                      icon: Icons.replay_rounded,
+                      size: 42,
+                      onTap: () => _loadPuzzle(_n, speak: false),
+                    ),
+                  ],
                 ],
               ),
             ),
             Padding(
               padding: EdgeInsets.fromLTRB(14.w, 0, 14.w, 10.h),
-              child: WqCard(
-                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 36.w,
-                      height: 36.w,
-                      decoration: BoxDecoration(
-                        color: WqTheme.sunSoft,
-                        borderRadius: BorderRadius.circular(14.r),
+              child: GestureDetector(
+                onTap: _openTreasureBox,
+                child: WqCard(
+                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 36.w,
+                        height: 36.w,
+                        decoration: BoxDecoration(
+                          color: WqTheme.sunSoft,
+                          borderRadius: BorderRadius.circular(14.r),
+                        ),
+                        child: const Center(
+                            child: Text('🎁', style: TextStyle(fontSize: 18))),
                       ),
-                      child: const Center(
-                          child: Text('🎁', style: TextStyle(fontSize: 18))),
-                    ),
-                    SizedBox(width: 8.w),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '错题藏宝箱',
-                            style: TextStyle(
-                              fontSize: 12.5.sp,
-                              fontWeight: FontWeight.w800,
-                              color: WqTheme.ink,
+                      SizedBox(width: 8.w),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '错题藏宝箱',
+                              style: TextStyle(
+                                fontSize: 12.5.sp,
+                                fontWeight: FontWeight.w800,
+                                color: WqTheme.ink,
+                              ),
                             ),
-                          ),
-                          Text(
-                            '做错的题会变成宝箱，下次再来挑战吧',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 10.5.sp,
-                              fontWeight: FontWeight.w600,
-                              color: WqTheme.inkSoft,
+                            Text(
+                              '点开复习做错的题，答对就移出宝箱',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 10.5.sp,
+                                fontWeight: FontWeight.w600,
+                                color: WqTheme.inkSoft,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                    WqChip.coral(text: '${_svc.wrongPuzzles.length} 道'),
-                  ],
+                      WqChip.coral(text: '${_svc.wrongPuzzles.length} 道'),
+                      SizedBox(width: 4.w),
+                      const Icon(Icons.chevron_right_rounded,
+                          size: 20, color: WqTheme.inkFaint),
+                    ],
+                  ),
                 ),
               ),
             ),

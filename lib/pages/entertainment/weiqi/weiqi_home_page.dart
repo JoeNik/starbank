@@ -356,7 +356,9 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
             done: games > 0,
             icon: Icons.sports_esports_rounded,
             name: '和棋棋下一盘',
-            sub: games > 0 ? '已完成 $games 局！' : '吃子棋 · 先提 3 颗获胜',
+            sub: games > 0
+                ? '已完成 $games 局！'
+                : '吃子棋 · 先提 ${_svc.winCaptures.value} 颗获胜',
             onTap: () => showWqOpponentPicker(context),
           ),
         ],
@@ -371,50 +373,51 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
     required String sub,
     VoidCallback? onTap,
   }) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 4.h),
-      child: Row(
-        children: [
-          Container(
-            width: 24.w,
-            height: 24.w,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: done ? WqTheme.green : const Color(0xFFEEF1F6),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 4.h),
+        child: Row(
+          children: [
+            Container(
+              width: 24.w,
+              height: 24.w,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: done ? WqTheme.green : const Color(0xFFEEF1F6),
+              ),
+              child: done
+                  ? const Icon(Icons.check_rounded, size: 15, color: Colors.white)
+                  : Icon(icon, size: 13, color: WqTheme.inkFaint),
             ),
-            child: done
-                ? const Icon(Icons.check_rounded, size: 15, color: Colors.white)
-                : Icon(icon, size: 13, color: WqTheme.inkFaint),
-          ),
-          SizedBox(width: 9.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: TextStyle(
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w800,
-                    color: WqTheme.ink,
+            SizedBox(width: 9.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: TextStyle(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w800,
+                      color: WqTheme.ink,
+                    ),
                   ),
-                ),
-                Text(
-                  sub,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 10.5.sp,
-                    fontWeight: FontWeight.w600,
-                    color: WqTheme.inkFaint,
+                  Text(
+                    sub,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 10.5.sp,
+                      fontWeight: FontWeight.w600,
+                      color: WqTheme.inkFaint,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          GestureDetector(
-            onTap: onTap,
-            child: Container(
+            Container(
               padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
               decoration: BoxDecoration(
                 color: WqTheme.greenSoft,
@@ -429,8 +432,8 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -170,7 +170,8 @@ Future<void> showWqOpponentPicker(
                       child: Text('👪', style: TextStyle(fontSize: 26))),
                 ),
                 title: '和家长下',
-                subtitle: '同一部手机轮流落子 · 先提 3 颗获胜',
+                subtitle:
+                    '同一部手机轮流落子 · 先提 ${Get.find<WeiqiService>().winCaptures.value} 颗获胜',
                 color: WqTheme.sunSoft,
                 onTap: () {
                   Navigator.of(ctx).pop();
@@ -253,7 +254,7 @@ Widget _opponentOption(
 
 enum WqOpponent { ai, parent }
 
-/// 陪下模式：熊猫棋棋坐对面陪孩子下一局（9 路吃子棋，先提 3 颗获胜）。
+/// 陪下模式：熊猫棋棋坐对面陪孩子下一局（9 路吃子棋，先提 N 颗获胜，家长可调）。
 class WeiqiPlayPage extends StatefulWidget {
   final WqOpponent opponent;
 
@@ -271,8 +272,10 @@ class WeiqiPlayPage extends StatefulWidget {
 }
 
 class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
-  static const int _winCaptures = 3;
   static const int _maxStones = 30;
+
+  /// 提子目标（家长小屋可调），每局开始时从设置读取
+  int _winCaptures = 3;
 
   late final WeiqiService _svc;
   late WqGame _game;
@@ -316,6 +319,10 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
   String _bubbleText = '';
   WqPandaMood _mood = WqPandaMood.happy;
 
+  /// 终局信息：先停在盘面（被提的子一闪一闪），孩子点「看看战报」再弹结算卡
+  String _endResult = '';
+  Set<int> _endBlink = {};
+
   bool get _isAi => widget.opponent == WqOpponent.ai;
 
   @override
@@ -339,6 +346,9 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
     _history.clear();
     _over = false;
     _busy = false;
+    _winCaptures = _svc.winCaptures.value;
+    _endResult = '';
+    _endBlink = {};
     _helpLeft = 3;
     _helpStage = 0;
     _helpKey = '';
@@ -362,8 +372,8 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
     _glowCenter = null;
     _say(
       _isAi
-          ? '我来啦！我们玩吃子棋：谁先把对方提走 $_winCaptures 颗棋子，谁就赢！你先下～'
-          : '亲子吃子棋开始！你执黑先下，谁先提走对方 $_winCaptures 颗棋子就赢！',
+          ? '我来啦！我们玩吃子棋：轮流点棋盘上横竖线的交叉点落子，谁先把对方提走 $_winCaptures 颗棋子，谁就赢！你执黑先下～'
+          : '亲子吃子棋开始！点交叉点落子，黑先白后轮流下——谁先提走对方 $_winCaptures 颗棋子就赢！',
       WqPandaMood.happy,
       speakIt: true,
     );
@@ -441,7 +451,9 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
         WqPandaMood.cheer,
         speakIt: true,
       );
-      if (_game.capBlack >= _winCaptures) return _endGame('win');
+      if (_game.capBlack >= _winCaptures) {
+        return _endGame('win', captured: r.captured);
+      }
     } else {
       // 逃子里程碑
       if (_ownAtariBefore != null) {
@@ -526,7 +538,9 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
     if (r.captured.isNotEmpty) {
       WqSfx.capture();
       _boardCtrl.flyCaptures(r.captured, 1);
-      if (_game.capWhite >= _winCaptures) return _endGame('lose');
+      if (_game.capWhite >= _winCaptures) {
+        return _endGame('lose', captured: r.captured);
+      }
     }
     _updateDanger();
     _turn = 1;
@@ -603,7 +617,9 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
             movePoint: mv,
             moverColor: 2,
           );
-          if (_game.capWhite >= _winCaptures) return _endGame('lose');
+          if (_game.capWhite >= _winCaptures) {
+            return _endGame('lose', captured: r.captured);
+          }
         } else {
           // 棋棋有没有留下「可提的白子」
           var atari = false;
@@ -933,11 +949,13 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
     return res ?? false;
   }
 
-  void _endGame(String result) {
+  void _endGame(String result, {List<int> captured = const []}) {
     if (_over) return;
     _over = true;
     _busy = false;
     _aiTimer?.cancel();
+    _endResult = result;
+    _endBlink = Set.of(captured);
     final win = result == 'win' ||
         (result == 'review' && _game.capBlack >= _game.capWhite);
     _svc.recordGame(result: result == 'win' ? 'win' : (result == 'lose' ? 'lose' : 'draw'));
@@ -950,6 +968,26 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
     } else {
       WqSfx.pop();
     }
+    // 不立刻弹结算卡：先停在盘面，刚被提走的棋子一闪一闪，
+    // 让孩子看清「赢在哪里 / 输在哪里」；想看战报时点底部「看看战报」
+    _say(
+      result == 'win'
+          ? '第 $_winCaptures 颗白棋被你提走啦，赢咯！看，棋盘上一闪一闪的就是刚被提走的白子。想看这一局的战报，点下面的「看看战报」！'
+          : result == 'lose'
+              ? '这手棋把你的黑子提走了……棋盘上一闪一闪的，就是刚才被提走的棋。想一想：它们为什么会只剩最后一口气？点「看看战报」一起找答案！'
+              : '棋盘快满啦，这一局就下到这里！点下面的「看看战报」，棋棋陪你一步一步回顾。',
+      win ? WqPandaMood.cheer : WqPandaMood.sad,
+      speakIt: true,
+    );
+    setState(() {});
+  }
+
+  /// 结算卡（战报）：终局后由「看看战报」按钮打开，可反复回看
+  void _showSettlement() {
+    if (!_over) return;
+    final result = _endResult;
+    final win = result == 'win' ||
+        (result == 'review' && _game.capBlack >= _game.capWhite);
     final ms = List<String>.from(_milestones.take(3));
     final defaults = [
       '敢和 AI 陪练下满一整局，勇气满分！',
@@ -969,15 +1007,8 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
     final sub = result == 'win'
         ? '$_winCaptures 颗提子 · 你把白棋的呼吸全堵住了'
         : result == 'lose'
-            ? '${_game.capWhite} 比 ${_game.capBlack} · 差一点点就追上了'
-            : '本局结束 · 黑 $_game.capBlack 比 白 ${_game.capWhite}';
-    _say(
-      win
-          ? '赢棋啦！你的棋力又变强了一点点哦～'
-          : (_isAi ? '别难过，棋棋赢得好险！你已经找到很多好棋了。' : '没关系，下一局赢回来！你已经下出很多好棋了。'),
-      win ? WqPandaMood.cheer : WqPandaMood.sad,
-      speakIt: true,
-    );
+            ? '${_game.capWhite} 比 ${_game.capBlack} · 棋盘上闪一闪的就是被提走的棋'
+            : '本局结束 · 黑 ${_game.capBlack} 比 白 ${_game.capWhite}';
     Get.dialog(
       Dialog(
         backgroundColor: WqTheme.cream,
@@ -1322,7 +1353,7 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
                       controller: _boardCtrl,
                       stones: _game.s,
                       lastMove: _game.last,
-                      blinkPoints: _blink,
+                      blinkPoints: {..._blink, ..._endBlink},
                       glowCenter: _glowCenter,
                       glowRadius: 22,
                       ghostStone: _ghostStone,
@@ -1348,21 +1379,73 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
                 padding: EdgeInsets.fromLTRB(14.w, 4.h, 14.w, 10.h),
                 child: Row(
                   children: [
-                    if (_isAi)
+                    if (_over) ...[
+                      // 终局后「悔棋/结束」已无意义，换成可反复打开的战报
+                      // 与再来一局，避免出现点了没反应的按钮
                       _actionButton(
-                        emoji: '💡',
-                        label: '问棋棋',
-                        sub: '还剩 $_helpLeft 次',
+                        emoji: '📋',
+                        label: '看看战报',
+                        sub: '回顾这一局',
                         care: true,
-                        onTap: _useHelp,
-                      )
-                    else
+                        onTap: _showSettlement,
+                      ),
+                      SizedBox(width: 10.w),
                       _actionButton(
-                        emoji: '👋',
-                        label: '换人',
-                        sub: '轮到${_turn == 1 ? '家长' : '孩子'}',
+                        emoji: '🔄',
+                        label: '再来一局',
+                        sub: '重新开始',
                         care: false,
-                        onTap: null,
+                        onTap: _resetGame,
+                      ),
+                    ] else ...[
+                      if (_isAi)
+                        _actionButton(
+                          emoji: '💡',
+                          label: '问棋棋',
+                          sub: '还剩 $_helpLeft 次',
+                          care: true,
+                          onTap: _useHelp,
+                        )
+                    else
+                      // 家长陪下没有"换人"动作：双方直接在棋盘轮流落子，
+                      // 这里只做轮次状态展示，避免出现点了没反应的假按钮
+                      Expanded(
+                        child: Container(
+                          padding: EdgeInsets.symmetric(vertical: 7.h),
+                          decoration: BoxDecoration(
+                            color: _turn == 1 ? WqTheme.sunSoft : WqTheme.skySoft,
+                            borderRadius: BorderRadius.circular(18.r),
+                            border: Border.all(
+                              color: _turn == 1
+                                  ? WqTheme.sunDeep.withValues(alpha: 0.25)
+                                  : WqTheme.sky.withValues(alpha: 0.35),
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              Text(_turn == 1 ? '⚫' : '⚪',
+                                  style: TextStyle(fontSize: 16.sp)),
+                              Text(
+                                '轮到${_turn == 1 ? '孩子' : '家长'}',
+                                style: TextStyle(
+                                  fontSize: 11.5.sp,
+                                  fontWeight: FontWeight.w800,
+                                  color: WqTheme.ink,
+                                ),
+                              ),
+                              Text(
+                                '在棋盘上直接落子',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 9.5.sp,
+                                  fontWeight: FontWeight.w600,
+                                  color: WqTheme.inkSoft,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     SizedBox(width: 10.w),
                     _actionButton(
@@ -1380,6 +1463,7 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
                       care: false,
                       onTap: () => _endGame('review'),
                     ),
+                    ],
                   ],
                 ),
               ),
