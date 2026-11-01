@@ -56,6 +56,12 @@ class TtsService extends GetxService {
   // 状态
   final RxBool isSpeaking = false.obs;
 
+  /// 语音代际计数器:每次 speak() 自增,stop() 也自增。
+  /// speak 链路里(远程 TTS 拉取等耗时 await 之后)发现代际已变化,
+  /// 说明期间发生过 stop() 或更新的 speak(),本次必须放弃发声——
+  /// 否则页面退出后的迟到音频会继续播放(课程地图返回主页面仍闻人声的根因)。
+  int _speechGen = 0;
+
   /// 朗读进度回调（参数为当前朗读到的文本起始位置 offset）
   /// 外部（如卡拉OK高亮）可设置此回调来跟踪实际朗读位置
   void Function(int start, int end)? onProgressCallback;
@@ -302,17 +308,19 @@ class TtsService extends GetxService {
     if (isSpeaking.value) {
       await stop();
     }
+    // 本轮语音的代际:之后任何 stop()/新的 speak() 都会让它过期
+    final gen = ++_speechGen;
 
     final route = resolveTtsRoute(featureKey: featureKey);
     if (route == engineCftts && _isCfttsAvailable()) {
-      await _speakCftts(text, rate: rate);
+      await _speakCftts(text, rate: rate, gen: gen);
       return;
     }
 
     if (route.startsWith(openAITtsPrefix)) {
       final provider = getOpenAITtsConfigByRoute(route);
       if (provider != null && _isOpenAITtsAvailable(provider)) {
-        await _speakOpenAITts(provider, text, rate: rate);
+        await _speakOpenAITts(provider, text, rate: rate, gen: gen);
         return;
       }
     }
@@ -327,6 +335,8 @@ class TtsService extends GetxService {
       await _applyGlobalSettings();
     }
 
+    // 等待期间发生过 stop() 或新的 speak() 时放弃发声,杜绝"退出页面后才开口"
+    if (gen != _speechGen) return;
     await _flutterTts.speak(text);
   }
 
@@ -850,11 +860,16 @@ class TtsService extends GetxService {
     return 'alloy';
   }
 
-  Future<void> _speakCftts(String text, {double? rate}) async {
+  Future<void> _speakCftts(String text, {double? rate, int gen = -1}) async {
     try {
       isSpeaking.value = true;
       final playFile = await _getOrFetchCftts(text);
 
+      if (gen != -1 && gen != _speechGen) {
+        // 拉取期间发生过 stop() 或新的 speak():放弃本次发声
+        isSpeaking.value = false;
+        return;
+      }
       if (playFile == null) {
         isSpeaking.value = false;
         debugPrint('CFTTS 请求失败，无法播放');
@@ -865,6 +880,11 @@ class TtsService extends GetxService {
       await _audioPlayer.setFilePath(playFile.path);
       await _audioPlayer.seek(Duration.zero);
       await _audioPlayer.setSpeed(rate ?? 1.0);
+      // 准备动作本身也有 await 间隙,临播放前做最后一道代际校验
+      if (gen != -1 && gen != _speechGen) {
+        isSpeaking.value = false;
+        return;
+      }
       onStartCallback?.call();
       await _audioPlayer.play();
     } catch (e) {
@@ -877,10 +897,17 @@ class TtsService extends GetxService {
     OpenAITtsConfig config,
     String text, {
     double? rate,
+    int gen = -1,
   }) async {
     try {
       isSpeaking.value = true;
       final playFile = await _getOrFetchOpenAITts(config, text);
+
+      if (gen != -1 && gen != _speechGen) {
+        // 拉取期间发生过 stop() 或新的 speak():放弃本次发声
+        isSpeaking.value = false;
+        return;
+      }
       if (playFile == null) {
         isSpeaking.value = false;
         debugPrint('OpenAI TTS 请求失败，无法播放');
@@ -891,6 +918,11 @@ class TtsService extends GetxService {
       await _audioPlayer.setFilePath(playFile.path);
       await _audioPlayer.seek(Duration.zero);
       await _audioPlayer.setSpeed(rate ?? 1.0);
+      // 准备动作本身也有 await 间隙,临播放前做最后一道代际校验
+      if (gen != -1 && gen != _speechGen) {
+        isSpeaking.value = false;
+        return;
+      }
       onStartCallback?.call();
       await _audioPlayer.play();
     } catch (e) {
@@ -906,6 +938,8 @@ class TtsService extends GetxService {
   }
 
   Future<void> stop() async {
+    // 先作废所有在途 speak 链路:它们在 play/speak 前发现代际过期会自动放弃
+    _speechGen++;
     try {
       await _audioPlayer.stop();
       await _flutterTts.stop();
