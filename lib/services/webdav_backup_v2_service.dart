@@ -279,6 +279,8 @@ class WebDavBackupV2Service {
   static const Set<String> settingsWhitelist = {
     'tunehub_base_url',
     'tunehub_api_key',
+    'chksz_api_key',
+    'chksz_quality',
     'riddle_import_url',
     'baby_cloud_current_source_id',
     'baby_cloud_actor_role',

@@ -26,7 +26,6 @@ class ChkSzMusicService extends GetxService implements MusicSource {
   final StorageService _storage = Get.find<StorageService>();
 
   static const String kBaseUrl = 'https://api.chksz.com';
-  static const String _defaultApiKey = 'chksz_kiOtNpRd0IcmWX_aHMykHeCiN47jWPYUVTVd-mxP140';
   static const String _apiKeyStorageKey = 'chksz_api_key';
   static const String _qualityStorageKey = 'chksz_quality';
 
@@ -94,7 +93,7 @@ class ChkSzMusicService extends GetxService implements MusicSource {
   }
 
   void reloadFromStorage() {
-    apiKey.value = _storage.getValue(_apiKeyStorageKey) ?? _defaultApiKey;
+    apiKey.value = _storage.getValue(_apiKeyStorageKey) ?? '';
     final savedQuality = _storage.getValue(_qualityStorageKey);
     if (savedQuality != null && kQualityLevels.contains(savedQuality)) {
       quality.value = savedQuality;
@@ -108,10 +107,7 @@ class ChkSzMusicService extends GetxService implements MusicSource {
     _storage.saveValue(_qualityStorageKey, quality.value);
   }
 
-  String get _effectiveApiKey {
-    final key = apiKey.value.trim();
-    return key.isNotEmpty ? key : _defaultApiKey;
-  }
+  String get _effectiveApiKey => apiKey.value.trim();
 
   /// 源站直连客户端:自定义 connectionFactory 绕过系统 DNS,
   /// 直接 TCP 连源站 IP,再对裸 socket 做以域名为 SNI 的 TLS 握手
@@ -198,6 +194,11 @@ class ChkSzMusicService extends GetxService implements MusicSource {
     required String operationId,
     required String loadingText,
   }) async {
+    // 未配置密钥时不发请求:上层搜索/解析会走 TuneHub 兜底
+    if (_effectiveApiKey.isEmpty) {
+      _lastDebugInfo = '未配置 API Key';
+      throw Exception('ChKSz 未配置 API Key');
+    }
     final uri = Uri.https('api.chksz.com', path, query);
     debugPrint('🌐 [ChKSz] GET $uri');
 

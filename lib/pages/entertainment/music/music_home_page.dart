@@ -456,7 +456,7 @@ class _MusicHomePageState extends State<MusicHomePage> {
                       title: Text('ChKSz·网易',
                           style: TextStyle(
                               fontSize: 15.sp, fontWeight: FontWeight.w600)),
-                      subtitle: Text('内置密钥 · 无损/Hi-Res 高音质解析',
+                      subtitle: Text('需自行填入 API Key · 无损/Hi-Res 高音质解析',
                           style: TextStyle(fontSize: 12.sp)),
                       activeColor: AppTheme.primary,
                       contentPadding: EdgeInsets.zero,
