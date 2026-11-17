@@ -171,7 +171,7 @@ Future<void> showWqOpponentPicker(
                 ),
                 title: '和家长下',
                 subtitle:
-                    '同一部手机轮流落子 · 先提 ${Get.find<WeiqiService>().winCaptures.value} 颗获胜',
+                    '同一部手机轮流落子 · ${Get.find<WeiqiService>().boardSize.value} 路盘 · 先提 ${Get.find<WeiqiService>().winCaptures.value} 颗获胜',
                 color: WqTheme.sunSoft,
                 onTap: () {
                   Navigator.of(ctx).pop();
@@ -254,7 +254,8 @@ Widget _opponentOption(
 
 enum WqOpponent { ai, parent }
 
-/// 陪下模式：熊猫棋棋坐对面陪孩子下一局（9 路吃子棋，先提 N 颗获胜，家长可调）。
+/// 陪下模式：熊猫棋棋坐对面陪孩子下一局（吃子棋，先提 N 颗获胜，家长可调；
+/// 棋盘路数家长可在 9/13/19 之间调）。
 class WeiqiPlayPage extends StatefulWidget {
   final WqOpponent opponent;
 
@@ -272,7 +273,9 @@ class WeiqiPlayPage extends StatefulWidget {
 }
 
 class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
-  static const int _maxStones = 30;
+  /// 兜底终局阈值：盘面下到约 85% 满就收摊（9 路约 69 颗、13 路约 143 颗、19 路约 307 颗）。
+  /// 提子棋通常先撞提子目标；这里只防双方都提不到子的死局。
+  int get _maxStones => (_game.n * _game.n * 0.85).round();
 
   /// 提子目标（家长小屋可调），每局开始时从设置读取
   int _winCaptures = 3;
@@ -342,7 +345,7 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
   }
 
   void _resetGame() {
-    _game = WqGame();
+    _game = WqGame(n: _svc.boardSize.value.clamp(9, 19).toInt());
     _history.clear();
     _over = false;
     _busy = false;
@@ -550,10 +553,28 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
 
   // ================= AI（棋棋） =================
 
-  /// 开局库：前几手在星位/小目附近随机落子，避免每局一模一样
+  /// 开局库：前几手在星位附近随机落子，避免每局一模一样（星位随棋盘路数生成）
   int? _openingMove() {
     if (_game.stoneCount() > 2) return null;
-    const openings = [20, 24, 56, 60, 30, 32, 48, 50, 40];
+    final n = _game.n;
+    final edge = n >= 13 ? 3 : 2;
+    final mid = n ~/ 2;
+    final openings = n >= 13
+        ? <int>[
+            for (final y in [edge, mid, n - 1 - edge])
+              for (final x in [edge, mid, n - 1 - edge]) y * n + x,
+          ]
+        : <int>[
+            edge * n + edge,
+            edge * n + (n - 1 - edge),
+            (n - 1 - edge) * n + edge,
+            (n - 1 - edge) * n + (n - 1 - edge),
+            mid * n + mid,
+            mid * n + edge,
+            mid * n + (n - 1 - edge),
+            edge * n + mid,
+            (n - 1 - edge) * n + mid,
+          ];
     final candidates =
         openings.where((pt) => _game.s[pt] == 0).toList()..shuffle();
     return candidates.isEmpty ? null : candidates.first;
@@ -960,8 +981,8 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
         (result == 'review' && _game.capBlack >= _game.capWhite);
     _svc.recordGame(result: result == 'win' ? 'win' : (result == 'lose' ? 'lose' : 'draw'));
     if (_replayMoves.isNotEmpty) {
-      _svc.saveLastGame(
-          _replayMoves, _replayNotes, _replayMarks, _replayGrades, _replayBetter);
+      _svc.saveLastGame(_replayMoves, _replayNotes, _replayMarks, _replayGrades,
+          _replayBetter, _game.n);
     }
     if (win) {
       WqSfx.star();
@@ -975,7 +996,7 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
           ? '第 $_winCaptures 颗白棋被你提走啦，赢咯！看，棋盘上一闪一闪的就是刚被提走的白子。想看这一局的战报，点下面的「看看战报」！'
           : result == 'lose'
               ? '这手棋把你的黑子提走了……棋盘上一闪一闪的，就是刚才被提走的棋。想一想：它们为什么会只剩最后一口气？点「看看战报」一起找答案！'
-              : '棋盘快满啦，这一局就下到这里！点下面的「看看战报」，棋棋陪你一步一步回顾。',
+              : '棋盘上没剩几个空位啦，这一局就下到这里！点下面的「看看战报」，棋棋陪你一步一步回顾。',
       win ? WqPandaMood.cheer : WqPandaMood.sad,
       speakIt: true,
     );
@@ -1056,12 +1077,13 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
                   fontSize: 13.5.sp,
                   onTap: () {
                     Get.back(); // 关闭结算，留在对局页进入回放
-                    Get.to(() => WeiqiReplayPage(
+                      Get.to(() => WeiqiReplayPage(
                           moves: _replayMoves,
                           notes: _replayNotes,
                           marks: _replayMarks,
                           grades: _replayGrades,
                           better: _replayBetter,
+                          n: _game.n,
                         ));
                   },
                 ),
@@ -1350,6 +1372,7 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
                   padding: EdgeInsets.fromLTRB(14.w, 4.h, 14.w, 8.h),
                   child: Center(
                     child: WeiqiBoardView(
+                      n: _game.n,
                       controller: _boardCtrl,
                       stones: _game.s,
                       lastMove: _game.last,

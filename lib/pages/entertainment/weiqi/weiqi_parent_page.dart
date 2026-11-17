@@ -266,6 +266,13 @@ class _ParentReportBody extends StatelessWidget {
                         svc.winCaptures.value,
                         (v) => svc.winCaptures.value = v,
                       )),
+                  Obx(() => _countChipsRow(
+                        '对局棋盘（路数）',
+                        const [9, 13, 19],
+                        svc.boardSize.value,
+                        (v) => svc.boardSize.value = v,
+                        hint: '陪下对局的棋盘大小：9 路适合刚学，13 路进阶，19 路是标准棋盘；默认 9。课程与题目固定 9 路。',
+                      )),
                 ],
               ),
             ),
@@ -401,8 +408,9 @@ class _ParentReportBody extends StatelessWidget {
     String label,
     List<int> options,
     int current,
-    ValueChanged<int> onChanged,
-  ) {
+    ValueChanged<int> onChanged, {
+    String? hint,
+  }) {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 8.h),
       child: Column(
@@ -454,7 +462,7 @@ class _ParentReportBody extends StatelessWidget {
           ),
           SizedBox(height: 2.h),
           Text(
-            '陪下对局的目标：谁先把对方提走这么多颗棋子就赢，默认 3',
+            hint ?? '陪下对局的目标：谁先把对方提走这么多颗棋子就赢，默认 3',
             style: TextStyle(
               fontSize: 11.sp,
               fontWeight: FontWeight.w600,

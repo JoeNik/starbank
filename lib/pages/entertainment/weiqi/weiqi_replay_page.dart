@@ -27,6 +27,9 @@ class WeiqiReplayPage extends StatefulWidget {
   /// 更好的下法：着手序号 → 建议落点
   final Map<int, int> better;
 
+  /// 棋盘路数（旧数据没有记录时为 9）
+  final int n;
+
   const WeiqiReplayPage({
     super.key,
     required this.moves,
@@ -34,6 +37,7 @@ class WeiqiReplayPage extends StatefulWidget {
     this.marks = const {},
     this.grades = const {},
     this.better = const {},
+    this.n = 9,
   });
 
   @override
@@ -48,7 +52,7 @@ class _WeiqiReplayPageState extends State<WeiqiReplayPage> {
   @override
   void initState() {
     super.initState();
-    _game = WqGame();
+    _game = WqGame(n: widget.n);
   }
 
   /// 重演到第 [idx] 手（从空盘顺序重放，引擎保证与实际对局一致）
@@ -56,7 +60,7 @@ class _WeiqiReplayPageState extends State<WeiqiReplayPage> {
     final clamped = idx.clamp(0, widget.moves.length);
     if (clamped == _idx) return;
     final forward = clamped > _idx;
-    _game = WqGame();
+    _game = WqGame(n: widget.n);
     for (var k = 0; k < clamped; k++) {
       final m = widget.moves[k];
       _game.tryPlay(m.point, m.color);
@@ -215,6 +219,7 @@ class _WeiqiReplayPageState extends State<WeiqiReplayPage> {
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(14, 8, 14, 8),
                 child: WeiqiBoardView(
+                  n: widget.n,
                   stones: _game.s,
                   lastMove: _idx > 0 ? widget.moves[_idx - 1].point : -1,
                   blinkPoints: _idx > 0

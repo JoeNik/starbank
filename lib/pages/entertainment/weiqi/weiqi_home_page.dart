@@ -256,6 +256,7 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
               marks: last.marks,
               grades: last.grades,
               better: last.better,
+              n: last.n,
             )),
         borderRadius: BorderRadius.circular(20.r),
         child: Container(
@@ -358,7 +359,7 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
             name: '和棋棋下一盘',
             sub: games > 0
                 ? '已完成 $games 局！'
-                : '吃子棋 · 先提 ${_svc.winCaptures.value} 颗获胜',
+                : '吃子棋 · ${_svc.boardSize.value} 路 · 先提 ${_svc.winCaptures.value} 颗获胜',
             onTap: () => showWqOpponentPicker(context),
           ),
         ],

@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
+import 'package:star_bank/pages/entertainment/weiqi/weiqi_board.dart';
 import 'package:star_bank/pages/entertainment/weiqi/weiqi_play_page.dart';
 import 'package:star_bank/pages/entertainment/weiqi/weiqi_service.dart';
 
@@ -29,10 +30,10 @@ void main() {
 
   WeiqiService svc() => Get.find<WeiqiService>();
 
-  Future<void> tapPoint(WidgetTester tester, int x, int y) async {
+  Future<void> tapPoint(WidgetTester tester, int x, int y, {int n = 9}) async {
     final rect = tester.getRect(find.byKey(const ValueKey('wq-board-square')));
     const pad = 6.2;
-    final step = (100 - pad * 2) / 8;
+    final step = (100 - pad * 2) / (n - 1);
     final dx = rect.left + rect.width * ((pad + x * step) / 100);
     final dy = rect.top + rect.height * ((pad + y * step) / 100);
     await tester.tapAt(Offset(dx, dy));
@@ -103,6 +104,65 @@ void main() {
     expect(find.text('你赢啦！'), findsNothing);
     expect(find.text('悔棋'), findsOneWidget);
     expect(find.text('结束'), findsOneWidget);
+    expect(find.text('看看战报'), findsNothing);
+    await drainFx(tester);
+  });
+
+  testWidgets('13 路棋盘：落子映射正确，超过 30 手不会被误判「棋盘满」', (tester) async {
+    tester.view.devicePixelRatio = 3.0;
+    tester.view.physicalSize = const Size(1080, 2340);
+    addTearDown(tester.view.reset);
+    svc().winCaptures.value = 5; // 尽量别中途达标
+    svc().boardSize.value = 13;
+    addTearDown(() => svc().boardSize.value = 9);
+
+    await tester.pumpWidget(
+      ScreenUtilInit(
+        designSize: const Size(375, 812),
+        minTextAdapt: true,
+        builder: (context, child) => GetMaterialApp(
+          home: const WeiqiPlayPage(opponent: WqOpponent.parent),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final board =
+        tester.widget<WeiqiBoardView>(find.byType(WeiqiBoardView));
+    expect(board.n, 13, reason: '棋盘应使用设置的 13 路');
+
+    // 黑白交替落「互不相邻」的偶/奇交点，保证不触发提子。
+    final blacks = <(int, int)>[
+      for (var x = 0; x <= 12; x += 2) (x, 0),
+      for (var x = 0; x <= 12; x += 2) (x, 2),
+      (0, 4),
+    ];
+    final whites = <(int, int)>[
+      for (var x = 1; x <= 11; x += 2) (x, 1),
+      for (var x = 1; x <= 11; x += 2) (x, 3),
+      for (var x = 1; x <= 5; x += 2) (x, 5),
+    ];
+    for (var k = 0; k < 15; k++) {
+      final (bx, by) = blacks[k];
+      await tapPoint(tester, bx, by, n: 13);
+      final (wx, wy) = whites[k];
+      await tapPoint(tester, wx, wy, n: 13);
+    }
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // 30 手（旧硬编码阈值）之后必须还能继续下
+    expect(find.text('看看战报'), findsNothing,
+        reason: '13 路下 30 手远不到满盘，不应终局');
+    expect(find.text('结束'), findsOneWidget);
+
+    // 第 31、32 手仍然正常落子
+    await tapPoint(tester, 7, 5, n: 13);
+    await tapPoint(tester, 9, 5, n: 13);
+    expect(find.text('看看战报'), findsNothing);
+
+    // 右下角附近空点仍能正常落子（边缘坐标映射）
+    await tapPoint(tester, 6, 5, n: 13);
+    await tester.pump(const Duration(milliseconds: 120));
     expect(find.text('看看战报'), findsNothing);
     await drainFx(tester);
   });

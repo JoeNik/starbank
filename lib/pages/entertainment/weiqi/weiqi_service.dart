@@ -35,8 +35,10 @@ class WeiqiService extends GetxService {
       List<({int color, int point})> moves, Map<int, String> notes,
       [Map<int, int> marks = const {},
       Map<int, String> grades = const {},
-      Map<int, int> better = const {}]) {
+      Map<int, int> better = const {},
+      int boardSize = 9]) {
     _lastGame = {
+      'n': boardSize,
       'moves': [for (final m in moves) {'c': m.color, 'p': m.point}],
       'notes': {for (final e in notes.entries) e.key.toString(): e.value},
       'marks': {for (final e in marks.entries) e.key.toString(): e.value},
@@ -50,7 +52,7 @@ class WeiqiService extends GetxService {
   Map<String, dynamic>? get lastGame => _lastGame;
 
   /// 从持久化数据恢复回放参数；无记录返回 null
-  ({List<({int color, int point})> moves, Map<int, String> notes,
+  ({int n, List<({int color, int point})> moves, Map<int, String> notes,
           Map<int, int> marks, Map<int, String> grades, Map<int, int> better})?
       loadLastGame() {
     final g = _lastGame;
@@ -80,6 +82,7 @@ class WeiqiService extends GetxService {
     };
     if (moves.isEmpty) return null;
     return (
+      n: (g['n'] as num?)?.toInt() ?? 9,
       moves: moves,
       notes: notes,
       marks: marks,
@@ -104,6 +107,7 @@ class WeiqiService extends GetxService {
   final RxBool atariLightsOn = true.obs; // 对局中被打吃警示灯
   final RxInt aiLevelIndex = 1.obs; // 棋棋棋力档位（0初级/1中级/2高级/3职业级）
   final RxInt winCaptures = 3.obs; // 提子目标：先提走对方几颗算赢（家长小屋可调 2~5）
+  final RxInt boardSize = 9.obs; // 对局棋盘路数：9/13/19（家长小屋可调，课程与题库固定 9 路）
 
   WeiqiService() {
     voiceOn.listen((v) {
@@ -118,6 +122,7 @@ class WeiqiService extends GetxService {
     atariLightsOn.listen((v) => _save());
     aiLevelIndex.listen((v) => _save());
     winCaptures.listen((v) => _save());
+    boardSize.listen((v) => _save());
   }
 
   Future<WeiqiService> init() async {
@@ -391,6 +396,8 @@ class WeiqiService extends GetxService {
       aiLevelIndex.value = (data['aiLevelIndex'] as num?)?.toInt() ?? 1;
       winCaptures.value =
           ((data['winCaptures'] as num?)?.toInt() ?? 3).clamp(2, 5);
+      final n = (data['boardSize'] as num?)?.toInt() ?? 9;
+      boardSize.value = const [9, 13, 19].contains(n) ? n : 9;
     } catch (e) {
       debugPrint('棋妙岛进度加载失败(忽略): $e');
     }
@@ -413,6 +420,7 @@ class WeiqiService extends GetxService {
         'sfxOn': sfxOn.value,
         'aiLevelIndex': aiLevelIndex.value,
         'winCaptures': winCaptures.value,
+        'boardSize': boardSize.value,
       };
       _box?.put('data', jsonEncode(data));
     } catch (e) {

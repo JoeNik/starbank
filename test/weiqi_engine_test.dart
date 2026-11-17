@@ -185,4 +185,39 @@ void main() {
       }
     });
   });
+
+  group('大棋盘（可变尺寸）', () {
+    test('19 路：铺 120 子后 AI 仍能给出合法着法', () {
+      final g = WqGame(n: 19);
+      final rnd = Random(7);
+      var color = 1;
+      for (var k = 0; k < 120; k++) {
+        final empty = [for (var i = 0; i < g.n * g.n; i++) if (g.s[i] == 0) i];
+        if (empty.isEmpty) break;
+        final i = empty[rnd.nextInt(empty.length)];
+        if (g.tryPlay(i, color).ok) color = 3 - color;
+      }
+      final sw = Stopwatch()..start();
+      final mv = WqAi.pickMove(g, color, 0.88, rnd: Random(1));
+      sw.stop();
+      expect(mv, isNotNull, reason: '19 路中盘仍应有合法点');
+      expect(g.tryPlay(mv, color).ok, isTrue);
+      expect(sw.elapsedMilliseconds, lessThan(2000),
+          reason: '单步 AI 计算不应卡住界面');
+    });
+
+    test('13/19 路棋盘：提子与越界判定按 n 计算', () {
+      final g = WqGame(n: 13);
+      expect(g.s.length, 169);
+      // 13 路角上提子
+      g.tryPlay(0, 2); // (0,0)
+      g.tryPlay(1, 1); // (1,0)，角上白子剩 1 气
+      final r = g.tryPlay(13, 1); // (0,1)，提走角上白子
+      expect(r.captured, [0]);
+      expect(g.tryPlay(14, 1).ok, isTrue); // (1,1) 仍是空点
+      expect(g.tryPlay(169, 1).ok, isFalse);
+      expect(g.tryPlay(169, 1).reason, 'offboard');
+      expect(g.tryPlay(-1, 1).reason, 'offboard');
+    });
+  });
 }

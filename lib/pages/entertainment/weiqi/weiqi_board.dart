@@ -138,6 +138,8 @@ class _WeiqiBoardViewState extends State<WeiqiBoardView>
 
   double _frac(int coord) => (_pad + coord * _step) / 100;
   double get _step => (100 - _pad * 2) / (widget.n - 1);
+  /// 与画笔一致的棋子缩放（13/19 路棋子变小，避免重叠）
+  double get _stoneScale => 8.0 / (widget.n - 1);
 
   Offset _pointOffset(int i, Size size) {
     return Offset(_frac(i % widget.n) * size.width,
@@ -250,15 +252,15 @@ class _WeiqiBoardViewState extends State<WeiqiBoardView>
                             final pos = Offset.lerp(start, end, t)!;
                             final scale = 1 - 0.68 * t;
                             return Positioned(
-                              left: pos.dx - size.width * 0.047,
-                              top: pos.dy - size.width * 0.047,
+                              left: pos.dx - size.width * 0.047 * _stoneScale,
+                              top: pos.dy - size.width * 0.047 * _stoneScale,
                               child: Transform.scale(
                                 scale: scale,
                                 child: Opacity(
                                   opacity: (1 - t).clamp(0.0, 1.0),
                                   child: SizedBox(
-                                    width: size.width * 0.094,
-                                    height: size.width * 0.094,
+                                    width: size.width * 0.094 * _stoneScale,
+                                    height: size.width * 0.094 * _stoneScale,
                                     child: CustomPaint(
                                       painter: _StonePainter(
                                           color: f.color,
@@ -379,6 +381,8 @@ class _BoardPainter extends CustomPainter {
 
   static const double _pad = 6.2;
   double _stepFrac() => (100 - _pad * 2) / (n - 1) / 100;
+  /// 随路数缩小的棋子尺寸系数（以 9 路为 1，13/19 路避免棋子重叠）
+  double get _stoneScale => 8.0 / (n - 1);
 
   Offset _pt(int i, Size size) {
     final x = i % n, y = i ~/ n;
@@ -403,7 +407,7 @@ class _BoardPainter extends CustomPainter {
       final c = _pt(e.key, size);
       canvas.drawCircle(
         c,
-        size.width * 0.055,
+        size.width * 0.055 * _stoneScale,
         Paint()
           ..color = WqTheme.coral.withValues(alpha: 0.85)
           ..style = PaintingStyle.stroke
@@ -425,9 +429,22 @@ class _BoardPainter extends CustomPainter {
       canvas.drawLine(Offset(v, _pad / 100 * size.width),
           Offset(v, (100 - _pad) / 100 * size.width), line);
     }
-    // 星位
+    // 星位（随路数：9 路 4 角+天元，13/19 路再加边星）
     final star = Paint()..color = WqTheme.line;
-    const stars = [(2, 2), (6, 2), (2, 6), (6, 6), (4, 4)];
+    final edge = n >= 13 ? 3 : 2;
+    final mid = n ~/ 2;
+    final stars = n >= 13
+        ? [
+            for (final y in [edge, mid, n - 1 - edge])
+              for (final x in [edge, mid, n - 1 - edge]) (x, y),
+          ]
+        : [
+            (edge, edge),
+            (n - 1 - edge, edge),
+            (edge, n - 1 - edge),
+            (n - 1 - edge, n - 1 - edge),
+            (mid, mid),
+          ];
     for (final (sx, sy) in stars) {
       if (sx >= n || sy >= n) continue;
       canvas.drawCircle(
@@ -465,7 +482,7 @@ class _BoardPainter extends CustomPainter {
     final c = _pt(i, size);
     canvas.drawCircle(
       c,
-      size.width * 0.013,
+      size.width * 0.013 * _stoneScale,
       Paint()
         ..color = stones[i] == 1
             ? const Color(0xFFFFC53D).withValues(alpha: 0.9)
@@ -476,10 +493,10 @@ class _BoardPainter extends CustomPainter {
   void _paintOneStone(Canvas canvas, Size size, int i, int color,
       {double alpha = 1.0}) {
     final c = _pt(i, size);
-    final r = size.width * 0.047;
+    final r = size.width * 0.047 * _stoneScale;
     // 阴影
     canvas.drawCircle(
-      c.translate(0, size.width * 0.006),
+      c.translate(0, size.width * 0.006 * _stoneScale),
       r,
       Paint()
         ..color = const Color(0x73140F05).withValues(alpha: 0.45 * alpha)
@@ -524,7 +541,7 @@ class _BoardPainter extends CustomPainter {
       ..strokeWidth = size.width * 0.008;
     for (final p in breathePoints) {
       final c = _pt(p, size);
-      final r = size.width * 0.043 * scale;
+      final r = size.width * 0.043 * _stoneScale * scale;
       final paint = Paint()
         ..shader = grad.createShader(Rect.fromCircle(center: c, radius: r))
         ..color = Colors.white.withValues(alpha: opacity);
@@ -539,7 +556,7 @@ class _BoardPainter extends CustomPainter {
     final scale = 0.85 + 0.27 * (t + 1) / 2;
     for (final p in blinkPoints) {
       final c = _pt(p, size);
-      final r = size.width * 0.046 * scale;
+      final r = size.width * 0.046 * _stoneScale * scale;
       canvas.drawCircle(
         c,
         r,
