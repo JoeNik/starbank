@@ -39,7 +39,9 @@ class WeiqiService extends GetxService {
       int boardSize = 9]) {
     _lastGame = {
       'n': boardSize,
-      'moves': [for (final m in moves) {'c': m.color, 'p': m.point}],
+      'moves': [
+        for (final m in moves) {'c': m.color, 'p': m.point}
+      ],
       'notes': {for (final e in notes.entries) e.key.toString(): e.value},
       'marks': {for (final e in marks.entries) e.key.toString(): e.value},
       'grades': {for (final e in grades.entries) e.key.toString(): e.value},
@@ -52,9 +54,14 @@ class WeiqiService extends GetxService {
   Map<String, dynamic>? get lastGame => _lastGame;
 
   /// 从持久化数据恢复回放参数；无记录返回 null
-  ({int n, List<({int color, int point})> moves, Map<int, String> notes,
-          Map<int, int> marks, Map<int, String> grades, Map<int, int> better})?
-      loadLastGame() {
+  ({
+    int n,
+    List<({int color, int point})> moves,
+    Map<int, String> notes,
+    Map<int, int> marks,
+    Map<int, String> grades,
+    Map<int, int> better
+  })? loadLastGame() {
     final g = _lastGame;
     if (g == null) return null;
     final moves = <({int color, int point})>[
@@ -106,7 +113,7 @@ class WeiqiService extends GetxService {
   final RxBool sfxOn = true.obs; // 音效
   final RxBool atariLightsOn = true.obs; // 对局中被打吃警示灯
   final RxInt aiLevelIndex = 1.obs; // 棋棋棋力档位（0初级/1中级/2高级/3职业级）
-  final RxInt winCaptures = 3.obs; // 提子目标：先提走对方几颗算赢（家长小屋可调 2~5）
+  final RxInt winCaptures = 3.obs; // 提子目标：先提走对方几颗算赢（家长小屋可调 2~10）
   final RxInt boardSize = 9.obs; // 对局棋盘路数：9/13/19（家长小屋可调，课程与题库固定 9 路）
 
   WeiqiService() {
@@ -160,11 +167,9 @@ class WeiqiService extends GetxService {
     return prev != null && (lessonStars[prev] ?? 0) > 0;
   }
 
-  int get totalLessonStars =>
-      lessonStars.values.fold(0, (a, b) => a + b);
+  int get totalLessonStars => lessonStars.values.fold(0, (a, b) => a + b);
 
-  int get completedLessonCount =>
-      lessonStars.values.where((v) => v > 0).length;
+  int get completedLessonCount => lessonStars.values.where((v) => v > 0).length;
 
   // ================= 死活题 =================
 
@@ -299,8 +304,7 @@ class WeiqiService extends GetxService {
 
     return {
       '气与打吃': withPuzzles(qi, ['pz1'], wqPuzzles.map((e) => e.id).toList()),
-      '提子与逃子':
-          withPuzzles(tao, ['pz2', 'pz4', 'pz8'], ['pz2', 'pz4', 'pz8']),
+      '提子与逃子': withPuzzles(tao, ['pz2', 'pz4', 'pz8'], ['pz2', 'pz4', 'pz8']),
       '边线与角':
           withPuzzles(merge(byLessons(['l7'])), ['pz6', 'pz7'], ['pz6', 'pz7']),
       '虎口': merge(hu < 0 ? const [] : [hu]),
@@ -373,8 +377,10 @@ class WeiqiService extends GetxService {
       if (stars is Map) {
         stars.forEach((k, v) => lessonStars[k.toString()] = (v as num).toInt());
       }
-      solvedPuzzles.addAll((data['solvedPuzzles'] as List?)?.cast<String>() ?? []);
-      wrongPuzzles.addAll((data['wrongPuzzles'] as List?)?.cast<String>() ?? []);
+      solvedPuzzles
+          .addAll((data['solvedPuzzles'] as List?)?.cast<String>() ?? []);
+      wrongPuzzles
+          .addAll((data['wrongPuzzles'] as List?)?.cast<String>() ?? []);
       playWins.value = (data['playWins'] as num?)?.toInt() ?? 0;
       playLosses.value = (data['playLosses'] as num?)?.toInt() ?? 0;
       playDraws.value = (data['playDraws'] as num?)?.toInt() ?? 0;
@@ -395,7 +401,7 @@ class WeiqiService extends GetxService {
       sfxOn.value = data['sfxOn'] as bool? ?? true;
       aiLevelIndex.value = (data['aiLevelIndex'] as num?)?.toInt() ?? 1;
       winCaptures.value =
-          ((data['winCaptures'] as num?)?.toInt() ?? 3).clamp(2, 5);
+          ((data['winCaptures'] as num?)?.toInt() ?? 3).clamp(2, 10);
       final n = (data['boardSize'] as num?)?.toInt() ?? 9;
       boardSize.value = const [9, 13, 19].contains(n) ? n : 9;
     } catch (e) {
@@ -415,7 +421,7 @@ class WeiqiService extends GetxService {
         'dailyActivity': dailyActivity,
         'lastGame': _lastGame,
         'atariLightsOn': atariLightsOn.value,
-      'voiceOn': voiceOn.value,
+        'voiceOn': voiceOn.value,
         'remindOn': remindOn.value,
         'sfxOn': sfxOn.value,
         'aiLevelIndex': aiLevelIndex.value,

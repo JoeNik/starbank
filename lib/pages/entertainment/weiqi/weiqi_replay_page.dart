@@ -82,9 +82,7 @@ class _WeiqiReplayPageState extends State<WeiqiReplayPage> {
     final idx = _idx - 1;
     final note = widget.notes[idx];
     final grade = _gradeIcon(idx);
-    final prefix = move.color == 1
-        ? (grade.isEmpty ? '' : '$grade ')
-        : '🤍 ';
+    final prefix = move.color == 1 ? (grade.isEmpty ? '' : '$grade ') : '🤍 ';
     if (_idx >= widget.moves.length && widget.grades.isNotEmpty) {
       // 终局总评
       var great = 0, good = 0, miss = 0, danger = 0;
@@ -203,7 +201,9 @@ class _WeiqiReplayPageState extends State<WeiqiReplayPage> {
                 ],
               ),
             ),
-            Flexible(
+            // 气泡槽固定 3 行高度：讲解长短不一时，棋盘位置与尺寸纹丝不动
+            SizedBox(
+              height: 106,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(14, 6, 14, 0),
                 child: WqBubble(
@@ -307,8 +307,8 @@ class _WeiqiReplayPageState extends State<WeiqiReplayPage> {
                         Get.until((route) =>
                             route.isFirst ||
                             route.settings.name == '/WeiqiHomePage');
-                        Get.to(() =>
-                            const WeiqiPlayPage(opponent: WqOpponent.ai));
+                        Get.to(
+                            () => const WeiqiPlayPage(opponent: WqOpponent.ai));
                       },
                     ),
                   ),

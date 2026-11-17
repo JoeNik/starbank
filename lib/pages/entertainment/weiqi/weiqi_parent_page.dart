@@ -131,8 +131,8 @@ class _ParentReportBody extends StatelessWidget {
               children: [
                 _statCard('${week['lessons']}', '完课', '节'),
                 SizedBox(width: 10.w),
-                _statCard(
-                    accuracy >= 0 ? '$accuracy' : '--', '练习正确率', accuracy >= 0 ? '%' : ''),
+                _statCard(accuracy >= 0 ? '$accuracy' : '--', '练习正确率',
+                    accuracy >= 0 ? '%' : ''),
                 SizedBox(width: 10.w),
                 _statCard('${week['games']}', '陪下对局', '局'),
               ],
@@ -262,16 +262,18 @@ class _ParentReportBody extends StatelessWidget {
                       )),
                   Obx(() => _countChipsRow(
                         '提子目标（先提几颗算赢）',
-                        const [2, 3, 4, 5],
+                        const [2, 3, 4, 5, 6, 8, 10],
                         svc.winCaptures.value,
                         (v) => svc.winCaptures.value = v,
+                        hint: '陪下对局的目标：谁先把对方提走这么多颗棋子就赢，默认 3；目标越大越难。',
                       )),
                   Obx(() => _countChipsRow(
                         '对局棋盘（路数）',
                         const [9, 13, 19],
                         svc.boardSize.value,
                         (v) => svc.boardSize.value = v,
-                        hint: '陪下对局的棋盘大小：9 路适合刚学，13 路进阶，19 路是标准棋盘；默认 9。课程与题目固定 9 路。',
+                        hint:
+                            '陪下对局的棋盘大小：9 路适合刚学，13 路进阶，19 路是标准棋盘；默认 9。课程与题目固定 9 路。',
                       )),
                 ],
               ),
@@ -380,8 +382,7 @@ class _ParentReportBody extends StatelessWidget {
     );
   }
 
-  Widget _switchRow(
-      String label, bool value, ValueChanged<bool> onChanged) {
+  Widget _switchRow(String label, bool value, ValueChanged<bool> onChanged) {
     return Row(
       children: [
         Expanded(
@@ -416,51 +417,45 @@ class _ParentReportBody extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 13.5.sp,
-                    fontWeight: FontWeight.w800,
-                    color: WqTheme.ink,
-                  ),
-                ),
-              ),
-              Row(
-                children: options
-                    .map((v) => Padding(
-                          padding: EdgeInsets.only(left: 6.w),
-                          child: GestureDetector(
-                            onTap: () => onChanged(v),
-                            child: Container(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 14.w, vertical: 6.h),
-                              decoration: BoxDecoration(
-                                color: current == v
-                                    ? WqTheme.greenSoft
-                                    : const Color(0xFFF0F2F7),
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              child: Text(
-                                '$v',
-                                style: TextStyle(
-                                  fontSize: 12.sp,
-                                  fontWeight: FontWeight.w800,
-                                  color: current == v
-                                      ? WqTheme.greenDeep
-                                      : WqTheme.inkFaint,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ))
-                    .toList(),
-              ),
-            ],
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 13.5.sp,
+              fontWeight: FontWeight.w800,
+              color: WqTheme.ink,
+            ),
           ),
-          SizedBox(height: 2.h),
+          SizedBox(height: 6.h),
+          Wrap(
+            spacing: 6.w,
+            runSpacing: 6.h,
+            children: options
+                .map((v) => GestureDetector(
+                      onTap: () => onChanged(v),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 14.w, vertical: 6.h),
+                        decoration: BoxDecoration(
+                          color: current == v
+                              ? WqTheme.greenSoft
+                              : const Color(0xFFF0F2F7),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          '$v',
+                          style: TextStyle(
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.w800,
+                            color: current == v
+                                ? WqTheme.greenDeep
+                                : WqTheme.inkFaint,
+                          ),
+                        ),
+                      ),
+                    ))
+                .toList(),
+          ),
+          SizedBox(height: 4.h),
           Text(
             hint ?? '陪下对局的目标：谁先把对方提走这么多颗棋子就赢，默认 3',
             style: TextStyle(
