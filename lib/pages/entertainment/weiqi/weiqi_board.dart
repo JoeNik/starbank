@@ -95,24 +95,43 @@ class _WeiqiBoardViewState extends State<WeiqiBoardView>
   int _ghostColor = 1;
   int _popPoint = -1;
 
+  /// 大棋盘（13/19路）随指高清放大镜状态
+  Offset? _pointerDownPos;
+  Offset? _loupeLocalPos;
+  int? _loupeGridPoint;
+  bool _isDraggingLoupe = false;
+
   @override
   void initState() {
     super.initState();
     _pulse = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1600),
-    )..repeat();
+    );
     _pop = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 240),
+      duration: const Duration(milliseconds: 380),
       value: 1,
     );
     widget.controller?._onFly = _spawnFlies;
+    _syncPulseState();
+  }
+
+  /// 性能优化：仅当棋盘存在呼吸气点或闪烁提示点时才启动脉冲动画，静止思考时 0 帧重绘
+  void _syncPulseState() {
+    final needsPulse =
+        widget.breathePoints.isNotEmpty || widget.blinkPoints.isNotEmpty;
+    if (needsPulse && !_pulse.isAnimating) {
+      _pulse.repeat();
+    } else if (!needsPulse && _pulse.isAnimating) {
+      _pulse.stop();
+    }
   }
 
   @override
   void didUpdateWidget(covariant WeiqiBoardView old) {
     super.didUpdateWidget(old);
+    _syncPulseState();
     if (widget.ghostStone != old.ghostStone) {
       _ghost = widget.ghostStone;
       _ghostColor = widget.ghostColor;
@@ -171,14 +190,28 @@ class _WeiqiBoardViewState extends State<WeiqiBoardView>
     );
   }
 
-  void _handleTap(Offset local, Size size) {
-    if (widget.onPointTap == null) return;
+  int? _localToPoint(Offset local, Size size) {
     final fx = local.dx / size.width * 100;
     final fy = local.dy / size.height * 100;
     final gx = ((fx - _pad) / _step).round();
     final gy = ((fy - _pad) / _step).round();
-    if (gx < 0 || gy < 0 || gx >= widget.n || gy >= widget.n) return;
-    widget.onPointTap!(gy * widget.n + gx);
+    if (gx < 0 || gy < 0 || gx >= widget.n || gy >= widget.n) return null;
+    return gy * widget.n + gx;
+  }
+
+  void _handleTap(Offset local, Size size) {
+    if (widget.onPointTap == null) return;
+    final pt = _localToPoint(local, size);
+    if (pt == null) return;
+    widget.onPointTap!(pt);
+  }
+
+  String _coordText(int pt) {
+    const cols = 'ABCDEFGHJKLMNOPQRST';
+    final x = pt % widget.n;
+    final y = pt ~/ widget.n;
+    final col = x < cols.length ? cols[x] : '?';
+    return '$col${widget.n - y}';
   }
 
   @override
@@ -208,102 +241,158 @@ class _WeiqiBoardViewState extends State<WeiqiBoardView>
             height: boardSize,
             child: LayoutBuilder(builder: (context, box) {
               final size = Size(box.maxWidth, box.maxWidth);
-              return GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTapUp: widget.onPointTap == null
+              return Listener(
+                onPointerDown: widget.onPointTap == null || widget.n < 13
                     ? null
-                    : (d) => _handleTap(d.localPosition, size),
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    // 孟菲斯粗黑描边 + 零模糊硬投影底座，内部保持经典护眼榧木色
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: WqTheme.ink, width: 3.0),
-                        gradient: const RadialGradient(
-                          center: Alignment(-0.6, -0.8),
-                          radius: 1.4,
-                          colors: [
-                            Color(0xFFF2CD8C),
-                            WqTheme.boardA,
-                            WqTheme.boardB,
-                          ],
-                          stops: [0, 0.45, 1],
-                        ),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: WqTheme.ink,
-                            offset: Offset(6, 6),
-                            blurRadius: 0,
+                    : (e) {
+                        final pt = _localToPoint(e.localPosition, size);
+                        setState(() {
+                          _pointerDownPos = e.localPosition;
+                          _loupeLocalPos = e.localPosition;
+                          _loupeGridPoint = pt;
+                          _isDraggingLoupe = false;
+                        });
+                      },
+                onPointerMove: widget.onPointTap == null || widget.n < 13
+                    ? null
+                    : (e) {
+                        final moved = _pointerDownPos != null &&
+                            (e.localPosition - _pointerDownPos!).distance > 6.0;
+                        final pt = _localToPoint(e.localPosition, size);
+                        setState(() {
+                          _loupeLocalPos = e.localPosition;
+                          _loupeGridPoint = pt;
+                          if (moved) _isDraggingLoupe = true;
+                        });
+                      },
+                onPointerUp: widget.onPointTap == null || widget.n < 13
+                    ? null
+                    : (e) {
+                        final wasDrag = _isDraggingLoupe;
+                        final targetPt = _loupeGridPoint;
+                        setState(() {
+                          _pointerDownPos = null;
+                          _loupeLocalPos = null;
+                          _loupeGridPoint = null;
+                          _isDraggingLoupe = false;
+                        });
+                        // 如果是拖动放大镜瞄准后松手，直接触发落子/选点回调
+                        if (wasDrag && targetPt != null) {
+                          widget.onPointTap?.call(targetPt);
+                        }
+                      },
+                onPointerCancel: widget.onPointTap == null || widget.n < 13
+                    ? null
+                    : (_) {
+                        setState(() {
+                          _pointerDownPos = null;
+                          _loupeLocalPos = null;
+                          _loupeGridPoint = null;
+                          _isDraggingLoupe = false;
+                        });
+                      },
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTapUp: widget.onPointTap == null
+                      ? null
+                      : (d) => _handleTap(d.localPosition, size),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      // 中世纪现代棋盘底座（暖棕高度阴影 h=12 + 温润胡桃木边，内部保持护眼榧木色）
+                      RepaintBoundary(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: const Color(0xFF6B4423),
+                              width: 2.0,
+                            ),
+                            gradient: const RadialGradient(
+                              center: Alignment(-0.6, -0.8),
+                              radius: 1.4,
+                              colors: [
+                                Color(0xFFF2CD8C),
+                                WqTheme.boardA,
+                                WqTheme.boardB,
+                              ],
+                              stops: [0, 0.45, 1],
+                            ),
+                            boxShadow: WqTheme.paperShadow(h: 12.0),
                           ),
-                        ],
-                      ),
-                      child: CustomPaint(
-                        size: size,
-                        painter: _BoardPainter(
-                          n: widget.n,
-                          pad: _pad,
-                          stones: widget.stones,
-                          lastMove: widget.lastMove,
-                          breathePoints: widget.breathePoints,
-                          breatheWarn: widget.breatheWarn,
-                          blinkPoints: widget.blinkPoints,
-                          glowCenter: widget.glowCenter,
-                          glowRadius: widget.glowRadius,
-                          pulse: _pulse,
-                          pop: _pop,
-                          popPoint: _popPoint,
-                          ghost: _ghost ?? widget.ghostStone,
-                          ghostColor: _ghostColor,
-                          ghostStones: widget.ghostStones,
-                          showCoords: widget.showCoords,
-                          moveNumbers: widget.moveNumbers,
-                          territoryOwnerMap: widget.territoryOwnerMap,
-                          deadStones: widget.deadStones,
-                          previewPoint: widget.previewPoint,
-                          previewColor: widget.previewColor,
+                          child: CustomPaint(
+                            size: size,
+                            painter: _BoardPainter(
+                              n: widget.n,
+                              pad: _pad,
+                              stones: widget.stones,
+                              lastMove: widget.lastMove,
+                              breathePoints: widget.breathePoints,
+                              breatheWarn: widget.breatheWarn,
+                              blinkPoints: widget.blinkPoints,
+                              glowCenter: widget.glowCenter,
+                              glowRadius: widget.glowRadius,
+                              pulse: _pulse,
+                              pop: _pop,
+                              popPoint: _popPoint,
+                              ghost: _ghost ?? widget.ghostStone,
+                              ghostColor: _ghostColor,
+                              ghostStones: widget.ghostStones,
+                              showCoords: widget.showCoords,
+                              moveNumbers: widget.moveNumbers,
+                              territoryOwnerMap: widget.territoryOwnerMap,
+                              deadStones: widget.deadStones,
+                              previewPoint:
+                                  _loupeGridPoint ?? widget.previewPoint,
+                              previewColor: widget.previewColor,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                    // 提子飞行动画层
-                    ..._flies.map((f) => AnimatedBuilder(
-                          animation: f.ctrl,
-                          builder: (context, _) {
-                            final t =
-                                Curves.easeInOutCubic.transform(f.ctrl.value);
-                            final start = _pointOffset(f.point, size);
-                            final end = Offset(
-                              f.color == 2
-                                  ? size.width * 0.90
-                                  : size.width * 0.10,
-                              f.color == 2 ? -8 : size.height + 8,
-                            );
-                            final pos = Offset.lerp(start, end, t)!;
-                            final scale = 1 - 0.68 * t;
-                            return Positioned(
-                              left: pos.dx - size.width * 0.047 * _stoneScale,
-                              top: pos.dy - size.width * 0.047 * _stoneScale,
-                              child: Transform.scale(
-                                scale: scale,
-                                child: Opacity(
-                                  opacity: (1 - t).clamp(0.0, 1.0),
-                                  child: SizedBox(
-                                    width: size.width * 0.094 * _stoneScale,
-                                    height: size.width * 0.094 * _stoneScale,
-                                    child: CustomPaint(
-                                      painter: _StonePainter(
-                                        color: f.color,
-                                        boardSize: size.width,
+                      // 提子飞行动画层
+                      ..._flies.map((f) => AnimatedBuilder(
+                            animation: f.ctrl,
+                            builder: (context, _) {
+                              final t = Curves.easeInOutCubic
+                                  .transform(f.ctrl.value);
+                              final start = _pointOffset(f.point, size);
+                              final end = Offset(
+                                f.color == 2
+                                    ? size.width * 0.90
+                                    : size.width * 0.10,
+                                f.color == 2 ? -8 : size.height + 8,
+                              );
+                              final pos = Offset.lerp(start, end, t)!;
+                              final scale = 1 - 0.68 * t;
+                              return Positioned(
+                                left:
+                                    pos.dx - size.width * 0.047 * _stoneScale,
+                                top: pos.dy - size.width * 0.047 * _stoneScale,
+                                child: Transform.scale(
+                                  scale: scale,
+                                  child: Opacity(
+                                    opacity: (1 - t).clamp(0.0, 1.0),
+                                    child: SizedBox(
+                                      width: size.width * 0.094 * _stoneScale,
+                                      height: size.width * 0.094 * _stoneScale,
+                                      child: CustomPaint(
+                                        painter: _StonePainter(
+                                          color: f.color,
+                                          boardSize: size.width,
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            );
-                          },
-                        )),
-                  ],
+                              );
+                            },
+                          )),
+
+                      // 🔍 13/19路大棋盘随指高清局部放大镜（手指按住或滑动时浮现在手指上方，不挡视线）
+                      if (_loupeLocalPos != null && _loupeGridPoint != null)
+                        _buildMagnifierLoupe(size),
+                    ],
+                  ),
                 ),
               );
             }),
@@ -323,6 +412,79 @@ class _WeiqiBoardViewState extends State<WeiqiBoardView>
     });
   }
 
+  /// 构建 13/19 路大棋盘随指 2.3x 高清局部放大镜圆窗
+  Widget _buildMagnifierLoupe(Size boardSize) {
+    const double loupeDiameter = 104.0;
+    final touch = _loupeLocalPos!;
+    final pt = _loupeGridPoint!;
+    final gridOffset = _pointOffset(pt, boardSize);
+
+    // 默认在手指正上方 68px；若靠近棋盘顶部边缘则自动切换到手指下方，绝不遮挡手指与棋盘
+    final showBelow = touch.dy < 86.0;
+    final top = showBelow
+        ? (touch.dy + 26.0).clamp(4.0, boardSize.height - loupeDiameter - 4.0)
+        : (touch.dy - loupeDiameter - 18.0)
+            .clamp(-24.0, boardSize.height - loupeDiameter);
+    final left = (touch.dx - loupeDiameter / 2)
+        .clamp(4.0, boardSize.width - loupeDiameter - 4.0);
+
+    return Positioned(
+      left: left,
+      top: top,
+      child: IgnorePointer(
+        child: Container(
+          width: loupeDiameter,
+          height: loupeDiameter,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: WqTheme.boardA,
+            border: Border.all(color: WqTheme.ink, width: 2.5),
+            boxShadow: WqTheme.paperShadow(h: 14.0),
+          ),
+          child: ClipOval(
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                CustomPaint(
+                  painter: _MagnifierPainter(
+                    n: widget.n,
+                    pad: _pad,
+                    stones: widget.stones,
+                    focusPoint: pt,
+                    focusBoardOffset: gridOffset,
+                    fullBoardSize: boardSize.width,
+                    previewColor: widget.previewColor,
+                  ),
+                ),
+                // 顶部坐标胶囊徽标
+                Align(
+                  alignment: Alignment.topCenter,
+                  child: Container(
+                    margin: const EdgeInsets.only(top: 4),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 7, vertical: 1.5),
+                    decoration: BoxDecoration(
+                      color: WqTheme.ink.withValues(alpha: 0.82),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      '🎯 ${_coordText(pt)}',
+                      style: const TextStyle(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _pocketPill({
     required int color,
     required int count,
@@ -330,18 +492,12 @@ class _WeiqiBoardViewState extends State<WeiqiBoardView>
   }) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2.5),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: WqTheme.card,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: WqTheme.ink, width: 2.0),
-        boxShadow: const [
-          BoxShadow(
-            color: WqTheme.ink,
-            blurRadius: 0,
-            offset: Offset(2.5, 2.5),
-          ),
-        ],
+        border: WqTheme.border(),
+        boxShadow: WqTheme.paperShadow(h: 4.5),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -357,14 +513,14 @@ class _WeiqiBoardViewState extends State<WeiqiBoardView>
                     ? const [WqTheme.stoneBlackA, WqTheme.stoneBlackC]
                     : const [WqTheme.stoneWhiteA, WqTheme.stoneWhiteC],
               ),
-              border: Border.all(color: WqTheme.ink, width: 1.2),
+              border: Border.all(color: const Color(0x333A1C0C), width: 1.0),
             ),
           ),
           const SizedBox(width: 5),
           Text(
-            '$count',
+            '$label $count',
             style: const TextStyle(
-              fontSize: 12,
+              fontSize: 11.5,
               fontWeight: FontWeight.w900,
               color: WqTheme.ink,
             ),
@@ -593,9 +749,21 @@ class _BoardPainter extends CustomPainter {
       final isDead = deadStones.contains(i);
       final alpha = isDead ? 0.42 : 1.0;
       if (i == popPoint && pop.value < 1) {
-        final t = Curves.easeOutBack.transform(pop.value);
-        final scale = 1.6 - 0.6 * t;
+        // Q 弹弹簧落子物理曲线（Curves.elasticOut）+ 落子波纹扩散
+        final t = Curves.elasticOut.transform(pop.value);
+        final scale = 1.42 - 0.42 * t;
         final c = _pt(i, size);
+        final rippleR =
+            size.width * 0.047 * _stoneScale * (1.0 + 0.65 * pop.value);
+        canvas.drawCircle(
+          c,
+          rippleR,
+          Paint()
+            ..color = WqTheme.sun
+                .withValues(alpha: (1.0 - pop.value).clamp(0.0, 1.0) * 0.55)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2.2,
+        );
         canvas.save();
         canvas.translate(c.dx, c.dy);
         canvas.scale(scale);
@@ -863,4 +1031,113 @@ class _StonePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _StonePainter old) => old.color != color;
+}
+
+/// 13/19 路大棋盘 2.3x 局部放大镜画笔
+class _MagnifierPainter extends CustomPainter {
+  final int n;
+  final double pad;
+  final List<int> stones;
+  final int focusPoint;
+  final Offset focusBoardOffset;
+  final double fullBoardSize;
+  final int previewColor;
+
+  const _MagnifierPainter({
+    required this.n,
+    required this.pad,
+    required this.stones,
+    required this.focusPoint,
+    required this.focusBoardOffset,
+    required this.fullBoardSize,
+    required this.previewColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const zoom = 2.3;
+    final center = Offset(size.width / 2, size.height / 2);
+
+    canvas.save();
+    // 将焦点交叉点平移至放大镜正中心并放大 2.3 倍
+    canvas.translate(center.dx, center.dy);
+    canvas.scale(zoom);
+    canvas.translate(-focusBoardOffset.dx, -focusBoardOffset.dy);
+
+    final stepFrac = (100 - pad * 2) / (n - 1) / 100;
+    final stoneScale = 8.0 / (n - 1);
+
+    // 1. 绘制棋盘网格线
+    final linePaint = Paint()
+      ..color = WqTheme.line
+      ..strokeWidth = 1.1;
+    for (var k = 0; k < n; k++) {
+      final v = (pad + k * stepFrac * 100) / 100 * fullBoardSize;
+      canvas.drawLine(
+        Offset(pad / 100 * fullBoardSize, v),
+        Offset((100 - pad) / 100 * fullBoardSize, v),
+        linePaint,
+      );
+      canvas.drawLine(
+        Offset(v, pad / 100 * fullBoardSize),
+        Offset(v, (100 - pad) / 100 * fullBoardSize),
+        linePaint,
+      );
+    }
+
+    // 2. 绘制焦点绿色十字准星
+    final crossPaint = Paint()
+      ..color = WqTheme.green.withValues(alpha: 0.85)
+      ..strokeWidth = 1.4;
+    canvas.drawLine(
+      Offset(0, focusBoardOffset.dy),
+      Offset(fullBoardSize, focusBoardOffset.dy),
+      crossPaint,
+    );
+    canvas.drawLine(
+      Offset(focusBoardOffset.dx, 0),
+      Offset(focusBoardOffset.dx, fullBoardSize),
+      crossPaint,
+    );
+
+    // 3. 绘制周围已落棋子与焦点半透明预览棋子
+    final r = fullBoardSize * 0.047 * stoneScale;
+    for (var i = 0; i < stones.length; i++) {
+      final cVal = stones[i];
+      if (cVal == 0 && i != focusPoint) continue;
+      final px = (pad + (i % n) * stepFrac * 100) / 100 * fullBoardSize;
+      final py = (pad + (i ~/ n) * stepFrac * 100) / 100 * fullBoardSize;
+      if ((px - focusBoardOffset.dx).abs() > fullBoardSize * 0.35 ||
+          (py - focusBoardOffset.dy).abs() > fullBoardSize * 0.35) {
+        continue;
+      }
+      final isPreview = cVal == 0 && i == focusPoint;
+      final stoneColor = isPreview ? previewColor : cVal;
+      final alpha = isPreview ? 0.65 : 1.0;
+      canvas.drawCircle(
+        Offset(px, py),
+        r,
+        Paint()
+          ..color = (stoneColor == 1
+                  ? WqTheme.stoneBlackB
+                  : WqTheme.stoneWhiteA)
+              .withValues(alpha: alpha),
+      );
+      canvas.drawCircle(
+        Offset(px, py),
+        r,
+        Paint()
+          ..color = isPreview ? WqTheme.green : WqTheme.ink
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = isPreview ? 1.5 : 0.7,
+      );
+    }
+
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _MagnifierPainter oldDelegate) =>
+      oldDelegate.focusPoint != focusPoint ||
+      oldDelegate.previewColor != previewColor;
 }

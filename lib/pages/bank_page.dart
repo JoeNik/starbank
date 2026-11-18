@@ -43,14 +43,8 @@ class _BankPageState extends State<BankPage> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: AppTheme.yellow,
-                  border: Border.all(color: AppTheme.ink, width: 2.2),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: AppTheme.ink,
-                      offset: Offset(2, 2),
-                      blurRadius: 0,
-                    ),
-                  ],
+                  border: AppTheme.border(),
+                  boxShadow: AppTheme.paperShadow(h: 8.0),
                 ),
                 child: ClipOval(
                   child: ImageUtils.displayImage(
@@ -134,14 +128,8 @@ class _BankPageState extends State<BankPage> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(22.r),
-          border: Border.all(color: AppTheme.ink, width: 2.8),
-          boxShadow: const [
-            BoxShadow(
-              color: AppTheme.ink,
-              offset: Offset(5, 5),
-              blurRadius: 0,
-            ),
-          ],
+          border: AppTheme.border(),
+          boxShadow: AppTheme.paperShadow(h: 8.0),
         ),
         child: Column(
           children: [
@@ -153,14 +141,8 @@ class _BankPageState extends State<BankPage> {
                   decoration: BoxDecoration(
                     color: color,
                     borderRadius: BorderRadius.circular(14.r),
-                    border: Border.all(color: AppTheme.ink, width: 2.2),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: AppTheme.ink,
-                        offset: Offset(3, 3),
-                        blurRadius: 0,
-                      ),
-                    ],
+                    border: AppTheme.border(),
+                    boxShadow: AppTheme.paperShadow(h: 8.0),
                   ),
                   child: Center(
                     child: Text(
@@ -203,7 +185,7 @@ class _BankPageState extends State<BankPage> {
                       decoration: BoxDecoration(
                         color: color,
                         borderRadius: BorderRadius.circular(10.r),
-                        border: Border.all(color: AppTheme.ink, width: 2.0),
+                        border: AppTheme.border(),
                       ),
                       child: Text(
                         "¥${balance.toStringAsFixed(2)}",
@@ -299,14 +281,8 @@ class _BankPageState extends State<BankPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(22.r),
-        border: Border.all(color: AppTheme.ink, width: 2.5),
-        boxShadow: const [
-          BoxShadow(
-            color: AppTheme.ink,
-            offset: Offset(5, 5),
-            blurRadius: 0,
-          ),
-        ],
+        border: AppTheme.border(),
+        boxShadow: AppTheme.paperShadow(h: 8.0),
       ),
       child: Column(
         children: [
@@ -317,14 +293,8 @@ class _BankPageState extends State<BankPage> {
                 decoration: BoxDecoration(
                   color: AppTheme.pink,
                   borderRadius: BorderRadius.circular(12.r),
-                  border: Border.all(color: AppTheme.ink, width: 2.0),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: AppTheme.ink,
-                      offset: Offset(2, 2),
-                      blurRadius: 0,
-                    ),
-                  ],
+                  border: AppTheme.border(),
+                  boxShadow: AppTheme.paperShadow(h: 8.0),
                 ),
                 child: Text('📈', style: TextStyle(fontSize: 18.sp)),
               ),
@@ -354,7 +324,7 @@ class _BankPageState extends State<BankPage> {
             decoration: BoxDecoration(
               color: AppTheme.cream,
               borderRadius: BorderRadius.circular(16.r),
-              border: Border.all(color: AppTheme.ink, width: 2.0),
+              border: AppTheme.border(),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -478,7 +448,7 @@ class _BankPageState extends State<BankPage> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16.r),
-                  border: Border.all(color: AppTheme.ink, width: 2.0),
+                  border: AppTheme.border(),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -524,7 +494,7 @@ class _BankPageState extends State<BankPage> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16.r),
-                  border: Border.all(color: AppTheme.ink, width: 2.0),
+                  border: AppTheme.border(),
                 ),
                 child: Row(
                   children: [
@@ -586,7 +556,7 @@ class _BankPageState extends State<BankPage> {
                 decoration: BoxDecoration(
                   color: AppTheme.yellowSoft,
                   borderRadius: BorderRadius.circular(16.r),
-                  border: Border.all(color: AppTheme.ink, width: 2.0),
+                  border: AppTheme.border(),
                 ),
                 child: Column(
                   children: [
@@ -652,14 +622,8 @@ class _BankPageState extends State<BankPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(22.r),
-        border: Border.all(color: AppTheme.ink, width: 2.5),
-        boxShadow: const [
-          BoxShadow(
-            color: AppTheme.ink,
-            offset: Offset(5, 5),
-            blurRadius: 0,
-          ),
-        ],
+        border: AppTheme.border(),
+        boxShadow: AppTheme.paperShadow(h: 8.0),
       ),
       child: Column(
         children: [
@@ -683,7 +647,7 @@ class _BankPageState extends State<BankPage> {
                     decoration: BoxDecoration(
                       color: AppTheme.yellow,
                       borderRadius: BorderRadius.circular(10.r),
-                      border: Border.all(color: AppTheme.ink, width: 2.0),
+                      border: AppTheme.border(),
                     ),
                     child: Icon(
                       Icons.receipt_long_rounded,
@@ -707,7 +671,7 @@ class _BankPageState extends State<BankPage> {
                     decoration: BoxDecoration(
                       color: AppTheme.tealSoft,
                       shape: BoxShape.circle,
-                      border: Border.all(color: AppTheme.ink, width: 1.8),
+                      border: AppTheme.border(),
                     ),
                     child: Icon(
                       _isMoneyLogsExpanded
@@ -793,14 +757,8 @@ class _BankPageState extends State<BankPage> {
       decoration: BoxDecoration(
         color: AppTheme.cream,
         borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(color: AppTheme.ink, width: 2.0),
-        boxShadow: const [
-          BoxShadow(
-            color: AppTheme.ink,
-            offset: Offset(2.5, 2.5),
-            blurRadius: 0,
-          ),
-        ],
+        border: AppTheme.border(),
+        boxShadow: AppTheme.paperShadow(h: 8.0),
       ),
       child: Row(
         children: [
@@ -809,7 +767,7 @@ class _BankPageState extends State<BankPage> {
             decoration: BoxDecoration(
               color: isPiggy ? AppTheme.yellow : AppTheme.teal,
               borderRadius: BorderRadius.circular(8.r),
-              border: Border.all(color: AppTheme.ink, width: 1.6),
+              border: AppTheme.border(),
             ),
             child: Icon(
               isPiggy
@@ -848,7 +806,7 @@ class _BankPageState extends State<BankPage> {
             decoration: BoxDecoration(
               color: isPositive ? AppTheme.tealSoft : AppTheme.tomatoSoft,
               borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: AppTheme.ink, width: 1.5),
+              border: AppTheme.border(),
             ),
             child: Text(
               "${isPositive ? '+' : ''}${log.changeAmount.toStringAsFixed(2)}",

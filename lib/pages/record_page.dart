@@ -180,14 +180,8 @@ class _HeroBabyAvatar extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.yellow,
         shape: BoxShape.circle,
-        border: Border.all(color: AppTheme.ink, width: 2.5),
-        boxShadow: const [
-          BoxShadow(
-            color: AppTheme.ink,
-            offset: Offset(3, 3),
-            blurRadius: 0,
-          ),
-        ],
+        border: AppTheme.border(),
+        boxShadow: AppTheme.paperShadow(h: 8.0),
       ),
       child: Center(
         child: ClipOval(
@@ -655,15 +649,8 @@ class _RecordPageState extends State<RecordPage>
                               decoration: BoxDecoration(
                                 color: AppTheme.yellow,
                                 shape: BoxShape.circle,
-                                border: Border.all(
-                                    color: AppTheme.ink, width: 2.2),
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: AppTheme.ink,
-                                    offset: Offset(2.5, 2.5),
-                                    blurRadius: 0,
-                                  ),
-                                ],
+                                border: AppTheme.border(),
+                                boxShadow: AppTheme.paperShadow(h: 8.0),
                               ),
                               child: Icon(
                                 Icons.add_a_photo_rounded,
@@ -966,14 +953,8 @@ class _RecordPageState extends State<RecordPage>
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12.r),
-                    border: Border.all(color: AppTheme.ink, width: 2.0),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: AppTheme.ink,
-                        offset: Offset(2.5, 2.5),
-                        blurRadius: 0,
-                      ),
-                    ],
+                    border: AppTheme.border(),
+                    boxShadow: AppTheme.paperShadow(h: 8.0),
                   ),
                   child: Row(
                     children: [
@@ -1818,13 +1799,7 @@ class _RecordPageState extends State<RecordPage>
             color: isFocused ? AppTheme.tomato : AppTheme.ink,
             width: isFocused ? 3.0 : 2.2,
           ),
-          boxShadow: const [
-            BoxShadow(
-              color: AppTheme.ink,
-              offset: Offset(4, 4),
-              blurRadius: 0,
-            ),
-          ],
+          boxShadow: AppTheme.paperShadow(h: 8.0),
         ),
         child: Material(
           color: Colors.transparent,
@@ -2490,14 +2465,8 @@ class _RecordPageState extends State<RecordPage>
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(20.r),
-            border: Border.all(color: AppTheme.ink, width: 2.5),
-            boxShadow: const [
-              BoxShadow(
-                color: AppTheme.ink,
-                offset: Offset(5, 5),
-                blurRadius: 0,
-              ),
-            ],
+            border: AppTheme.border(),
+            boxShadow: AppTheme.paperShadow(h: 8.0),
           ),
           child: Row(
             children: [
@@ -2507,14 +2476,8 @@ class _RecordPageState extends State<RecordPage>
                 decoration: BoxDecoration(
                   color: color,
                   borderRadius: BorderRadius.circular(14.r),
-                  border: Border.all(color: AppTheme.ink, width: 2.2),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: AppTheme.ink,
-                      offset: Offset(3, 3),
-                      blurRadius: 0,
-                    ),
-                  ],
+                  border: AppTheme.border(),
+                  boxShadow: AppTheme.paperShadow(h: 8.0),
                 ),
                 child: Icon(icon, color: AppTheme.ink, size: 30.sp),
               ),

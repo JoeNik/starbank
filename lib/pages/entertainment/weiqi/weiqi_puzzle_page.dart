@@ -276,10 +276,8 @@ class _WeiqiPuzzlePageState extends State<WeiqiPuzzlePage> {
               decoration: BoxDecoration(
                 color: WqTheme.cream,
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: WqTheme.ink, width: 3.0),
-                boxShadow: const [
-                  BoxShadow(color: WqTheme.ink, offset: Offset(6, 6)),
-                ],
+                border: WqTheme.border(),
+                boxShadow: WqTheme.paperShadow(h: 8.0),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -319,13 +317,8 @@ class _WeiqiPuzzlePageState extends State<WeiqiPuzzlePage> {
                                   ? WqTheme.sun
                                   : (solved ? WqTheme.greenSoft : Colors.white),
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: WqTheme.ink, width: 2.0),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: WqTheme.ink,
-                                  offset: Offset(2, 2),
-                                ),
-                              ],
+                              border: WqTheme.border(),
+                              boxShadow: WqTheme.paperShadow(h: 8.0),
                             ),
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -394,10 +387,8 @@ class _WeiqiPuzzlePageState extends State<WeiqiPuzzlePage> {
               decoration: BoxDecoration(
                 color: WqTheme.cream,
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: WqTheme.ink, width: 3.0),
-                boxShadow: const [
-                  BoxShadow(color: WqTheme.ink, offset: Offset(6, 6)),
-                ],
+                border: WqTheme.border(),
+                boxShadow: WqTheme.paperShadow(h: 8.0),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -446,11 +437,8 @@ class _WeiqiPuzzlePageState extends State<WeiqiPuzzlePage> {
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(14),
                                 border:
-                                    Border.all(color: WqTheme.ink, width: 2.0),
-                                boxShadow: const [
-                                  BoxShadow(
-                                      color: WqTheme.ink, offset: Offset(3, 3)),
-                                ],
+                                    WqTheme.border(),
+                                boxShadow: WqTheme.paperShadow(h: 8.0),
                               ),
                               child: Row(
                                 children: [
@@ -460,8 +448,7 @@ class _WeiqiPuzzlePageState extends State<WeiqiPuzzlePage> {
                                     decoration: BoxDecoration(
                                       color: WqTheme.sun,
                                       shape: BoxShape.circle,
-                                      border: Border.all(
-                                          color: WqTheme.ink, width: 1.5),
+                                      border: WqTheme.border(),
                                     ),
                                     alignment: Alignment.center,
                                     child: Text(
@@ -591,14 +578,9 @@ class _WeiqiPuzzlePageState extends State<WeiqiPuzzlePage> {
                           decoration: BoxDecoration(
                             color: on ? WqTheme.pink : Colors.white,
                             borderRadius: BorderRadius.circular(999),
-                            border: Border.all(color: WqTheme.ink, width: 1.8),
+                            border: WqTheme.border(),
                             boxShadow: on
-                                ? const [
-                                    BoxShadow(
-                                      color: WqTheme.ink,
-                                      offset: Offset(2, 2),
-                                    ),
-                                  ]
+                                ? WqTheme.paperShadow(h: 8.0)
                                 : const [],
                           ),
                           child: Text(
@@ -617,89 +599,104 @@ class _WeiqiPuzzlePageState extends State<WeiqiPuzzlePage> {
               ),
             ),
 
-            // 棋棋读题卡片（Flexible：矮屏下自动让位给棋盘，永不溢出）
+            // 棋棋读题卡片（恒定高度槽位：无论未解/已解/长短提示语，高度 100% 锁定，棋盘不跳动）
             Flexible(
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: 14.w),
-                child: WqCard(
-                  padding: EdgeInsets.all(8.w),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      WqPanda(
-                        mood: _solved ? WqPandaMood.cheer : WqPandaMood.happy,
-                        size: 38,
-                      ),
-                      SizedBox(width: 8.w),
-                      Expanded(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
+                child: LayoutBuilder(builder: (context, constraints) {
+                  final cardH = constraints.hasBoundedHeight
+                      ? (constraints.maxHeight < 76.0
+                          ? constraints.maxHeight
+                          : 76.0)
+                      : 76.0;
+                  return SizedBox(
+                    height: cardH,
+                    child: WqCard(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          WqPanda(
+                            mood: _solved
+                                ? WqPandaMood.cheer
+                                : WqPandaMood.happy,
+                            size: 38,
+                          ),
+                          SizedBox(width: 8.w),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  _solved ? '棋棋恭喜' : '棋棋读题',
-                                  style: TextStyle(
-                                    fontSize: 11.sp,
-                                    fontWeight: FontWeight.w900,
-                                    color: WqTheme.greenDeep,
-                                  ),
-                                ),
-                                SizedBox(width: 6.w),
-                                WqChip(text: pz.tag),
-                              ],
-                            ),
-                            SizedBox(height: 2.h),
-                            Flexible(
-                              child: Text(
-                                _solved
-                                    ? pz.okText
-                                    : (_customBubble.isNotEmpty
-                                        ? _customBubble
-                                        : pz.voice),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 12.sp,
-                                  fontWeight: FontWeight.w800,
-                                  height: 1.38,
-                                  color: WqTheme.ink,
-                                ),
-                              ),
-                            ),
-                            if (!_solved) ...[
-                              SizedBox(height: 2.h),
-                              GestureDetector(
-                                onTap: () => _svc.speak(
-                                  _customBubble.isNotEmpty
-                                      ? _customBubble
-                                      : pz.voice,
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
+                                Row(
                                   children: [
-                                    const Icon(Icons.volume_up_rounded,
-                                        size: 14, color: WqTheme.ink),
-                                    SizedBox(width: 4.w),
                                     Text(
-                                      '再听一遍',
+                                      _solved ? '棋棋恭喜' : '棋棋读题',
                                       style: TextStyle(
-                                        fontSize: 10.5.sp,
+                                        fontSize: 11.sp,
                                         fontWeight: FontWeight.w900,
-                                        color: WqTheme.ink,
+                                        color: WqTheme.greenDeep,
+                                      ),
+                                    ),
+                                    SizedBox(width: 6.w),
+                                    WqChip(text: pz.tag),
+                                    const Spacer(),
+                                    GestureDetector(
+                                      onTap: () => _svc.speak(
+                                        _solved
+                                            ? pz.okText
+                                            : (_customBubble.isNotEmpty
+                                                ? _customBubble
+                                                : pz.voice),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.volume_up_rounded,
+                                              size: 13, color: WqTheme.ink),
+                                          SizedBox(width: 3.w),
+                                          Text(
+                                            '再听一遍',
+                                            style: TextStyle(
+                                              fontSize: 10.sp,
+                                              fontWeight: FontWeight.w900,
+                                              color: WqTheme.ink,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ],
                                 ),
-                              ),
-                            ],
-                          ],
-                        ),
+                                SizedBox(height: 2.h),
+                                Expanded(
+                                  child: Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(
+                                      _solved
+                                          ? pz.okText
+                                          : (_customBubble.isNotEmpty
+                                              ? _customBubble
+                                              : pz.voice),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 12.sp,
+                                        fontWeight: FontWeight.w800,
+                                        height: 1.32,
+                                        color: WqTheme.ink,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
+                    ),
+                  );
+                }),
               ),
             ),
             SizedBox(height: 4.h),
@@ -725,46 +722,49 @@ class _WeiqiPuzzlePageState extends State<WeiqiPuzzlePage> {
               ),
             ),
 
-            // 操作 + 藏宝箱
+            // 操作按钮行（恒定高度 42.h，切换未解/已解时棋盘不跳动）
             Padding(
               padding: EdgeInsets.fromLTRB(14.w, 4.h, 14.w, 4.h),
-              child: Row(
-                children: [
-                  if (_solved)
-                    Expanded(
-                      child: WqPrimaryButton(
-                        text: _n < wqPuzzles.length - 1 ? '下一题 ›' : '完成闯关 ✦',
-                        height: 44.h,
-                        fontSize: 15.sp,
-                        color: WqTheme.sun,
-                        onTap: _next,
+              child: SizedBox(
+                height: 42.h,
+                child: Row(
+                  children: [
+                    if (_solved)
+                      Expanded(
+                        child: WqPrimaryButton(
+                          text: _n < wqPuzzles.length - 1 ? '下一题 ›' : '完成闯关 ✦',
+                          height: 42.h,
+                          fontSize: 15.sp,
+                          color: WqTheme.sun,
+                          onTap: _next,
+                        ),
+                      )
+                    else ...[
+                      Expanded(
+                        child: WqGhostButton(
+                          text:
+                              '💡 问棋棋（${3 - _hints > 0 ? 3 - _hints : 0} 层提示）',
+                          height: 42.h,
+                          fontSize: 13.sp,
+                          onTap: _useHint,
+                        ),
                       ),
-                    )
-                  else ...[
-                    Expanded(
-                      child: WqGhostButton(
-                        text:
-                            '💡 问棋棋（${3 - _hints > 0 ? 3 - _hints : 0} 层提示）',
-                        height: 42.h,
-                        fontSize: 13.sp,
-                        onTap: _useHint,
+                      SizedBox(width: 8.w),
+                      WqIconButton(
+                        icon: Icons.skip_next_rounded,
+                        size: 42,
+                        bgColor: WqTheme.sunSoft,
+                        onTap: _skip,
                       ),
-                    ),
-                    SizedBox(width: 8.w),
-                    WqIconButton(
-                      icon: Icons.skip_next_rounded,
-                      size: 42,
-                      bgColor: WqTheme.sunSoft,
-                      onTap: _skip,
-                    ),
-                    SizedBox(width: 8.w),
-                    WqIconButton(
-                      icon: Icons.replay_rounded,
-                      size: 42,
-                      onTap: () => _loadPuzzle(_n, speak: false),
-                    ),
+                      SizedBox(width: 8.w),
+                      WqIconButton(
+                        icon: Icons.replay_rounded,
+                        size: 42,
+                        onTap: () => _loadPuzzle(_n, speak: false),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
             Padding(
@@ -782,7 +782,7 @@ class _WeiqiPuzzlePageState extends State<WeiqiPuzzlePage> {
                         decoration: BoxDecoration(
                           color: WqTheme.sun,
                           borderRadius: BorderRadius.circular(10.r),
-                          border: Border.all(color: WqTheme.ink, width: 1.8),
+                          border: WqTheme.border(),
                         ),
                         child: const Center(
                           child: Text('🎁', style: TextStyle(fontSize: 17)),

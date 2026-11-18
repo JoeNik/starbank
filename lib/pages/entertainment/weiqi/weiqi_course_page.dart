@@ -247,14 +247,8 @@ class _WeiqiCoursePageState extends State<WeiqiCoursePage> {
               decoration: BoxDecoration(
                 color: WqTheme.cream,
                 borderRadius: BorderRadius.circular(28),
-                border: Border.all(color: WqTheme.ink, width: 3.0),
-                boxShadow: const [
-                  BoxShadow(
-                    color: WqTheme.ink,
-                    offset: Offset(6, 6),
-                    blurRadius: 0,
-                  ),
-                ],
+                border: WqTheme.border(),
+                boxShadow: WqTheme.paperShadow(h: 8.0),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -434,7 +428,7 @@ class _WeiqiCoursePageState extends State<WeiqiCoursePage> {
                                   ? WqTheme.green
                                   : Colors.white,
                           borderRadius: BorderRadius.circular(6.r),
-                          border: Border.all(color: WqTheme.ink, width: 1.5),
+                          border: WqTheme.border(),
                         ),
                       ),
                     ),
@@ -442,7 +436,7 @@ class _WeiqiCoursePageState extends State<WeiqiCoursePage> {
                 }),
               ),
             ),
-            // 棋棋的话（Flexible：小屏自动压缩，永不溢出）
+            // 棋棋的话（恒定高度槽位：无论提示语从长变短或从短变长，棋盘位置与尺寸 100% 锁定不跳动）
             Flexible(
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16.w),
@@ -450,7 +444,8 @@ class _WeiqiCoursePageState extends State<WeiqiCoursePage> {
                   text: _extraBubble.isEmpty ? st.bubble : _extraBubble,
                   speaking: true,
                   mood: _quizDone ? WqPandaMood.cheer : WqPandaMood.happy,
-                  maxLines: 4,
+                  maxLines: 3,
+                  fixedHeight: 86.0,
                   tail: true,
                   onReplay: () {
                     WqSfx.pop();

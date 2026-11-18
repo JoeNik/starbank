@@ -48,10 +48,8 @@ class WeiqiGlossaryPage extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: bg,
                       shape: BoxShape.circle,
-                      border: Border.all(color: WqTheme.ink, width: 2.2),
-                      boxShadow: const [
-                        BoxShadow(color: WqTheme.ink, offset: Offset(2.5, 2.5)),
-                      ],
+                      border: WqTheme.border(),
+                      boxShadow: WqTheme.paperShadow(h: 8.0),
                     ),
                     child: Text(
                       e.glyph,

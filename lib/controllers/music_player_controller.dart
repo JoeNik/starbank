@@ -39,6 +39,9 @@ class MusicPlayerController extends GetxController {
   final RxList<MusicTrack> playlist = <MusicTrack>[].obs;
   final RxList<MusicTrack> favorites = <MusicTrack>[].obs;
   final RxList<MusicTrack> history = <MusicTrack>[].obs;
+
+  /// 用户自定义收藏歌单列表（支持多个歌单分类收藏）
+  final RxList<Playlist> customPlaylists = <Playlist>[].obs;
   final RxInt currentIndex = 0.obs;
   final RxBool isPlaying = false.obs;
   // isInitialized effectively reflects if the Service has a player, which is always true now
@@ -76,6 +79,7 @@ class MusicPlayerController extends GetxController {
     _cacheService = Get.find<MusicCacheService>();
     _loadFavorites();
     _loadHistory();
+    _loadCustomPlaylists();
     _restoreQueue();
     _restorePlayMode();
     unawaited(_musicService.ensureNotificationPermission());
@@ -148,25 +152,192 @@ class MusicPlayerController extends GetxController {
     }
   }
 
-  /// 家庭同步写回歌单盒后刷新收藏与播放历史。
+  /// 家庭同步写回歌单盒后刷新收藏、自定义歌单与播放历史。
   void reloadLibraryFromStorage() {
     favorites.clear();
     history.clear();
+    customPlaylists.clear();
     _loadFavorites();
     _loadHistory();
+    _loadCustomPlaylists();
+  }
+
+  // ==================== 多歌单收藏管理系统 ====================
+
+  static const String _seededPlaylistsFlagKey = 'custom_playlists_seeded_v1';
+
+  void _loadCustomPlaylists() {
+    final loaded = <Playlist>[];
+    for (final key in _storage.playlistBox.keys) {
+      final k = key.toString();
+      if (k == 'favorites' || k == 'history') continue;
+      final pl = _storage.playlistBox.get(key);
+      if (pl != null) {
+        loaded.add(pl);
+      }
+    }
+    if (loaded.isEmpty &&
+        _storage.getValue(_seededPlaylistsFlagKey) != 'true') {
+      final now = DateTime.now();
+      final defaults = [
+        Playlist(
+          id: 'pl_bedtime',
+          name: '🌙 睡前哄睡轻音乐',
+          tracks: [],
+          createdAt: now,
+        ),
+        Playlist(
+          id: 'pl_sing',
+          name: '🕺 快乐唱跳儿歌',
+          tracks: [],
+          createdAt: now.add(const Duration(milliseconds: 10)),
+        ),
+        Playlist(
+          id: 'pl_story',
+          name: '📖 故事与古诗磨耳朵',
+          tracks: [],
+          createdAt: now.add(const Duration(milliseconds: 20)),
+        ),
+      ];
+      for (final pl in defaults) {
+        _storage.playlistBox.put(pl.id, pl);
+        loaded.add(pl);
+      }
+      _storage.saveValue(_seededPlaylistsFlagKey, 'true');
+    }
+    loaded.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    customPlaylists.assignAll(loaded);
+  }
+
+  /// 新建自定义歌单
+  Playlist createCustomPlaylist(String name) {
+    final trimmed = name.trim();
+    final id = 'pl_${DateTime.now().millisecondsSinceEpoch}';
+    final pl = Playlist(
+      id: id,
+      name: trimmed.isEmpty ? '新歌单 ${customPlaylists.length + 1}' : trimmed,
+      tracks: [],
+      createdAt: DateTime.now(),
+    );
+    _storage.playlistBox.put(pl.id, pl);
+    customPlaylists.add(pl);
+    customPlaylists.refresh();
+    return pl;
+  }
+
+  /// 重命名自定义歌单
+  void renameCustomPlaylist(String playlistId, String newName) {
+    final trimmed = newName.trim();
+    if (trimmed.isEmpty) return;
+    final idx = customPlaylists.indexWhere((p) => p.id == playlistId);
+    if (idx < 0) return;
+    final pl = customPlaylists[idx];
+    final updated = Playlist(
+      id: pl.id,
+      name: trimmed,
+      coverUrl: pl.coverUrl,
+      tracks: List<MusicTrack>.from(pl.tracks),
+      createdAt: pl.createdAt,
+    );
+    _storage.playlistBox.put(updated.id, updated);
+    customPlaylists[idx] = updated;
+    customPlaylists.refresh();
+  }
+
+  /// 删除自定义歌单
+  void deleteCustomPlaylist(String playlistId) {
+    _storage.playlistBox.delete(playlistId);
+    customPlaylists.removeWhere((p) => p.id == playlistId);
+    customPlaylists.refresh();
+  }
+
+  /// 检查歌曲是否已在指定自定义歌单中
+  bool isTrackInPlaylist(String playlistId, MusicTrack track) {
+    final idx = customPlaylists.indexWhere((p) => p.id == playlistId);
+    if (idx < 0) return false;
+    return customPlaylists[idx]
+        .tracks
+        .any((t) => t.id == track.id && t.platform == track.platform);
+  }
+
+  /// 检查歌曲是否已被收藏在「我的收藏」或任意自定义歌单中
+  int countPlaylistsContaining(MusicTrack track) {
+    var count = isFavorite(track) ? 1 : 0;
+    for (final pl in customPlaylists) {
+      if (pl.tracks
+          .any((t) => t.id == track.id && t.platform == track.platform)) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  /// 将歌曲加入或移出指定自定义歌单，返回操作后是否在歌单内
+  bool toggleTrackInPlaylist(String playlistId, MusicTrack track) {
+    final idx = customPlaylists.indexWhere((p) => p.id == playlistId);
+    if (idx < 0) return false;
+    final pl = customPlaylists[idx];
+    final tracks = List<MusicTrack>.from(pl.tracks);
+    final existIdx = tracks
+        .indexWhere((t) => t.id == track.id && t.platform == track.platform);
+    final bool added;
+    if (existIdx >= 0) {
+      tracks.removeAt(existIdx);
+      added = false;
+    } else {
+      tracks.insert(0, track);
+      added = true;
+    }
+    final cover = tracks.firstWhereOrNull(
+            (t) => t.coverUrl != null && t.coverUrl!.isNotEmpty)?.coverUrl ??
+        pl.coverUrl;
+    final updated = Playlist(
+      id: pl.id,
+      name: pl.name,
+      coverUrl: cover,
+      tracks: tracks,
+      createdAt: pl.createdAt,
+    );
+    _storage.playlistBox.put(updated.id, updated);
+    customPlaylists[idx] = updated;
+    customPlaylists.refresh();
+    return added;
+  }
+
+  /// 从自定义歌单移除指定索引的歌曲
+  void removeTrackFromCustomPlaylist(String playlistId, int trackIndex) {
+    final idx = customPlaylists.indexWhere((p) => p.id == playlistId);
+    if (idx < 0) return;
+    final pl = customPlaylists[idx];
+    if (trackIndex < 0 || trackIndex >= pl.tracks.length) return;
+    final tracks = List<MusicTrack>.from(pl.tracks)..removeAt(trackIndex);
+    final cover = tracks.firstWhereOrNull(
+            (t) => t.coverUrl != null && t.coverUrl!.isNotEmpty)?.coverUrl;
+    final updated = Playlist(
+      id: pl.id,
+      name: pl.name,
+      coverUrl: cover,
+      tracks: tracks,
+      createdAt: pl.createdAt,
+    );
+    _storage.playlistBox.put(updated.id, updated);
+    customPlaylists[idx] = updated;
+    customPlaylists.refresh();
   }
 
   void toggleFavorite(MusicTrack track) {
     if (isFavorite(track)) {
-      favorites.removeWhere((element) => element.id == track.id);
+      favorites.removeWhere(
+          (element) => element.id == track.id && element.platform == track.platform);
     } else {
-      favorites.add(track);
+      favorites.insert(0, track);
     }
     _saveFavorites();
   }
 
   bool isFavorite(MusicTrack track) {
-    return favorites.any((element) => element.id == track.id);
+    return favorites.any(
+        (element) => element.id == track.id && element.platform == track.platform);
   }
 
   void _saveFavorites() {
@@ -198,6 +369,18 @@ class MusicPlayerController extends GetxController {
     if (history.length > 50) {
       history.removeLast();
     }
+    _saveHistory();
+  }
+
+  /// 从播放记录中删除单条记录
+  void removeFromHistory(MusicTrack track) {
+    history.removeWhere((t) => t.id == track.id && t.platform == track.platform);
+    _saveHistory();
+  }
+
+  /// 一键清空播放记录
+  void clearHistory() {
+    history.clear();
     _saveHistory();
   }
 
@@ -240,21 +423,103 @@ class MusicPlayerController extends GetxController {
     return _tuneHubService.parseTrack(track.platform, track.id);
   }
 
-  /// 异步补拉歌词(ChKSz 的歌词为独立接口),成功后刷新歌词视图
+  /// 异步多路兜底补拉歌词（ChKSz → 网易官方公开接口 → TuneHub），成功后刷新歌词视图并持久化到曲目对象
   Future<void> _fetchLyricsAsync(MusicTrack track, int taskId) async {
-    try {
-      final source = _sourceRegistry?.byId('chksz');
-      if (source is! ChkSzMusicService) return;
-      final lrc = await source.fetchLyric(track.id);
-      if (lrc['lrc'] == null || lrc['lrc']!.isEmpty) return;
-      // 已被新的切歌任务取代时丢弃
-      if (taskId != _currentPlayTaskId) return;
-      track.lyricContent = lrc['lrc'];
-      _parseLyrics(track.lyricContent, translation: lrc['tlyric']);
-      debugPrint('🎤 [PlayTrack #$taskId] 歌词补拉成功 (${lyrics.length} 行)');
-    } catch (e) {
-      debugPrint('⚠️ [PlayTrack #$taskId] 歌词补拉失败: $e');
+    String? lrcText;
+    String? tlyricText;
+
+    // 1. 优先尝试 ChKSz 独立歌词接口
+    if (track.platform == 'netease') {
+      try {
+        final source = _sourceRegistry?.byId('chksz');
+        if (source is ChkSzMusicService) {
+          final lrc = await source.fetchLyric(track.id);
+          if (lrc['lrc'] != null && lrc['lrc']!.trim().isNotEmpty) {
+            lrcText = lrc['lrc'];
+            tlyricText = lrc['tlyric'];
+          }
+        }
+      } catch (e) {
+        debugPrint('⚠️ [Lyric #$taskId] ChKSz 歌词拉取异常: $e');
+      }
     }
+
+    // 2. 若未拿到且为网易云曲目，走网易云公开免 Key 歌词接口直拉
+    if ((lrcText == null || lrcText.trim().isEmpty) &&
+        track.platform == 'netease') {
+      try {
+        final uri = Uri.parse(
+            'https://music.163.com/api/song/lyric?id=${track.id}&lv=1&kv=1&tv=-1');
+        final resp = await http.get(
+          uri,
+          headers: _getHeaders(track),
+        ).timeout(const Duration(seconds: 6));
+        if (resp.statusCode == 200) {
+          final data = jsonDecode(utf8.decode(resp.bodyBytes));
+          if (data is Map) {
+            final lrcObj = data['lrc'];
+            final tlyricObj = data['tlyric'];
+            if (lrcObj is Map && lrcObj['lyric'] != null) {
+              lrcText = lrcObj['lyric'].toString();
+            }
+            if (tlyricObj is Map && tlyricObj['lyric'] != null) {
+              tlyricText = tlyricObj['lyric'].toString();
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('⚠️ [Lyric #$taskId] 网易公开接口拉取异常: $e');
+      }
+    }
+
+    // 3. 第三路兜底：尝试 TuneHub 解析结果中的 lyrics 字段
+    if (lrcText == null || lrcText.trim().isEmpty) {
+      try {
+        final res = await _tuneHubService.parseTrack(track.platform, track.id);
+        final raw = res['lyrics']?.toString() ?? '';
+        if (raw.trim().isNotEmpty) {
+          lrcText = raw;
+        }
+      } catch (_) {}
+    }
+
+    if (lrcText == null || lrcText.trim().isEmpty) return;
+    if (taskId != _currentPlayTaskId) return;
+
+    track.lyricContent = lrcText;
+    _parseLyrics(lrcText, translation: tlyricText);
+    _persistTrackLyricToLibraries(track, lrcText);
+    debugPrint('🎤 [PlayTrack #$taskId] 歌词补拉成功 (${lyrics.length} 行)');
+  }
+
+  /// 将拉取到的歌词回写到队列、收藏、历史与自定义歌单，保证下次缓存播放 0 延迟直接展示歌词
+  void _persistTrackLyricToLibraries(MusicTrack track, String lrcText) {
+    var queueChanged = false;
+    for (final t in playlist) {
+      if (t.id == track.id && t.platform == track.platform) {
+        t.lyricContent = lrcText;
+        queueChanged = true;
+      }
+    }
+    if (queueChanged) _persistQueue();
+
+    var favChanged = false;
+    for (final t in favorites) {
+      if (t.id == track.id && t.platform == track.platform) {
+        t.lyricContent = lrcText;
+        favChanged = true;
+      }
+    }
+    if (favChanged) _saveFavorites();
+
+    var histChanged = false;
+    for (final t in history) {
+      if (t.id == track.id && t.platform == track.platform) {
+        t.lyricContent = lrcText;
+        histChanged = true;
+      }
+    }
+    if (histChanged) _saveHistory();
   }
 
   String _brToLabel(dynamic br) {
@@ -331,14 +596,7 @@ class MusicPlayerController extends GetxController {
     // 2. 监听进度（仅用于同步歌词）
     audioPlayer!.positionStream.listen((p) {
       position.value = p;
-
-      // 更新歌词
-      if (lyrics.isNotEmpty) {
-        final index = lyrics.lastIndexWhere((l) => l.startTime <= p);
-        if (index != -1 && index != currentLyricIndex.value) {
-          currentLyricIndex.value = index;
-        }
-      }
+      _syncLyricIndexWithPosition(p);
     });
 
     // 3. 监听时长变化
@@ -381,6 +639,9 @@ class MusicPlayerController extends GetxController {
     // 重置音质标签(缓存播放时无解析响应)
     currentAudioQuality.value = '';
 
+    // 切歌瞬间先解析已有歌词（若曾缓存过歌词，本地播放也能立即显示）
+    _parseLyrics(track.lyricContent);
+
     // 1. 预处理：获取播放链接
     String? playUrl;
     bool fromCache = false;
@@ -406,6 +667,10 @@ class MusicPlayerController extends GetxController {
           debugPrint('✅ [PlayTrack #$taskId] 从缓存播放');
           playUrl = 'file://$cachedPath';
           fromCache = true;
+          // 修复缓存播放无歌词 Bug：命中音频缓存但曲目尚无歌词时，立即后台异步补拉歌词！
+          if (lyrics.isEmpty) {
+            unawaited(_fetchLyricsAsync(track, taskId));
+          }
         } else {
           debugPrint('⚠️ [PlayTrack #$taskId] 缓存解密失败,将使用在线链接');
         }
@@ -428,17 +693,21 @@ class MusicPlayerController extends GetxController {
 
           // 更新歌曲附加信息
           if (res['cover'] != null) track.coverUrl = res['cover'];
-          if (res['lyrics'] != null) track.lyricContent = res['lyrics'];
+          if (res['lyrics'] != null &&
+              res['lyrics'].toString().trim().isNotEmpty) {
+            track.lyricContent = res['lyrics'].toString();
+          }
           _parseLyrics(track.lyricContent);
 
           // 记录实际命中的音质档位
           final level = res['level']?.toString() ?? '';
-          currentAudioQuality.value = level.isNotEmpty ? level : _brToLabel(res['br']);
-          debugPrint('🌐 [PlayTrack #$taskId] 在线链接解析成功 (音质: ${currentAudioQuality.value})');
+          currentAudioQuality.value =
+              level.isNotEmpty ? level : _brToLabel(res['br']);
+          debugPrint(
+              '🌐 [PlayTrack #$taskId] 在线链接解析成功 (音质: ${currentAudioQuality.value})');
 
-          // ChKSz 的歌词是独立接口,异步补拉,不阻塞播放
-          if ((track.lyricContent == null || track.lyricContent!.isEmpty) &&
-              track.platform == 'netease') {
+          // 若解析响应中不含歌词，异步多路补拉歌词，不阻塞播放
+          if (lyrics.isEmpty) {
             unawaited(_fetchLyricsAsync(track, taskId));
           }
         }
@@ -597,6 +866,8 @@ class MusicPlayerController extends GetxController {
       final idx =
           int.tryParse(_storage.getValue(_queueIndexKey) ?? '0') ?? 0;
       currentIndex.value = idx.clamp(0, restored.length - 1);
+      final current = restored[currentIndex.value];
+      _parseLyrics(current.lyricContent);
       debugPrint('✅ [Queue] 已恢复播放队列 ${restored.length} 首');
     } catch (e) {
       debugPrint('⚠️ [Queue] 播放队列恢复失败: $e');
@@ -742,7 +1013,22 @@ class MusicPlayerController extends GetxController {
   }
 
   void seek(Duration pos) {
+    position.value = pos;
+    _syncLyricIndexWithPosition(pos);
     _musicService.seek(pos);
+  }
+
+  /// 根据播放进度立即同步歌词高亮索引
+  void _syncLyricIndexWithPosition(Duration p) {
+    if (lyrics.isEmpty) {
+      if (currentLyricIndex.value != 0) currentLyricIndex.value = 0;
+      return;
+    }
+    final index = lyrics.lastIndexWhere((l) => l.startTime <= p);
+    final resolved = index == -1 ? 0 : index;
+    if (resolved != currentLyricIndex.value) {
+      currentLyricIndex.value = resolved;
+    }
   }
 
   // === 歌曲下载:保存到公共下载目录 Download/starBank/music ===
@@ -847,28 +1133,41 @@ class MusicPlayerController extends GetxController {
   void _parseLyrics(String? content, {String? translation}) {
     lyrics.clear();
     currentLyricIndex.value = 0;
-    if (content == null || content.isEmpty) return;
+    if (content == null || content.trim().isEmpty) return;
 
-    // 兼容 [mm:ss.SS] / [mm:ss.SSS],支持一行多个时间标签
-    final tagRegExp = RegExp(r'\[(\d{1,2}):(\d{2})[.:](\d{2,3})\]');
+    // 兼容 [mm:ss.SS] / [mm:ss.SSS] / [mm:ss:SS] 以及无毫秒的 [mm:ss]，支持一行多个时间标签
+    final tagRegExp = RegExp(r'\[(\d{1,3}):(\d{1,2})(?:[.:](\d{1,3}))?\]');
+    // 跳过如 [ti:...] [ar:...] [al:...] [by:...] [offset:...] 等非歌词元数据标签
+    final metaRegExp = RegExp(r'^\[[a-zA-Z]+:.*\]$');
 
     List<LyricLine> parse(String text) {
       final result = <LyricLine>[];
-      for (final line in text.split('\n')) {
+      final plainLines = <String>[];
+      for (final rawLine in text.replaceAll('\r\n', '\n').split('\n')) {
+        final line = rawLine.trim();
+        if (line.isEmpty || metaRegExp.hasMatch(line)) continue;
         final matches = tagRegExp.allMatches(line).toList();
-        if (matches.isEmpty) continue;
+        if (matches.isEmpty) {
+          if (!line.startsWith('[')) plainLines.add(line);
+          continue;
+        }
         final body = line.replaceAll(tagRegExp, '').trim();
         if (body.isEmpty) continue;
         for (final m in matches) {
-          final min = int.parse(m.group(1)!);
-          final sec = int.parse(m.group(2)!);
-          final msStr = m.group(3)!;
-          // 百分秒 → 毫秒:.12 -> 120
-          final ms = int.parse(msStr.padRight(3, '0'));
+          final min = int.tryParse(m.group(1)!) ?? 0;
+          final sec = int.tryParse(m.group(2)!) ?? 0;
+          final msStr = m.group(3) ?? '0';
+          final ms = int.tryParse(msStr.padRight(3, '0').substring(0, 3)) ?? 0;
           result.add(LyricLine(
             Duration(minutes: min, seconds: sec, milliseconds: ms),
             body,
           ));
+        }
+      }
+      if (result.isEmpty && plainLines.isNotEmpty) {
+        // 兜底：若返回的是纯文本无时间戳歌词，按每行 4 秒生成时间轴
+        for (var i = 0; i < plainLines.length; i++) {
+          result.add(LyricLine(Duration(seconds: i * 4), plainLines[i]));
         }
       }
       result.sort((a, b) => a.startTime.compareTo(b.startTime));
@@ -896,7 +1195,8 @@ class MusicPlayerController extends GetxController {
       }
     }
 
-    lyrics.addAll(parsed);
+    lyrics.assignAll(parsed);
+    _syncLyricIndexWithPosition(position.value);
   }
 
   @override

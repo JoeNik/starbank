@@ -6,6 +6,7 @@ import '../../../controllers/app_mode_controller.dart';
 import '../../../services/chksz_music_service.dart';
 import '../../../models/music/music_track.dart';
 import '../../../theme/app_theme.dart';
+import '../../../widgets/memphis_widgets.dart';
 import '../../../widgets/toast_utils.dart';
 import '../../../widgets/music_cover_image.dart';
 import 'music_player_page.dart';
@@ -181,79 +182,108 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
   Widget _buildContent() {
     return Column(
       children: [
-        // 歌单头部
+        // 歌单头部（中世纪现代剪纸封套卡 + Q 弹播放全部按钮）
         Padding(
           padding: EdgeInsets.all(16.w),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(14.r),
-                child: Container(
-                  width: 96.w,
-                  height: 96.w,
-                  color: AppTheme.primary.withOpacity(0.12),
-                  child: (_cover != null && _cover!.isNotEmpty)
-                      ? Image.network(
-                          _cover!,
-                          fit: BoxFit.cover,
-                          headers: coverHeadersFor(_cover),
-                          errorBuilder: (ctx, err, st) => Icon(
-                              Icons.queue_music_rounded,
-                              color: AppTheme.primary,
-                              size: 36.sp),
-                        )
-                      : Icon(Icons.queue_music_rounded,
-                          color: AppTheme.primary, size: 36.sp),
-                ),
-              ),
-              SizedBox(width: 14.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(_name,
-                        style: TextStyle(
-                            fontSize: 19.sp, fontWeight: FontWeight.w800),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis),
-                    SizedBox(height: 6.h),
-                    Text('共 ${_tracks.length} 首 · 来自网易云音乐',
-                        style: TextStyle(
-                            fontSize: 12.sp, color: Colors.black45)),
-                    SizedBox(height: 12.h),
-                    ElevatedButton.icon(
-                      onPressed: _playAll,
-                      icon: const Icon(Icons.play_circle_fill, size: 20),
-                      label: const Text('播放全部'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primary,
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 16.w, vertical: 8.h),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20.r)),
+          child: MemphisCard(
+            color: AppTheme.paperWhite,
+            borderRadius: 22.r,
+            shadowOffset: 5.0,
+            padding: EdgeInsets.all(14.w),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Transform.rotate(
+                  angle: -0.025,
+                  child: Container(
+                    padding: EdgeInsets.all(5.w),
+                    decoration: BoxDecoration(
+                      color: AppTheme.cream,
+                      borderRadius: BorderRadius.circular(16.r),
+                      border: AppTheme.border(),
+                      boxShadow: AppTheme.paperShadow(h: 7.0),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12.r),
+                      child: Container(
+                        width: 88.w,
+                        height: 88.w,
+                        color: AppTheme.tealSoft,
+                        child: (_cover != null && _cover!.isNotEmpty)
+                            ? Image.network(
+                                _cover!,
+                                fit: BoxFit.cover,
+                                headers: coverHeadersFor(_cover),
+                                errorBuilder: (ctx, err, st) => Icon(
+                                    Icons.queue_music_rounded,
+                                    color: AppTheme.tomato,
+                                    size: 36.sp),
+                              )
+                            : Icon(Icons.queue_music_rounded,
+                                color: AppTheme.tomato, size: 36.sp),
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ],
+                SizedBox(width: 14.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _name,
+                        style: TextStyle(
+                          fontSize: 18.sp,
+                          fontWeight: FontWeight.w900,
+                          color: AppTheme.ink,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      SizedBox(height: 5.h),
+                      Text(
+                        '共 ${_tracks.length} 首 · 网易云精选电台',
+                        style: TextStyle(
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.textSub,
+                        ),
+                      ),
+                      SizedBox(height: 10.h),
+                      MemphisButton(
+                        text: '播放全部',
+                        leading: Icon(Icons.play_circle_fill_rounded,
+                            size: 18.sp, color: AppTheme.paperWhite),
+                        color: AppTheme.tomato,
+                        textColor: AppTheme.paperWhite,
+                        borderRadius: 999,
+                        fontSize: 13.5.sp,
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 16.w, vertical: 8.h),
+                        onTap: _playAll,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
         Expanded(
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius:
-                  BorderRadius.vertical(top: Radius.circular(20.r)),
+              color: AppTheme.paperWhite,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+              border: AppTheme.border(),
+              boxShadow: AppTheme.paperShadow(h: 8.0),
             ),
             child: ListView.builder(
+              physics: const BouncingScrollPhysics(),
               padding: EdgeInsets.symmetric(vertical: 8.h),
               itemCount: _tracks.length,
               itemBuilder: (context, index) {
                 final track = _tracks[index];
-                return _buildTrackTile(track);
+                return _buildTrackTile(track, index);
               },
             ),
           ),
@@ -262,42 +292,47 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
     );
   }
 
-  Widget _buildTrackTile(MusicTrack track) {
-    return InkWell(
+  Widget _buildTrackTile(MusicTrack track, int index) {
+    return BouncyTap(
+      pressedScale: 0.97,
       onTap: () {
         _controller.playWithList(_tracks, track);
         Get.to(() => const MusicPlayerPage());
       },
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 7.h),
         child: Row(
           children: [
             SizedBox(
-              width: 24.w,
-              child: Text('${_tracks.indexOf(track) + 1}',
-                  style:
-                      TextStyle(fontSize: 13.sp, color: Colors.black26)),
+              width: 26.w,
+              child: Text(
+                '${index + 1}',
+                style: TextStyle(
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w900,
+                  color: index < 3 ? AppTheme.tomato : AppTheme.textSub,
+                ),
+              ),
             ),
             SizedBox(width: 8.w),
             ClipRRect(
-              borderRadius: BorderRadius.circular(8.r),
+              borderRadius: BorderRadius.circular(9.r),
               child: Container(
                 width: 44.w,
                 height: 44.w,
-                color: AppTheme.primary.withOpacity(0.1),
-                child: (track.coverUrl != null &&
-                        track.coverUrl!.isNotEmpty)
+                color: AppTheme.tealSoft,
+                child: (track.coverUrl != null && track.coverUrl!.isNotEmpty)
                     ? Image.network(
                         track.coverUrl!,
                         fit: BoxFit.cover,
                         headers: coverHeadersFor(track.coverUrl),
                         errorBuilder: (ctx, err, st) => Icon(
                             Icons.music_note,
-                            color: AppTheme.primary,
+                            color: AppTheme.tomato,
                             size: 18.sp),
                       )
                     : Icon(Icons.music_note,
-                        color: AppTheme.primary, size: 18.sp),
+                        color: AppTheme.tomato, size: 18.sp),
               ),
             ),
             SizedBox(width: 10.w),
@@ -305,17 +340,27 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(track.title,
-                      style: TextStyle(
-                          fontSize: 14.sp, fontWeight: FontWeight.w600),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
+                  Text(
+                    track.title,
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w900,
+                      color: AppTheme.ink,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   SizedBox(height: 2.h),
-                  Text(track.artist,
-                      style: TextStyle(
-                          fontSize: 11.sp, color: Colors.black45),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
+                  Text(
+                    track.artist,
+                    style: TextStyle(
+                      fontSize: 11.sp,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.textSub,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ],
               ),
             ),
@@ -325,10 +370,10 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
               return IconButton(
                 visualDensity: VisualDensity.compact,
                 icon: Icon(
-                  isFav ? Icons.favorite : Icons.favorite_border,
+                  isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
                   color: isChildMode
                       ? Colors.grey[300]
-                      : (isFav ? Colors.redAccent : Colors.grey),
+                      : (isFav ? AppTheme.tomato : AppTheme.textSub),
                   size: 18.sp,
                 ),
                 onPressed: isChildMode
@@ -338,6 +383,16 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
                     : () => _controller.toggleFavorite(track),
               );
             }),
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              icon: Icon(
+                Icons.library_add_outlined,
+                color: AppTheme.teal,
+                size: 19.sp,
+              ),
+              tooltip: '收藏到歌单',
+              onPressed: () => showAddToPlaylistsSheet(context, track),
+            ),
           ],
         ),
       ),

@@ -1,132 +1,169 @@
 import 'package:flutter/material.dart';
 
-/// 全局孟菲斯（Memphis Milano 1980-1988）风格主题配置类
-/// 核心法则：一块一色、描一圈黑边（#111111）、往右下黑色硬投影（不模糊）、只歪装饰不歪信息
+/// 全局中世纪现代（017 · Mid-Century Modern, 1945–1965）风格主题配置类
+/// 致敬 Saul Bass、Paul Rand、Alexander Girard、Charles & Ray Eames、George Nelson、Reid Miles (Blue Note)
+/// 核心五条规则：
+/// 01. 剪刀代替尺子：每一块都是一张剪出来、能拿起来的纸，无粗黑描边，大字/装饰微斜 ±2°~3°
+/// 02. 影子 = 高度 (h)：暖棕投影 #3A1C0C，偏移 (0.5h, h)，模糊 0.8h，浓度 0.3 - 0.004h
+/// 03. 叠印出第三色：黄 × 粉 = 橘 #F55F1E，黄 × 绿松石 = 橄榄绿 #1F8B1E，粉 × 绿松石 = 孔雀蓝 #1E566D
+/// 04. 原子时代形状：腰果、回旋镖、星芒、原子轨道、球与棍、月牙边角料、调色板
+/// 05. 暖白纸 + 糖果色：暖白纸 #FBF3E3 占 40%，番茄红、向日葵黄、Girard 粉、绿松石、钴蓝主次分明，墨色只给字和细辐条
 class AppTheme {
-  // ==================== 孟菲斯核心色板 (Design Tokens) ====================
+  // ==================== 中世纪现代核心色板 (Design Tokens) ====================
 
-  /// 底色：暖米白（建议面积 35%+，让糖果色跳出来）
-  static const Color cream = Color(0xFFFDF6EC);
+  /// 暖白纸：底色（建议面积 40%，#FBF3E3）
+  static const Color cream = Color(0xFFFBF3E3);
 
-  /// 浅米黄底色（用于次级容器或交替块）
-  static const Color creamDeep = Color(0xFFF7EBD9);
+  /// 次级暖卡纸色（用于层叠纸片与次级背景，#F2E5CE）
+  static const Color creamDeep = Color(0xFFF2E5CE);
 
-  /// 胶水黑：描边、硬投影、纹样、主正文（#111111）
-  static const Color ink = Color(0xFF111111);
+  /// 亮暖白卡纸（用于主信息卡片表面，#FFFDF8）
+  static const Color paperWhite = Color(0xFFFFFDF8);
 
-  /// 泡泡糖粉：主角色之一，大圆、标题、主按钮（#FF7EB6）
-  static const Color pink = Color(0xFFFF7EB6);
+  /// 墨色：文字、球钟辐条、唱臂细线（建议面积 4%，#1E1B19）
+  static const Color ink = Color(0xFF1E1B19);
 
-  /// 柠檬黄：三角、标签、高亮主卡、按钮（#FFD23F）
-  static const Color yellow = Color(0xFFFFD23F);
+  /// 说明文字：温暖灰棕小字（#8A7F72）
+  static const Color textSub = Color(0xFF8A7F72);
 
-  /// 薄荷青：方块、波浪线、正向状态色（#22C3B5）
-  static const Color teal = Color(0xFF22C3B5);
+  /// 暖棕影子：所有纸片的高度投影色（#3A1C0C，严禁使用纯黑投影）
+  static const Color shadowBrown = Color(0xFF3A1C0C);
 
-  /// 钴蓝：半圆、点缀、最稳重的彩色（#2D4BFF）
-  static const Color cobalt = Color(0xFF2D4BFF);
+  /// 番茄红：第一主角、主按钮、重点强调（建议面积 14%，#F2542D）
+  static const Color tomato = Color(0xFFF2542D);
 
-  /// 番茄红：小圆、强调、重要提醒（#FF5A36）
-  static const Color tomato = Color(0xFFFF5A36);
+  /// 向日葵黄：太阳、高光、叠印的“浅色”（建议面积 14%，#FFC62E）
+  static const Color yellow = Color(0xFFFFC62E);
 
-  /// 淡紫：半圆、贴纸、背景块（#B79CFF）
-  static const Color lilac = Color(0xFFB79CFF);
+  /// Girard 粉：大块的背景剪纸形状与温柔主卡（建议面积 12%，#F57AA8）
+  static const Color pink = Color(0xFFF57AA8);
 
-  /// 浅色糖果衬底（用于需要摆放大量阅读文字的卡片内部区域）
-  static const Color pinkSoft = Color(0xFFFFEAF3);
-  static const Color yellowSoft = Color(0xFFFFF6D6);
-  static const Color tealSoft = Color(0xFFE0F8F5);
-  static const Color cobaltSoft = Color(0xFFE6EAFF);
-  static const Color tomatoSoft = Color(0xFFFFE8E2);
-  static const Color lilacSoft = Color(0xFFF2EDFF);
+  /// 绿松石：第二主角、正向状态、唱机/银行主色（建议面积 10%，#1FB3A6）
+  static const Color teal = Color(0xFF1FB3A6);
 
-  /// 孟菲斯六大糖果主色循环列表（相邻块取不同色）
+  /// 钴蓝：点睛、星芒、Blue Note 爵士蓝（建议面积 6%，#2F6BD8）
+  static const Color cobalt = Color(0xFF2F6BD8);
+
+  // ==================== 叠印第三色 (Multiply Overprint) ====================
+
+  /// 黄 × 粉 叠印暖橘（#F55F1E）
+  static const Color overprintOrange = Color(0xFFF55F1E);
+
+  /// 黄 × 绿松石 叠印橄榄绿（#1F8B1E）
+  static const Color overprintOlive = Color(0xFF1F8B1E);
+
+  /// 粉 × 绿松石 叠印深孔雀蓝（#1E566D）
+  static const Color overprintPetrol = Color(0xFF1E566D);
+
+  /// 兼容字段：将 lilac 映射为叠印暖橘/珊瑚色，契合中世纪现代色盘
+  static const Color lilac = overprintOrange;
+
+  /// 浅色糖果纸衬底（用于需要大面积展示详细文字的剪纸内卡）
+  static const Color tomatoSoft = Color(0xFFFCE6DF);
+  static const Color yellowSoft = Color(0xFFFFF4D2);
+  static const Color pinkSoft = Color(0xFFFDE8F0);
+  static const Color tealSoft = Color(0xFFDDF5F2);
+  static const Color cobaltSoft = Color(0xFFE3ECFA);
+  static const Color lilacSoft = Color(0xFFFDE9DC);
+
+  /// 中世纪现代六大彩纸主色循环列表（按主次节奏排列）
   static const List<Color> candyColors = [
-    pink,
+    tomato,
     yellow,
     teal,
+    pink,
     cobalt,
-    tomato,
-    lilac,
+    overprintOrange,
   ];
 
-  /// 孟菲斯六大浅色衬底循环列表
+  /// 中世纪现代浅色卡纸循环列表
   static const List<Color> candySoftColors = [
     yellowSoft,
     tealSoft,
-    pinkSoft,
-    lilacSoft,
-    cobaltSoft,
     tomatoSoft,
+    pinkSoft,
+    cobaltSoft,
+    lilacSoft,
   ];
 
   // ==================== 兼容旧版字段映射 ====================
 
-  /// 主色调：泡泡糖粉
-  static const Color primary = pink;
+  /// 主色调：中世纪现代第一主角「番茄红 #F2542D」
+  static const Color primary = tomato;
 
-  /// 深主色调：番茄红/深粉强调色
-  static const Color primaryDark = tomato;
+  /// 深主色调：深孔雀蓝 / 叠印橘
+  static const Color primaryDark = overprintPetrol;
 
-  /// 浅主色调：浅粉衬底
-  static const Color primaryLight = pinkSoft;
+  /// 浅主色调：浅暖纸粉
+  static const Color primaryLight = tomatoSoft;
 
-  /// 次要色调：薄荷青
+  /// 次要色调：绿松石 #1FB3A6
   static const Color secondary = teal;
 
-  /// 页面背景色统一映射为孟菲斯暖米白 #FDF6EC
+  /// 页面背景色统一映射为暖白纸 #FBF3E3
   static const Color bgPink = cream;
   static const Color bgBlue = cream;
   static const Color bgYellow = cream;
 
-  /// 主文字颜色：孟菲斯黑 #111111
+  /// 主文字颜色：墨色 #1E1B19
   static const Color textMain = ink;
 
-  /// 次级文字颜色：高对比深炭灰（保持干净可读）
-  static const Color textSub = Color(0xFF3E3B36);
+  // ==================== 规则 02：影子 = 高度 (Shadow = Elevation h) ====================
 
-  // ==================== 孟菲斯边框与硬投影工具 ====================
+  /// 根据纸片离桌面的高度 [h]（貼着 4、常规 8~10、拿起 14、在手里 30、按下 0）计算暖棕影子
+  /// 公式：偏移 (0.5h, h)，模糊 0.8h，浓度 0.30 - 0.004h，颜色 #3A1C0C
+  static List<BoxShadow> paperShadow({
+    double h = 8.0,
+    Color color = shadowBrown,
+  }) {
+    if (h <= 0.1) return const [];
+    final alpha = (0.28 - 0.004 * h).clamp(0.08, 0.30);
+    return [
+      BoxShadow(
+        color: color.withValues(alpha: alpha),
+        offset: Offset(h * 0.5, h),
+        blurRadius: h * 0.85,
+        spreadRadius: 0,
+      ),
+    ];
+  }
 
-  /// 标准粗黑边框（默认 2.5px）
-  static Border border({double width = 2.5, Color color = ink}) =>
-      Border.all(color: color, width: width);
-
-  /// 标准右下黑色硬投影（零模糊）
-  static List<BoxShadow> hardShadow({
-    double offset = 4.0,
-    Color color = ink,
+  /// 细微的剪纸纸张切口边缘（非孟菲斯粗黑描边，仅给浅色纸片提供纸张厚度感）
+  static Border border({
+    double width = 1.0,
+    Color color = const Color(0x1E3A1C0C),
   }) =>
-      [
-        BoxShadow(
-          color: color,
-          offset: Offset(offset, offset),
-          blurRadius: 0,
-          spreadRadius: 0,
-        ),
-      ];
+      Border.all(color: color == ink ? const Color(0x223A1C0C) : color, width: width.clamp(0.5, 1.2));
 
-  /// 生成标准孟菲斯积木盒子装饰（单色底 + 粗黑边 + 硬投影）
+  /// 兼容旧调用：将原硬投影自动转换为中世纪现代暖棕高度投影
+  static List<BoxShadow> hardShadow({
+    double offset = 6.0,
+    Color color = shadowBrown,
+  }) =>
+      paperShadow(h: offset * 1.8, color: shadowBrown);
+
+  /// 生成中世纪现代剪纸盒子装饰（无粗黑描边 + 暖棕高度影子）
   static BoxDecoration memphisBox({
-    Color color = Colors.white,
+    Color color = paperWhite,
     double radius = 16.0,
-    double borderWidth = 2.5,
-    double shadowOffset = 4.0,
-    Color borderColor = ink,
-    Color shadowColor = ink,
+    double borderWidth = 0.0,
+    double shadowOffset = 5.0,
+    Color borderColor = const Color(0x1E3A1C0C),
+    Color shadowColor = shadowBrown,
   }) {
     return BoxDecoration(
-      color: color,
-      borderRadius: BorderRadius.circular(radius),
-      border: Border.all(color: borderColor, width: borderWidth),
-      boxShadow: shadowOffset > 0
-          ? [
-              BoxShadow(
-                color: shadowColor,
-                offset: Offset(shadowOffset, shadowOffset),
-                blurRadius: 0,
-              ),
-            ]
-          : const [],
+      color: color == Colors.white ? paperWhite : color,
+      borderRadius: BorderRadius.only(
+        topLeft: Radius.circular(radius),
+        topRight: Radius.circular(radius * 0.82),
+        bottomLeft: Radius.circular(radius * 0.88),
+        bottomRight: Radius.circular(radius * 1.06),
+      ),
+      border: Border.all(
+        color: const Color(0x1A3A1C0C),
+        width: 1.0,
+      ),
+      boxShadow: paperShadow(h: shadowOffset * 1.8),
     );
   }
 
@@ -136,13 +173,13 @@ class AppTheme {
     useMaterial3: true,
     scaffoldBackgroundColor: cream,
     colorScheme: ColorScheme.fromSeed(
-      seedColor: pink,
-      primary: pink,
+      seedColor: tomato,
+      primary: tomato,
       secondary: teal,
       tertiary: yellow,
-      surface: Colors.white,
-      onPrimary: ink,
-      onSecondary: ink,
+      surface: paperWhite,
+      onPrimary: paperWhite,
+      onSecondary: paperWhite,
       onSurface: ink,
     ),
     appBarTheme: const AppBarTheme(
@@ -156,15 +193,15 @@ class AppTheme {
         fontSize: 21,
         fontWeight: FontWeight.w900,
         fontFamily: 'MiSans',
-        letterSpacing: 0.5,
+        letterSpacing: 0.6,
       ),
     ),
     cardTheme: CardThemeData(
-      color: Colors.white,
+      color: paperWhite,
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
-        side: const BorderSide(color: ink, width: 2.5),
+        side: const BorderSide(color: Color(0x183A1C0C), width: 1.0),
       ),
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
     ),
@@ -173,7 +210,7 @@ class AppTheme {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(24),
-        side: const BorderSide(color: ink, width: 3),
+        side: const BorderSide(color: Color(0x263A1C0C), width: 1.2),
       ),
       titleTextStyle: const TextStyle(
         color: ink,
@@ -184,12 +221,11 @@ class AppTheme {
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: yellow,
-        foregroundColor: ink,
+        backgroundColor: tomato,
+        foregroundColor: paperWhite,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
-          side: const BorderSide(color: ink, width: 2.5),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
         textStyle: const TextStyle(
@@ -201,9 +237,9 @@ class AppTheme {
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        backgroundColor: Colors.white,
+        backgroundColor: paperWhite,
         foregroundColor: ink,
-        side: const BorderSide(color: ink, width: 2.5),
+        side: const BorderSide(color: Color(0x333A1C0C), width: 1.2),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
         ),
@@ -217,26 +253,26 @@ class AppTheme {
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: Colors.white,
+      fillColor: paperWhite,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: ink, width: 2),
+        borderSide: const BorderSide(color: Color(0x283A1C0C), width: 1.2),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: ink, width: 2),
+        borderSide: const BorderSide(color: Color(0x283A1C0C), width: 1.2),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: cobalt, width: 2.5),
+        borderSide: const BorderSide(color: tomato, width: 2.0),
       ),
       labelStyle: const TextStyle(color: textSub, fontWeight: FontWeight.w700),
     ),
     chipTheme: ChipThemeData(
-      backgroundColor: yellowSoft,
-      selectedColor: yellow,
-      side: const BorderSide(color: ink, width: 2),
+      backgroundColor: creamDeep,
+      selectedColor: tomato,
+      side: BorderSide.none,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
       labelStyle: const TextStyle(
         color: ink,
@@ -245,18 +281,17 @@ class AppTheme {
       ),
     ),
     dividerTheme: const DividerThemeData(
-      color: ink,
-      thickness: 2,
+      color: Color(0x1F3A1C0C),
+      thickness: 1.0,
     ),
     snackBarTheme: SnackBarThemeData(
-      backgroundColor: yellow,
+      backgroundColor: ink,
       contentTextStyle: const TextStyle(
-        color: ink,
+        color: cream,
         fontWeight: FontWeight.w800,
       ),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
-        side: const BorderSide(color: ink, width: 2.5),
       ),
       behavior: SnackBarBehavior.floating,
     ),

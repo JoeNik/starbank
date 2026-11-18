@@ -36,14 +36,8 @@ class ShopPage extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: AppTheme.yellow,
                   borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: AppTheme.ink, width: 2.2),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: AppTheme.ink,
-                      offset: Offset(2.5, 2.5),
-                      blurRadius: 0,
-                    ),
-                  ],
+                  border: AppTheme.border(),
+                  boxShadow: AppTheme.paperShadow(h: 8.0),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -65,7 +59,7 @@ class ShopPage extends StatelessWidget {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: Colors.white,
-                        border: Border.all(color: AppTheme.ink, width: 1.8),
+                        border: AppTheme.border(),
                       ),
                       child: ClipOval(
                         child: ImageUtils.displayImage(
@@ -195,14 +189,8 @@ class ShopPage extends StatelessWidget {
           decoration: BoxDecoration(
             color: color,
             borderRadius: BorderRadius.circular(12.r),
-            border: Border.all(color: AppTheme.ink, width: 2.3),
-            boxShadow: const [
-              BoxShadow(
-                color: AppTheme.ink,
-                offset: Offset(3, 3),
-                blurRadius: 0,
-              ),
-            ],
+            border: AppTheme.border(),
+            boxShadow: AppTheme.paperShadow(h: 8.0),
           ),
           child: Text(
             title,
@@ -240,14 +228,8 @@ class ShopPage extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppTheme.yellow,
                 shape: BoxShape.circle,
-                border: Border.all(color: AppTheme.ink, width: 2.5),
-                boxShadow: const [
-                  BoxShadow(
-                    color: AppTheme.ink,
-                    offset: Offset(4, 4),
-                    blurRadius: 0,
-                  ),
-                ],
+                border: AppTheme.border(),
+                boxShadow: AppTheme.paperShadow(h: 8.0),
               ),
               child: Center(
                 child: Text('🎁', style: TextStyle(fontSize: 38.sp)),
@@ -298,14 +280,8 @@ class ShopPage extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20.r),
-        border: Border.all(color: AppTheme.ink, width: 2.5),
-        boxShadow: const [
-          BoxShadow(
-            color: AppTheme.ink,
-            offset: Offset(5, 5),
-            blurRadius: 0,
-          ),
-        ],
+        border: AppTheme.border(),
+        boxShadow: AppTheme.paperShadow(h: 8.0),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -320,7 +296,7 @@ class ShopPage extends StatelessWidget {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(14.r),
                     color: placeholderBg,
-                    border: Border.all(color: AppTheme.ink, width: 2.0),
+                    border: AppTheme.border(),
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12.r),
@@ -369,8 +345,7 @@ class ShopPage extends StatelessWidget {
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   shape: BoxShape.circle,
-                                  border: Border.all(
-                                      color: AppTheme.ink, width: 1.8),
+                                  border: AppTheme.border(),
                                 ),
                                 child: Icon(
                                   Icons.edit_rounded,
@@ -388,8 +363,7 @@ class ShopPage extends StatelessWidget {
                                 decoration: BoxDecoration(
                                   color: AppTheme.tomatoSoft,
                                   shape: BoxShape.circle,
-                                  border: Border.all(
-                                      color: AppTheme.ink, width: 1.8),
+                                  border: AppTheme.border(),
                                 ),
                                 child: Icon(
                                   Icons.delete_outline_rounded,
@@ -451,7 +425,7 @@ class ShopPage extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: AppTheme.cream,
                     borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: AppTheme.ink, width: 1.6),
+                    border: AppTheme.border(),
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(999),
@@ -498,14 +472,8 @@ class ShopPage extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.cream,
         borderRadius: BorderRadius.circular(20.r),
-        border: Border.all(color: AppTheme.ink, width: 2.2),
-        boxShadow: const [
-          BoxShadow(
-            color: AppTheme.ink,
-            offset: Offset(3, 3),
-            blurRadius: 0,
-          ),
-        ],
+        border: AppTheme.border(),
+        boxShadow: AppTheme.paperShadow(h: 8.0),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -517,7 +485,7 @@ class ShopPage extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(14.r),
                 color: Colors.white,
-                border: Border.all(color: AppTheme.ink, width: 1.8),
+                border: AppTheme.border(),
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12.r),
@@ -579,7 +547,7 @@ class ShopPage extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppTheme.tealSoft,
                 borderRadius: BorderRadius.circular(10.r),
-                border: Border.all(color: AppTheme.ink, width: 1.8),
+                border: AppTheme.border(),
               ),
               child: Center(
                 child: Row(
@@ -632,7 +600,7 @@ class ShopPage extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppTheme.cream,
           borderRadius: BorderRadius.vertical(top: Radius.circular(28.r)),
-          border: Border.all(color: AppTheme.ink, width: 3.0),
+          border: AppTheme.border(),
         ),
         child: SingleChildScrollView(
           child: Column(
@@ -659,14 +627,8 @@ class ShopPage extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16.r),
-                      border: Border.all(color: AppTheme.ink, width: 2.2),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: AppTheme.ink,
-                          offset: Offset(3, 3),
-                          blurRadius: 0,
-                        ),
-                      ],
+                      border: AppTheme.border(),
+                      boxShadow: AppTheme.paperShadow(h: 8.0),
                     ),
                     child: selectedImage.value != null
                         ? ClipRRect(
@@ -794,7 +756,7 @@ class ShopPage extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppTheme.cream,
           borderRadius: BorderRadius.vertical(top: Radius.circular(28.r)),
-          border: Border.all(color: AppTheme.ink, width: 3.0),
+          border: AppTheme.border(),
         ),
         child: SingleChildScrollView(
           child: Column(
@@ -821,14 +783,8 @@ class ShopPage extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16.r),
-                      border: Border.all(color: AppTheme.ink, width: 2.2),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: AppTheme.ink,
-                          offset: Offset(3, 3),
-                          blurRadius: 0,
-                        ),
-                      ],
+                      border: AppTheme.border(),
+                      boxShadow: AppTheme.paperShadow(h: 8.0),
                     ),
                     child: selectedImage.value != null &&
                             selectedImage.value!.isNotEmpty

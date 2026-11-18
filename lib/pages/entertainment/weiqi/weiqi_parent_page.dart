@@ -414,7 +414,7 @@ class _ParentReportBody extends StatelessWidget {
               decoration: BoxDecoration(
                 color: WqTheme.cream,
                 borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: WqTheme.ink, width: 1.8),
+                border: WqTheme.border(),
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(999),
@@ -497,7 +497,7 @@ class _ParentReportBody extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: current == opt.$1 ? WqTheme.sun : Colors.white,
                           borderRadius: BorderRadius.circular(999),
-                          border: Border.all(color: WqTheme.ink, width: 1.8),
+                          border: WqTheme.border(),
                         ),
                         child: Text(
                           opt.$2,
@@ -549,7 +549,7 @@ class _ParentReportBody extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: current == v ? WqTheme.green : Colors.white,
                           borderRadius: BorderRadius.circular(999),
-                          border: Border.all(color: WqTheme.ink, width: 1.8),
+                          border: WqTheme.border(),
                         ),
                         child: Text(
                           '$v',
@@ -613,7 +613,7 @@ class _ParentReportBody extends StatelessWidget {
                               ? WqTheme.sun
                               : Colors.white,
                           borderRadius: BorderRadius.circular(999),
-                          border: Border.all(color: WqTheme.ink, width: 1.8),
+                          border: WqTheme.border(),
                         ),
                         child: Text(
                           e.$1,

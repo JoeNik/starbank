@@ -43,14 +43,8 @@ Future<void> showWqOpponentPicker(
               decoration: BoxDecoration(
                 color: WqTheme.cream,
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: WqTheme.ink, width: 3.0),
-                boxShadow: const [
-                  BoxShadow(
-                    color: WqTheme.ink,
-                    offset: Offset(6, 6),
-                    blurRadius: 0,
-                  ),
-                ],
+                border: WqTheme.border(),
+                boxShadow: WqTheme.paperShadow(h: 8.0),
               ),
               child: Obx(() {
                 final selLevel =
@@ -141,8 +135,7 @@ Future<void> showWqOpponentPicker(
                                               : Colors.white,
                                           borderRadius:
                                               BorderRadius.circular(8),
-                                          border: Border.all(
-                                              color: WqTheme.ink, width: 1.8),
+                                          border: WqTheme.border(),
                                         ),
                                         alignment: Alignment.center,
                                         child: Text(
@@ -191,8 +184,7 @@ Future<void> showWqOpponentPicker(
                                               : Colors.white,
                                           borderRadius:
                                               BorderRadius.circular(8),
-                                          border: Border.all(
-                                              color: WqTheme.ink, width: 1.8),
+                                          border: WqTheme.border(),
                                         ),
                                         alignment: Alignment.center,
                                         child: Text(
@@ -241,10 +233,7 @@ Future<void> showWqOpponentPicker(
                                       ? WqTheme.sun
                                       : Colors.white,
                                   borderRadius: BorderRadius.circular(9),
-                                  border: Border.all(
-                                    color: WqTheme.ink,
-                                    width: 1.8,
-                                  ),
+                                  border: WqTheme.border(),
                                 ),
                                 child: Column(
                                   children: [
@@ -310,7 +299,7 @@ Future<void> showWqOpponentPicker(
                         decoration: BoxDecoration(
                           color: WqTheme.sun,
                           shape: BoxShape.circle,
-                          border: Border.all(color: WqTheme.ink, width: 2.0),
+                          border: WqTheme.border(),
                         ),
                         child: const Center(
                           child: Text('👪', style: TextStyle(fontSize: 24)),
@@ -355,15 +344,9 @@ Widget _modeTab({
       decoration: BoxDecoration(
         color: selected ? color : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: WqTheme.ink, width: 2.2),
+        border: WqTheme.border(),
         boxShadow: selected
-            ? const [
-                BoxShadow(
-                  color: WqTheme.ink,
-                  offset: Offset(3, 3),
-                  blurRadius: 0,
-                ),
-              ]
+            ? WqTheme.paperShadow(h: 8.0)
             : const [],
       ),
       child: Column(
@@ -408,14 +391,8 @@ Widget _opponentOption(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: WqTheme.ink, width: 2.4),
-        boxShadow: const [
-          BoxShadow(
-            color: WqTheme.ink,
-            offset: Offset(4, 4),
-            blurRadius: 0,
-          ),
-        ],
+        border: WqTheme.border(),
+        boxShadow: WqTheme.paperShadow(h: 8.0),
       ),
       child: Row(
         children: [
@@ -425,7 +402,7 @@ Widget _opponentOption(
             decoration: BoxDecoration(
               color: color,
               shape: BoxShape.circle,
-              border: Border.all(color: WqTheme.ink, width: 2.0),
+              border: WqTheme.border(),
             ),
             child: Center(child: panda),
           ),
@@ -725,6 +702,27 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
     }
   }
 
+  /// 13/19 路大棋盘方向键微调准星（沿 dx/dy 方向寻找下一个空交叉点）
+  void _nudgePreview(int dx, int dy) {
+    final cur = _previewPoint;
+    if (cur == null) return;
+    final n = _game.n;
+    var x = cur % n;
+    var y = cur ~/ n;
+    for (var step = 1; step < n; step++) {
+      final nx = (x + dx * step).clamp(0, n - 1);
+      final ny = (y + dy * step).clamp(0, n - 1);
+      if (nx == x && ny == y) break;
+      final candidate = ny * n + nx;
+      if (_game.s[candidate] == 0) {
+        WqSfx.pop();
+        HapticFeedback.selectionClick();
+        setState(() => _previewPoint = candidate);
+        return;
+      }
+    }
+  }
+
   void _childMove(int i) {
     _history.add(_game.clone());
     _clearMarks();
@@ -752,7 +750,9 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
     _inspectLibs = {};
     final myIdx = _replayMoves.length;
     final whiteAtariLibs = _atariLibsOf(2);
-    final threatBefore = WqAi.hintTarget(_game, 1, mode: _ruleMode);
+    // 性能优化：落子瞬间仅执行 quickOnly (< 0.3ms) 提子/逃子扫描，绝不阻塞主线程
+    final threatBefore =
+        WqAi.hintTarget(_game, 1, mode: _ruleMode, quickOnly: true);
     final enemyAtariBefore = _atariLibsOf(2).isNotEmpty;
     _replayMoves.add((color: 1, point: i));
     if (r.captured.isNotEmpty) {
@@ -1039,11 +1039,11 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
           WqPandaMood.think,
           speakIt: true);
     }
-    _aiTimer = Timer(Duration(milliseconds: danger != null ? 1300 : 150), () {
+    _aiTimer = Timer(Duration(milliseconds: danger != null ? 240 : 60), () {
       if (!mounted || _over || _scoringPhase) return;
       _say('棋棋想一下……', WqPandaMood.think, speakIt: false);
       _aiTimer =
-          Timer(Duration(milliseconds: 650 + math.Random().nextInt(550)), () {
+          Timer(Duration(milliseconds: 180 + math.Random().nextInt(140)), () {
         if (!mounted || _over || _scoringPhase) return;
         final level = wqAiLevels[
             _svc.aiLevelIndex.value.clamp(0, wqAiLevels.length - 1)];
@@ -1401,7 +1401,7 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
         backgroundColor: WqTheme.cream,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(24.r),
-          side: const BorderSide(color: WqTheme.ink, width: 3.0),
+          side: const BorderSide(color: Color(0x283A1C0C), width: 1.2),
         ),
         child: Padding(
           padding: EdgeInsets.all(20.w),
@@ -1493,6 +1493,9 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
 
     if (win) {
       WqSfx.star();
+      if (mounted) {
+        WqConfetti.burst(context, count: 28);
+      }
     } else {
       WqSfx.pop();
     }
@@ -1548,7 +1551,7 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
         backgroundColor: WqTheme.cream,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(26.r),
-          side: const BorderSide(color: WqTheme.ink, width: 3.0),
+          side: const BorderSide(color: Color(0x283A1C0C), width: 1.2),
         ),
         insetPadding: EdgeInsets.all(20.w),
         child: SingleChildScrollView(
@@ -1659,10 +1662,8 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(color: WqTheme.ink, width: 2.0),
-        boxShadow: const [
-          BoxShadow(color: WqTheme.ink, blurRadius: 0, offset: Offset(3, 3)),
-        ],
+        border: WqTheme.border(),
+        boxShadow: WqTheme.paperShadow(h: 8.0),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1673,7 +1674,7 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: improve ? WqTheme.sun : WqTheme.green,
-              border: Border.all(color: WqTheme.ink, width: 1.6),
+              border: WqTheme.border(),
             ),
             child: Center(
               child: Text(
@@ -1771,14 +1772,8 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(999),
-                          border: Border.all(color: WqTheme.ink, width: 2.0),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: WqTheme.ink,
-                              blurRadius: 0,
-                              offset: Offset(2.5, 2.5),
-                            ),
-                          ],
+                          border: WqTheme.border(),
+                          boxShadow: WqTheme.paperShadow(h: 8.0),
                         ),
                         child: Row(
                           children: [
@@ -1789,7 +1784,7 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
                                 color: _turn == 1 ? WqTheme.ink : WqTheme.sun,
                                 borderRadius: BorderRadius.circular(999),
                                 border:
-                                    Border.all(color: WqTheme.ink, width: 1.5),
+                                    WqTheme.border(),
                               ),
                               child: Text(
                                 _scoringPhase
@@ -1826,21 +1821,42 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
                         ),
                       ),
                     ),
-                    SizedBox(width: 6.w),
+                    SizedBox(width: 4.w),
+                    // 13/19路大棋盘「十字准星微调 / 直落」一键切换按钮
+                    if (_game.n >= 13) ...[
+                      Obx(() => WqIconButton(
+                            icon: Icons.my_location_rounded,
+                            size: 36,
+                            bgColor: _svc.confirmMove.value
+                                ? WqTheme.sun
+                                : Colors.white,
+                            onTap: () {
+                              _svc.confirmMove.value = !_svc.confirmMove.value;
+                              if (!_svc.confirmMove.value) {
+                                _previewPoint = null;
+                              }
+                              ToastUtils.showInfo(_svc.confirmMove.value
+                                  ? '🎯 已开启十字准星微调选点（防误触）'
+                                  : '⚡ 已切换为点按直接落子（按住拖动仍有放大镜）');
+                              setState(() {});
+                            },
+                          )),
+                      SizedBox(width: 4.w),
+                    ],
                     // 实时形势判断按钮
                     WqIconButton(
                       icon: Icons.grid_view_rounded,
-                      size: 38,
+                      size: 36,
                       bgColor: (_showTerritoryLive || _scoringPhase)
                           ? WqTheme.sun
                           : Colors.white,
                       onTap: _scoringPhase ? null : _toggleLiveTerritory,
                     ),
-                    SizedBox(width: 5.w),
+                    SizedBox(width: 4.w),
                     // 手数与坐标开关
                     Obx(() => WqIconButton(
                           icon: Icons.pin_rounded,
-                          size: 38,
+                          size: 36,
                           bgColor: _svc.showMoveNumbers.value
                               ? WqTheme.greenSoft
                               : Colors.white,
@@ -1850,146 +1866,269 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
                             setState(() {});
                           },
                         )),
-                    SizedBox(width: 5.w),
+                    SizedBox(width: 4.w),
                     WqIconButton(
                       icon: Icons.replay_rounded,
-                      size: 38,
+                      size: 36,
                       onTap: _confirmRestart,
                     ),
                   ],
                 ),
               ),
 
-              // 棋棋对话气泡区
+              // 棋棋对话气泡区（恒定高度槽位：无论提示语长短变化，高度 100% 锁定，棋盘不跳动）
               Flexible(
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(12.w, 6.h, 12.w, 0),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          WqPanda(mood: _mood, size: 52),
-                          if (_isAi)
-                            Container(
-                              margin: const EdgeInsets.only(top: 3),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: WqTheme.sun,
-                                borderRadius: BorderRadius.circular(999),
-                                border:
-                                    Border.all(color: WqTheme.ink, width: 1.5),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 84),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            WqPanda(mood: _mood, size: 48),
+                            if (_isAi)
+                              Container(
+                                margin: const EdgeInsets.only(top: 2),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 1.5),
+                                decoration: BoxDecoration(
+                                  color: WqTheme.sun,
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: WqTheme.border(),
+                                ),
+                                child: Obx(() {
+                                  final lv = wqAiLevels[_svc.aiLevelIndex.value
+                                      .clamp(0, wqAiLevels.length - 1)];
+                                  return Text(
+                                    lv.persona,
+                                    style: const TextStyle(
+                                      fontSize: 8.5,
+                                      fontWeight: FontWeight.w900,
+                                      color: WqTheme.ink,
+                                    ),
+                                  );
+                                }),
                               ),
-                              child: Obx(() {
-                                final lv = wqAiLevels[_svc.aiLevelIndex.value
-                                    .clamp(0, wqAiLevels.length - 1)];
-                                return Text(
-                                  lv.persona,
-                                  style: const TextStyle(
-                                    fontSize: 8.5,
-                                    fontWeight: FontWeight.w900,
-                                    color: WqTheme.ink,
-                                  ),
-                                );
-                              }),
-                            ),
-                        ],
-                      ),
-                      SizedBox(width: 8.w),
-                      Expanded(
-                        child: WqBubble(
-                          text: _bubbleText,
-                          speaking: true,
-                          mood: _mood,
-                          maxLines: 3,
-                          tail: true,
-                          onReplay: () {
-                            WqSfx.pop();
-                            _svc.speak(_bubbleText);
-                          },
+                          ],
                         ),
-                      ),
-                    ],
+                        SizedBox(width: 8.w),
+                        Expanded(
+                          child: WqBubble(
+                            text: _bubbleText,
+                            speaking: true,
+                            mood: _mood,
+                            maxLines: 3,
+                            fixedHeight: 82.0,
+                            tail: true,
+                            onReplay: () {
+                              WqSfx.pop();
+                              _svc.speak(_bubbleText);
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
 
-              // 棋盘主体
+              // 棋盘主体（十字准星确认条改为 Stack 底部悬浮，绝不挤压棋盘高度导致跳动）
               Expanded(
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(12.w, 4.h, 12.w, 4.h),
-                  child: Center(
-                    child: Obx(() => WeiqiBoardView(
-                          n: _game.n,
-                          controller: _boardCtrl,
-                          stones: _game.s,
-                          lastMove: _game.last,
-                          showCoords: _svc.showCoords.value,
-                          moveNumbers: _buildMoveNumbers(),
-                          territoryOwnerMap:
-                              (_showTerritoryLive || _scoringPhase)
-                                  ? _scoreSummary?.ownerMap
-                                  : null,
-                          deadStones: _scoringPhase
-                              ? _deadStones
-                              : (_showTerritoryLive
-                                  ? (_scoreSummary?.deadStones ?? const {})
-                                  : const {}),
-                          previewPoint: _previewPoint,
-                          previewColor: (!_isAi && _turn == 2) ? 2 : 1,
-                          blinkPoints: {..._blink, ..._endBlink},
-                          glowCenter: _glowCenter,
-                          glowRadius: 22,
-                          ghostStone: _ghostStone,
-                          ghostColor: 1,
-                          ghostStones: _explainGhosts,
-                          breathePoints: _inspectLibs.isNotEmpty
-                              ? _inspectLibs
-                              : (_isAi &&
-                                      _svc.remindOn.value &&
-                                      _svc.atariLightsOn.value
-                                  ? _dangerLibs
-                                  : const {}),
-                          breatheWarn: _inspectLibs.isEmpty,
-                          capByBlack: _game.capBlack,
-                          capByWhite: _game.capWhite,
-                          onPointTap: _onTap,
-                        )),
-                  ),
-                ),
-              ),
-
-              // 13/19路十字准星防误触确认条
-              if (_previewPoint != null && !_over && !_scoringPhase)
-                Padding(
-                  padding: EdgeInsets.fromLTRB(14.w, 0, 14.w, 4.h),
-                  child: Row(
+                  child: Stack(
+                    alignment: Alignment.center,
                     children: [
-                      Expanded(
-                        flex: 2,
-                        child: WqPrimaryButton(
-                          text:
-                              '🎯 确认落子 (${wqCoordLabel(_previewPoint!, _game.n)})',
-                          height: 40.h,
-                          fontSize: 13.5.sp,
-                          color: WqTheme.sun,
-                          onTap: _confirmPreviewMove,
-                        ),
+                      Center(
+                        child: Obx(() => WeiqiBoardView(
+                              n: _game.n,
+                              controller: _boardCtrl,
+                              stones: _game.s,
+                              lastMove: _game.last,
+                              showCoords: _svc.showCoords.value,
+                              moveNumbers: _buildMoveNumbers(),
+                              territoryOwnerMap:
+                                  (_showTerritoryLive || _scoringPhase)
+                                      ? _scoreSummary?.ownerMap
+                                      : null,
+                              deadStones: _scoringPhase
+                                  ? _deadStones
+                                  : (_showTerritoryLive
+                                      ? (_scoreSummary?.deadStones ?? const {})
+                                      : const {}),
+                              previewPoint: _previewPoint,
+                              previewColor: (!_isAi && _turn == 2) ? 2 : 1,
+                              blinkPoints: {..._blink, ..._endBlink},
+                              glowCenter: _glowCenter,
+                              glowRadius: 22,
+                              ghostStone: _ghostStone,
+                              ghostColor: 1,
+                              ghostStones: _explainGhosts,
+                              breathePoints: _inspectLibs.isNotEmpty
+                                  ? _inspectLibs
+                                  : (_isAi &&
+                                          _svc.remindOn.value &&
+                                          _svc.atariLightsOn.value
+                                      ? _dangerLibs
+                                      : const {}),
+                              breatheWarn: _inspectLibs.isEmpty,
+                              capByBlack: _game.capBlack,
+                              capByWhite: _game.capWhite,
+                              onPointTap: _onTap,
+                            )),
                       ),
-                      SizedBox(width: 8.w),
-                      Expanded(
-                        child: WqGhostButton(
-                          text: '取消选点',
-                          height: 40.h,
-                          fontSize: 12.5.sp,
-                          onTap: () => setState(() => _previewPoint = null),
+                      if (_previewPoint != null && !_over && !_scoringPhase)
+                        Positioned(
+                          left: 6.w,
+                          right: 6.w,
+                          bottom: 2.h,
+                          child: TweenAnimationBuilder<double>(
+                            tween: Tween(begin: 0.85, end: 1.0),
+                            duration: const Duration(milliseconds: 360),
+                            curve: Curves.elasticOut,
+                            builder: (context, scale, child) =>
+                                Transform.scale(scale: scale, child: child),
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 6.w, vertical: 4.h),
+                              decoration: BoxDecoration(
+                                color: WqTheme.card.withValues(alpha: 0.96),
+                                borderRadius: BorderRadius.circular(16.r),
+                                border: WqTheme.border(),
+                                boxShadow: WqTheme.paperShadow(h: 10.0),
+                              ),
+                              child: Row(
+                                children: [
+                                  // 方向微调按钮组（左/上/下/右）
+                                  _dpadButton(Icons.keyboard_arrow_left_rounded,
+                                      () => _nudgePreview(-1, 0)),
+                                  SizedBox(width: 3.w),
+                                  _dpadButton(Icons.keyboard_arrow_up_rounded,
+                                      () => _nudgePreview(0, -1)),
+                                  SizedBox(width: 3.w),
+                                  _dpadButton(Icons.keyboard_arrow_down_rounded,
+                                      () => _nudgePreview(0, 1)),
+                                  SizedBox(width: 3.w),
+                                  _dpadButton(
+                                      Icons.keyboard_arrow_right_rounded,
+                                      () => _nudgePreview(1, 0)),
+                                  SizedBox(width: 6.w),
+                                  Expanded(
+                                    child: WqPrimaryButton(
+                                      text:
+                                          '✓ 落子(${wqCoordLabel(_previewPoint!, _game.n)})',
+                                      height: 36.h,
+                                      fontSize: 12.5.sp,
+                                      color: WqTheme.sun,
+                                      onTap: _confirmPreviewMove,
+                                    ),
+                                  ),
+                                  SizedBox(width: 5.w),
+                                  WqIconButton(
+                                    icon: Icons.close_rounded,
+                                    size: 34,
+                                    onTap: () =>
+                                        setState(() => _previewPoint = null),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
+
+                      // 终局瞬间醒目胜负横幅浮层（点击直接查看战报，彻底消除终局停在盘面以为卡住的困惑）
+                      if (_over && !_scoringPhase)
+                        Positioned(
+                          left: 10.w,
+                          right: 10.w,
+                          bottom: 4.h,
+                          child: TweenAnimationBuilder<double>(
+                            tween: Tween(begin: 0.82, end: 1.0),
+                            duration: const Duration(milliseconds: 460),
+                            curve: Curves.elasticOut,
+                            builder: (context, scale, child) =>
+                                Transform.scale(scale: scale, child: child),
+                            child: GestureDetector(
+                              onTap: _showSettlement,
+                              child: Container(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 14.w, vertical: 8.h),
+                                decoration: BoxDecoration(
+                                  color: _endResult == 'win'
+                                      ? WqTheme.sun
+                                      : WqTheme.greenSoft,
+                                  borderRadius: BorderRadius.circular(18.r),
+                                  border: WqTheme.border(),
+                                  boxShadow: WqTheme.paperShadow(h: 12.0),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Text(
+                                      _endResult == 'win' ? '🏆' : '🎉',
+                                      style: TextStyle(fontSize: 20.sp),
+                                    ),
+                                    SizedBox(width: 8.w),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            _endResult == 'win'
+                                                ? '本局获胜 · 棋局已结束！'
+                                                : '本局结束 · 棋棋为你记好复盘笔记啦！',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 13.sp,
+                                              fontWeight: FontWeight.w900,
+                                              color: WqTheme.ink,
+                                            ),
+                                          ),
+                                          Text(
+                                            _endScoreSummaryText,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 10.5.sp,
+                                              fontWeight: FontWeight.w700,
+                                              color: WqTheme.inkSoft,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 10.w, vertical: 5.h),
+                                      decoration: BoxDecoration(
+                                        color: WqTheme.coral,
+                                        borderRadius:
+                                            BorderRadius.circular(999),
+                                      ),
+                                      child: Text(
+                                        '战报 ›',
+                                        style: TextStyle(
+                                          fontSize: 11.5.sp,
+                                          fontWeight: FontWeight.w900,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
+              ),
 
               // 底部商业级操作栏
               Padding(
@@ -2102,6 +2241,22 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
     );
   }
 
+  Widget _dpadButton(IconData icon, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 28.w,
+        height: 32.h,
+        decoration: BoxDecoration(
+          color: WqTheme.cream,
+          borderRadius: BorderRadius.circular(8.r),
+          border: WqTheme.border(),
+        ),
+        child: Icon(icon, size: 18.sp, color: WqTheme.ink),
+      ),
+    );
+  }
+
   Widget _actionButton({
     required String emoji,
     required String label,
@@ -2117,14 +2272,8 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
           decoration: BoxDecoration(
             color: color,
             borderRadius: BorderRadius.circular(14.r),
-            border: Border.all(color: WqTheme.ink, width: 2.2),
-            boxShadow: const [
-              BoxShadow(
-                color: WqTheme.ink,
-                offset: Offset(3, 3),
-                blurRadius: 0,
-              ),
-            ],
+            border: WqTheme.border(),
+            boxShadow: WqTheme.paperShadow(h: 8.0),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,

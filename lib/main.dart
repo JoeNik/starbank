@@ -443,32 +443,42 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
         index: _currentIndex,
         children: List.generate(
           pages.length,
-          (index) => TickerMode(
-            enabled: _currentIndex == index,
-            child: pages[index],
+          (index) => RepaintBoundary(
+            child: TickerMode(
+              enabled: _currentIndex == index,
+              child: pages[index],
+            ),
           ),
         ),
       ),
-      bottomNavigationBar: _buildMemphisBottomBar(),
+      bottomNavigationBar: _buildMidCenturyBottomBar(),
     );
   }
 
-  /// 构建孟菲斯风格撞色积木底部导航栏（粗黑描边 + 零模糊硬投影选中态）
-  Widget _buildMemphisBottomBar() {
+  /// 构建中世纪现代（017 Mid-Century Modern）剪纸底部导航栏
+  /// 特点：暖白卡纸台面 + 暖棕高度影子 (h) + 选中态 Q 弹弹簧放大（Curves.elasticOut）
+  Widget _buildMidCenturyBottomBar() {
     const navItems = [
-      (icon: Icons.home_rounded, label: '主页', color: AppTheme.pink),
+      (icon: Icons.home_rounded, label: '主页', color: AppTheme.tomato),
       (icon: Icons.account_balance_rounded, label: '银行', color: AppTheme.teal),
       (icon: Icons.photo_album_rounded, label: '亲宝宝', color: AppTheme.yellow),
-      (icon: Icons.sports_esports_rounded, label: '娱乐', color: AppTheme.lilac),
-      (icon: Icons.shopping_bag_rounded, label: '商店', color: AppTheme.tomato),
+      (icon: Icons.sports_esports_rounded, label: '娱乐', color: AppTheme.cobalt),
+      (icon: Icons.shopping_bag_rounded, label: '商店', color: AppTheme.pink),
     ];
 
     return Container(
-      decoration: const BoxDecoration(
-        color: AppTheme.cream,
-        border: Border(
-          top: BorderSide(color: AppTheme.ink, width: 3.0),
+      decoration: BoxDecoration(
+        color: AppTheme.paperWhite,
+        border: const Border(
+          top: BorderSide(color: Color(0x223A1C0C), width: 1.0),
         ),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.shadowBrown.withValues(alpha: 0.10),
+            offset: const Offset(0, -4),
+            blurRadius: 12,
+          ),
+        ],
       ),
       child: SafeArea(
         top: false,
@@ -478,61 +488,78 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
             children: List.generate(navItems.length, (index) {
               final item = navItems[index];
               final selected = _currentIndex == index;
-              final textColor = selected && item.color == AppTheme.cobalt
-                  ? Colors.white
-                  : AppTheme.ink;
+              final isDarkPill = selected &&
+                  (item.color == AppTheme.tomato ||
+                      item.color == AppTheme.cobalt);
+              final textColor = isDarkPill
+                  ? AppTheme.paperWhite
+                  : (selected ? AppTheme.ink : AppTheme.textSub);
+
               return Expanded(
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () => setState(() => _currentIndex = index),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 140),
-                    curve: Curves.easeOutBack,
-                    margin: EdgeInsets.symmetric(horizontal: 3.w),
-                    padding: EdgeInsets.symmetric(vertical: 6.h),
-                    transform: Matrix4.translationValues(
-                      0,
-                      selected ? -2.0 : 0.0,
-                      0,
+                  child: TweenAnimationBuilder<double>(
+                    key: ValueKey('nav-$index-$selected'),
+                    tween: Tween<double>(
+                      begin: selected ? 0.84 : 1.0,
+                      end: 1.0,
                     ),
-                    decoration: selected
-                        ? BoxDecoration(
-                            color: item.color,
-                            borderRadius: BorderRadius.circular(14.r),
-                            border: Border.all(color: AppTheme.ink, width: 2.5),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: AppTheme.ink,
-                                offset: Offset(3, 3),
-                                blurRadius: 0,
+                    duration: Duration(milliseconds: selected ? 520 : 180),
+                    curve: selected ? Curves.elasticOut : Curves.easeOut,
+                    builder: (context, scale, child) {
+                      return Transform.scale(
+                        scale: scale,
+                        child: child,
+                      );
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeOutCubic,
+                      margin: EdgeInsets.symmetric(horizontal: 3.w),
+                      padding: EdgeInsets.symmetric(vertical: 6.h),
+                      transform: Matrix4.translationValues(
+                        0,
+                        selected ? -3.0 : 0.0,
+                        0,
+                      ),
+                      decoration: selected
+                          ? BoxDecoration(
+                              color: item.color,
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(15),
+                                topRight: Radius.circular(12),
+                                bottomLeft: Radius.circular(13),
+                                bottomRight: Radius.circular(16),
                               ),
-                            ],
-                          )
-                        : BoxDecoration(
-                            color: Colors.transparent,
-                            borderRadius: BorderRadius.circular(14.r),
-                          ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          item.icon,
-                          size: 22.sp,
-                          color: textColor,
-                        ),
-                        SizedBox(height: 2.h),
-                        Text(
-                          item.label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 11.sp,
-                            fontWeight:
-                                selected ? FontWeight.w900 : FontWeight.w700,
+                              boxShadow: AppTheme.paperShadow(h: 8.0),
+                            )
+                          : BoxDecoration(
+                              color: Colors.transparent,
+                              borderRadius: BorderRadius.circular(14.r),
+                            ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            item.icon,
+                            size: 22.sp,
                             color: textColor,
                           ),
-                        ),
-                      ],
+                          SizedBox(height: 2.h),
+                          Text(
+                            item.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 11.sp,
+                              fontWeight:
+                                  selected ? FontWeight.w900 : FontWeight.w700,
+                              color: textColor,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),

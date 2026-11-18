@@ -261,10 +261,8 @@ class _WeiqiReplayPageState extends State<WeiqiReplayPage> {
               decoration: BoxDecoration(
                 color: WqTheme.cream,
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: WqTheme.ink, width: 3.0),
-                boxShadow: const [
-                  BoxShadow(color: WqTheme.ink, offset: Offset(6, 6)),
-                ],
+                border: WqTheme.border(),
+                boxShadow: WqTheme.paperShadow(h: 8.0),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -308,14 +306,8 @@ class _WeiqiReplayPageState extends State<WeiqiReplayPage> {
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(
-                                      color: WqTheme.ink, width: 2.0),
-                                  boxShadow: const [
-                                    BoxShadow(
-                                      color: WqTheme.ink,
-                                      offset: Offset(3, 3),
-                                    ),
-                                  ],
+                                  border: WqTheme.border(),
+                                  boxShadow: WqTheme.paperShadow(h: 8.0),
                                 ),
                                 child: Row(
                                   children: [
@@ -327,8 +319,7 @@ class _WeiqiReplayPageState extends State<WeiqiReplayPage> {
                                             ? WqTheme.sun
                                             : WqTheme.greenSoft,
                                         borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(
-                                            color: WqTheme.ink, width: 1.5),
+                                        border: WqTheme.border(),
                                       ),
                                       child: Text(
                                         '${rec.n}路',
@@ -485,9 +476,9 @@ class _WeiqiReplayPageState extends State<WeiqiReplayPage> {
               ),
             ),
 
-            // 气泡槽
+            // 气泡槽（恒定高度 90，确保讲解语长短变化时棋盘绝对不跳动）
             SizedBox(
-              height: 104,
+              height: 90,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(14, 6, 14, 0),
                 child: WqBubble(
@@ -495,6 +486,7 @@ class _WeiqiReplayPageState extends State<WeiqiReplayPage> {
                   speaking: true,
                   mood: _mood,
                   maxLines: 3,
+                  fixedHeight: 84,
                   tail: true,
                 ),
               ),
@@ -529,30 +521,41 @@ class _WeiqiReplayPageState extends State<WeiqiReplayPage> {
               ),
             ),
 
-            // 进度滑杆
-            if (total > 0 && !_studyMode)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(10, 0, 10, 0),
-                child: SliderTheme(
-                  data: SliderTheme.of(context).copyWith(
-                    trackHeight: 4,
-                    thumbShape:
-                        const RoundSliderThumbShape(enabledThumbRadius: 9),
-                    overlayShape:
-                        const RoundSliderOverlayShape(overlayRadius: 15),
-                  ),
-                  child: Slider(
-                    value: _idx.toDouble(),
-                    min: 0,
-                    max: total.toDouble(),
-                    divisions: total > 1 ? total : null,
-                    activeColor: WqTheme.ink,
-                    inactiveColor: WqTheme.creamDeep,
-                    label: '第 $_idx 手',
-                    onChanged: (v) => _seek(v.round()),
-                  ),
-                ),
-              ),
+            // 恒定高度进度/试下状态槽位（进出试下研究模式时高度不变，棋盘 0 跳动）
+            SizedBox(
+              height: 36,
+              child: _studyMode
+                  ? Center(
+                      child: WqChip.coral(
+                        text:
+                            '🧪 变化图沙盘试下中 · 已试下 ${_studyMoves.length} 手（点棋盘继续落子）',
+                      ),
+                    )
+                  : (total > 0
+                      ? Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          child: SliderTheme(
+                            data: SliderTheme.of(context).copyWith(
+                              trackHeight: 4,
+                              thumbShape: const RoundSliderThumbShape(
+                                  enabledThumbRadius: 8),
+                              overlayShape: const RoundSliderOverlayShape(
+                                  overlayRadius: 14),
+                            ),
+                            child: Slider(
+                              value: _idx.toDouble(),
+                              min: 0,
+                              max: total.toDouble(),
+                              divisions: total > 1 ? total : null,
+                              activeColor: WqTheme.coral,
+                              inactiveColor: WqTheme.creamDeep,
+                              label: '第 $_idx 手',
+                              onChanged: (v) => _seek(v.round()),
+                            ),
+                          ),
+                        )
+                      : const SizedBox.shrink()),
+            ),
 
             // 步进控制按钮
             Padding(

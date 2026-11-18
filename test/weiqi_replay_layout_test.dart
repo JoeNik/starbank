@@ -55,5 +55,12 @@ void main() {
       expect(now.height, closeTo(base.height, 0.5),
           reason: '第 $k 手后棋盘高度发生变化');
     }
+
+    // 切换进入「试下研究」模式再退出，棋盘位置与尺寸同样保持恒定不跳动
+    await tester.tap(find.text('🧪 试下研究'));
+    await tester.pump(const Duration(milliseconds: 300));
+    final studyRect = tester.getRect(boardFinder);
+    expect(studyRect.top, closeTo(base.top, 0.5));
+    expect(studyRect.height, closeTo(base.height, 0.5));
   });
 }

@@ -92,10 +92,8 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
       decoration: BoxDecoration(
         color: WqTheme.sunSoft,
         borderRadius: BorderRadius.circular(20.r),
-        border: Border.all(color: WqTheme.ink, width: 2.5),
-        boxShadow: const [
-          BoxShadow(color: WqTheme.ink, offset: Offset(4.5, 4.5), blurRadius: 0),
-        ],
+        border: WqTheme.border(),
+        boxShadow: WqTheme.paperShadow(h: 8.0),
       ),
       child: Column(
         children: [
@@ -110,10 +108,8 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
                   decoration: BoxDecoration(
                     color: WqTheme.sun,
                     borderRadius: BorderRadius.circular(12.r),
-                    border: Border.all(color: WqTheme.ink, width: 2.2),
-                    boxShadow: const [
-                      BoxShadow(color: WqTheme.ink, offset: Offset(2.5, 2.5)),
-                    ],
+                    border: WqTheme.border(),
+                    boxShadow: WqTheme.paperShadow(h: 8.0),
                   ),
                   child: Text(
                     rank.rank,
@@ -158,7 +154,7 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: WqTheme.ink, width: 1.6),
+                        border: WqTheme.border(),
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(999),
@@ -209,7 +205,7 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
         decoration: BoxDecoration(
           color: bg,
           borderRadius: BorderRadius.circular(10.r),
-          border: Border.all(color: WqTheme.ink, width: 1.8),
+          border: WqTheme.border(),
         ),
         child: Column(
           children: [
@@ -363,10 +359,8 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
       decoration: BoxDecoration(
         color: WqTheme.sun,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: WqTheme.ink, width: 2.0),
-        boxShadow: const [
-          BoxShadow(color: WqTheme.ink, blurRadius: 0, offset: Offset(2.5, 2.5)),
-        ],
+        border: WqTheme.border(),
+        boxShadow: WqTheme.paperShadow(h: 8.0),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -395,10 +389,8 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
           decoration: BoxDecoration(
             color: WqTheme.sun,
             borderRadius: BorderRadius.circular(10.r),
-            border: Border.all(color: WqTheme.ink, width: 2.0),
-            boxShadow: const [
-              BoxShadow(color: WqTheme.ink, offset: Offset(2.5, 2.5)),
-            ],
+            border: WqTheme.border(),
+            boxShadow: WqTheme.paperShadow(h: 8.0),
           ),
           child: Text(
             text,
@@ -564,7 +556,7 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: done ? WqTheme.green : WqTheme.cream,
-                border: Border.all(color: WqTheme.ink, width: 1.8),
+                border: WqTheme.border(),
               ),
               child: done
                   ? const Icon(Icons.check_rounded, size: 15, color: WqTheme.ink)
@@ -601,10 +593,8 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
               decoration: BoxDecoration(
                 color: done ? WqTheme.greenSoft : WqTheme.sun,
                 borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: WqTheme.ink, width: 1.8),
-                boxShadow: const [
-                  BoxShadow(color: WqTheme.ink, offset: Offset(2, 2)),
-                ],
+                border: WqTheme.border(),
+                boxShadow: WqTheme.paperShadow(h: 8.0),
               ),
               child: Text(
                 done ? '再来一次' : '去完成',
@@ -646,14 +636,8 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
         decoration: BoxDecoration(
           color: WqTheme.green,
           borderRadius: BorderRadius.circular(22.r),
-          border: Border.all(color: WqTheme.ink, width: 3.0),
-          boxShadow: const [
-            BoxShadow(
-              color: WqTheme.ink,
-              offset: Offset(6, 6),
-              blurRadius: 0,
-            ),
-          ],
+          border: WqTheme.border(),
+          boxShadow: WqTheme.paperShadow(h: 8.0),
         ),
         child: Row(
           children: [
@@ -662,7 +646,7 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 shape: BoxShape.circle,
-                border: Border.all(color: WqTheme.ink, width: 2.0),
+                border: WqTheme.border(),
               ),
               child: const WqPanda(mood: WqPandaMood.happy, size: 46),
             ),
@@ -714,10 +698,8 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
               decoration: BoxDecoration(
                 color: WqTheme.sun,
                 shape: BoxShape.circle,
-                border: Border.all(color: WqTheme.ink, width: 2.2),
-                boxShadow: const [
-                  BoxShadow(color: WqTheme.ink, offset: Offset(2.5, 2.5)),
-                ],
+                border: WqTheme.border(),
+                boxShadow: WqTheme.paperShadow(h: 8.0),
               ),
               child: const Center(
                 child: Icon(Icons.play_arrow_rounded, color: WqTheme.ink),
@@ -774,10 +756,8 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
               decoration: BoxDecoration(
                 color: WqTheme.sun,
                 borderRadius: BorderRadius.circular(12.r),
-                border: Border.all(color: WqTheme.ink, width: 2.0),
-                boxShadow: const [
-                  BoxShadow(color: WqTheme.ink, offset: Offset(2.5, 2.5)),
-                ],
+                border: WqTheme.border(),
+                boxShadow: WqTheme.paperShadow(h: 8.0),
               ),
               child: const Center(
                 child: Text('📖', style: TextStyle(fontSize: 20)),
@@ -839,10 +819,8 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
                   decoration: BoxDecoration(
                     color: color,
                     borderRadius: BorderRadius.circular(12.r),
-                    border: Border.all(color: WqTheme.ink, width: 2.0),
-                    boxShadow: const [
-                      BoxShadow(color: WqTheme.ink, offset: Offset(2.5, 2.5)),
-                    ],
+                    border: WqTheme.border(),
+                    boxShadow: WqTheme.paperShadow(h: 8.0),
                   ),
                   child: Center(
                     child: Text(emoji, style: TextStyle(fontSize: 20.sp)),
@@ -976,7 +954,7 @@ class _IslandMapState extends State<_IslandMap>
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: WqTheme.sun.withValues(alpha: 0.35),
-                    border: Border.all(color: WqTheme.ink, width: 1.5),
+                    border: WqTheme.border(),
                   ),
                   child: child,
                 );
@@ -991,14 +969,8 @@ class _IslandMapState extends State<_IslandMap>
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: WqTheme.ink, width: 1.8),
-              boxShadow: const [
-                BoxShadow(
-                  color: WqTheme.ink,
-                  blurRadius: 0,
-                  offset: Offset(2, 2),
-                ),
-              ],
+              border: WqTheme.border(),
+              boxShadow: WqTheme.paperShadow(h: 8.0),
             ),
             child: Text(
               unlocked ? '第${lesson.no}课 ${lesson.title}' : lesson.title,
@@ -1030,10 +1002,8 @@ class _IslandMapState extends State<_IslandMap>
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: bgColor,
-        border: Border.all(color: WqTheme.ink, width: 2.5),
-        boxShadow: const [
-          BoxShadow(color: WqTheme.ink, blurRadius: 0, offset: Offset(3.5, 3.5)),
-        ],
+        border: WqTheme.border(),
+        boxShadow: WqTheme.paperShadow(h: 8.0),
       ),
       child: Center(
         child: unlocked
@@ -1114,10 +1084,8 @@ class _IslandTag extends StatelessWidget {
         decoration: BoxDecoration(
           color: color,
           borderRadius: BorderRadius.circular(10.r),
-          border: Border.all(color: WqTheme.ink, width: 2.2),
-          boxShadow: const [
-            BoxShadow(color: WqTheme.ink, blurRadius: 0, offset: Offset(3, 3)),
-          ],
+          border: WqTheme.border(),
+          boxShadow: WqTheme.paperShadow(h: 8.0),
         ),
         child: Text(
           text,

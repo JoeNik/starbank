@@ -15,7 +15,8 @@ import 'entertainment/pinyin_learning/pinyin_learning_page.dart';
 import 'entertainment/math/math_calculator_page.dart';
 import 'entertainment/weiqi/weiqi_home_page.dart';
 
-/// 孟菲斯（Memphis Milano）风格娱乐模块入口页面
+/// 017 · 中世纪现代（Mid-Century Modern）风格娱乐模块入口页面
+/// 致敬 Saul Bass 剪纸美学与 Eames 糖果色纸片高度体系
 class EntertainmentPage extends StatelessWidget {
   const EntertainmentPage({super.key});
 
@@ -42,91 +43,91 @@ class EntertainmentPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 孟菲斯风格顶部欢迎横幅（泡泡糖粉底 + 粗黑边 + 硬投影 + 几何积木贴片）
-                  Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: AppTheme.pink,
-                      borderRadius: BorderRadius.circular(22.r),
-                      border: Border.all(color: AppTheme.ink, width: 3.0),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: AppTheme.ink,
-                          offset: Offset(6, 6),
-                          blurRadius: 0,
+                  // 中世纪现代剪纸欢迎横幅（番茄红主色 + 太阳叠印 + 暖棕高度阴影 h=14）
+                  BouncyTap(
+                    onTap: () => Get.to(() => const MusicHomePage()),
+                    child: Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: AppTheme.tomato,
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(24.r),
+                          topRight: Radius.circular(18.r),
+                          bottomLeft: Radius.circular(20.r),
+                          bottomRight: Radius.circular(26.r),
                         ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(19.r),
-                      child: Stack(
-                        children: [
-                          Positioned(
-                            top: -12.w,
-                            right: -10.w,
-                            child: const MemphisShapeBadge(
-                              shape: MemphisShapeType.circle,
-                              color: AppTheme.yellow,
-                              size: 68,
-                              tiltDeg: 12,
-                              shadowOffset: 3,
+                        boxShadow: AppTheme.paperShadow(h: 14.0),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(22.r),
+                        child: Stack(
+                          children: [
+                            Positioned(
+                              top: -10.w,
+                              right: -8.w,
+                              child: const MemphisShapeBadge(
+                                shape: MemphisShapeType.circle,
+                                color: AppTheme.yellow,
+                                size: 78,
+                                tiltDeg: 10,
+                                shadowOffset: 3,
+                              ),
                             ),
-                          ),
-                          Positioned(
-                            bottom: 10.h,
-                            right: 22.w,
-                            child: const MemphisShapeBadge(
-                              shape: MemphisShapeType.triangle,
-                              color: AppTheme.teal,
-                              size: 34,
-                              tiltDeg: -14,
-                              shadowOffset: 2.5,
+                            Positioned(
+                              bottom: 10.h,
+                              right: 22.w,
+                              child: const MemphisShapeBadge(
+                                shape: MemphisShapeType.triangle,
+                                color: AppTheme.teal,
+                                size: 36,
+                                tiltDeg: -12,
+                                shadowOffset: 2.5,
+                              ),
                             ),
-                          ),
-                          Padding(
-                            padding: EdgeInsets.all(18.w),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                MemphisTag(
-                                  text: 'MEMPHIS PLAYGROUND ✦',
-                                  color: AppTheme.yellow,
-                                  tiltDeg: -3.5,
-                                  fontSize: 10.5.sp,
-                                  shadowOffset: 2.5,
-                                ),
-                                SizedBox(height: 10.h),
-                                Text(
-                                  '🎉 欢迎来到娱乐乐园！',
-                                  style: TextStyle(
-                                    fontSize: 21.sp,
-                                    fontWeight: FontWeight.w900,
-                                    color: AppTheme.ink,
+                            Padding(
+                              padding: EdgeInsets.all(18.w),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  MemphisTag(
+                                    text: 'MID-CENTURY 1955 ✦',
+                                    color: AppTheme.yellow,
+                                    tiltDeg: -2.5,
+                                    fontSize: 10.5.sp,
+                                    shadowOffset: 2.5,
                                   ),
-                                ),
-                                SizedBox(height: 6.h),
-                                Container(
-                                  padding: EdgeInsets.symmetric(
-                                      horizontal: 10.w, vertical: 4.h),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(8.r),
-                                    border: Border.all(
-                                        color: AppTheme.ink, width: 2.0),
-                                  ),
-                                  child: Text(
-                                    '好玩的游戏与益智学习，点一块积木马上出发！',
+                                  SizedBox(height: 10.h),
+                                  Text(
+                                    '🎉 欢迎来到娱乐乐园！',
                                     style: TextStyle(
-                                      fontSize: 12.sp,
-                                      fontWeight: FontWeight.w800,
-                                      color: AppTheme.ink,
+                                      fontSize: 21.sp,
+                                      fontWeight: FontWeight.w900,
+                                      color: AppTheme.paperWhite,
                                     ),
                                   ),
-                                ),
-                              ],
+                                  SizedBox(height: 6.h),
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: 10.w, vertical: 5.h),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.cream,
+                                      borderRadius: BorderRadius.circular(9.r),
+                                      boxShadow: AppTheme.paperShadow(h: 4.0),
+                                    ),
+                                    child: Text(
+                                      '剪纸手作温度 · 点一张彩纸马上出发！',
+                                      style: TextStyle(
+                                        fontSize: 12.sp,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppTheme.ink,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -150,7 +151,7 @@ class EntertainmentPage extends StatelessWidget {
                         title: '脑筋急转弯',
                         subtitle: '100+趣味问答',
                         color: AppTheme.yellow,
-                        cardBg: Colors.white,
+                        cardBg: AppTheme.paperWhite,
                         onTap: () => Get.to(() => const RiddlePage()),
                       ),
                       _buildFeatureCard(
@@ -158,31 +159,32 @@ class EntertainmentPage extends StatelessWidget {
                         title: '看图讲故事',
                         subtitle: 'AI引导讲故事',
                         color: AppTheme.teal,
-                        cardBg: Colors.white,
+                        cardBg: AppTheme.paperWhite,
                         onTap: () => Get.to(() => const StoryGamePage()),
                       ),
                       _buildFeatureCard(
                         emoji: '🎵',
                         title: '儿歌播放器',
-                        subtitle: '海量儿歌随心听',
-                        color: AppTheme.pink,
-                        cardBg: Colors.white,
+                        subtitle: '黑胶唱机 · 随心听',
+                        color: AppTheme.tomato,
+                        cardBg: AppTheme.paperWhite,
+                        badgeText: 'HI-FI',
                         onTap: () => Get.to(() => const MusicHomePage()),
                       ),
                       _buildFeatureCard(
                         emoji: '🧧',
                         title: '新年知多少',
                         subtitle: '小年兽问答',
-                        color: AppTheme.tomato,
-                        cardBg: Colors.white,
+                        color: AppTheme.pink,
+                        cardBg: AppTheme.paperWhite,
                         onTap: () => Get.to(() => const QuizPage()),
                       ),
                       _buildFeatureCard(
                         emoji: '📖',
                         title: '新年故事',
                         subtitle: '语音绘本模式',
-                        color: AppTheme.lilac,
-                        cardBg: Colors.white,
+                        color: AppTheme.cobalt,
+                        cardBg: AppTheme.paperWhite,
                         onTap: () => Get.to(() => const NewYearStoryPage()),
                       ),
                     ],
@@ -216,15 +218,15 @@ class EntertainmentPage extends StatelessWidget {
                         title: '生活科学百科',
                         subtitle: '一问一答学知识',
                         color: AppTheme.cobalt,
-                        cardBg: Colors.white,
+                        cardBg: AppTheme.paperWhite,
                         onTap: () => Get.to(() => const EncyclopediaPage()),
                       ),
                       _buildFeatureCard(
                         emoji: '🔤',
                         title: '星海识字',
                         subtitle: 'AI趣味识字',
-                        color: AppTheme.lilac,
-                        cardBg: Colors.white,
+                        color: AppTheme.tomato,
+                        cardBg: AppTheme.paperWhite,
                         onTap: () => Get.to(() => const HanziLearningPage()),
                       ),
                       _buildFeatureCard(
@@ -232,7 +234,7 @@ class EntertainmentPage extends StatelessWidget {
                         title: '拼音小耳朵',
                         subtitle: '听准声母韵母',
                         color: AppTheme.pink,
-                        cardBg: Colors.white,
+                        cardBg: AppTheme.paperWhite,
                         onTap: () => Get.to(() => const PinyinLearningPage()),
                       ),
                       _buildFeatureCard(
@@ -240,7 +242,7 @@ class EntertainmentPage extends StatelessWidget {
                         title: '数学乐园',
                         subtitle: '计算器和练习题',
                         color: AppTheme.yellow,
-                        cardBg: Colors.white,
+                        cardBg: AppTheme.paperWhite,
                         onTap: () => Get.to(() => const MathCalculatorPage()),
                       ),
                     ],
@@ -255,39 +257,41 @@ class EntertainmentPage extends StatelessWidget {
     );
   }
 
-  /// 构建孟菲斯分类标题行（撞色贴纸 + 波浪线）
+  /// 构建中世纪现代分类标题行（剪纸彩片 + Eames 钢丝彩球线）
   Widget _buildCategoryHeader(String title, Color tagColor) {
+    final isDark = tagColor == AppTheme.tomato || tagColor == AppTheme.cobalt;
     return Row(
       children: [
-        Container(
-          padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 6.h),
-          decoration: BoxDecoration(
-            color: tagColor,
-            borderRadius: BorderRadius.circular(12.r),
-            border: Border.all(color: AppTheme.ink, width: 2.5),
-            boxShadow: const [
-              BoxShadow(
-                color: AppTheme.ink,
-                offset: Offset(3, 3),
-                blurRadius: 0,
+        Transform.rotate(
+          angle: -0.025,
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 6.h),
+            decoration: BoxDecoration(
+              color: tagColor,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(14.r),
+                topRight: Radius.circular(10.r),
+                bottomLeft: Radius.circular(11.r),
+                bottomRight: Radius.circular(15.r),
               ),
-            ],
-          ),
-          child: Text(
-            title,
-            style: TextStyle(
-              fontSize: 16.sp,
-              fontWeight: FontWeight.w900,
-              color: AppTheme.ink,
+              boxShadow: AppTheme.paperShadow(h: 6.0),
+            ),
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w900,
+                color: isDark ? AppTheme.paperWhite : AppTheme.ink,
+              ),
             ),
           ),
         ),
         SizedBox(width: 12.w),
         const Expanded(
           child: MemphisSquiggle(
-            height: 10,
+            height: 12,
             color: AppTheme.ink,
-            strokeWidth: 2.5,
+            strokeWidth: 2.0,
             waves: 6,
           ),
         ),
@@ -295,22 +299,21 @@ class EntertainmentPage extends StatelessWidget {
     );
   }
 
-  /// 构建孟菲斯风格功能积木卡片
+  /// 构建中世纪现代功能剪纸卡片（带 Q 弹物理缩放与暖棕高度投影）
   Widget _buildFeatureCard({
     required String emoji,
     required String title,
     required String subtitle,
     required Color color,
     required VoidCallback onTap,
-    Color cardBg = Colors.white,
+    Color cardBg = AppTheme.paperWhite,
     String? badgeText,
     bool isComingSoon = false,
   }) {
     return MemphisCard(
       color: cardBg,
       borderRadius: 20.r,
-      borderWidth: 2.5,
-      shadowOffset: 5.0,
+      shadowOffset: 5.5,
       onTap: isComingSoon ? null : onTap,
       child: Stack(
         children: [
@@ -320,31 +323,31 @@ class EntertainmentPage extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Emoji 图标积木底座（一块一色 + 粗黑描边 + 硬投影）
-                  Container(
-                    width: 62.w,
-                    height: 62.w,
-                    decoration: BoxDecoration(
-                      color: color,
-                      borderRadius: BorderRadius.circular(18.r),
-                      border: Border.all(color: AppTheme.ink, width: 2.3),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: AppTheme.ink,
-                          offset: Offset(3.5, 3.5),
-                          blurRadius: 0,
+                  // Emoji 图标剪纸底座（无粗黑边 + 暖棕高度影子 h=7）
+                  Transform.rotate(
+                    angle: -0.03,
+                    child: Container(
+                      width: 62.w,
+                      height: 62.w,
+                      decoration: BoxDecoration(
+                        color: color,
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(20.r),
+                          topRight: Radius.circular(15.r),
+                          bottomLeft: Radius.circular(16.r),
+                          bottomRight: Radius.circular(21.r),
                         ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Text(
-                        emoji,
-                        style: TextStyle(fontSize: 30.sp),
+                        boxShadow: AppTheme.paperShadow(h: 7.0),
+                      ),
+                      child: Center(
+                        child: Text(
+                          emoji,
+                          style: TextStyle(fontSize: 30.sp),
+                        ),
                       ),
                     ),
                   ),
                   SizedBox(height: 12.h),
-                  // 标题（水平正排，黑体）
                   Text(
                     title,
                     maxLines: 1,
@@ -356,7 +359,6 @@ class EntertainmentPage extends StatelessWidget {
                     ),
                   ),
                   SizedBox(height: 4.h),
-                  // 副标题
                   Text(
                     subtitle,
                     maxLines: 1,
@@ -371,7 +373,7 @@ class EntertainmentPage extends StatelessWidget {
               ),
             ),
           ),
-          // 歪斜贴纸角标（遵循规则 04：只歪玩具贴纸，不歪正文信息）
+          // 剪纸角标贴片（±3° 微斜）
           if (badgeText != null)
             Positioned(
               top: 10.w,
@@ -379,11 +381,11 @@ class EntertainmentPage extends StatelessWidget {
               child: MemphisTag(
                 text: badgeText,
                 color: AppTheme.tomato,
-                textColor: Colors.white,
-                tiltDeg: 8.0,
+                textColor: AppTheme.paperWhite,
+                tiltDeg: 3.0,
                 fontSize: 10.sp,
                 padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.5.h),
-                shadowOffset: 2.0,
+                shadowOffset: 2.5,
               ),
             ),
           if (isComingSoon)
@@ -393,7 +395,7 @@ class EntertainmentPage extends StatelessWidget {
               child: MemphisTag(
                 text: '即将上线',
                 color: AppTheme.creamDeep,
-                tiltDeg: -6.0,
+                tiltDeg: -3.0,
                 fontSize: 10.sp,
               ),
             ),
