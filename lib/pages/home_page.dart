@@ -8,6 +8,7 @@ import '../models/log.dart';
 import '../models/action_item.dart';
 import '../theme/app_theme.dart';
 import '../widgets/image_utils.dart';
+import '../widgets/memphis_widgets.dart';
 import '../widgets/module_background_scene.dart';
 import '../widgets/star_fx.dart';
 import 'action_settings_page.dart';
@@ -20,7 +21,7 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-/// 快捷记录卡片的糖果色配色（背景 / 强调色），按索引循环使用。
+/// 快捷记录卡片的孟菲斯糖果色配色（背景 / 强调块色），相邻不同色循环使用。
 class _TileTint {
   const _TileTint(this.bg, this.fg);
   final Color bg;
@@ -28,12 +29,12 @@ class _TileTint {
 }
 
 const List<_TileTint> _actionTints = [
-  _TileTint(Color(0xFFFFF1E4), Color(0xFFE8811C)), // 蜜桃
-  _TileTint(Color(0xFFE8F7EE), Color(0xFF2E9E6B)), // 薄荷
-  _TileTint(Color(0xFFEFEDFF), Color(0xFF7B6CD9)), // 香芋
-  _TileTint(Color(0xFFE7F4FE), Color(0xFF3E8FD8)), // 天空
-  _TileTint(Color(0xFFFFF6D9), Color(0xFFC79A00)), // 柠檬
-  _TileTint(Color(0xFFFFEBF0), Color(0xFFE05B8B)), // 草莓
+  _TileTint(AppTheme.yellowSoft, AppTheme.yellow), // 柠檬黄
+  _TileTint(AppTheme.tealSoft, AppTheme.teal), // 薄荷青
+  _TileTint(AppTheme.pinkSoft, AppTheme.pink), // 泡泡糖粉
+  _TileTint(AppTheme.lilacSoft, AppTheme.lilac), // 淡紫
+  _TileTint(AppTheme.cobaltSoft, AppTheme.cobalt), // 钴蓝
+  _TileTint(AppTheme.tomatoSoft, AppTheme.tomato), // 番茄红
 ];
 
 class _HomePageState extends State<HomePage> {
@@ -50,52 +51,44 @@ class _HomePageState extends State<HomePage> {
     final AppModeController modeController = Get.find<AppModeController>();
 
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFFFF1F2), Colors.white],
+      backgroundColor: AppTheme.cream,
+      body: Stack(
+        children: [
+          const Positioned.fill(
+            child: ModuleBackgroundScene(theme: ModuleBackgroundTheme.home),
           ),
-        ),
-        child: Stack(
-          children: [
-            const Positioned.fill(
-              child: ModuleBackgroundScene(theme: ModuleBackgroundTheme.home),
-            ),
-            SafeArea(
-              child: Column(
-                children: [
-                  _buildHeader(controller, modeController),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      physics: const BouncingScrollPhysics(),
-                      child: Column(
-                        children: [
-                          _StaggerIn(
-                            delayMs: 0,
-                            child: _buildStarCard(controller, modeController),
-                          ),
-                          _StaggerIn(
-                            delayMs: 120,
-                            child: _buildActionGrid(controller, modeController),
-                          ),
-                          _StaggerIn(
-                            delayMs: 240,
-                            child: _buildRecentLogs(controller),
-                          ),
-                          SizedBox(height: 20.h),
-                        ],
-                      ),
+          SafeArea(
+            child: Column(
+              children: [
+                _buildHeader(controller, modeController),
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: Column(
+                      children: [
+                        _StaggerIn(
+                          delayMs: 0,
+                          child: _buildStarCard(controller, modeController),
+                        ),
+                        _StaggerIn(
+                          delayMs: 120,
+                          child: _buildActionGrid(controller, modeController),
+                        ),
+                        _StaggerIn(
+                          delayMs: 240,
+                          child: _buildRecentLogs(controller),
+                        ),
+                        SizedBox(height: 20.h),
+                      ],
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            // 加星/扣星的全屏动效反馈层（撒花 / 委屈表情）
-            Positioned.fill(child: StarFxLayer(key: StarFx.layerKey)),
-          ],
-        ),
+          ),
+          // 加星/扣星的全屏动效反馈层（撒花 / 委屈表情）
+          Positioned.fill(child: StarFxLayer(key: StarFx.layerKey)),
+        ],
       ),
     );
   }
@@ -137,7 +130,7 @@ class _HomePageState extends State<HomePage> {
                 behavior: HitTestBehavior.opaque,
                 child: Row(
                   children: [
-                    // 头像 - 带渐变光环，点击查看大图
+                    // 头像 - 孟菲斯泡泡糖粉/柠檬黄粗黑描边硬投影圆环，点击查看大图
                     GestureDetector(
                       onTap: () {
                         if (baby.avatarPath.isNotEmpty) {
@@ -151,35 +144,28 @@ class _HomePageState extends State<HomePage> {
                           height: 54.w,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            gradient: const LinearGradient(
-                              colors: [
-                                Color(0xFFFF6B9D),
-                                Color(0xFFFF8E53),
-                                Color(0xFFFFC371),
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            boxShadow: [
+                            color: AppTheme.yellow,
+                            border: Border.all(color: AppTheme.ink, width: 2.5),
+                            boxShadow: const [
                               BoxShadow(
-                                color: const Color(0xFFFF6B9D)
-                                    .withValues(alpha: 0.35),
-                                blurRadius: 12,
-                                spreadRadius: 1,
+                                color: AppTheme.ink,
+                                offset: Offset(3.5, 3.5),
+                                blurRadius: 0,
                               ),
                             ],
                           ),
                           child: Container(
                             margin: EdgeInsets.all(2.5.w),
-                            decoration: const BoxDecoration(
+                            decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               color: Colors.white,
+                              border: Border.all(color: AppTheme.ink, width: 1.5),
                             ),
                             child: ClipOval(
                               child: ImageUtils.displayImage(
                                 baby.avatarPath,
-                                width: 49.w,
-                                height: 49.w,
+                                width: 45.w,
+                                height: 45.w,
                                 fit: BoxFit.cover,
                               ),
                             ),
@@ -188,21 +174,22 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                     SizedBox(width: 12.w),
-                    // 问候语 + 名字
+                    // 问候语贴纸 + 名字
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(
-                            _greeting,
-                            style: TextStyle(
-                              fontSize: 12.sp,
-                              color: AppTheme.textSub,
-                              fontWeight: FontWeight.w600,
-                            ),
+                          MemphisTag(
+                            text: _greeting,
+                            color: AppTheme.pinkSoft,
+                            tiltDeg: -3.0,
+                            fontSize: 10.5.sp,
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 8.w, vertical: 2.h),
+                            shadowOffset: 2.0,
                           ),
-                          SizedBox(height: 2.h),
+                          SizedBox(height: 4.h),
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -214,15 +201,15 @@ class _HomePageState extends State<HomePage> {
                                   style: TextStyle(
                                     fontSize: 19.sp,
                                     fontWeight: FontWeight.w900,
-                                    color: AppTheme.textMain,
+                                    color: AppTheme.ink,
                                   ),
                                 ),
                               ),
                               SizedBox(width: 4.w),
                               Icon(
                                 Icons.expand_more_rounded,
-                                color: AppTheme.textSub,
-                                size: 20.sp,
+                                color: AppTheme.ink,
+                                size: 22.sp,
                               ),
                             ],
                           ),
@@ -261,31 +248,20 @@ class _HomePageState extends State<HomePage> {
     required String tooltip,
     required VoidCallback onTap,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF4E342E).withValues(alpha: 0.08),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: IconButton(
-        icon: Icon(icon, color: color, size: 20.sp),
-        onPressed: onTap,
-        tooltip: tooltip,
-        visualDensity: VisualDensity.compact,
-      ),
+    return MemphisIconButton(
+      icon: icon,
+      iconColor: AppTheme.ink,
+      bgColor: color == AppTheme.primaryDark ? AppTheme.yellow : Colors.white,
+      size: 40.w,
+      iconSize: 20.sp,
+      tooltip: tooltip,
+      onTap: onTap,
     );
   }
 
   Widget _buildQuickActionCard(UserController controller, ActionItem action,
       AppModeController modeController, _TileTint tint) {
     final isPositive = action.value > 0;
-    final valueColor = isPositive ? tint.fg : const Color(0xFF5B8DEF);
     return GestureDetector(
       onTap: () async {
         if (modeController.isChildMode) {
@@ -351,35 +327,43 @@ class _HomePageState extends State<HomePage> {
       child: Container(
         decoration: BoxDecoration(
           color: tint.bg,
-          borderRadius: BorderRadius.circular(20.r),
+          borderRadius: BorderRadius.circular(18.r),
           border: Border.all(
-            color: tint.fg.withValues(alpha: 0.18),
-            width: 1.5,
+            color: AppTheme.ink,
+            width: 2.2,
           ),
+          boxShadow: const [
+            BoxShadow(
+              color: AppTheme.ink,
+              offset: Offset(3.5, 3.5),
+              blurRadius: 0,
+            ),
+          ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 44.w,
-              height: 44.w,
+              width: 42.w,
+              height: 42.w,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.85),
+                color: Colors.white,
                 shape: BoxShape.circle,
+                border: Border.all(color: AppTheme.ink, width: 1.8),
               ),
               alignment: Alignment.center,
               child: Text(action.iconName.isNotEmpty ? action.iconName : "⭐️",
-                  style: TextStyle(fontSize: 24.sp)),
+                  style: TextStyle(fontSize: 22.sp)),
             ),
-            SizedBox(height: 7.h),
+            SizedBox(height: 6.h),
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 6.w),
               child: Text(
                 action.name,
                 style: TextStyle(
-                  fontSize: 13.sp,
-                  color: AppTheme.textMain,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 12.5.sp,
+                  color: AppTheme.ink,
+                  fontWeight: FontWeight.w900,
                 ),
                 textAlign: TextAlign.center,
                 maxLines: 1,
@@ -388,17 +372,20 @@ class _HomePageState extends State<HomePage> {
             ),
             SizedBox(height: 5.h),
             Container(
-              padding: EdgeInsets.symmetric(horizontal: 9.w, vertical: 2.5.h),
+              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
               decoration: BoxDecoration(
-                color: valueColor.withValues(alpha: 0.14),
+                color: isPositive ? tint.fg : AppTheme.tomato,
                 borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: AppTheme.ink, width: 1.6),
               ),
               child: Text(
                 '${isPositive ? '+' : ''}${action.value} ⭐',
                 style: TextStyle(
-                  fontSize: 11.sp,
-                  color: valueColor,
-                  fontWeight: FontWeight.w800,
+                  fontSize: 10.5.sp,
+                  color: (!isPositive || tint.fg == AppTheme.cobalt)
+                      ? Colors.white
+                      : AppTheme.ink,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
             ),
@@ -761,6 +748,7 @@ class _HomePageState extends State<HomePage> {
     return sum;
   }
 
+  /// 构建孟菲斯风格星星主卡片（柠檬黄主色块 + 3px 黑描边 + 硬投影 + 几何积木装饰）
   Widget _buildStarCard(
       UserController controller, AppModeController modeController) {
     return Obx(() {
@@ -768,159 +756,191 @@ class _HomePageState extends State<HomePage> {
       if (baby == null) return const SizedBox();
       final todayDelta = _todayStarDelta(controller);
       return Container(
-        margin: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 8.h),
+        margin: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 10.h),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(28.r),
-          boxShadow: [
+          color: AppTheme.yellow,
+          borderRadius: BorderRadius.circular(24.r),
+          border: Border.all(color: AppTheme.ink, width: 3.0),
+          boxShadow: const [
             BoxShadow(
-              color: const Color(0xFFFF8E53).withValues(alpha: 0.38),
-              blurRadius: 24,
-              offset: const Offset(0, 12),
+              color: AppTheme.ink,
+              offset: Offset(6, 6),
+              blurRadius: 0,
             ),
           ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(28.r),
+          borderRadius: BorderRadius.circular(21.r),
           child: Stack(
             children: [
-              // 落日糖果渐变底
-              Positioned.fill(
-                child: DecoratedBox(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Color(0xFFFF9A9E),
-                        Color(0xFFFF8E53),
-                        Color(0xFFFFC371),
-                      ],
-                    ),
+              // 右上角孟菲斯泡泡糖粉圆积木装饰（描黑边+硬阴影）
+              Positioned(
+                top: -18.w,
+                right: -14.w,
+                child: const MemphisShapeBadge(
+                  shape: MemphisShapeType.circle,
+                  color: AppTheme.pink,
+                  size: 76,
+                  tiltDeg: 12,
+                  shadowOffset: 3,
+                ),
+              ),
+              // 左下角薄荷青三角积木装饰
+              Positioned(
+                bottom: 52.h,
+                left: 10.w,
+                child: const MemphisShapeBadge(
+                  shape: MemphisShapeType.triangle,
+                  color: AppTheme.teal,
+                  size: 36,
+                  tiltDeg: -12,
+                  shadowOffset: 2.5,
+                ),
+              ),
+              // 右中侧淡紫方块积木装饰
+              Positioned(
+                top: 76.h,
+                right: 16.w,
+                child: const MemphisShapeBadge(
+                  shape: MemphisShapeType.square,
+                  color: AppTheme.lilac,
+                  size: 26,
+                  tiltDeg: 18,
+                  shadowOffset: 2.5,
+                ),
+              ),
+              // 左上角孟菲斯波浪线
+              Positioned(
+                top: 16.h,
+                left: 14.w,
+                child: Transform.rotate(
+                  angle: -0.12,
+                  child: const MemphisSquiggle(
+                    width: 52,
+                    height: 10,
+                    color: AppTheme.ink,
+                    strokeWidth: 2.6,
+                    waves: 3,
                   ),
                 ),
               ),
-              // 装饰气泡
-              Positioned(
-                top: -34.w,
-                right: -22.w,
-                child: _bubble(120.w, 0.14),
-              ),
-              Positioned(
-                bottom: -40.w,
-                left: -26.w,
-                child: _bubble(132.w, 0.10),
-              ),
-              Positioned(
-                top: 18.h,
-                left: 22.w,
-                child: Text('✨',
-                    style: TextStyle(
-                        fontSize: 16.sp,
-                        color: Colors.white.withValues(alpha: 0.9))),
-              ),
-              Positioned(
-                top: 52.h,
-                right: 30.w,
-                child: Text('✨', style: TextStyle(fontSize: 13.sp)),
-              ),
-              Positioned(
-                bottom: 68.h,
-                left: 34.w,
-                child: Text('⭐',
-                    style: TextStyle(
-                        fontSize: 11.sp,
-                        color: Colors.white.withValues(alpha: 0.8))),
-              ),
               Padding(
-                padding: EdgeInsets.symmetric(vertical: 22.h, horizontal: 20.w),
+                padding: EdgeInsets.symmetric(vertical: 20.h, horizontal: 20.w),
                 child: Column(
                   children: [
+                    // 顶部：宝宝小头像 + 标题胶囊
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Container(
                           padding: EdgeInsets.all(2.w),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.9),
+                            color: Colors.white,
                             borderRadius: BorderRadius.circular(10.r),
+                            border: Border.all(color: AppTheme.ink, width: 2.0),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: AppTheme.ink,
+                                offset: Offset(2, 2),
+                                blurRadius: 0,
+                              ),
+                            ],
                           ),
                           child: ClipRRect(
-                            borderRadius: BorderRadius.circular(8.r),
+                            borderRadius: BorderRadius.circular(7.r),
                             child: ImageUtils.displayImage(
                               baby.avatarPath,
-                              width: 34.w,
-                              height: 34.w,
+                              width: 32.w,
+                              height: 32.w,
                               fit: BoxFit.cover,
                             ),
                           ),
                         ),
                         SizedBox(width: 10.w),
-                        Text(
-                          "${baby.name}的星星",
-                          style: TextStyle(
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 12.w, vertical: 4.h),
+                          decoration: BoxDecoration(
                             color: Colors.white,
-                            fontSize: 16.sp,
-                            fontWeight: FontWeight.w800,
-                            shadows: [
-                              Shadow(
-                                color: const Color(0xFFE8734D)
-                                    .withValues(alpha: 0.5),
-                                blurRadius: 6,
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(color: AppTheme.ink, width: 2.0),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: AppTheme.ink,
+                                offset: Offset(2.5, 2.5),
+                                blurRadius: 0,
                               ),
                             ],
+                          ),
+                          child: Text(
+                            "${baby.name}的星星金库",
+                            style: TextStyle(
+                              color: AppTheme.ink,
+                              fontSize: 14.5.sp,
+                              fontWeight: FontWeight.w900,
+                            ),
                           ),
                         ),
                       ],
                     ),
-                    SizedBox(height: 6.h),
-                    // 数字滚动动画
-                    TweenAnimationBuilder<int>(
-                      tween: IntTween(begin: 0, end: baby.starCount),
-                      duration: const Duration(milliseconds: 700),
-                      curve: Curves.easeOutCubic,
-                      builder: (context, value, _) => Text(
-                        '$value',
-                        style: TextStyle(
-                          fontSize: 62.sp,
-                          height: 1.05,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                          fontFamily: 'MiSans',
-                          shadows: [
-                            Shadow(
-                              color: const Color(0xFFD96B3B)
-                                  .withValues(alpha: 0.45),
-                              blurRadius: 14,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 4.h),
-                    // 今日变化徽章
+                    SizedBox(height: 10.h),
+                    // 中央白底黑边星星数大铭牌（遵循指南：要读的数字水平放在白底上）
                     Container(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
+                      padding: EdgeInsets.symmetric(
+                          horizontal: 28.w, vertical: 8.h),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.22),
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.4),
-                        ),
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20.r),
+                        border: Border.all(color: AppTheme.ink, width: 2.8),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: AppTheme.ink,
+                            offset: Offset(4, 4),
+                            blurRadius: 0,
+                          ),
+                        ],
                       ),
-                      child: Text(
-                        todayDelta == 0
-                            ? '今天还没有新记录'
-                            : '今日 ${todayDelta > 0 ? '+' : ''}${todayDelta.toInt()} ⭐',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12.sp,
-                          fontWeight: FontWeight.w800,
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Text('⭐', style: TextStyle(fontSize: 32.sp)),
+                          SizedBox(width: 10.w),
+                          TweenAnimationBuilder<int>(
+                            tween: IntTween(begin: 0, end: baby.starCount),
+                            duration: const Duration(milliseconds: 700),
+                            curve: Curves.easeOutCubic,
+                            builder: (context, value, _) => Text(
+                              '$value',
+                              style: TextStyle(
+                                fontSize: 52.sp,
+                                height: 1.05,
+                                fontWeight: FontWeight.w900,
+                                color: AppTheme.ink,
+                                fontFamily: 'MiSans',
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    SizedBox(height: 18.h),
+                    SizedBox(height: 10.h),
+                    // 今日变化歪斜贴纸徽章
+                    MemphisTag(
+                      text: todayDelta == 0
+                          ? '今天还没有新记录 ✨'
+                          : '今日 ${todayDelta > 0 ? '+' : ''}${todayDelta.toInt()} 颗星',
+                      color: todayDelta >= 0 ? AppTheme.teal : AppTheme.tomato,
+                      textColor:
+                          todayDelta >= 0 ? AppTheme.ink : Colors.white,
+                      tiltDeg: -3.0,
+                      fontSize: 12.sp,
+                      padding: EdgeInsets.symmetric(
+                          horizontal: 14.w, vertical: 5.h),
+                      shadowOffset: 3.0,
+                    ),
+                    SizedBox(height: 16.h),
+                    // 底部操作按钮：加星（泡泡糖粉）与扣星（纯白）
                     Row(
                       children: [
                         Expanded(
@@ -932,7 +952,7 @@ class _HomePageState extends State<HomePage> {
                               }
                               _showStarAdjustDialog(controller, true);
                             },
-                            icon: Icons.add_circle,
+                            icon: Icons.add_circle_rounded,
                             label: "增加星星",
                             filled: true,
                           ),
@@ -947,7 +967,7 @@ class _HomePageState extends State<HomePage> {
                               }
                               _showStarAdjustDialog(controller, false);
                             },
-                            icon: Icons.remove_circle,
+                            icon: Icons.remove_circle_rounded,
                             label: "扣除星星",
                             filled: false,
                           ),
@@ -964,63 +984,22 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  Widget _bubble(double size, double alpha) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white.withValues(alpha: alpha),
-      ),
-    );
-  }
-
   Widget _buildStarButton({
     required VoidCallback onTap,
     required IconData icon,
     required String label,
     required bool filled,
   }) {
-    if (filled) {
-      return ElevatedButton.icon(
-        onPressed: onTap,
-        icon: Icon(icon, size: 20.sp),
-        label: Text(label),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: AppTheme.primaryDark,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16.r),
-          ),
-          padding: EdgeInsets.symmetric(vertical: 12.h),
-          textStyle: TextStyle(
-            fontWeight: FontWeight.w900,
-            fontSize: 14.sp,
-          ),
-        ),
-      );
-    }
-    return OutlinedButton.icon(
-      onPressed: onTap,
-      icon: Icon(icon, size: 20.sp),
-      label: Text(label),
-      style: OutlinedButton.styleFrom(
-        foregroundColor: Colors.white,
-        backgroundColor: Colors.white.withValues(alpha: 0.14),
-        side: BorderSide(
-          color: Colors.white.withValues(alpha: 0.65),
-          width: 1.4,
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16.r),
-        ),
-        padding: EdgeInsets.symmetric(vertical: 12.h),
-        textStyle: TextStyle(
-          fontWeight: FontWeight.w900,
-          fontSize: 14.sp,
-        ),
-      ),
+    return MemphisButton(
+      text: label,
+      leading: Icon(icon, size: 20.sp, color: AppTheme.ink),
+      color: filled ? AppTheme.pink : Colors.white,
+      textColor: AppTheme.ink,
+      borderRadius: 14.r,
+      shadowOffset: 4.0,
+      fontSize: 14.sp,
+      padding: EdgeInsets.symmetric(vertical: 11.h, horizontal: 12.w),
+      onTap: onTap,
     );
   }
 
@@ -1029,13 +1008,13 @@ class _HomePageState extends State<HomePage> {
       margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24.r),
-        border: Border.all(color: const Color(0xFFFFE4E6), width: 1.5),
-        boxShadow: [
+        borderRadius: BorderRadius.circular(22.r),
+        border: Border.all(color: AppTheme.ink, width: 2.5),
+        boxShadow: const [
           BoxShadow(
-            color: const Color(0xFF4E342E).withValues(alpha: 0.05),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
+            color: AppTheme.ink,
+            offset: Offset(5, 5),
+            blurRadius: 0,
           ),
         ],
       ),
@@ -1054,22 +1033,30 @@ class _HomePageState extends State<HomePage> {
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(24.r),
+      borderRadius: BorderRadius.circular(22.r),
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
         child: Row(
           children: [
             Container(
-              width: 38.w,
-              height: 38.w,
+              width: 40.w,
+              height: 40.w,
               decoration: BoxDecoration(
                 color: emojiBg,
                 borderRadius: BorderRadius.circular(12.r),
+                border: Border.all(color: AppTheme.ink, width: 2.0),
+                boxShadow: const [
+                  BoxShadow(
+                    color: AppTheme.ink,
+                    offset: Offset(2.5, 2.5),
+                    blurRadius: 0,
+                  ),
+                ],
               ),
               alignment: Alignment.center,
               child: Text(emoji, style: TextStyle(fontSize: 19.sp)),
             ),
-            SizedBox(width: 10.w),
+            SizedBox(width: 12.w),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1079,15 +1066,15 @@ class _HomePageState extends State<HomePage> {
                     style: TextStyle(
                       fontSize: 16.sp,
                       fontWeight: FontWeight.w900,
-                      color: AppTheme.textMain,
+                      color: AppTheme.ink,
                     ),
                   ),
                   Text(
                     subtitle,
                     style: TextStyle(
-                      fontSize: 11.sp,
+                      fontSize: 11.5.sp,
                       color: AppTheme.textSub,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
@@ -1099,15 +1086,16 @@ class _HomePageState extends State<HomePage> {
               turns: expanded ? 0.5 : 0,
               duration: const Duration(milliseconds: 240),
               child: Container(
-                width: 26.w,
-                height: 26.w,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFFFF1F2),
+                width: 28.w,
+                height: 28.w,
+                decoration: BoxDecoration(
+                  color: AppTheme.yellow,
                   shape: BoxShape.circle,
+                  border: Border.all(color: AppTheme.ink, width: 1.8),
                 ),
                 child: Icon(
                   Icons.keyboard_arrow_down_rounded,
-                  color: AppTheme.textSub,
+                  color: AppTheme.ink,
                   size: 20.sp,
                 ),
               ),
@@ -1272,17 +1260,22 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildLogItem(Log log) {
     final isPositive = log.changeAmount > 0;
-    final accent =
-        isPositive ? const Color(0xFF2E9E6B) : const Color(0xFFE05B5B);
-    final accentBg =
-        isPositive ? const Color(0xFFE8F7EE) : const Color(0xFFFFEDED);
+    final accent = isPositive ? AppTheme.teal : AppTheme.tomato;
+    final accentBg = isPositive ? AppTheme.tealSoft : AppTheme.tomatoSoft;
     return Container(
       margin: EdgeInsets.only(bottom: 8.h),
       padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFAF5),
-        borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(color: const Color(0xFFF6E8DC)),
+        color: AppTheme.cream,
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(color: AppTheme.ink, width: 2.0),
+        boxShadow: const [
+          BoxShadow(
+            color: AppTheme.ink,
+            offset: Offset(2.5, 2.5),
+            blurRadius: 0,
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -1292,10 +1285,11 @@ class _HomePageState extends State<HomePage> {
             decoration: BoxDecoration(
               color: accentBg,
               shape: BoxShape.circle,
+              border: Border.all(color: AppTheme.ink, width: 1.8),
             ),
             child: Icon(
               isPositive ? Icons.add_rounded : Icons.remove_rounded,
-              color: accent,
+              color: AppTheme.ink,
               size: 18.sp,
             ),
           ),
@@ -1309,15 +1303,19 @@ class _HomePageState extends State<HomePage> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w900,
                     fontSize: 13.5.sp,
-                    color: AppTheme.textMain,
+                    color: AppTheme.ink,
                   ),
                 ),
                 SizedBox(height: 2.h),
                 Text(
                   "${log.timestamp.month}-${log.timestamp.day} ${log.timestamp.hour}:${log.timestamp.minute.toString().padLeft(2, '0')}",
-                  style: TextStyle(fontSize: 11.sp, color: AppTheme.textSub),
+                  style: TextStyle(
+                    fontSize: 11.sp,
+                    color: AppTheme.textSub,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ],
             ),
@@ -1325,15 +1323,16 @@ class _HomePageState extends State<HomePage> {
           Container(
             padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
             decoration: BoxDecoration(
-              color: accentBg,
+              color: accent,
               borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: AppTheme.ink, width: 1.8),
             ),
             child: Text(
               "${isPositive ? '+' : ''}${log.changeAmount.toInt()} ⭐",
               style: TextStyle(
-                fontSize: 13.sp,
+                fontSize: 12.5.sp,
                 fontWeight: FontWeight.w900,
-                color: accent,
+                color: isPositive ? AppTheme.ink : Colors.white,
               ),
             ),
           ),
@@ -1668,7 +1667,7 @@ class _HomePageState extends State<HomePage> {
     ValueChanged<String?> onChanged,
   ) {
     return DropdownButtonFormField<String>(
-      value: value,
+      initialValue: value,
       decoration: const InputDecoration(
         labelText: '性别',
         border: OutlineInputBorder(),

@@ -31,6 +31,9 @@ enum WqGoal {
 
   /// 让 [goalPoint] 与 [goalPoint2] 两块己方棋连成同一组（连接）
   connect,
+
+  /// 精准落子到指定要点 [goalPoint]（用于做眼、点眼、枷吃、征子首手等商业级死活手筋题）
+  exactPoint,
 }
 
 /// 演示操作
@@ -136,10 +139,11 @@ class WqLesson {
   });
 }
 
-/// 死活/吃子题
+/// 死活/吃子题（支持单步题与 AI 自动应对的多步连续手筋/死活题）
 class WqPuzzle {
   final String id;
   final String tag;
+  final String category; // 专题分类：'capture'吃子 | 'escape'逃子连接 | 'tesuji'手筋 | 'life'死活对杀
   final String title;
   final String voice; // 语音读题
   final List<WqOp> setup;
@@ -150,13 +154,17 @@ class WqPuzzle {
   final int? goalPoint;
   final int? goalPoint2;
   final int zoneCenter; // L1 提示：区域微光中心
-  final int answerPoint; // L2/L3 提示：闪烁点/演示点
+  final int answerPoint; // L2/L3 提示：第 1 手闪烁点/演示点
+  final int? aiReplyPoint; // 多步题：玩家走对第 1 手后，AI 自动抵抗的落点
+  final int? secondAnswerPoint; // 多步题：玩家第 2 手终结正解落点
+  final String? step1Text; // 多步题：第 1 手走对后棋棋的语音引导
   final List<String> hints;
   final String okText;
 
   const WqPuzzle({
     required this.id,
     required this.tag,
+    this.category = 'capture',
     required this.title,
     required this.voice,
     required this.setup,
@@ -168,9 +176,15 @@ class WqPuzzle {
     this.goalPoint2,
     required this.zoneCenter,
     required this.answerPoint,
+    this.aiReplyPoint,
+    this.secondAnswerPoint,
+    this.step1Text,
     required this.hints,
     required this.okText,
   });
+
+  /// 是否为多步连续应对题
+  bool get isMultiStep => aiReplyPoint != null && secondAnswerPoint != null;
 }
 
 // ============================================================
@@ -863,6 +877,241 @@ final List<WqLesson> wqLessons = [
       ),
     ],
   ),
+
+  // ---------- L13 扭羊头追击（征子） ----------
+  WqLesson(
+    id: 'l13',
+    island: '第③岛 连接大峡谷',
+    no: 13,
+    glyph: '征',
+    title: '扭羊头追击',
+    subtitle: '征子 · 连续打吃',
+    teaches: ['征子', '连续打吃'],
+    steps: [
+      WqStep(
+        caption: '认识征子',
+        bubble: '白棋小兵被三颗黑棋包围了，只剩 2 口气！如果它往外逃跑，黑棋可以像扭羊头一样左右交替打吃，一路追到底！',
+        ops: [
+          _put(4, 4, _w),
+          _put(4, 3, _b),
+          _put(5, 4, _b),
+          _put(3, 5, _b),
+          _put(5, 5, _b),
+        ],
+        breathe: [_p(3, 4), _p(4, 5)],
+      ),
+      WqStep(
+        caption: '第一击：打吃',
+        bubble: '黑棋先堵住左边这口气！白棋只剩下面 1 口气，被「打吃」啦！',
+        ops: [_put(3, 4, _b)],
+        breathe: [_p(4, 5)],
+        warn: true,
+      ),
+      WqStep(
+        caption: '白棋逃跑',
+        bubble: '白棋赶紧往下逃了一步——可是因为黑棋提前在旁边守着，白棋两颗子还是只剩最后 1 口气！',
+        ops: [_put(4, 5, _w)],
+        breathe: [_p(4, 6)],
+        warn: true,
+      ),
+      WqStep(
+        caption: '一网打尽',
+        bubble: '黑棋再追一步，把两颗白棋全部提走！这种每次都打吃、逼着对方只有一条路可逃的招法，就叫「征子」！',
+        ops: [_put(4, 6, _b)],
+        captureDemo: [_p(4, 4), _p(4, 5)],
+      ),
+      WqStep(
+        caption: '你来发动征子',
+        bubble: '轮到你啦！下出正确的打吃方向，把白棋逼进死胡同！',
+        ops: [
+          WqOp.reset(),
+          _put(4, 4, _w),
+          _put(4, 3, _b),
+          _put(5, 4, _b),
+          _put(3, 5, _b),
+          _put(5, 5, _b),
+        ],
+        moveQuiz: WqMoveQuiz(
+          playerColor: _b,
+          goal: WqGoal.exactPoint,
+          goalPoint: _p(3, 4),
+          prompt: '点白棋左边的气打吃它，启动征子追击！',
+          doneText: '太准啦！从左边打吃，白棋往下逃也只有死路一条！',
+          hints: [
+            '白棋有左边和下边两口气，下边已经有两颗黑子埋伏好啦！',
+            '点白棋左边紧挨着的交叉点，逼它往下逃！',
+          ],
+        ),
+      ),
+    ],
+  ),
+
+  // ---------- L14 欲擒故纵（倒扑与枷吃） ----------
+  WqLesson(
+    id: 'l14',
+    island: '第③岛 连接大峡谷',
+    no: 14,
+    glyph: '扑',
+    title: '欲擒故纵',
+    subtitle: '倒扑 · 诱敌深入',
+    teaches: ['倒扑', '弃子手筋'],
+    steps: [
+      WqStep(
+        caption: '奇妙的虎口',
+        bubble: '看这三颗白棋，它们只剩 2 口气了。中间的空点虽然是白棋的虎口，但里面藏着一个大秘密！',
+        ops: [
+          _put(3, 4, _w), _put(4, 3, _w), _put(4, 5, _w),
+          _put(5, 4, _b), _put(5, 3, _b), _put(5, 5, _b),
+          _put(2, 4, _b), _put(3, 3, _b), _put(3, 5, _b),
+          _put(4, 2, _b), _put(4, 6, _b),
+        ],
+        breathe: [_p(4, 4)],
+      ),
+      WqStep(
+        caption: '勇敢扑进去',
+        bubble: '黑棋故意往白棋虎口里「扑」一颗子！虽然这颗黑子只剩 1 口气，但三颗白棋也只剩那 1 口气了！',
+        ops: [_put(4, 4, _b)],
+        warn: true,
+      ),
+      WqStep(
+        caption: '为什么不是打劫？',
+        bubble: '哪怕白棋把这颗黑棋提掉，整块四颗白棋依然只剩刚刚那个点 1 口气，黑棋马上可以全部反提回来！这就叫「倒扑」！',
+        ops: [],
+      ),
+      WqStep(
+        caption: '你来使出倒扑',
+        bubble: '轮到你啦！找到那个关键的「扑」点，把白棋一举拿下！',
+        ops: [
+          WqOp.reset(),
+          _put(3, 4, _w), _put(4, 3, _w), _put(4, 5, _w),
+          _put(5, 3, _b), _put(5, 5, _b),
+          _put(2, 4, _b), _put(3, 3, _b), _put(3, 5, _b),
+          _put(4, 2, _b), _put(4, 6, _b),
+        ],
+        moveQuiz: WqMoveQuiz(
+          playerColor: _b,
+          goal: WqGoal.exactPoint,
+          goalPoint: _p(4, 4),
+          prompt: '点白棋包围圈正中间的空点，使出「倒扑」妙手！',
+          doneText: '好一招倒扑！舍小保大，白棋整队都跑不掉啦！',
+          hints: [
+            '看三颗白棋怀里抱着哪个空点？',
+            '就是正中间天元的位置，大胆跳进去！',
+          ],
+        ),
+      ),
+    ],
+  ),
+
+  // ---------- L15 棋子的安全屋（真眼与两眼活棋） ----------
+  WqLesson(
+    id: 'l15',
+    island: '第④岛 围地王国',
+    no: 15,
+    glyph: '活',
+    title: '棋子的安全屋',
+    subtitle: '真眼 · 两眼活棋',
+    teaches: ['真眼', '两眼活棋', '点眼'],
+    steps: [
+      WqStep(
+        caption: '什么是「眼」',
+        bubble: '自己棋子围住的空点叫做「眼」。如果一块棋只有一个眼，被对方把外面的气堵光后，最后那口眼也会被提掉。',
+        ops: [
+          _put(0, 0, _b), _put(0, 1, _b), _put(1, 1, _b), _put(2, 1, _b),
+          _put(3, 1, _b), _put(4, 1, _b), _put(4, 0, _b),
+          _put(0, 2, _w), _put(1, 2, _w), _put(2, 2, _w),
+          _put(3, 2, _w), _put(4, 2, _w), _put(5, 1, _w), _put(5, 0, _w),
+        ],
+        breathe: [_p(1, 0), _p(2, 0), _p(3, 0)],
+      ),
+      WqStep(
+        caption: '分出两只真眼',
+        bubble: '看！黑棋在中间点一下，把长长的空房间隔成了左右两个独立的小房间——这就是「两只真眼」！',
+        ops: [_put(2, 0, _b)],
+        breathe: [_p(1, 0), _p(3, 0)],
+      ),
+      WqStep(
+        caption: '永远吃不掉',
+        bubble: '白棋想进去？左边是禁入点，右边也是禁入点！因为一次只能下一手棋，所以有「两只真眼」的棋永远不会被吃掉，叫「活棋」！',
+        ops: [_try(1, 0, _w)],
+      ),
+      WqStep(
+        caption: '你来做眼活棋',
+        bubble: '白棋大军压境！快帮边上的黑棋做出两只真眼，建成不败安全屋！',
+        ops: [
+          WqOp.reset(),
+          _put(0, 0, _b), _put(0, 1, _b), _put(1, 1, _b), _put(2, 1, _b),
+          _put(3, 1, _b), _put(4, 1, _b), _put(4, 0, _b),
+          _put(0, 2, _w), _put(1, 2, _w), _put(2, 2, _w),
+          _put(3, 2, _w), _put(4, 2, _w), _put(5, 1, _w), _put(5, 0, _w),
+        ],
+        moveQuiz: WqMoveQuiz(
+          playerColor: _b,
+          goal: WqGoal.exactPoint,
+          goalPoint: _p(2, 0),
+          prompt: '点三个空点正中间的位置，把地盘分成两只真眼！',
+          doneText: '两眼活棋完成！现在就算白棋再来一百个士兵，也拿你没办法啦！',
+          hints: [
+            '看最上面一排有 3 个空点相连……下在哪里能把它们一分为二？',
+            '点最上面一排中间的那个点（C9）！',
+          ],
+        ),
+      ),
+    ],
+  ),
+
+  // ---------- L16 金角银边草肚皮（围地与终局数子） ----------
+  WqLesson(
+    id: 'l16',
+    island: '第④岛 围地王国',
+    no: 16,
+    glyph: '围',
+    title: '金角银边草肚皮',
+    subtitle: '围地规则 · 占角 · 收官',
+    teaches: ['金角银边', '围地规则', '收官'],
+    steps: [
+      WqStep(
+        caption: '真正的围棋目标',
+        bubble: '恭喜你来到最后一课！正式围棋比赛比的是「谁围的地盘大」：终局时，你的活棋数量加上围住的空点，多的一方获胜！',
+        ops: [],
+      ),
+      WqStep(
+        caption: '金角：两面有墙',
+        bubble: '为什么说「金角银边草肚皮」？看左上角：天生就有两面棋盘围墙，黑棋只花 4 颗子就围住了 4 个空点，太划算了！',
+        ops: [
+          _put(2, 0, _b), _put(2, 1, _b), _put(1, 2, _b), _put(0, 2, _b),
+        ],
+        breathe: [_p(0, 0), _p(1, 0), _p(0, 1), _p(1, 1)],
+      ),
+      WqStep(
+        caption: '银边与草肚皮',
+        bubble: '边上只有一面墙，围同样大的地盘要 6 颗子；而在棋盘正中间四面漏风，要 8 颗子才能围住！所以开局要先占角、再占边！',
+        ops: [
+          _put(6, 2, _w), _put(6, 6, _w), _put(2, 6, _b),
+        ],
+      ),
+      WqStep(
+        caption: '收官封口',
+        bubble: '到了终局阶段，把双方地盘交界处的缺口补好叫「收官」。等双方都没地方可争、连续停一手（虚手），就可以数地判胜负啦！',
+        ops: [
+          WqOp.reset(),
+          _put(2, 0, _b), _put(2, 1, _b), _put(2, 2, _b), _put(1, 2, _b),
+          _put(4, 0, _w), _put(4, 1, _w), _put(4, 2, _w), _put(5, 2, _w),
+        ],
+        moveQuiz: WqMoveQuiz(
+          playerColor: _b,
+          goal: WqGoal.exactPoint,
+          goalPoint: _p(0, 2),
+          prompt: '帮左上角的黑棋补上最后一个缺口，完整围住角部领地！',
+          doneText: '领地封口成功！你已经掌握了围棋的全部核心本领，快去「标准围地模式」和棋棋大战一场吧！',
+          hints: [
+            '看左上角黑棋的围墙还差左边最后一个缺口没连到边线上！',
+            '点左边线第 3 行的那个交叉点（A7）！',
+          ],
+        ),
+      ),
+    ],
+  ),
 ];
 
 // ============================================================
@@ -890,6 +1139,7 @@ final List<WqPuzzle> wqPuzzles = [
   WqPuzzle(
     id: 'pz2',
     tag: '逃子题 · L1',
+    category: 'escape',
     title: '帮士兵逃出来',
     voice: '白棋士兵被堵得只剩最后一口气了，这叫「打吃」！你执白棋——点一个能让它多一口气、逃出去的地方。',
     setup: [_put(4, 4, _w), _put(3, 4, _b), _put(5, 4, _b)],
@@ -930,6 +1180,7 @@ final List<WqPuzzle> wqPuzzles = [
   WqPuzzle(
     id: 'pz4',
     tag: '逃子题 · L2',
+    category: 'escape',
     title: '接力逃跑',
     voice: '两颗白棋只剩最后一口气！你执白，点一个能让整队都多口气的地方，一起逃出去！',
     setup: [
@@ -1009,6 +1260,7 @@ final List<WqPuzzle> wqPuzzles = [
   WqPuzzle(
     id: 'pz8',
     tag: '逃子题 · L2',
+    category: 'escape',
     title: '向中腹逃跑',
     voice: '白棋在边线被打吃了！你执白——往中间逃跑，那里气最多！',
     setup: [_put(4, 5, _w), _put(4, 4, _b), _put(3, 5, _b), _put(5, 5, _b)],
@@ -1094,6 +1346,7 @@ final List<WqPuzzle> wqPuzzles = [
   WqPuzzle(
     id: 'pz12',
     tag: '连接题 · L2',
+    category: 'escape',
     title: '手拉手',
     voice: '两颗黑兵中间的缺口被白棋盯着！抢先把它们连成一体！',
     setup: [
@@ -1112,6 +1365,206 @@ final List<WqPuzzle> wqPuzzles = [
       '看棋棋变魔法——记住这种感觉哦！',
     ],
     okText: '手拉手！连成一体气更多，切不断啦！',
+  ),
+  WqPuzzle(
+    id: 'pz13',
+    tag: '手筋题 · 2步连击',
+    category: 'tesuji',
+    title: '扭羊头追击（征子）',
+    voice: '这是一道两步连续追击题！白棋只剩 2 口气，先从左边打吃它，等它往下逃跑后，再追一步把它彻底提走！',
+    setup: [
+      _put(4, 4, _w),
+      _put(4, 3, _b),
+      _put(5, 4, _b),
+      _put(3, 5, _b),
+      _put(5, 5, _b),
+    ],
+    playerColor: _b,
+    goal: WqGoal.exactPoint,
+    goalPoint: _p(3, 4),
+    zoneCenter: _p(4, 4),
+    answerPoint: _p(3, 4),
+    aiReplyPoint: _p(4, 5),
+    secondAnswerPoint: _p(4, 6),
+    step1Text: '第一步打吃漂亮！白棋拼命往下逃了一步——快堵住它最后一口气，把它全部提走！',
+    hints: [
+      '白棋有左边和下面两口气，下面已经有黑棋埋伏好了！',
+      '第一步先点白棋左边的空点打吃，第二步再点最下面的气提子！',
+      '看棋棋变魔法——记住征子连续追击的节奏哦！',
+    ],
+    okText: '征子连击成功！两步追击把白棋一网打尽！',
+  ),
+  WqPuzzle(
+    id: 'pz14',
+    tag: '手筋题 · 2步连击',
+    category: 'tesuji',
+    title: '赶到墙边关门',
+    voice: '两步追捕题！先堵住白棋往中间跑的路，把它逼到边线上，再关门提走它！',
+    setup: [
+      _put(4, 1, _w),
+      _put(3, 1, _b),
+      _put(5, 1, _b),
+      _put(3, 0, _b),
+    ],
+    playerColor: _b,
+    goal: WqGoal.exactPoint,
+    goalPoint: _p(4, 2),
+    zoneCenter: _p(4, 1),
+    answerPoint: _p(4, 2),
+    aiReplyPoint: _p(4, 0),
+    secondAnswerPoint: _p(5, 0),
+    step1Text: '好棋！白棋被逼到边线啦——它只剩右边最后一口气，快关门提走它！',
+    hints: [
+      '千万别让白棋往棋盘中间逃跑！先堵住靠中间的气。',
+      '先点白棋下面的空点打吃，等它逃上边线后，再点右上方的空点提子！',
+      '看棋棋变魔法——把敌人往边线赶最容易吃子！',
+    ],
+    okText: '边线追捕大成功！两颗白棋乖乖进袋！',
+  ),
+  WqPuzzle(
+    id: 'pz15',
+    tag: '手筋题 · L3',
+    category: 'tesuji',
+    title: '欲擒故纵（倒扑）',
+    voice: '三颗白棋围着一个虎口，但它们自己也只剩这 1 个空点可以呼吸啦！大胆「扑」进虎口，让白棋插翅难飞！',
+    setup: [
+      _put(3, 4, _w), _put(4, 3, _w), _put(4, 5, _w),
+      _put(5, 3, _b), _put(5, 5, _b),
+      _put(2, 4, _b), _put(3, 3, _b), _put(3, 5, _b),
+      _put(4, 2, _b), _put(4, 6, _b),
+    ],
+    playerColor: _b,
+    goal: WqGoal.exactPoint,
+    goalPoint: _p(4, 4),
+    zoneCenter: _p(4, 4),
+    answerPoint: _p(4, 4),
+    hints: [
+      '看三颗白棋中间抱着的那个空点，下进去会发生什么？',
+      '就是正中心的天元点！就算白棋提掉你一颗，你下一步也能反提它四颗！',
+      '看棋棋变魔法——这就是经典的「倒扑」手筋！',
+    ],
+    okText: '好一招倒扑！哪怕白棋提掉这一子，下一手也会被全部反提！',
+  ),
+  WqPuzzle(
+    id: 'pz16',
+    tag: '手筋题 · L3',
+    category: 'tesuji',
+    title: '天罗地网（枷吃）',
+    voice: '白棋小兵在中间想逃跑！如果直接贴着打吃它还会溜走，试试在斜对角张开竹篮把它罩住（枷吃）！',
+    setup: [
+      _put(4, 4, _w),
+      _put(3, 4, _b),
+      _put(4, 3, _b),
+      _put(3, 6, _b),
+    ],
+    playerColor: _b,
+    goal: WqGoal.exactPoint,
+    goalPoint: _p(5, 5),
+    zoneCenter: _p(5, 5),
+    answerPoint: _p(5, 5),
+    hints: [
+      '白棋还剩右边和下边两个逃跑出口，哪个点能同时看管住这两个出口？',
+      '看白棋右下方斜对角的那个交叉点（F4）！',
+      '看棋棋变魔法——斜角一罩，白棋往哪边冲都冲不出去，这叫「枷吃」！',
+    ],
+    okText: '妙手枷吃！不贴身硬追，而是在斜角张开竹篮把白棋牢牢罩住！',
+  ),
+  WqPuzzle(
+    id: 'pz17',
+    tag: '死活题 · L3',
+    category: 'life',
+    title: '分房建屋（做两眼）',
+    voice: '黑棋被白棋团团包围了！好在里面有三个相连的空点（直三），快点在正中间把它们分成两只真眼活棋！',
+    setup: [
+      _put(0, 1, _b), _put(1, 1, _b), _put(2, 1, _b),
+      _put(3, 1, _b), _put(4, 1, _b), _put(4, 0, _b),
+      _put(0, 2, _w), _put(1, 2, _w), _put(2, 2, _w),
+      _put(3, 2, _w), _put(4, 2, _w), _put(5, 1, _w), _put(5, 0, _w),
+    ],
+    playerColor: _b,
+    goal: WqGoal.exactPoint,
+    goalPoint: _p(2, 0),
+    zoneCenter: _p(2, 0),
+    answerPoint: _p(2, 0),
+    hints: [
+      '三个空点连成一排，下在哪里能隔出左右两个独立的真眼？',
+      '最上面一排三个空点正中间的位置！',
+      '看棋棋变魔法——左右各一只真眼，永远吃不掉啦！',
+    ],
+    okText: '两眼活棋成功！拥有两只真眼的安全屋坚不可摧！',
+  ),
+  WqPuzzle(
+    id: 'pz18',
+    tag: '死活题 · L3',
+    category: 'life',
+    title: '一击破眼（点眼杀棋）',
+    voice: '轮到黑棋进攻啦！白棋在边上也有三个空点想做两只眼——俗话说「敌之要点即我之要点」，抢先点进中间破掉它的眼！',
+    setup: [
+      _put(0, 1, _w), _put(1, 1, _w), _put(2, 1, _w),
+      _put(3, 1, _w), _put(4, 1, _w), _put(4, 0, _w),
+      _put(0, 2, _b), _put(1, 2, _b), _put(2, 2, _b),
+      _put(3, 2, _b), _put(4, 2, _b), _put(5, 1, _b), _put(5, 0, _b),
+    ],
+    playerColor: _b,
+    goal: WqGoal.exactPoint,
+    goalPoint: _p(2, 0),
+    zoneCenter: _p(2, 0),
+    answerPoint: _p(2, 0),
+    hints: [
+      '如果让白棋下在哪里，它就能做成两只真眼？',
+      '抢先下在最上面三个空点正中间的位置，不让它分出两个房间！',
+      '看棋棋变魔法——点在中间，白棋就只剩一只眼了，这叫「点眼」！',
+    ],
+    okText: '点眼命中！白棋做不出两只真眼，整块都变成死棋啦！',
+  ),
+  WqPuzzle(
+    id: 'pz19',
+    tag: '逃子与连接 · L3',
+    category: 'escape',
+    title: '虎口护断（稳健连接）',
+    voice: '黑棋左右两块中间有缺口被白棋盯着！找一个好位置，把自己的棋稳稳粘成一体！',
+    setup: [
+      _put(3, 4, _b), _put(5, 4, _b),
+      _put(3, 3, _w), _put(5, 3, _w),
+    ],
+    playerColor: _b,
+    goal: WqGoal.connect,
+    goalPoint: _p(3, 4),
+    goalPoint2: _p(5, 4),
+    zoneCenter: _p(4, 4),
+    answerPoint: _p(4, 4),
+    hints: [
+      '两颗黑棋中间隔着哪个点？直接粘上最结实！',
+      '点两颗黑棋正中间的交叉点，三子连成铁板一块！',
+      '看棋棋变魔法——及时补断，百战不殆！',
+    ],
+    okText: '稳健连接！三颗黑棋连成一线，白棋无机可乘！',
+  ),
+  WqPuzzle(
+    id: 'pz20',
+    tag: '死活对杀 · 2步连击',
+    category: 'life',
+    title: '紧气对杀（接不归）',
+    voice: '终极挑战！白棋想回家连接，但气不够啦！先打吃它，等它往下逃时再一举提光（接不归）！',
+    setup: [
+      _put(4, 4, _w), _put(5, 4, _w), _put(3, 3, _w),
+      _put(4, 3, _b), _put(5, 3, _b), _put(6, 4, _b),
+      _put(5, 5, _b), _put(3, 5, _b),
+    ],
+    playerColor: _b,
+    goal: WqGoal.exactPoint,
+    goalPoint: _p(3, 4),
+    zoneCenter: _p(4, 4),
+    answerPoint: _p(3, 4),
+    aiReplyPoint: _p(4, 5),
+    secondAnswerPoint: _p(4, 6),
+    step1Text: '好棋！白棋赶紧往下逃了一步想挣扎——快封住它最后一口气，完成「接不归」绝杀！',
+    hints: [
+      '看右边两颗白棋只剩左边和下边两口气！先切断它和左上白子的联系！',
+      '第一步点左边断点（D5）打吃，第二步点最下方（E3）把白棋全提走！',
+      '看棋棋变魔法——这就是经典的「接不归」！',
+    ],
+    okText: '恭喜通关全部 20 道围棋特训题！你的计算力已经达到小高手水平啦！',
   ),
 ];
 
@@ -1155,6 +1608,9 @@ bool wqCheckGoal(
       if (goalPoint == null || goalPoint2 == null) return false;
       if (g.s[goalPoint] == 0 || g.s[goalPoint2] == 0) return false;
       return g.groupAt(goalPoint).contains(goalPoint2);
+    case WqGoal.exactPoint:
+      if (goalPoint == null) return false;
+      return g.last == goalPoint && g.s[goalPoint] == playerColor;
     case WqGoal.doubleAtari:
       final opp = 3 - playerColor;
       final seen = <int>{};

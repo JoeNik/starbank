@@ -449,21 +449,97 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
           ),
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: AppTheme.primaryDark,
-        unselectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: '主页'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.account_balance), label: '银行'),
-          BottomNavigationBarItem(icon: Icon(Icons.photo_album), label: '亲宝宝'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.sports_esports), label: '娱乐'),
-          BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: '商店'),
-        ],
+      bottomNavigationBar: _buildMemphisBottomBar(),
+    );
+  }
+
+  /// 构建孟菲斯风格撞色积木底部导航栏（粗黑描边 + 零模糊硬投影选中态）
+  Widget _buildMemphisBottomBar() {
+    const navItems = [
+      (icon: Icons.home_rounded, label: '主页', color: AppTheme.pink),
+      (icon: Icons.account_balance_rounded, label: '银行', color: AppTheme.teal),
+      (icon: Icons.photo_album_rounded, label: '亲宝宝', color: AppTheme.yellow),
+      (icon: Icons.sports_esports_rounded, label: '娱乐', color: AppTheme.lilac),
+      (icon: Icons.shopping_bag_rounded, label: '商店', color: AppTheme.tomato),
+    ];
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppTheme.cream,
+        border: Border(
+          top: BorderSide(color: AppTheme.ink, width: 3.0),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
+          child: Row(
+            children: List.generate(navItems.length, (index) {
+              final item = navItems[index];
+              final selected = _currentIndex == index;
+              final textColor = selected && item.color == AppTheme.cobalt
+                  ? Colors.white
+                  : AppTheme.ink;
+              return Expanded(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => setState(() => _currentIndex = index),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 140),
+                    curve: Curves.easeOutBack,
+                    margin: EdgeInsets.symmetric(horizontal: 3.w),
+                    padding: EdgeInsets.symmetric(vertical: 6.h),
+                    transform: Matrix4.translationValues(
+                      0,
+                      selected ? -2.0 : 0.0,
+                      0,
+                    ),
+                    decoration: selected
+                        ? BoxDecoration(
+                            color: item.color,
+                            borderRadius: BorderRadius.circular(14.r),
+                            border: Border.all(color: AppTheme.ink, width: 2.5),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: AppTheme.ink,
+                                offset: Offset(3, 3),
+                                blurRadius: 0,
+                              ),
+                            ],
+                          )
+                        : BoxDecoration(
+                            color: Colors.transparent,
+                            borderRadius: BorderRadius.circular(14.r),
+                          ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          item.icon,
+                          size: 22.sp,
+                          color: textColor,
+                        ),
+                        SizedBox(height: 2.h),
+                        Text(
+                          item.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11.sp,
+                            fontWeight:
+                                selected ? FontWeight.w900 : FontWeight.w700,
+                            color: textColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
       ),
     );
   }

@@ -220,4 +220,70 @@ void main() {
       expect(g.tryPlay(-1, 1).reason, 'offboard');
     });
   });
+
+  group('商业级围地模式、让子与多步题库验证', () {
+    test('虚手(Pass)与让子(Handicap)星位摆放正确', () {
+      final g = WqGame(n: 9);
+      g.setupHandicap(4);
+      expect(g.handicap, 4);
+      expect(g.stoneCount(), 4);
+      // 9路四角星位 (2,2), (6,2), (2,6), (6,6)
+      expect(g.s[p(2, 2)], 1);
+      expect(g.s[p(6, 2)], 1);
+      expect(g.s[p(2, 6)], 1);
+      expect(g.s[p(6, 6)], 1);
+
+      g.pass(2);
+      expect(g.consecutivePasses, 1);
+      g.pass(1);
+      expect(g.consecutivePasses, 2);
+      // 落子后连续虚手清零
+      g.tryPlay(p(4, 4), 2);
+      expect(g.consecutivePasses, 0);
+    });
+
+    test('WqTerritoryEstimator 领地与贴目计算准确', () {
+      final g = WqGame(n: 9);
+      // 黑棋完整围住左上角 2x2 空点：(0,0),(1,0),(0,1),(1,1) 共 4 空，花 5 颗子
+      for (final pt in [p(2, 0), p(2, 1), p(2, 2), p(1, 2), p(0, 2)]) {
+        g.tryPlay(pt, 1);
+      }
+      // 白棋完整围住右下角 1x1 空点 (8,8)，花 3 颗子
+      for (final pt in [p(7, 8), p(7, 7), p(8, 7)]) {
+        g.tryPlay(pt, 2);
+      }
+      final summary = WqTerritoryEstimator.estimate(
+        g,
+        deadStones: const {},
+        includeInfluence: false,
+      );
+      expect(summary.blackStones, 5);
+      expect(summary.blackTerritory, 4);
+      expect(summary.blackArea, 9);
+      expect(summary.whiteStones, 3);
+      expect(summary.whiteTerritory, 1);
+      expect(summary.whiteArea, 4);
+    });
+
+    test('多步连续应对死活题全流程合法（含 AI 抵抗手与第 2 手终结）', () {
+      final multiPuzzles = wqPuzzles.where((pz) => pz.isMultiStep).toList();
+      expect(multiPuzzles, isNotEmpty);
+      for (final pz in multiPuzzles) {
+        final g = WqGame();
+        for (final op in pz.setup) {
+          if (!op.reset) g.tryPlay(op.point, op.color!);
+        }
+        // 第 1 手玩家正解
+        expect(g.tryPlay(pz.answerPoint, pz.playerColor).ok, isTrue,
+            reason: '${pz.id} 第1手非法');
+        // AI 自动应对手
+        expect(g.tryPlay(pz.aiReplyPoint!, 3 - pz.playerColor).ok, isTrue,
+            reason: '${pz.id} AI应对手非法');
+        // 第 2 手玩家终结手
+        final r2 = g.tryPlay(pz.secondAnswerPoint!, pz.playerColor);
+        expect(r2.ok, isTrue, reason: '${pz.id} 第2手非法');
+        expect(r2.captured, isNotEmpty, reason: '${pz.id} 第2手应完成提子终结');
+      }
+    });
+  });
 }

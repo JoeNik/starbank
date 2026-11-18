@@ -8,18 +8,17 @@ import '../../../controllers/app_mode_controller.dart';
 import 'weiqi_course_page.dart';
 import 'weiqi_data.dart';
 import 'weiqi_glossary_page.dart';
-import 'weiqi_parent_page.dart';
 import 'weiqi_panda.dart';
+import 'weiqi_parent_page.dart';
 import 'weiqi_play_page.dart';
-import 'weiqi_replay_page.dart';
 import 'weiqi_puzzle_page.dart';
+import 'weiqi_replay_page.dart';
 import 'weiqi_service.dart';
 import 'weiqi_sfx.dart';
 import 'weiqi_theme.dart';
 import 'weiqi_widgets.dart';
 
-/// 棋妙岛 · 模块首页
-/// 纯学习模块：没有金币与商店，只有课程闯关 / 陪下 / 死活题 / 家长小屋。
+/// 棋妙岛 · 模块首页（孟菲斯视觉 + 商业级段级位成长与双模式入口）
 class WeiqiHomePage extends StatefulWidget {
   const WeiqiHomePage({super.key});
 
@@ -36,10 +35,12 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
     _svc = Get.find<WeiqiService>();
   }
 
-  /// 当前应学的课（第一个已解锁但未拿星的），地图上会发光
+  /// 当前应学的课（第一个已解锁但未拿星的），地图上会脉冲发光
   int _currentIndex() {
     for (var i = 0; i < wqLessons.length; i++) {
-      if (!_svc.isLessonUnlocked(i)) return (i - 1).clamp(0, wqLessons.length - 1);
+      if (!_svc.isLessonUnlocked(i)) {
+        return (i - 1).clamp(0, wqLessons.length - 1);
+      }
       if ((_svc.lessonStars[wqLessons[i].id] ?? 0) == 0) return i;
     }
     return wqLessons.length - 1;
@@ -54,24 +55,26 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
           const Positioned.fill(child: WqHills()),
           SafeArea(
             child: Obx(() => ListView(
-                  padding: EdgeInsets.fromLTRB(16.w, 4.h, 16.w, 96.h),
+                  padding: EdgeInsets.fromLTRB(16.w, 6.h, 16.w, 96.h),
                   children: [
                     _header(),
+                    SizedBox(height: 10.h),
+                    _rankBanner(),
                     SizedBox(height: 12.h),
                     _dailyQuests(),
                     SizedBox(height: 12.h),
                     _playCta(),
-                    SizedBox(height: 18.h),
+                    SizedBox(height: 14.h),
                     if (_svc.loadLastGame() != null) ...[
                       _lastGameEntry(),
-                      SizedBox(height: 12.h),
+                      SizedBox(height: 14.h),
                     ],
-                    _sectionTitle('🗺️ 课程地图'),
+                    _sectionTitle('🗺️ 课程闯关地图（共 ${wqLessons.length} 课）'),
                     SizedBox(height: 10.h),
                     ..._buildIslandSections(),
-                    SizedBox(height: 16.h),
+                    SizedBox(height: 14.h),
                     _entries(),
-                    SizedBox(height: 12.w),
+                    SizedBox(height: 12.h),
                     _glossaryEntry(),
                   ],
                 )),
@@ -81,14 +84,171 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
     );
   }
 
-  /// 分岛分节：每岛一个彩色标题 + 独立小地图，
-  /// 节点在节内蛇形均匀分布，杜绝标题/标签与节点重叠
+  /// 构建少儿围棋段级位成长看板（孟菲斯柠檬黄/薄荷青撞色卡）
+  Widget _rankBanner() {
+    final rank = _svc.rankInfo;
+    return Container(
+      padding: EdgeInsets.all(13.w),
+      decoration: BoxDecoration(
+        color: WqTheme.sunSoft,
+        borderRadius: BorderRadius.circular(20.r),
+        border: Border.all(color: WqTheme.ink, width: 2.5),
+        boxShadow: const [
+          BoxShadow(color: WqTheme.ink, offset: Offset(4.5, 4.5), blurRadius: 0),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              // 歪斜级位大徽章
+              Transform.rotate(
+                angle: -0.06,
+                child: Container(
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                  decoration: BoxDecoration(
+                    color: WqTheme.sun,
+                    borderRadius: BorderRadius.circular(12.r),
+                    border: Border.all(color: WqTheme.ink, width: 2.2),
+                    boxShadow: const [
+                      BoxShadow(color: WqTheme.ink, offset: Offset(2.5, 2.5)),
+                    ],
+                  ),
+                  child: Text(
+                    rank.rank,
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w900,
+                      color: WqTheme.ink,
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          rank.title,
+                          style: TextStyle(
+                            fontSize: 14.5.sp,
+                            fontWeight: FontWeight.w900,
+                            color: WqTheme.ink,
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          'EXP ${rank.currentExp} / ${rank.nextExp}',
+                          style: TextStyle(
+                            fontSize: 10.5.sp,
+                            fontWeight: FontWeight.w900,
+                            color: WqTheme.inkSoft,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 5.h),
+                    // 孟菲斯黑边进度条
+                    Container(
+                      height: 9.h,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: WqTheme.ink, width: 1.6),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(999),
+                        child: FractionallySizedBox(
+                          widthFactor: rank.progress,
+                          alignment: Alignment.centerLeft,
+                          child: Container(color: WqTheme.green),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 10.h),
+          // 三项核心成长指标
+          Row(
+            children: [
+              _miniStatPill(
+                '⭐ 课程星章',
+                '${_svc.totalLessonStars}/${wqLessons.length * 3}',
+                Colors.white,
+              ),
+              SizedBox(width: 8.w),
+              _miniStatPill(
+                '🧩 题库通关',
+                '${_svc.solvedPuzzles.length}/${wqPuzzles.length}',
+                Colors.white,
+              ),
+              SizedBox(width: 8.w),
+              _miniStatPill(
+                '🏆 对局胜场',
+                '${_svc.playWins.value} 胜',
+                Colors.white,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _miniStatPill(String label, String val, Color bg) {
+    return Expanded(
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 5.h, horizontal: 6.w),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(10.r),
+          border: Border.all(color: WqTheme.ink, width: 1.8),
+        ),
+        child: Column(
+          children: [
+            Text(
+              val,
+              style: TextStyle(
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w900,
+                color: WqTheme.ink,
+              ),
+            ),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 9.5.sp,
+                fontWeight: FontWeight.w700,
+                color: WqTheme.inkSoft,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 分岛分节：4 座岛屿各自一个孟菲斯糖果色贴纸标题 + 独立小地图
   List<Widget> _buildIslandSections() {
     final islands = <String>[];
     for (final l in wqLessons) {
       if (!islands.contains(l.island)) islands.add(l.island);
     }
-    const islandColors = [Color(0xFF5FAEE3), WqTheme.grape];
+    const islandColors = [
+      WqTheme.green,
+      WqTheme.sun,
+      WqTheme.pink,
+      WqTheme.grape,
+    ];
     final widgets = <Widget>[];
     for (var i = 0; i < islands.length; i++) {
       final indices = <int>[];
@@ -101,13 +261,13 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
             _IslandTag(
               text: islands[i],
               color: islandColors[i % islandColors.length],
+              tiltDeg: i.isEven ? -2.0 : 2.0,
             ),
-            SizedBox(width: 8.w),
-            Expanded(
+            SizedBox(width: 10.w),
+            const Expanded(
               child: Divider(
-                color: (islandColors[i % islandColors.length])
-                    .withValues(alpha: 0.3),
-                thickness: 1.5,
+                color: WqTheme.ink,
+                thickness: 2.0,
               ),
             ),
           ],
@@ -121,6 +281,7 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
           current: _currentIndex(),
           onNodeTap: _onNodeTap,
           lessonIndices: indices,
+          accentColor: islandColors[i % islandColors.length],
         ),
       );
       widgets.add(SizedBox(height: 12.h));
@@ -147,20 +308,26 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
       '先完成前面的课程再来吧！',
       '和棋棋一起学完上一课，就能解锁这里啦～',
       snackPosition: SnackPosition.TOP,
-      backgroundColor: WqTheme.ink,
-      colorText: Colors.white,
+      backgroundColor: WqTheme.sun,
+      colorText: WqTheme.ink,
       margin: EdgeInsets.all(16.w),
       borderRadius: 16.r,
     );
   }
 
-  // ================= 顶部问候 =================
+  // ================= 顶部问候与返回 =================
 
   Widget _header() {
     return Row(
       children: [
-        const WqPanda(mood: WqPandaMood.happy, size: 46),
-        SizedBox(width: 10.w),
+        WqIconButton(
+          icon: Icons.arrow_back_ios_new_rounded,
+          size: 38,
+          onTap: () => Get.back(),
+        ),
+        SizedBox(width: 8.w),
+        const WqPanda(mood: WqPandaMood.happy, size: 44),
+        SizedBox(width: 8.w),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -168,7 +335,7 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
               Text(
                 '欢迎来到棋妙岛！',
                 style: TextStyle(
-                  fontSize: 18.sp,
+                  fontSize: 17.5.sp,
                   fontWeight: FontWeight.w900,
                   color: WqTheme.ink,
                 ),
@@ -176,8 +343,8 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
               Text(
                 '今天也要棋开得胜哦！',
                 style: TextStyle(
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 11.5.sp,
+                  fontWeight: FontWeight.w700,
                   color: WqTheme.inkSoft,
                 ),
               ),
@@ -192,27 +359,27 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
   Widget _streakChip() {
     final days = _svc.streakDays();
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: WqTheme.sun,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: WqTheme.sun.withValues(alpha: 0.4)),
+        border: Border.all(color: WqTheme.ink, width: 2.0),
         boxShadow: const [
-          BoxShadow(color: Color(0x1A23324D), blurRadius: 8, offset: Offset(0, 3)),
+          BoxShadow(color: WqTheme.ink, blurRadius: 0, offset: Offset(2.5, 2.5)),
         ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           const Icon(Icons.local_fire_department_rounded,
-              size: 15, color: WqTheme.sunDeep),
+              size: 16, color: WqTheme.coral),
           SizedBox(width: 3.w),
           Text(
-            '$days',
+            '$days天',
             style: TextStyle(
-              fontSize: 13.sp,
+              fontSize: 12.sp,
               fontWeight: FontWeight.w900,
-              color: WqTheme.sunDeep,
+              color: WqTheme.ink,
             ),
           ),
         ],
@@ -223,85 +390,94 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
   Widget _sectionTitle(String text) {
     return Row(
       children: [
-        Text(
-          text,
-          style: TextStyle(
-            fontSize: 16.sp,
-            fontWeight: FontWeight.w900,
-            color: WqTheme.ink,
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+          decoration: BoxDecoration(
+            color: WqTheme.sun,
+            borderRadius: BorderRadius.circular(10.r),
+            border: Border.all(color: WqTheme.ink, width: 2.0),
+            boxShadow: const [
+              BoxShadow(color: WqTheme.ink, offset: Offset(2.5, 2.5)),
+            ],
+          ),
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 14.5.sp,
+              fontWeight: FontWeight.w900,
+              color: WqTheme.ink,
+            ),
           ),
         ),
         SizedBox(width: 8.w),
-        Expanded(
+        const Expanded(
           child: Divider(
-            color: WqTheme.green.withValues(alpha: 0.25),
-            thickness: 1.5,
+            color: WqTheme.ink,
+            thickness: 2.0,
           ),
         ),
       ],
     );
   }
 
-  /// 上一局复盘入口：终局后随时可以回来逐步回顾
+  /// 上一局复盘与历史棋谱库入口
   Widget _lastGameEntry() {
     final last = _svc.loadLastGame();
     if (last == null) return const SizedBox.shrink();
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(20.r),
-      child: InkWell(
-        onTap: () => Get.to(() => WeiqiReplayPage(
-              moves: last.moves,
-              notes: last.notes,
-              marks: last.marks,
-              grades: last.grades,
-              better: last.better,
-              n: last.n,
-            )),
-        borderRadius: BorderRadius.circular(20.r),
-        child: Container(
-          padding: EdgeInsets.all(12.w),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20.r),
-            border: Border.all(color: WqTheme.green.withValues(alpha: 0.35)),
-            boxShadow: const [
-              BoxShadow(
-                  color: Color(0x1A23324D), blurRadius: 16, offset: Offset(0, 6)),
-            ],
-          ),
-          child: Row(
-            children: [
-              const WqPanda(mood: WqPandaMood.think, size: 44),
-              SizedBox(width: 10.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '上局复盘 · 学一手',
-                      style: TextStyle(
-                        fontSize: 14.5.sp,
-                        fontWeight: FontWeight.w800,
-                        color: WqTheme.ink,
+    return GestureDetector(
+      onTap: () => Get.to(() => WeiqiReplayPage(
+            moves: last.moves,
+            notes: last.notes,
+            marks: last.marks,
+            grades: last.grades,
+            better: last.better,
+            n: last.n,
+          )),
+      child: WqCard(
+        padding: EdgeInsets.all(12.w),
+        color: Colors.white,
+        child: Row(
+          children: [
+            const WqPanda(mood: WqPandaMood.think, size: 44),
+            SizedBox(width: 10.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          '棋谱复盘 · 试下研究',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 14.5.sp,
+                            fontWeight: FontWeight.w900,
+                            color: WqTheme.ink,
+                          ),
+                        ),
                       ),
+                      SizedBox(width: 6.w),
+                      WqChip.pink(text: '存 ${_svc.gameHistory.length} 局'),
+                    ],
+                  ),
+                  SizedBox(height: 2.h),
+                  Text(
+                    '逐手回看对局 · 支持自由摆子试下变化图',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11.sp,
+                      fontWeight: FontWeight.w700,
+                      color: WqTheme.inkSoft,
                     ),
-                    SizedBox(height: 2.h),
-                    Text(
-                      '一步一步回看刚下的棋，棋棋讲解每一手',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 11.sp,
-                        fontWeight: FontWeight.w600,
-                        color: WqTheme.inkSoft,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              const Icon(Icons.chevron_right_rounded, color: WqTheme.inkFaint),
-            ],
-          ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: WqTheme.ink),
+          ],
         ),
       ),
     );
@@ -326,15 +502,16 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '今日任务',
+                '📋 今日修行任务',
                 style: TextStyle(
                   fontSize: 15.sp,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w900,
                   color: WqTheme.ink,
                 ),
               ),
               WqChip.sun(
                 text: '连续 ${_svc.streakDays()} 天',
+                tiltDeg: -2.5,
               ),
             ],
           ),
@@ -342,24 +519,24 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
           _questRow(
             done: lessons > 0,
             icon: Icons.menu_book_rounded,
-            name: '上一节课',
-            sub: lessons > 0 ? '已完成，真棒！' : '气之森林 · 棋子的呼吸',
+            name: '上一节围棋课',
+            sub: lessons > 0 ? '已完成，真棒！' : '4 座主题小岛 · 16 节互动课',
             onTap: _openFirstUnlockedLesson,
           ),
           _questRow(
             done: puzzles >= 5,
             icon: Icons.extension_rounded,
-            name: '做 5 道吃子题',
+            name: '做 5 道死活/手筋题',
             sub: puzzles >= 5 ? '已完成，真棒！' : '已完成 $puzzles / 5 题',
             onTap: () => Get.to(() => const WeiqiPuzzlePage()),
           ),
           _questRow(
             done: games > 0,
             icon: Icons.sports_esports_rounded,
-            name: '和棋棋下一盘',
+            name: '和棋棋对弈一局',
             sub: games > 0
-                ? '已完成 $games 局！'
-                : '吃子棋 · ${_svc.boardSize.value} 路 · 先提 ${_svc.winCaptures.value} 颗获胜',
+                ? '今日已下 $games 局！'
+                : '${_svc.ruleMode.value == "territory" ? "标准围地" : "吃子棋"} · ${_svc.boardSize.value} 路棋盘',
             onTap: () => showWqOpponentPicker(context),
           ),
         ],
@@ -378,19 +555,20 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Padding(
-        padding: EdgeInsets.symmetric(vertical: 4.h),
+        padding: EdgeInsets.symmetric(vertical: 4.5.h),
         child: Row(
           children: [
             Container(
-              width: 24.w,
-              height: 24.w,
+              width: 26.w,
+              height: 26.w,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: done ? WqTheme.green : const Color(0xFFEEF1F6),
+                color: done ? WqTheme.green : WqTheme.cream,
+                border: Border.all(color: WqTheme.ink, width: 1.8),
               ),
               child: done
-                  ? const Icon(Icons.check_rounded, size: 15, color: Colors.white)
-                  : Icon(icon, size: 13, color: WqTheme.inkFaint),
+                  ? const Icon(Icons.check_rounded, size: 15, color: WqTheme.ink)
+                  : Icon(icon, size: 13, color: WqTheme.ink),
             ),
             SizedBox(width: 9.w),
             Expanded(
@@ -401,7 +579,7 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
                     name,
                     style: TextStyle(
                       fontSize: 13.sp,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w900,
                       color: WqTheme.ink,
                     ),
                   ),
@@ -411,25 +589,29 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 10.5.sp,
-                      fontWeight: FontWeight.w600,
-                      color: WqTheme.inkFaint,
+                      fontWeight: FontWeight.w700,
+                      color: WqTheme.inkSoft,
                     ),
                   ),
                 ],
               ),
             ),
             Container(
-              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+              padding: EdgeInsets.symmetric(horizontal: 11.w, vertical: 5.h),
               decoration: BoxDecoration(
-                color: WqTheme.greenSoft,
+                color: done ? WqTheme.greenSoft : WqTheme.sun,
                 borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: WqTheme.ink, width: 1.8),
+                boxShadow: const [
+                  BoxShadow(color: WqTheme.ink, offset: Offset(2, 2)),
+                ],
               ),
               child: Text(
                 done ? '再来一次' : '去完成',
                 style: TextStyle(
-                  fontSize: 11.5.sp,
-                  fontWeight: FontWeight.w800,
-                  color: WqTheme.greenDeep,
+                  fontSize: 11.sp,
+                  fontWeight: FontWeight.w900,
+                  color: WqTheme.ink,
                 ),
               ),
             ),
@@ -454,85 +636,94 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
     Get.to(() => WeiqiCoursePage(lessonIndex: last));
   }
 
-  // ================= 陪下 CTA =================
+  // ================= 陪下 CTA（孟菲斯撞色积木大卡，无渐变） =================
 
   Widget _playCta() {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => showWqOpponentPicker(context),
-        borderRadius: BorderRadius.circular(24.r),
-        child: Ink(
-          padding: EdgeInsets.all(14.w),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24.r),
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [WqTheme.greenBright, WqTheme.greenDeep],
+    return GestureDetector(
+      onTap: () => showWqOpponentPicker(context),
+      child: Container(
+        padding: EdgeInsets.all(14.w),
+        decoration: BoxDecoration(
+          color: WqTheme.green,
+          borderRadius: BorderRadius.circular(22.r),
+          border: Border.all(color: WqTheme.ink, width: 3.0),
+          boxShadow: const [
+            BoxShadow(
+              color: WqTheme.ink,
+              offset: Offset(6, 6),
+              blurRadius: 0,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: WqTheme.greenDeep.withValues(alpha: 0.35),
-                offset: const Offset(0, 10),
-                blurRadius: 0,
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                border: Border.all(color: WqTheme.ink, width: 2.0),
               ),
-            ],
-          ),
-          child: Row(
-            children: [
-              const WqPanda(mood: WqPandaMood.happy, size: 48),
-              SizedBox(width: 12.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '和棋棋下一盘',
-                      style: TextStyle(
-                        fontSize: 16.5.sp,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Text(
-                      '棋棋会陪你慢慢下，还会悄悄犯错哦',
-                      style: TextStyle(
-                        fontSize: 11.5.sp,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white.withValues(alpha: 0.85),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Stack(
-                alignment: Alignment.center,
+              child: const WqPanda(mood: WqPandaMood.happy, size: 46),
+            ),
+            SizedBox(width: 12.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 52.w,
-                    height: 52.w,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.14),
-                      shape: BoxShape.circle,
-                    ),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          '和棋棋下一盘',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 16.5.sp,
+                            fontWeight: FontWeight.w900,
+                            color: WqTheme.ink,
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 6.w),
+                      WqChip.sun(
+                        text: _svc.ruleMode.value == 'territory'
+                            ? '标准围地'
+                            : '吃子棋',
+                        tiltDeg: 4.0,
+                      ),
+                    ],
                   ),
-                  Container(
-                    width: 38.w,
-                    height: 38.w,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Center(
-                      child: Icon(Icons.chevron_right_rounded,
-                          color: WqTheme.greenDeep),
+                  SizedBox(height: 3.h),
+                  Text(
+                    '支持 9/13/19 路 · 让子 · 形势判断与点目结算',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11.sp,
+                      fontWeight: FontWeight.w800,
+                      color: WqTheme.ink,
                     ),
                   ),
                 ],
               ),
-            ],
-          ),
+            ),
+            Container(
+              width: 38.w,
+              height: 38.w,
+              decoration: BoxDecoration(
+                color: WqTheme.sun,
+                shape: BoxShape.circle,
+                border: Border.all(color: WqTheme.ink, width: 2.2),
+                boxShadow: const [
+                  BoxShadow(color: WqTheme.ink, offset: Offset(2.5, 2.5)),
+                ],
+              ),
+              child: const Center(
+                child: Icon(Icons.play_arrow_rounded, color: WqTheme.ink),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -546,9 +737,9 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
         Expanded(
           child: _entryCard(
             emoji: '🧩',
-            title: '死活题闯关',
-            subtitle: '已答对 ${_svc.solvedPuzzles.length}/${wqPuzzles.length} 题',
-            color: WqTheme.skySoft,
+            title: '死活与手筋特训',
+            subtitle: '已通关 ${_svc.solvedPuzzles.length}/${wqPuzzles.length} 题',
+            color: WqTheme.pink,
             onTap: () => Get.to(() => const WeiqiPuzzlePage()),
           ),
         ),
@@ -557,12 +748,12 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
           child: _entryCard(
             emoji: '🏡',
             title: '家长小屋',
-            subtitle: '学习周报 · 设置',
-            color: WqTheme.grapeSoft,
+            subtitle: '学习周报 · 规则设置',
+            color: WqTheme.grape,
             onTap: () => Get.to(() => const WeiqiParentPage()),
             trailing: Get.find<AppModeController>().isParentMode
                 ? null
-                : const Icon(Icons.lock_rounded, size: 15, color: WqTheme.inkFaint),
+                : const Icon(Icons.lock_rounded, size: 16, color: WqTheme.ink),
           ),
         ),
       ],
@@ -571,61 +762,55 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
 
   /// 围棋小词典全宽入口
   Widget _glossaryEntry() {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(20.r),
-      child: InkWell(
-        onTap: () => Get.to(() => const WeiqiGlossaryPage()),
-        borderRadius: BorderRadius.circular(20.r),
-        child: Container(
-          padding: EdgeInsets.all(12.w),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20.r),
-            border: Border.all(color: const Color(0x0F23324D)),
-            boxShadow: const [
-              BoxShadow(color: Color(0x1A23324D), blurRadius: 16, offset: Offset(0, 6)),
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 40.w,
-                height: 40.w,
-                decoration: BoxDecoration(
-                  color: WqTheme.sunSoft,
-                  borderRadius: BorderRadius.circular(13.r),
-                ),
-                child: const Center(child: Text('📖', style: TextStyle(fontSize: 20))),
+    return GestureDetector(
+      onTap: () => Get.to(() => const WeiqiGlossaryPage()),
+      child: WqCard(
+        padding: EdgeInsets.all(12.w),
+        child: Row(
+          children: [
+            Container(
+              width: 40.w,
+              height: 40.w,
+              decoration: BoxDecoration(
+                color: WqTheme.sun,
+                borderRadius: BorderRadius.circular(12.r),
+                border: Border.all(color: WqTheme.ink, width: 2.0),
+                boxShadow: const [
+                  BoxShadow(color: WqTheme.ink, offset: Offset(2.5, 2.5)),
+                ],
               ),
-              SizedBox(width: 10.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '围棋小词典',
-                      style: TextStyle(
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w800,
-                        color: WqTheme.ink,
-                      ),
-                    ),
-                    Text(
-                      '忘了术语随时查 · 故事化解释',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 10.5.sp,
-                        fontWeight: FontWeight.w600,
-                        color: WqTheme.inkFaint,
-                      ),
-                    ),
-                  ],
-                ),
+              child: const Center(
+                child: Text('📖', style: TextStyle(fontSize: 20)),
               ),
-              const Icon(Icons.chevron_right_rounded, color: WqTheme.inkFaint),
-            ],
-          ),
+            ),
+            SizedBox(width: 10.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '围棋百科小词典',
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w900,
+                      color: WqTheme.ink,
+                    ),
+                  ),
+                  Text(
+                    '气 · 打劫 · 征子 · 倒扑 · 真眼 · 金角银边随时查',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 10.5.sp,
+                      fontWeight: FontWeight.w700,
+                      color: WqTheme.inkSoft,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: WqTheme.ink),
+          ],
         ),
       ),
     );
@@ -639,62 +824,55 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
     required VoidCallback onTap,
     Widget? trailing,
   }) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(20.r),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20.r),
-        child: Container(
-          padding: EdgeInsets.all(12.w),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20.r),
-            border: Border.all(color: const Color(0x0F23324D)),
-            boxShadow: const [
-              BoxShadow(
-                  color: Color(0x1A23324D), blurRadius: 16, offset: Offset(0, 6)),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 40.w,
-                    height: 40.w,
-                    decoration: BoxDecoration(
-                      color: color,
-                      borderRadius: BorderRadius.circular(13.r),
-                    ),
-                    child: Center(child: Text(emoji, style: TextStyle(fontSize: 20.sp))),
+    return GestureDetector(
+      onTap: onTap,
+      child: WqCard(
+        padding: EdgeInsets.all(12.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 40.w,
+                  height: 40.w,
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(12.r),
+                    border: Border.all(color: WqTheme.ink, width: 2.0),
+                    boxShadow: const [
+                      BoxShadow(color: WqTheme.ink, offset: Offset(2.5, 2.5)),
+                    ],
                   ),
-                  const Spacer(),
-                  if (trailing != null) trailing,
-                ],
-              ),
-              SizedBox(height: 8.h),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w800,
-                  color: WqTheme.ink,
+                  child: Center(
+                    child: Text(emoji, style: TextStyle(fontSize: 20.sp)),
+                  ),
                 ),
+                const Spacer(),
+                if (trailing != null) trailing,
+              ],
+            ),
+            SizedBox(height: 8.h),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w900,
+                color: WqTheme.ink,
               ),
-              SizedBox(height: 2.h),
-              Text(
-                subtitle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 10.5.sp,
-                  fontWeight: FontWeight.w600,
-                  color: WqTheme.inkFaint,
-                ),
+            ),
+            SizedBox(height: 2.h),
+            Text(
+              subtitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 10.5.sp,
+                fontWeight: FontWeight.w700,
+                color: WqTheme.inkSoft,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -702,7 +880,7 @@ class _WeiqiHomePageState extends State<WeiqiHomePage> {
 }
 
 // ============================================================
-// 岛屿地图（对应原型首页 .map：虚线路径 + 奖章节点 + 岛屿标签）
+// 孟菲斯风格岛屿地图（粗黑描边路径 + 糖果色硬投影奖章节点）
 // ============================================================
 
 class _IslandMap extends StatefulWidget {
@@ -710,9 +888,8 @@ class _IslandMap extends StatefulWidget {
   final int unlockedCount;
   final int current;
   final void Function(int index) onNodeTap;
-
-  /// 本岛包含的全局课程序号（每节 1~5 个节点）
   final List<int> lessonIndices;
+  final Color accentColor;
 
   const _IslandMap({
     required this.stars,
@@ -720,6 +897,7 @@ class _IslandMap extends StatefulWidget {
     required this.current,
     required this.onNodeTap,
     required this.lessonIndices,
+    required this.accentColor,
   });
 
   @override
@@ -744,8 +922,6 @@ class _IslandMapState extends State<_IslandMap>
     return LayoutBuilder(builder: (context, box) {
       final w = box.maxWidth;
       final n = widget.lessonIndices.length;
-      // 节点在节内蛇形均匀分布：垂直间距 96px，首尾各留 52px，
-      // 保证奖章+标签不与相邻节点或分节标题重叠
       const gap = 96.0;
       final h = 52.0 * 2 + gap * (n - 1);
       final centers = <Offset>[];
@@ -759,13 +935,11 @@ class _IslandMapState extends State<_IslandMap>
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            // 虚线路径
             Positioned.fill(
               child: CustomPaint(
                 painter: _MapPathPainter(centers: centers),
               ),
             ),
-            // 课程节点
             for (var k = 0; k < widget.lessonIndices.length; k++)
               Positioned(
                 left: centers[k].dx,
@@ -797,11 +971,12 @@ class _IslandMapState extends State<_IslandMap>
               builder: (context, child) {
                 final t = (math.sin(_pulse.value * 2 * math.pi) + 1) / 2;
                 return Container(
-                  width: 58.w + 10.w * t,
-                  height: 58.w + 10.w * t,
+                  width: 58.w + 8.w * t,
+                  height: 58.w + 8.w * t,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: WqTheme.sun.withValues(alpha: 0.28 * (1 - t) + 0.06),
+                    color: WqTheme.sun.withValues(alpha: 0.35),
+                    border: Border.all(color: WqTheme.ink, width: 1.5),
                   ),
                   child: child,
                 );
@@ -810,15 +985,19 @@ class _IslandMapState extends State<_IslandMap>
             )
           else
             _medal(lesson, stars, unlocked, isCurrent),
-          SizedBox(height: 4.h),
+          SizedBox(height: 5.h),
           Container(
             padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.94),
+              color: Colors.white,
               borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: WqTheme.ink, width: 1.8),
               boxShadow: const [
                 BoxShadow(
-                    color: Color(0x1A23324D), blurRadius: 6, offset: Offset(0, 2)),
+                  color: WqTheme.ink,
+                  blurRadius: 0,
+                  offset: Offset(2, 2),
+                ),
               ],
             ),
             child: Text(
@@ -827,41 +1006,33 @@ class _IslandMapState extends State<_IslandMap>
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 9.5.sp,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w900,
                 color: unlocked ? WqTheme.ink : WqTheme.inkFaint,
               ),
             ),
           ),
-          if (stars > 0) WqStarsRow(stars: stars, size: 11),
+          if (stars > 0) ...[
+            SizedBox(height: 2.h),
+            WqStarsRow(stars: stars, size: 12),
+          ],
         ],
       ),
     );
   }
 
   Widget _medal(WqLesson lesson, int stars, bool unlocked, bool isCurrent) {
-    final gradient = stars > 0
-        ? const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [WqTheme.greenBright, WqTheme.greenDeep],
-          )
-        : (isCurrent
-            ? const LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFF8FD9B4), Color(0xFF4CB98A)],
-              )
-            : null);
+    final bgColor = !unlocked
+        ? const Color(0xFFDAD5CA)
+        : (isCurrent ? WqTheme.sun : widget.accentColor);
     return Container(
       width: 52.w,
       height: 52.w,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: unlocked ? gradient : null,
-        color: unlocked ? null : const Color(0xFFC7CFDC),
-        border: Border.all(color: Colors.white, width: 3),
+        color: bgColor,
+        border: Border.all(color: WqTheme.ink, width: 2.5),
         boxShadow: const [
-          BoxShadow(color: Color(0x3823324D), blurRadius: 10, offset: Offset(0, 4)),
+          BoxShadow(color: WqTheme.ink, blurRadius: 0, offset: Offset(3.5, 3.5)),
         ],
       ),
       child: Center(
@@ -871,17 +1042,16 @@ class _IslandMapState extends State<_IslandMap>
                 style: TextStyle(
                   fontSize: 19.sp,
                   fontWeight: FontWeight.w900,
-                  color: Colors.white,
+                  color: WqTheme.ink,
                   height: 1,
                 ),
               )
-            : Icon(Icons.lock_rounded, size: 18, color: const Color(0xFFEDF1F7)),
+            : const Icon(Icons.lock_rounded, size: 18, color: WqTheme.inkSoft),
       ),
     );
   }
 }
 
-/// 蜿蜒的虚线路径（S 形贝塞尔 + PathMetrics 切虚线）
 class _MapPathPainter extends CustomPainter {
   final List<Offset> centers;
 
@@ -904,11 +1074,10 @@ class _MapPathPainter extends CustomPainter {
       );
     }
     final paint = Paint()
-      ..color = WqTheme.green.withValues(alpha: 0.45)
+      ..color = WqTheme.ink
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.2
+      ..strokeWidth = 2.5
       ..strokeCap = StrokeCap.round;
-    // 虚线
     const dashLen = 7.0;
     const gapLen = 8.0;
     for (final metric in path.computeMetrics()) {
@@ -925,32 +1094,38 @@ class _MapPathPainter extends CustomPainter {
   bool shouldRepaint(covariant _MapPathPainter old) => old.centers != centers;
 }
 
-
-/// 岛屿分节标题的彩色胶囊
 class _IslandTag extends StatelessWidget {
   final String text;
   final Color color;
+  final double tiltDeg;
 
-  const _IslandTag({required this.text, required this.color});
+  const _IslandTag({
+    required this.text,
+    required this.color,
+    this.tiltDeg = 0.0,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 5.h),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(999),
-        boxShadow: const [
-          BoxShadow(
-              color: Color(0x1A23324D), blurRadius: 8, offset: Offset(0, 3)),
-        ],
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 11.sp,
-          fontWeight: FontWeight.w900,
-          color: Colors.white,
+    return Transform.rotate(
+      angle: tiltDeg * math.pi / 180.0,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 5.h),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(10.r),
+          border: Border.all(color: WqTheme.ink, width: 2.2),
+          boxShadow: const [
+            BoxShadow(color: WqTheme.ink, blurRadius: 0, offset: Offset(3, 3)),
+          ],
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            fontSize: 11.5.sp,
+            fontWeight: FontWeight.w900,
+            color: WqTheme.ink,
+          ),
         ),
       ),
     );

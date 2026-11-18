@@ -7,93 +7,103 @@ import 'weiqi_data.dart';
 import 'weiqi_theme.dart';
 import 'weiqi_widgets.dart';
 
-/// 围棋小词典：所有学过的术语 + 故事化解释 + 出处课程。
-/// 初学者任何时候忘了概念，都能来这里查。
+/// 围棋百科小词典：包含全部 16 课核心术语 + 故事化解释 + 出处课程直达。
 class WeiqiGlossaryPage extends StatelessWidget {
   const WeiqiGlossaryPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // 术语 → （故事解释，出处课程序号）
     final entries = _buildEntries();
+    const badgeColors = [
+      WqTheme.sun,
+      WqTheme.green,
+      WqTheme.pink,
+      WqTheme.grape,
+    ];
     return Scaffold(
       backgroundColor: WqTheme.cream,
       appBar: AppBar(
-        title: const Text('围棋小词典'),
+        title: const Text('围棋百科小词典'),
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: WqTheme.ink,
       ),
       body: ListView.builder(
-        padding: EdgeInsets.fromLTRB(16.w, 4.h, 16.w, 24.h),
+        padding: EdgeInsets.fromLTRB(16.w, 6.h, 16.w, 24.h),
         itemCount: entries.length,
         itemBuilder: (context, i) {
           final e = entries[i];
+          final bg = badgeColors[i % badgeColors.length];
           return Padding(
             padding: EdgeInsets.only(bottom: 10.h),
             child: WqCard(
               padding: EdgeInsets.all(12.w),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 40.w,
-                  height: 40.w,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: WqTheme.greenSoft,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Text(
-                    e.glyph,
-                    style: TextStyle(
-                      fontSize: 18.sp,
-                      fontWeight: FontWeight.w900,
-                      color: WqTheme.greenDeep,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 42.w,
+                    height: 42.w,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: bg,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: WqTheme.ink, width: 2.2),
+                      boxShadow: const [
+                        BoxShadow(color: WqTheme.ink, offset: Offset(2.5, 2.5)),
+                      ],
+                    ),
+                    child: Text(
+                      e.glyph,
+                      style: TextStyle(
+                        fontSize: 18.sp,
+                        fontWeight: FontWeight.w900,
+                        color: WqTheme.ink,
+                      ),
                     ),
                   ),
-                ),
-                SizedBox(width: 10.w),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            e.term,
-                            style: TextStyle(
-                              fontSize: 15.sp,
-                              fontWeight: FontWeight.w800,
-                              color: WqTheme.ink,
+                  SizedBox(width: 12.w),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              e.term,
+                              style: TextStyle(
+                                fontSize: 15.sp,
+                                fontWeight: FontWeight.w900,
+                                color: WqTheme.ink,
+                              ),
                             ),
-                          ),
-                          const Spacer(),
-                          if (e.lessonNo != null)
-                            GestureDetector(
-                              onTap: e.lessonNo == null
-                                  ? null
-                                  : () => Get.to(() => WeiqiCoursePageShim(
-                                      lessonNo: e.lessonNo!)),
-                              child: WqChip.sun(text: '第${e.lessonNo}课'),
-                            ),
-                        ],
-                      ),
-                      SizedBox(height: 3.h),
-                      Text(
-                        e.story,
-                        style: TextStyle(
-                          fontSize: 12.5.sp,
-                          fontWeight: FontWeight.w600,
-                          height: 1.6,
-                          color: WqTheme.inkSoft,
+                            const Spacer(),
+                            if (e.lessonNo != null)
+                              GestureDetector(
+                                onTap: () => Get.to(() =>
+                                    WeiqiCoursePageShim(lessonNo: e.lessonNo!)),
+                                child: WqChip.sun(
+                                  text: '第${e.lessonNo}课 ›',
+                                  tiltDeg: -2.5,
+                                ),
+                              ),
+                          ],
                         ),
-                      ),
-                    ],
+                        SizedBox(height: 4.h),
+                        Text(
+                          e.story,
+                          style: TextStyle(
+                            fontSize: 12.5.sp,
+                            fontWeight: FontWeight.w700,
+                            height: 1.55,
+                            color: WqTheme.inkSoft,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
             ),
           );
         },
@@ -119,7 +129,14 @@ class WeiqiGlossaryPage extends StatelessWidget {
         _GlossaryEntry('互相打吃', '互', '双方都只剩一口气——先下手的一方赢！', 10),
         _GlossaryEntry('打吃方向', '赶', '把对方往边线赶，墙边没有退路，最容易吃到子。', 11),
         _GlossaryEntry('连接', '连', '让自己的棋子手拉手连成一体，气变多、切不断。', 12),
-        _GlossaryEntry('吃子棋', '吃', '本模块的对局玩法：谁先提走对方 3 颗棋子谁就赢。', null),
+        _GlossaryEntry('征子', '征', '俗称「扭羊头」：从两边交替连续打吃，逼着敌人沿着斜线一路逃到墙边被全部吃掉。', 13),
+        _GlossaryEntry('倒扑', '扑', '故意送一颗子跳进对方虎口，哪怕对方提掉这一颗，也会只剩一口气被我方反提整块！', 14),
+        _GlossaryEntry('枷吃', '枷', '不贴着对方硬追，而是在斜前方像竹篮一样罩住它，让它往哪边冲都冲不出去。', 14),
+        _GlossaryEntry('真眼', '眼', '自己棋子牢牢围住的独立空房间，对方无法落子进来。', 15),
+        _GlossaryEntry('两眼活棋', '活', '一块棋只要拥有两个独立的真眼，对方永远无法把气堵光，就成了不死之身的「活棋」！', 15),
+        _GlossaryEntry('点眼', '点', '抢先下在对方分出两只眼的关键位置，让对方只能做出一只眼，从而吃掉整块棋。', 15),
+        _GlossaryEntry('金角银边', '围', '角部两面有墙最好围地（金角），边上一面有墙次之（银边），中腹四面漏风最难围（草肚皮）。', 16),
+        _GlossaryEntry('收官与虚手', '官', '终局阶段把双方领地边界补好叫「收官」；无处可争时停一手叫「虚手(Pass)」，双方连续虚手即可点目判胜负。', 16),
       ];
 }
 
@@ -132,7 +149,6 @@ class _GlossaryEntry {
   const _GlossaryEntry(this.term, this.glyph, this.story, this.lessonNo);
 }
 
-/// 由课程编号跳转（词典 → 对应课程）
 class WeiqiCoursePageShim extends StatelessWidget {
   final int lessonNo;
 

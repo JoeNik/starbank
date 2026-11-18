@@ -174,17 +174,31 @@ class _HeroBabyAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CircleAvatar(
-      radius: radius,
-      backgroundColor: Colors.white.withValues(alpha: 0.88),
-      child: ClipOval(
-        child: ImageUtils.displayImage(
-          hasAvatar ? path : '',
-          width: imageSize,
-          height: imageSize,
-          fit: BoxFit.cover,
-          placeholder: Center(
-            child: Text('👶', style: TextStyle(fontSize: iconSize)),
+    return Container(
+      width: radius * 2,
+      height: radius * 2,
+      decoration: BoxDecoration(
+        color: AppTheme.yellow,
+        shape: BoxShape.circle,
+        border: Border.all(color: AppTheme.ink, width: 2.5),
+        boxShadow: const [
+          BoxShadow(
+            color: AppTheme.ink,
+            offset: Offset(3, 3),
+            blurRadius: 0,
+          ),
+        ],
+      ),
+      child: Center(
+        child: ClipOval(
+          child: ImageUtils.displayImage(
+            hasAvatar ? path : '',
+            width: imageSize,
+            height: imageSize,
+            fit: BoxFit.cover,
+            placeholder: Center(
+              child: Text('👶', style: TextStyle(fontSize: iconSize)),
+            ),
           ),
         ),
       ),
@@ -488,7 +502,7 @@ class _RecordPageState extends State<RecordPage>
       }
 
       return Scaffold(
-        backgroundColor: const Color(0xFFF6F6F6),
+        backgroundColor: AppTheme.cream,
         body: Column(
           children: [
             _buildHero(baby),
@@ -502,8 +516,8 @@ class _RecordPageState extends State<RecordPage>
                   ),
                   _KeepAlive(
                     child: _buildFeatureTab(
-                      icon: Icons.flag,
-                      color: Colors.pink,
+                      icon: Icons.flag_rounded,
+                      color: AppTheme.pink,
                       title: '宝宝大事记',
                       subtitle: '记录第一次、旅行、露营等重要时刻。',
                       buttonText: '进入大事记',
@@ -512,8 +526,8 @@ class _RecordPageState extends State<RecordPage>
                   ),
                   _KeepAlive(
                     child: _buildFeatureTab(
-                      icon: Icons.height,
-                      color: Colors.green,
+                      icon: Icons.height_rounded,
+                      color: AppTheme.teal,
                       title: '生长记录',
                       subtitle: '记录身高、体重、头围，查看 WHO 参考曲线。',
                       buttonText: '进入生长记录',
@@ -522,8 +536,8 @@ class _RecordPageState extends State<RecordPage>
                   ),
                   _KeepAlive(
                     child: _buildFeatureTab(
-                      icon: Icons.calendar_month,
-                      color: Colors.brown,
+                      icon: Icons.calendar_month_rounded,
+                      color: AppTheme.yellow,
                       title: '便便记录',
                       subtitle: '记录宝宝排便情况，查看 AI 分析和历史趋势。',
                       buttonText: '进入便便记录',
@@ -550,17 +564,17 @@ class _RecordPageState extends State<RecordPage>
           curve: Curves.easeOutCubic,
           height: collapsed ? 138.h : 304.h,
           clipBehavior: Clip.hardEdge,
-          decoration: const BoxDecoration(),
+          decoration: const BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: AppTheme.ink, width: 3.0),
+            ),
+          ),
           child: Stack(
             fit: StackFit.expand,
             children: [
               const DecoratedBox(
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFFB9C6BA), Color(0xFFE8BC72)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+                  color: AppTheme.teal,
                 ),
               ),
               if (coverPath != null || hasAvatar)
@@ -638,14 +652,23 @@ class _RecordPageState extends State<RecordPage>
                             child: Container(
                               width: 40.w,
                               height: 40.w,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFFFFC22D),
+                              decoration: BoxDecoration(
+                                color: AppTheme.yellow,
                                 shape: BoxShape.circle,
+                                border: Border.all(
+                                    color: AppTheme.ink, width: 2.2),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: AppTheme.ink,
+                                    offset: Offset(2.5, 2.5),
+                                    blurRadius: 0,
+                                  ),
+                                ],
                               ),
                               child: Icon(
-                                Icons.add_a_photo,
-                                color: Colors.white,
-                                size: 21.sp,
+                                Icons.add_a_photo_rounded,
+                                color: AppTheme.ink,
+                                size: 20.sp,
                               ),
                             ),
                           ),
@@ -929,26 +952,33 @@ class _RecordPageState extends State<RecordPage>
     return Obx(() {
       final source = _cloud.currentSource.value;
       return Container(
-        color: Colors.white,
-        padding: EdgeInsets.fromLTRB(12.w, 7.h, 12.w, 8.h),
+        color: AppTheme.cream,
+        padding: EdgeInsets.fromLTRB(14.w, 10.h, 14.w, 8.h),
         child: Row(
           children: [
             Expanded(
               child: InkWell(
                 onTap: () => Get.to(() => const BabyCloudSourcePage()),
-                borderRadius: BorderRadius.circular(8.r),
+                borderRadius: BorderRadius.circular(12.r),
                 child: Container(
                   height: 46.h,
                   padding: EdgeInsets.symmetric(horizontal: 10.w),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF8F8F8),
-                    borderRadius: BorderRadius.circular(8.r),
-                    border: Border.all(color: const Color(0xFFEAEAEA)),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12.r),
+                    border: Border.all(color: AppTheme.ink, width: 2.0),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: AppTheme.ink,
+                        offset: Offset(2.5, 2.5),
+                        blurRadius: 0,
+                      ),
+                    ],
                   ),
                   child: Row(
                     children: [
                       Icon(Icons.dns_outlined,
-                          size: 18.sp, color: AppTheme.primaryDark),
+                          size: 18.sp, color: AppTheme.ink),
                       SizedBox(width: 8.w),
                       Expanded(
                         child: Column(
@@ -965,7 +995,7 @@ class _RecordPageState extends State<RecordPage>
                                     style: TextStyle(
                                       fontSize: 13.sp,
                                       fontWeight: FontWeight.w900,
-                                      color: AppTheme.textMain,
+                                      color: AppTheme.ink,
                                     ),
                                   ),
                                 ),
@@ -980,7 +1010,7 @@ class _RecordPageState extends State<RecordPage>
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontSize: 10.sp,
-                                color: Colors.grey.shade500,
+                                color: AppTheme.textSub,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
@@ -988,7 +1018,7 @@ class _RecordPageState extends State<RecordPage>
                         ),
                       ),
                       Icon(Icons.chevron_right,
-                          size: 18.sp, color: Colors.grey.shade500),
+                          size: 18.sp, color: AppTheme.ink),
                     ],
                   ),
                 ),
@@ -999,18 +1029,22 @@ class _RecordPageState extends State<RecordPage>
             _compactToolButton(
               tooltip: '按时间选择',
               icon: Icons.timeline,
-              backgroundColor: const Color(0xFFFFF4D0),
-              foregroundColor: const Color(0xFFE09B00),
+              backgroundColor: AppTheme.yellow,
+              foregroundColor: AppTheme.ink,
               onPressed: _pickTimelineDate,
             ),
             _compactToolButton(
               tooltip: '后台任务',
               icon: Icons.task_alt_outlined,
+              backgroundColor: AppTheme.tealSoft,
+              foregroundColor: AppTheme.ink,
               onPressed: () => Get.to(() => const BabyCloudUploadTasksPage()),
             ),
             _compactToolButton(
               tooltip: '回收站',
               icon: Icons.inventory_2_outlined,
+              backgroundColor: AppTheme.pinkSoft,
+              foregroundColor: AppTheme.ink,
               onPressed: () => Get.to(() => const BabyCloudRecycleBinPage()),
             ),
           ],
@@ -1186,7 +1220,7 @@ class _RecordPageState extends State<RecordPage>
         _dateFilter != null ||
         _focusEntryId != null;
     return Container(
-      color: Colors.white,
+      color: AppTheme.cream,
       padding: EdgeInsets.fromLTRB(14.w, 0, 14.w, 12.h),
       child: Column(
         children: [
@@ -1198,19 +1232,23 @@ class _RecordPageState extends State<RecordPage>
             },
             decoration: InputDecoration(
               hintText: '搜索文字、标签、日期',
-              prefixIcon: const Icon(Icons.search),
+              prefixIcon: const Icon(Icons.search, color: AppTheme.ink),
               suffixIcon: hasActiveFilter
                   ? IconButton(
                       tooltip: '清除筛选',
                       onPressed: _clearFilters,
-                      icon: const Icon(Icons.close),
+                      icon: const Icon(Icons.close, color: AppTheme.ink),
                     )
                   : null,
               filled: true,
-              fillColor: const Color(0xFFF7F7F7),
+              fillColor: Colors.white,
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10.r),
-                borderSide: BorderSide.none,
+                borderRadius: BorderRadius.circular(12.r),
+                borderSide: const BorderSide(color: AppTheme.ink, width: 2.0),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12.r),
+                borderSide: const BorderSide(color: AppTheme.ink, width: 2.0),
               ),
               isDense: true,
             ),
@@ -1264,9 +1302,9 @@ class _RecordPageState extends State<RecordPage>
         _mediaFilter = value;
         _notifyFiltersChanged();
       },
-      selectedColor: const Color(0xFFFFE8A6),
-      side: BorderSide.none,
-      backgroundColor: const Color(0xFFF5F5F5),
+      selectedColor: AppTheme.yellow,
+      side: const BorderSide(color: AppTheme.ink, width: 1.8),
+      backgroundColor: Colors.white,
     );
   }
 
@@ -1772,17 +1810,26 @@ class _RecordPageState extends State<RecordPage>
     return RepaintBoundary(
       key: ValueKey(timelineEntry.identityKey),
       child: Container(
-      margin: EdgeInsets.only(bottom: 14.h),
-      decoration: isFocused
-          ? BoxDecoration(
-              borderRadius: BorderRadius.circular(8.r),
-              border: Border.all(color: const Color(0xFFFFC22D), width: 2),
-            )
-          : null,
-      child: Material(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8.r),
-        clipBehavior: Clip.antiAlias,
+        margin: EdgeInsets.only(bottom: 14.h),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14.r),
+          border: Border.all(
+            color: isFocused ? AppTheme.tomato : AppTheme.ink,
+            width: isFocused ? 3.0 : 2.2,
+          ),
+          boxShadow: const [
+            BoxShadow(
+              color: AppTheme.ink,
+              offset: Offset(4, 4),
+              blurRadius: 0,
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(12.r),
+          clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: () => _openEntryDetail(timelineEntry),
           child: Padding(
@@ -2442,12 +2489,13 @@ class _RecordPageState extends State<RecordPage>
           padding: EdgeInsets.all(18.w),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(8.r),
-            boxShadow: [
+            borderRadius: BorderRadius.circular(20.r),
+            border: Border.all(color: AppTheme.ink, width: 2.5),
+            boxShadow: const [
               BoxShadow(
-                color: Colors.black.withOpacity(0.04),
-                blurRadius: 12,
-                offset: const Offset(0, 6),
+                color: AppTheme.ink,
+                offset: Offset(5, 5),
+                blurRadius: 0,
               ),
             ],
           ),
@@ -2457,10 +2505,18 @@ class _RecordPageState extends State<RecordPage>
                 width: 58.w,
                 height: 58.w,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8.r),
+                  color: color,
+                  borderRadius: BorderRadius.circular(14.r),
+                  border: Border.all(color: AppTheme.ink, width: 2.2),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: AppTheme.ink,
+                      offset: Offset(3, 3),
+                      blurRadius: 0,
+                    ),
+                  ],
                 ),
-                child: Icon(icon, color: color, size: 30.sp),
+                child: Icon(icon, color: AppTheme.ink, size: 30.sp),
               ),
               SizedBox(width: 14.w),
               Expanded(
@@ -2472,6 +2528,7 @@ class _RecordPageState extends State<RecordPage>
                       style: TextStyle(
                         fontSize: 18.sp,
                         fontWeight: FontWeight.w900,
+                        color: AppTheme.ink,
                       ),
                     ),
                     SizedBox(height: 5.h),
@@ -2480,7 +2537,8 @@ class _RecordPageState extends State<RecordPage>
                       style: TextStyle(
                         height: 1.3,
                         fontSize: 13.sp,
-                        color: Colors.grey.shade600,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.textSub,
                       ),
                     ),
                   ],
@@ -2489,15 +2547,18 @@ class _RecordPageState extends State<RecordPage>
             ],
           ),
         ),
-        SizedBox(height: 14.h),
+        SizedBox(height: 16.h),
         ElevatedButton.icon(
           onPressed: onTap,
-          icon: Icon(icon),
+          icon: Icon(icon, color: AppTheme.ink),
           label: Text(buttonText),
           style: ElevatedButton.styleFrom(
-            minimumSize: Size.fromHeight(48.h),
+            backgroundColor: color,
+            foregroundColor: AppTheme.ink,
+            minimumSize: Size.fromHeight(50.h),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8.r),
+              borderRadius: BorderRadius.circular(14.r),
+              side: const BorderSide(color: AppTheme.ink, width: 2.5),
             ),
           ),
         ),

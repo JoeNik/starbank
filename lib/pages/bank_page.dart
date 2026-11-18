@@ -5,9 +5,11 @@ import '../controllers/user_controller.dart';
 import '../controllers/app_mode_controller.dart';
 import '../theme/app_theme.dart';
 import '../widgets/image_utils.dart';
+import '../widgets/memphis_widgets.dart';
 import '../widgets/module_background_scene.dart';
 import 'wallet_details_page.dart';
 
+/// 孟菲斯（Memphis Milano）风格银行模块主页面
 class BankPage extends StatefulWidget {
   const BankPage({super.key});
 
@@ -27,7 +29,7 @@ class _BankPageState extends State<BankPage> {
     final AppModeController modeController = Get.find<AppModeController>();
 
     return Scaffold(
-      backgroundColor: AppTheme.bgBlue,
+      backgroundColor: AppTheme.cream,
       appBar: AppBar(
         title: Obx(() {
           final baby = controller.currentBaby.value;
@@ -36,17 +38,25 @@ class _BankPageState extends State<BankPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 32.w,
-                height: 32.w,
+                width: 34.w,
+                height: 34.w,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2),
+                  color: AppTheme.yellow,
+                  border: Border.all(color: AppTheme.ink, width: 2.2),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: AppTheme.ink,
+                      offset: Offset(2, 2),
+                      blurRadius: 0,
+                    ),
+                  ],
                 ),
                 child: ClipOval(
                   child: ImageUtils.displayImage(
                     baby.avatarPath,
-                    width: 32.w,
-                    height: 32.w,
+                    width: 30.w,
+                    height: 30.w,
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -78,8 +88,8 @@ class _BankPageState extends State<BankPage> {
                       modeController: modeController,
                       title: "存钱罐",
                       balance: baby.piggyBankBalance,
-                      icon: '🏦', // 使用 emoji 图标
-                      color: Colors.orange.shade300,
+                      icon: '🏦',
+                      color: AppTheme.yellow,
                       isPiggy: true,
                       subtitle: "年化利率: 5%",
                     ),
@@ -88,8 +98,8 @@ class _BankPageState extends State<BankPage> {
                       modeController: modeController,
                       title: "零花钱",
                       balance: baby.pocketMoneyBalance,
-                      icon: '💰', // 使用 emoji 图标
-                      color: Colors.lightBlue.shade300,
+                      icon: '💰',
+                      color: AppTheme.teal,
                       isPiggy: false,
                       subtitle: "收益计入此钱包",
                     ),
@@ -105,6 +115,7 @@ class _BankPageState extends State<BankPage> {
     );
   }
 
+  /// 构建孟菲斯风格账户卡片（白底 + 粗黑描边 + 硬投影 + 撞色图标与金额牌）
   Widget _buildWalletCard({
     required UserController controller,
     required AppModeController modeController,
@@ -118,17 +129,17 @@ class _BankPageState extends State<BankPage> {
     return GestureDetector(
       onTap: () => Get.to(() => WalletDetailsPage(isPiggy: isPiggy)),
       child: Container(
-        margin: EdgeInsets.all(16.w),
-        padding: EdgeInsets.all(20.w),
+        margin: EdgeInsets.fromLTRB(16.w, 10.h, 16.w, 8.h),
+        padding: EdgeInsets.all(18.w),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(32.r),
-          border: Border.all(color: color.withOpacity(0.2), width: 2),
-          boxShadow: [
+          borderRadius: BorderRadius.circular(22.r),
+          border: Border.all(color: AppTheme.ink, width: 2.8),
+          boxShadow: const [
             BoxShadow(
-              color: color.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: AppTheme.ink,
+              offset: Offset(5, 5),
+              blurRadius: 0,
             ),
           ],
         ),
@@ -136,22 +147,29 @@ class _BankPageState extends State<BankPage> {
           children: [
             Row(
               children: [
-                // 直接使用 Text 显示 emoji
                 Container(
-                  width: 48.w,
-                  height: 48.w,
+                  width: 50.w,
+                  height: 50.w,
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(16.r),
+                    color: color,
+                    borderRadius: BorderRadius.circular(14.r),
+                    border: Border.all(color: AppTheme.ink, width: 2.2),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: AppTheme.ink,
+                        offset: Offset(3, 3),
+                        blurRadius: 0,
+                      ),
+                    ],
                   ),
                   child: Center(
                     child: Text(
                       icon,
-                      style: TextStyle(fontSize: 28.sp),
+                      style: TextStyle(fontSize: 26.sp),
                     ),
                   ),
                 ),
-                SizedBox(width: 15.w),
+                SizedBox(width: 14.w),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -160,15 +178,18 @@ class _BankPageState extends State<BankPage> {
                       style: TextStyle(
                         fontSize: 18.sp,
                         fontWeight: FontWeight.w900,
-                        color: AppTheme.textMain,
+                        color: AppTheme.ink,
                       ),
                     ),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        fontSize: 12.sp,
-                        color: AppTheme.textSub,
-                      ),
+                    SizedBox(height: 3.h),
+                    MemphisTag(
+                      text: subtitle,
+                      color: isPiggy ? AppTheme.yellowSoft : AppTheme.tealSoft,
+                      tiltDeg: isPiggy ? -2.5 : 2.5,
+                      fontSize: 10.5.sp,
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+                      shadowOffset: 1.5,
                     ),
                   ],
                 ),
@@ -176,24 +197,38 @@ class _BankPageState extends State<BankPage> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(
-                      "¥${balance.toStringAsFixed(2)}",
-                      style: TextStyle(
-                        fontSize: 24.sp,
-                        fontWeight: FontWeight.w900,
+                    Container(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                      decoration: BoxDecoration(
                         color: color,
+                        borderRadius: BorderRadius.circular(10.r),
+                        border: Border.all(color: AppTheme.ink, width: 2.0),
+                      ),
+                      child: Text(
+                        "¥${balance.toStringAsFixed(2)}",
+                        style: TextStyle(
+                          fontSize: 20.sp,
+                          fontWeight: FontWeight.w900,
+                          color: AppTheme.ink,
+                        ),
                       ),
                     ),
+                    SizedBox(height: 4.h),
                     Row(
                       children: [
                         Text(
                           "查看明细",
-                          style: TextStyle(fontSize: 10.sp, color: Colors.grey),
+                          style: TextStyle(
+                            fontSize: 11.sp,
+                            color: AppTheme.textSub,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                         Icon(
                           Icons.arrow_forward_ios_rounded,
-                          size: 10.sp,
-                          color: Colors.grey,
+                          size: 11.sp,
+                          color: AppTheme.ink,
                         ),
                       ],
                     ),
@@ -201,7 +236,7 @@ class _BankPageState extends State<BankPage> {
                 ),
               ],
             ),
-            SizedBox(height: 20.h),
+            SizedBox(height: 16.h),
             Row(
               children: [
                 Expanded(
@@ -213,11 +248,11 @@ class _BankPageState extends State<BankPage> {
                       }
                       _showWalletDialog(controller, title, true, isPiggy);
                     },
-                    label: "存入",
+                    label: "存入 +",
                     color: color,
                   ),
                 ),
-                SizedBox(width: 10.w),
+                SizedBox(width: 12.w),
                 Expanded(
                   child: _buildMiniButton(
                     onTap: () {
@@ -227,8 +262,8 @@ class _BankPageState extends State<BankPage> {
                       }
                       _showWalletDialog(controller, title, false, isPiggy);
                     },
-                    label: "取出",
-                    color: Colors.orange.shade400,
+                    label: "取出 -",
+                    color: AppTheme.pinkSoft,
                   ),
                 ),
               ],
@@ -244,36 +279,32 @@ class _BankPageState extends State<BankPage> {
     required String label,
     required Color color,
   }) {
-    return InkWell(
+    return MemphisButton(
+      text: label,
+      color: color,
+      textColor: AppTheme.ink,
+      borderRadius: 14.r,
+      shadowOffset: 3.5,
+      fontSize: 14.sp,
+      padding: EdgeInsets.symmetric(vertical: 10.h),
       onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: 10.h),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(16.r),
-        ),
-        child: Center(
-          child: Text(
-            label,
-            style: TextStyle(color: color, fontWeight: FontWeight.bold),
-          ),
-        ),
-      ),
     );
   }
 
+  /// 构建孟菲斯风格利息收益与计算器卡片
   Widget _buildInterestCalculator(UserController controller) {
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 16.w),
-      padding: EdgeInsets.all(20.w),
+      margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+      padding: EdgeInsets.all(18.w),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24.r),
-        boxShadow: [
+        borderRadius: BorderRadius.circular(22.r),
+        border: Border.all(color: AppTheme.ink, width: 2.5),
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: AppTheme.ink,
+            offset: Offset(5, 5),
+            blurRadius: 0,
           ),
         ],
       ),
@@ -284,52 +315,46 @@ class _BankPageState extends State<BankPage> {
               Container(
                 padding: EdgeInsets.all(8.w),
                 decoration: BoxDecoration(
-                  color: Colors.amber.shade50,
+                  color: AppTheme.pink,
                   borderRadius: BorderRadius.circular(12.r),
+                  border: Border.all(color: AppTheme.ink, width: 2.0),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: AppTheme.ink,
+                      offset: Offset(2, 2),
+                      blurRadius: 0,
+                    ),
+                  ],
                 ),
-                child: Text('💰', style: TextStyle(fontSize: 20.sp)),
+                child: Text('📈', style: TextStyle(fontSize: 18.sp)),
               ),
               SizedBox(width: 12.w),
               Text(
                 "利息收益",
                 style: TextStyle(
                   fontSize: 16.sp,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textMain,
+                  fontWeight: FontWeight.w900,
+                  color: AppTheme.ink,
                 ),
               ),
               const Spacer(),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(12.r),
-                ),
-                child: Obx(() => Text(
-                      "年化 ${(controller.currentInterestRate.value * 100).toStringAsFixed(1)}%",
-                      style: TextStyle(
-                        fontSize: 12.sp,
-                        color: Colors.blue,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    )),
-              ),
+              Obx(() => MemphisTag(
+                    text:
+                        "年化 ${(controller.currentInterestRate.value * 100).toStringAsFixed(1)}%",
+                    color: AppTheme.yellow,
+                    tiltDeg: -4.0,
+                    fontSize: 11.5.sp,
+                  )),
             ],
           ),
           SizedBox(height: 16.h),
           // 收益数据
           Container(
-            padding: EdgeInsets.all(16.w),
+            padding: EdgeInsets.all(14.w),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.amber.shade50,
-                  Colors.orange.shade50,
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              color: AppTheme.cream,
               borderRadius: BorderRadius.circular(16.r),
+              border: Border.all(color: AppTheme.ink, width: 2.0),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -337,30 +362,31 @@ class _BankPageState extends State<BankPage> {
                 Obx(() => _buildCalcItem(
                       "昨日收益",
                       "¥${controller.getYesterdayInterest().toStringAsFixed(2)}",
-                      Colors.orange,
+                      AppTheme.tomato,
                     )),
                 Container(
-                  width: 1,
-                  height: 40.h,
-                  color: Colors.orange.withOpacity(0.2),
+                  width: 2,
+                  height: 36.h,
+                  color: AppTheme.ink,
                 ),
                 Obx(() => _buildCalcItem(
                       "累计收益",
                       "¥${controller.getTotalInterest().toStringAsFixed(2)}",
-                      Colors.green,
+                      AppTheme.teal,
                     )),
               ],
             ),
           ),
           SizedBox(height: 12.h),
           // 收益计算器按钮
-          TextButton.icon(
-            onPressed: () => _showInterestCalculatorDialog(controller),
-            icon: const Icon(Icons.calculate_rounded, size: 18),
-            label: const Text('收益计算器'),
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.blue,
-            ),
+          MemphisButton(
+            text: '🧮 打开收益计算器',
+            color: AppTheme.lilacSoft,
+            borderRadius: 12.r,
+            shadowOffset: 3.0,
+            fontSize: 13.sp,
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+            onTap: () => _showInterestCalculatorDialog(controller),
           ),
         ],
       ),
@@ -372,14 +398,19 @@ class _BankPageState extends State<BankPage> {
       children: [
         Text(
           label,
-          style: TextStyle(fontSize: 11.sp, color: AppTheme.textSub),
+          style: TextStyle(
+            fontSize: 11.5.sp,
+            color: AppTheme.textSub,
+            fontWeight: FontWeight.w800,
+          ),
         ),
+        SizedBox(height: 2.h),
         Text(
           value,
           style: TextStyle(
-            fontSize: 16.sp,
+            fontSize: 17.sp,
             fontWeight: FontWeight.w900,
-            color: color,
+            color: AppTheme.ink,
           ),
         ),
       ],
@@ -404,15 +435,16 @@ class _BankPageState extends State<BankPage> {
 
     Get.dialog(
       Dialog(
+        backgroundColor: AppTheme.cream,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(24.r),
+          side: const BorderSide(color: AppTheme.ink, width: 3.0),
         ),
         child: Container(
-          padding: EdgeInsets.all(24.w),
+          padding: EdgeInsets.all(22.w),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // 标题
               Row(
                 children: [
                   Text('💰', style: TextStyle(fontSize: 24.sp)),
@@ -421,28 +453,32 @@ class _BankPageState extends State<BankPage> {
                     '收益计算器',
                     style: TextStyle(
                       fontSize: 20.sp,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w900,
+                      color: AppTheme.ink,
                     ),
                   ),
                   const Spacer(),
                   IconButton(
-                    icon: const Icon(Icons.close),
+                    icon: const Icon(Icons.close, color: AppTheme.ink),
                     onPressed: () => Get.back(),
                   ),
                 ],
               ),
               Text(
                 '预估您的储蓄收益',
-                style: TextStyle(color: Colors.grey, fontSize: 13.sp),
+                style: TextStyle(
+                  color: AppTheme.textSub,
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-              SizedBox(height: 20.h),
-
-              // 存入金额
+              SizedBox(height: 18.h),
               Container(
-                padding: EdgeInsets.all(16.w),
+                padding: EdgeInsets.all(14.w),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade50,
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(16.r),
+                  border: Border.all(color: AppTheme.ink, width: 2.0),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -450,26 +486,32 @@ class _BankPageState extends State<BankPage> {
                     Text(
                       '存入金额',
                       style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13.5.sp,
+                        color: AppTheme.ink,
                       ),
                     ),
-                    SizedBox(height: 8.h),
+                    SizedBox(height: 6.h),
                     TextField(
                       controller: amountController,
                       keyboardType:
-                          TextInputType.numberWithOptions(decimal: true),
+                          const TextInputType.numberWithOptions(decimal: true),
                       style: TextStyle(
-                          fontSize: 24.sp, fontWeight: FontWeight.bold),
+                        fontSize: 24.sp,
+                        fontWeight: FontWeight.w900,
+                        color: AppTheme.ink,
+                      ),
                       decoration: InputDecoration(
                         prefixText: '¥ ',
                         prefixStyle: TextStyle(
                           fontSize: 24.sp,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey,
+                          fontWeight: FontWeight.w900,
+                          color: AppTheme.ink,
                         ),
                         hintText: '0',
                         border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
                       ),
                       onChanged: (_) => calculate(),
                     ),
@@ -477,29 +519,30 @@ class _BankPageState extends State<BankPage> {
                 ),
               ),
               SizedBox(height: 12.h),
-
-              // 年化利率
               Container(
-                padding: EdgeInsets.all(16.w),
+                padding: EdgeInsets.all(14.w),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade50,
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(16.r),
+                  border: Border.all(color: AppTheme.ink, width: 2.0),
                 ),
                 child: Row(
                   children: [
                     Text(
                       '年化利率',
                       style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13.5.sp,
+                        color: AppTheme.ink,
                       ),
                     ),
                     const Spacer(),
                     Obx(() => Text(
-                          '${(rate.value * 100).toStringAsFixed(1)}',
+                          (rate.value * 100).toStringAsFixed(1),
                           style: TextStyle(
                             fontSize: 18.sp,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w900,
+                            color: AppTheme.ink,
                           ),
                         )),
                     SizedBox(width: 4.w),
@@ -507,8 +550,8 @@ class _BankPageState extends State<BankPage> {
                       '%',
                       style: TextStyle(
                         fontSize: 16.sp,
-                        color: Colors.blue,
-                        fontWeight: FontWeight.bold,
+                        color: AppTheme.cobalt,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
                     SizedBox(width: 8.w),
@@ -521,7 +564,7 @@ class _BankPageState extends State<BankPage> {
                               calculate();
                             }
                           },
-                          child: Icon(Icons.arrow_drop_up, size: 20.sp),
+                          child: Icon(Icons.arrow_drop_up, size: 22.sp),
                         ),
                         GestureDetector(
                           onTap: () {
@@ -530,51 +573,44 @@ class _BankPageState extends State<BankPage> {
                               calculate();
                             }
                           },
-                          child: Icon(Icons.arrow_drop_down, size: 20.sp),
+                          child: Icon(Icons.arrow_drop_down, size: 22.sp),
                         ),
                       ],
                     ),
                   ],
                 ),
               ),
-              SizedBox(height: 16.h),
-
-              // 收益预估
+              SizedBox(height: 14.h),
               Container(
-                padding: EdgeInsets.all(16.w),
+                padding: EdgeInsets.all(14.w),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.blue.shade50, Colors.purple.shade50],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+                  color: AppTheme.yellowSoft,
                   borderRadius: BorderRadius.circular(16.r),
+                  border: Border.all(color: AppTheme.ink, width: 2.0),
                 ),
                 child: Column(
                   children: [
                     Obx(() => _buildProfitRow('日收益', dailyProfit.value)),
-                    Divider(height: 16.h),
+                    Divider(height: 14.h, color: AppTheme.ink),
                     Obx(() => _buildProfitRow('月收益', monthlyProfit.value)),
-                    Divider(height: 16.h),
+                    Divider(height: 14.h, color: AppTheme.ink),
                     Obx(() => _buildProfitRow('年收益', yearlyProfit.value)),
                   ],
                 ),
               ),
               SizedBox(height: 12.h),
-
-              // 提示
               Row(
                 children: [
-                  Icon(Icons.lightbulb_outline,
-                      size: 14.sp, color: Colors.amber),
+                  Icon(Icons.lightbulb_rounded,
+                      size: 15.sp, color: AppTheme.tomato),
                   SizedBox(width: 6.w),
                   Expanded(
                     child: Text(
-                      '实际收益以每日结算为准\n收益将自动加入零花钱余额',
+                      '实际收益以每日结算为准，将自动计入零花钱余额',
                       style: TextStyle(
                         fontSize: 11.sp,
-                        color: Colors.grey,
-                        height: 1.4,
+                        color: AppTheme.textSub,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
@@ -591,13 +627,19 @@ class _BankPageState extends State<BankPage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TextStyle(color: AppTheme.textSub)),
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppTheme.ink,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
         Text(
           '¥${value.toStringAsFixed(2)}',
           style: TextStyle(
             fontSize: 16.sp,
-            fontWeight: FontWeight.bold,
-            color: Colors.blue,
+            fontWeight: FontWeight.w900,
+            color: AppTheme.cobalt,
           ),
         ),
       ],
@@ -605,15 +647,22 @@ class _BankPageState extends State<BankPage> {
   }
 
   Widget _buildLogSection(UserController controller) {
-    return Card(
+    return Container(
       margin: EdgeInsets.all(16.w),
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16.r),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22.r),
+        border: Border.all(color: AppTheme.ink, width: 2.5),
+        boxShadow: const [
+          BoxShadow(
+            color: AppTheme.ink,
+            offset: Offset(5, 5),
+            blurRadius: 0,
+          ),
+        ],
       ),
       child: Column(
         children: [
-          // 标题栏 - 可点击折叠/展开
           InkWell(
             onTap: () {
               setState(() {
@@ -621,47 +670,62 @@ class _BankPageState extends State<BankPage> {
               });
             },
             borderRadius: BorderRadius.vertical(
-              top: Radius.circular(16.r),
+              top: Radius.circular(22.r),
               bottom:
-                  _isMoneyLogsExpanded ? Radius.zero : Radius.circular(16.r),
+                  _isMoneyLogsExpanded ? Radius.zero : Radius.circular(22.r),
             ),
             child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
               child: Row(
                 children: [
-                  Icon(
-                    Icons.receipt_long,
-                    color: AppTheme.primary,
-                    size: 20.sp,
+                  Container(
+                    padding: EdgeInsets.all(6.w),
+                    decoration: BoxDecoration(
+                      color: AppTheme.yellow,
+                      borderRadius: BorderRadius.circular(10.r),
+                      border: Border.all(color: AppTheme.ink, width: 2.0),
+                    ),
+                    child: Icon(
+                      Icons.receipt_long_rounded,
+                      color: AppTheme.ink,
+                      size: 18.sp,
+                    ),
                   ),
-                  SizedBox(width: 8.w),
+                  SizedBox(width: 10.w),
                   Text(
                     "收支记录",
                     style: TextStyle(
                       fontSize: 16.sp,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.textMain,
+                      fontWeight: FontWeight.w900,
+                      color: AppTheme.ink,
                     ),
                   ),
                   const Spacer(),
-                  // 展开/收起图标
-                  Icon(
-                    _isMoneyLogsExpanded
-                        ? Icons.keyboard_arrow_up
-                        : Icons.keyboard_arrow_down,
-                    color: AppTheme.textSub,
+                  Container(
+                    width: 28.w,
+                    height: 28.w,
+                    decoration: BoxDecoration(
+                      color: AppTheme.tealSoft,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppTheme.ink, width: 1.8),
+                    ),
+                    child: Icon(
+                      _isMoneyLogsExpanded
+                          ? Icons.keyboard_arrow_up_rounded
+                          : Icons.keyboard_arrow_down_rounded,
+                      color: AppTheme.ink,
+                      size: 20.sp,
+                    ),
                   ),
                 ],
               ),
             ),
           ),
-          // 记录列表 - 可折叠
           AnimatedCrossFade(
             firstChild: const SizedBox(width: double.infinity),
             secondChild: Padding(
               padding: EdgeInsets.fromLTRB(12.w, 0, 12.w, 12.h),
               child: Obx(() {
-                // 包含存钱罐、零花钱和利息记录
                 final moneyLogs = controller.logs
                     .where((l) =>
                         l.type == 'piggy' ||
@@ -688,7 +752,6 @@ class _BankPageState extends State<BankPage> {
                         return _buildMoneyLogItem(log);
                       },
                     ),
-                    // 加载更多按钮
                     if (moneyLogs.length > _moneyLogsPageSize)
                       Padding(
                         padding: EdgeInsets.only(top: 8.h),
@@ -703,7 +766,7 @@ class _BankPageState extends State<BankPage> {
                             '加载更多 (还有 ${moneyLogs.length - _moneyLogsPageSize} 条)',
                           ),
                           style: TextButton.styleFrom(
-                            foregroundColor: AppTheme.primary,
+                            foregroundColor: AppTheme.ink,
                           ),
                         ),
                       ),
@@ -721,30 +784,39 @@ class _BankPageState extends State<BankPage> {
     );
   }
 
-  Widget _buildMoneyLogItem(log) {
+  Widget _buildMoneyLogItem(dynamic log) {
     final isPositive = log.changeAmount > 0;
     final isPiggy = log.type == 'piggy';
     return Container(
       margin: EdgeInsets.only(bottom: 8.h),
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16.r),
+        color: AppTheme.cream,
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(color: AppTheme.ink, width: 2.0),
+        boxShadow: const [
+          BoxShadow(
+            color: AppTheme.ink,
+            offset: Offset(2.5, 2.5),
+            blurRadius: 0,
+          ),
+        ],
       ),
       child: Row(
         children: [
           Container(
             padding: EdgeInsets.all(6.w),
             decoration: BoxDecoration(
-              color: isPiggy
-                  ? Colors.orange.withOpacity(0.1)
-                  : Colors.blue.withOpacity(0.1),
+              color: isPiggy ? AppTheme.yellow : AppTheme.teal,
               borderRadius: BorderRadius.circular(8.r),
+              border: Border.all(color: AppTheme.ink, width: 1.6),
             ),
             child: Icon(
-              isPiggy ? Icons.savings : Icons.account_balance_wallet,
-              size: 14.sp,
-              color: isPiggy ? Colors.orange : Colors.blue,
+              isPiggy
+                  ? Icons.savings_rounded
+                  : Icons.account_balance_wallet_rounded,
+              size: 15.sp,
+              color: AppTheme.ink,
             ),
           ),
           SizedBox(width: 12.w),
@@ -755,23 +827,36 @@ class _BankPageState extends State<BankPage> {
                 Text(
                   log.description,
                   style: TextStyle(
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w900,
                     fontSize: 13.sp,
+                    color: AppTheme.ink,
                   ),
                 ),
                 Text(
                   "${log.timestamp.year}-${log.timestamp.month}-${log.timestamp.day}",
-                  style: TextStyle(fontSize: 10.sp, color: Colors.grey),
+                  style: TextStyle(
+                    fontSize: 10.5.sp,
+                    color: AppTheme.textSub,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ],
             ),
           ),
-          Text(
-            "${isPositive ? '+' : ''}${log.changeAmount.toStringAsFixed(2)}",
-            style: TextStyle(
-              fontSize: 16.sp,
-              fontWeight: FontWeight.w900,
-              color: isPositive ? Colors.green : Colors.red,
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+            decoration: BoxDecoration(
+              color: isPositive ? AppTheme.tealSoft : AppTheme.tomatoSoft,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: AppTheme.ink, width: 1.5),
+            ),
+            child: Text(
+              "${isPositive ? '+' : ''}${log.changeAmount.toStringAsFixed(2)}",
+              style: TextStyle(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w900,
+                color: AppTheme.ink,
+              ),
             ),
           ),
         ],
@@ -797,6 +882,7 @@ class _BankPageState extends State<BankPage> {
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: const InputDecoration(labelText: "金额 (¥)"),
           ),
+          SizedBox(height: 10.h),
           TextField(
             controller: reasonController,
             decoration: const InputDecoration(labelText: "备注原因"),

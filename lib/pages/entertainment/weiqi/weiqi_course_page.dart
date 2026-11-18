@@ -247,6 +247,14 @@ class _WeiqiCoursePageState extends State<WeiqiCoursePage> {
               decoration: BoxDecoration(
                 color: WqTheme.cream,
                 borderRadius: BorderRadius.circular(28),
+                border: Border.all(color: WqTheme.ink, width: 3.0),
+                boxShadow: const [
+                  BoxShadow(
+                    color: WqTheme.ink,
+                    offset: Offset(6, 6),
+                    blurRadius: 0,
+                  ),
+                ],
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -417,15 +425,16 @@ class _WeiqiCoursePageState extends State<WeiqiCoursePage> {
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         margin: EdgeInsets.symmetric(horizontal: 2.5.w),
-                        width: cur ? 18.w : 7.w,
-                        height: 7.h,
+                        width: cur ? 20.w : 9.w,
+                        height: 9.h,
                         decoration: BoxDecoration(
                           color: cur
-                              ? WqTheme.green
+                              ? WqTheme.sun
                               : done
-                                  ? WqTheme.greenSoft
-                                  : const Color(0xFFE2E7EF),
+                                  ? WqTheme.green
+                                  : Colors.white,
                           borderRadius: BorderRadius.circular(6.r),
+                          border: Border.all(color: WqTheme.ink, width: 1.5),
                         ),
                       ),
                     ),
@@ -455,25 +464,26 @@ class _WeiqiCoursePageState extends State<WeiqiCoursePage> {
             Expanded(
               child: Padding(
                 padding: EdgeInsets.fromLTRB(14.w, 0, 14.w, 14.h),
-                child: WeiqiBoardView(
-                  controller: boardCtrl,
-                  stones: _game.s,
-                  lastMove: _game.last,
-                  breathePoints: {
-                    ...st.breathe,
-                    if (st.findQuiz != null) ..._found,
-                  },
-                  breatheWarn: st.warn,
-                  blinkPoints: {
-                    if (_refusedPoint != null) _refusedPoint!,
-                  },
-                  capByBlack: _game.capBlack,
-                  capByWhite: _game.capWhite,
-                  onPointTap:
-                      (st.findQuiz != null || st.moveQuiz != null) && !_quizDone
+                child: Obx(() => WeiqiBoardView(
+                      controller: boardCtrl,
+                      stones: _game.s,
+                      lastMove: _game.last,
+                      showCoords: _svc.showCoords.value,
+                      breathePoints: {
+                        ...st.breathe,
+                        if (st.findQuiz != null) ..._found,
+                      },
+                      breatheWarn: st.warn,
+                      blinkPoints: {
+                        if (_refusedPoint != null) _refusedPoint!,
+                      },
+                      capByBlack: _game.capBlack,
+                      capByWhite: _game.capWhite,
+                      onPointTap: (st.findQuiz != null || st.moveQuiz != null) &&
+                              !_quizDone
                           ? _onBoardTap
                           : null,
-                ),
+                    )),
               ),
             ),
             Padding(

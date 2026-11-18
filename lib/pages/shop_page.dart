@@ -3,13 +3,14 @@ import 'package:get/get.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../controllers/shop_controller.dart';
 import '../controllers/user_controller.dart';
-// 引入 AppModeController
 import '../controllers/app_mode_controller.dart';
 import '../models/product.dart';
 import '../theme/app_theme.dart';
 import '../widgets/image_utils.dart';
+import '../widgets/memphis_widgets.dart';
 import '../widgets/module_background_scene.dart';
 
+/// 孟菲斯（Memphis Milano）风格礼物商店页面
 class ShopPage extends StatelessWidget {
   const ShopPage({super.key});
 
@@ -17,50 +18,66 @@ class ShopPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final ShopController shopController = Get.find<ShopController>();
     final UserController userController = Get.find<UserController>();
-    // 获取模式控制器
     final AppModeController modeController = Get.find<AppModeController>();
 
     return Scaffold(
-      backgroundColor: AppTheme.bgYellow,
+      backgroundColor: AppTheme.cream,
       appBar: AppBar(
         title: const Text("礼物商店"),
         actions: [
-          // 显示当前宝宝信息（只读，不可切换）
+          // 显示当前宝宝星星与头像徽章
           Obx(() {
             final baby = userController.currentBaby.value;
             if (baby == null) return const SizedBox();
             return Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8.w),
-              child: Row(
-                children: [
-                  // 星星数量
-                  Text(
-                    '${baby.starCount}',
-                    style: TextStyle(
-                      color: AppTheme.textMain,
-                      fontSize: 16.sp,
-                      fontWeight: FontWeight.bold,
+              padding: EdgeInsets.symmetric(horizontal: 6.w),
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                decoration: BoxDecoration(
+                  color: AppTheme.yellow,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: AppTheme.ink, width: 2.2),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: AppTheme.ink,
+                      offset: Offset(2.5, 2.5),
+                      blurRadius: 0,
                     ),
-                  ),
-                  SizedBox(width: 8.w),
-                  // 头像
-                  Container(
-                    width: 36.w,
-                    height: 36.w,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppTheme.primary, width: 2),
-                    ),
-                    child: ClipOval(
-                      child: ImageUtils.displayImage(
-                        baby.avatarPath,
-                        width: 36.w,
-                        height: 36.w,
-                        fit: BoxFit.cover,
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('⭐', style: TextStyle(fontSize: 14.sp)),
+                    SizedBox(width: 4.w),
+                    Text(
+                      '${baby.starCount}',
+                      style: TextStyle(
+                        color: AppTheme.ink,
+                        fontSize: 15.sp,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
-                  ),
-                ],
+                    SizedBox(width: 8.w),
+                    Container(
+                      width: 28.w,
+                      height: 28.w,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                        border: Border.all(color: AppTheme.ink, width: 1.8),
+                      ),
+                      child: ClipOval(
+                        child: ImageUtils.displayImage(
+                          baby.avatarPath,
+                          width: 26.w,
+                          height: 26.w,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             );
           }),
@@ -68,14 +85,17 @@ class ShopPage extends StatelessWidget {
           // 添加按钮（儿童模式隐藏）
           Obx(() => modeController.isChildMode
               ? const SizedBox()
-              : IconButton(
-                  icon: const Icon(
-                    Icons.add_circle_outline_rounded,
-                    color: AppTheme.textSub,
+              : Padding(
+                  padding: EdgeInsets.only(right: 12.w),
+                  child: MemphisIconButton(
+                    icon: Icons.add_rounded,
+                    bgColor: AppTheme.pink,
+                    size: 36.w,
+                    iconSize: 20.sp,
+                    tooltip: '添加礼物',
+                    onTap: () => _showAddProductDialog(shopController),
                   ),
-                  onPressed: () => _showAddProductDialog(shopController),
                 )),
-          SizedBox(width: 8.w),
         ],
       ),
       body: Stack(
@@ -89,7 +109,6 @@ class ShopPage extends StatelessWidget {
                 return _buildEmptyState(shopController);
               }
 
-              // 分离未兑换和已兑换商品
               final activeProducts = <Product>[];
               final redeemedProducts = <Product>[];
               for (int i = 0; i < shopController.products.length; i++) {
@@ -107,21 +126,21 @@ class ShopPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 心愿商品
                     if (activeProducts.isNotEmpty) ...[
                       _buildSectionHeader(
                         '🎯 心愿清单',
                         '${activeProducts.length}件',
+                        AppTheme.yellow,
                       ),
-                      SizedBox(height: 12.h),
+                      SizedBox(height: 14.h),
                       GridView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 2,
-                          childAspectRatio: 0.68, // 更大的图片
-                          crossAxisSpacing: 12.w,
-                          mainAxisSpacing: 12.w,
+                          childAspectRatio: 0.67,
+                          crossAxisSpacing: 14.w,
+                          mainAxisSpacing: 14.w,
                         ),
                         itemCount: activeProducts.length,
                         itemBuilder: (context, index) {
@@ -133,22 +152,22 @@ class ShopPage extends StatelessWidget {
                         },
                       ),
                     ],
-                    // 已兑换商品
                     if (redeemedProducts.isNotEmpty) ...[
-                      SizedBox(height: 24.h),
+                      SizedBox(height: 26.h),
                       _buildSectionHeader(
                         '✅ 已兑换',
                         '${redeemedProducts.length}件',
+                        AppTheme.teal,
                       ),
-                      SizedBox(height: 12.h),
+                      SizedBox(height: 14.h),
                       GridView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 2,
-                          childAspectRatio: 0.75,
-                          crossAxisSpacing: 12.w,
-                          mainAxisSpacing: 12.w,
+                          childAspectRatio: 0.74,
+                          crossAxisSpacing: 14.w,
+                          mainAxisSpacing: 14.w,
                         ),
                         itemCount: redeemedProducts.length,
                         itemBuilder: (context, index) {
@@ -168,32 +187,38 @@ class ShopPage extends StatelessWidget {
     );
   }
 
-  Widget _buildSectionHeader(String title, String count) {
+  Widget _buildSectionHeader(String title, String count, Color color) {
     return Row(
       children: [
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 18.sp,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.textMain,
-          ),
-        ),
-        SizedBox(width: 8.w),
         Container(
-          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 5.h),
           decoration: BoxDecoration(
-            color: AppTheme.primary.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(10.r),
+            color: color,
+            borderRadius: BorderRadius.circular(12.r),
+            border: Border.all(color: AppTheme.ink, width: 2.3),
+            boxShadow: const [
+              BoxShadow(
+                color: AppTheme.ink,
+                offset: Offset(3, 3),
+                blurRadius: 0,
+              ),
+            ],
           ),
           child: Text(
-            count,
+            title,
             style: TextStyle(
-              fontSize: 12.sp,
-              color: AppTheme.primary,
-              fontWeight: FontWeight.w600,
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w900,
+              color: AppTheme.ink,
             ),
           ),
+        ),
+        SizedBox(width: 10.w),
+        MemphisTag(
+          text: count,
+          color: Colors.white,
+          tiltDeg: -5.0,
+          fontSize: 11.5.sp,
         ),
       ],
     );
@@ -202,27 +227,57 @@ class ShopPage extends StatelessWidget {
   Widget _buildEmptyState(ShopController controller) {
     final modeController = Get.find<AppModeController>();
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.redeem_rounded, size: 80.sp, color: Colors.grey.shade300),
-          SizedBox(height: 20.h),
-          Text(
-            modeController.isChildMode ? "暂时没有礼物哦~" : "快去给宝贝添加一些心仪的礼物吧！",
-            style: TextStyle(color: Colors.grey.shade600),
-          ),
-          SizedBox(height: 30.h),
-          // 儿童模式隐藏添加按钮
-          if (!modeController.isChildMode)
-            ElevatedButton(
-              onPressed: () => _showAddProductDialog(controller),
-              child: const Text("添加第一件礼物"),
+      child: MemphisCard(
+        margin: EdgeInsets.symmetric(horizontal: 32.w),
+        padding: EdgeInsets.all(28.w),
+        color: Colors.white,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 76.w,
+              height: 76.w,
+              decoration: BoxDecoration(
+                color: AppTheme.yellow,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppTheme.ink, width: 2.5),
+                boxShadow: const [
+                  BoxShadow(
+                    color: AppTheme.ink,
+                    offset: Offset(4, 4),
+                    blurRadius: 0,
+                  ),
+                ],
+              ),
+              child: Center(
+                child: Text('🎁', style: TextStyle(fontSize: 38.sp)),
+              ),
             ),
-        ],
+            SizedBox(height: 18.h),
+            Text(
+              modeController.isChildMode ? "暂时没有礼物哦~" : "快去给宝贝添加一些心仪的礼物吧！",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppTheme.ink,
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            if (!modeController.isChildMode) ...[
+              SizedBox(height: 20.h),
+              MemphisButton(
+                text: "＋ 添加第一件礼物",
+                color: AppTheme.pink,
+                onTap: () => _showAddProductDialog(controller),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
 
+  /// 构建孟菲斯风格商品卡片（粗黑边 + 硬投影 + 歪斜价格贴纸）
   Widget _buildNiceProductCard(
     ShopController controller,
     Product product,
@@ -232,57 +287,48 @@ class ShopPage extends StatelessWidget {
     final progress = controller.getProgress(product);
     final isDone = progress >= 1.0;
 
-    // 已兑换商品单独样式
     if (product.isRedeemed) {
       return _buildRedeemedProductCard(product);
     }
 
+    final placeholderBg =
+        AppTheme.candySoftColors[index % AppTheme.candySoftColors.length];
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24.r),
-        boxShadow: [
+        borderRadius: BorderRadius.circular(20.r),
+        border: Border.all(color: AppTheme.ink, width: 2.5),
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: AppTheme.ink,
+            offset: Offset(5, 5),
+            blurRadius: 0,
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 图片区域 - 增大显示
+          // 图片区域
           Expanded(
             flex: 5,
             child: Stack(
               children: [
                 Container(
-                  margin: EdgeInsets.all(10.w),
+                  margin: EdgeInsets.all(9.w),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(18.r),
-                    gradient: product.imagePath.isEmpty
-                        ? LinearGradient(
-                            colors: [
-                              Colors.pink.shade100,
-                              Colors.orange.shade100,
-                              Colors.amber.shade100,
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          )
-                        : null,
-                    color: product.imagePath.isNotEmpty
-                        ? AppTheme.bgYellow.withOpacity(0.3)
-                        : null,
+                    borderRadius: BorderRadius.circular(14.r),
+                    color: placeholderBg,
+                    border: Border.all(color: AppTheme.ink, width: 2.0),
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(18.r),
+                    borderRadius: BorderRadius.circular(12.r),
                     child: product.imagePath.isEmpty
                         ? Center(
                             child: Text(
                               '🎁',
-                              style: TextStyle(fontSize: 48.sp),
+                              style: TextStyle(fontSize: 46.sp),
                             ),
                           )
                         : ImageUtils.displayImage(
@@ -293,57 +339,62 @@ class ShopPage extends StatelessWidget {
                           ),
                   ),
                 ),
-                // 编辑和删除按钮 - 使用 Obx 包裹以响应模式变化
+                // 左上角孟菲斯歪斜价格贴纸（规则 04：歪贴纸，但内部数字清晰）
+                Positioned(
+                  top: 14.h,
+                  left: 14.w,
+                  child: MemphisTag(
+                    text:
+                        '${product.priceType == 'star' ? '⭐' : '¥'} ${product.price.toInt()}',
+                    color: AppTheme.yellow,
+                    tiltDeg: -5.0,
+                    fontSize: 11.sp,
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                    shadowOffset: 2.5,
+                  ),
+                ),
+                // 编辑和删除按钮
                 Obx(() => !modeController.isChildMode
                     ? Positioned(
-                        top: 14.h,
-                        right: 14.w,
+                        top: 13.h,
+                        right: 13.w,
                         child: Row(
                           children: [
-                            // 编辑按钮
                             GestureDetector(
                               onTap: () =>
                                   _showEditProductDialog(controller, product),
                               child: Container(
-                                padding: EdgeInsets.all(6.w),
+                                padding: EdgeInsets.all(5.w),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.9),
+                                  color: Colors.white,
                                   shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.1),
-                                      blurRadius: 4,
-                                    ),
-                                  ],
+                                  border: Border.all(
+                                      color: AppTheme.ink, width: 1.8),
                                 ),
                                 child: Icon(
-                                  Icons.edit,
-                                  size: 16.sp,
-                                  color: AppTheme.primary,
+                                  Icons.edit_rounded,
+                                  size: 14.sp,
+                                  color: AppTheme.ink,
                                 ),
                               ),
                             ),
-                            SizedBox(width: 6.w),
-                            // 删除按钮
+                            SizedBox(width: 5.w),
                             GestureDetector(
                               onTap: () =>
                                   _confirmDeleteProduct(controller, product),
                               child: Container(
-                                padding: EdgeInsets.all(6.w),
+                                padding: EdgeInsets.all(5.w),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.9),
+                                  color: AppTheme.tomatoSoft,
                                   shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.1),
-                                      blurRadius: 4,
-                                    ),
-                                  ],
+                                  border: Border.all(
+                                      color: AppTheme.ink, width: 1.8),
                                 ),
                                 child: Icon(
-                                  Icons.delete_outline,
-                                  size: 16.sp,
-                                  color: Colors.red,
+                                  Icons.delete_outline_rounded,
+                                  size: 14.sp,
+                                  color: AppTheme.tomato,
                                 ),
                               ),
                             ),
@@ -354,9 +405,146 @@ class ShopPage extends StatelessWidget {
               ],
             ),
           ),
-          // 信息区域
+          // 信息区域（保持水平左对齐）
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+            padding: EdgeInsets.symmetric(horizontal: 11.w, vertical: 4.h),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  product.name,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 14.sp,
+                    color: AppTheme.ink,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                SizedBox(height: 4.h),
+                Row(
+                  children: [
+                    Text(
+                      isDone ? '🎉 已攒够！' : '进度',
+                      style: TextStyle(
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.textSub,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      "${(progress * 100).toInt()}%",
+                      style: TextStyle(
+                        fontSize: 11.5.sp,
+                        fontWeight: FontWeight.w900,
+                        color: AppTheme.ink,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 5.h),
+                // 孟菲斯黑边纯色进度条（不用渐变）
+                Container(
+                  height: 9.h,
+                  decoration: BoxDecoration(
+                    color: AppTheme.cream,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: AppTheme.ink, width: 1.6),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(999),
+                    child: FractionallySizedBox(
+                      widthFactor: (progress > 1 ? 1.0 : progress).clamp(0.0, 1.0),
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        color: isDone ? AppTheme.teal : AppTheme.pink,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // 兑换按钮
+          Obx(() => Padding(
+                padding: EdgeInsets.fromLTRB(10.w, 6.h, 10.w, 10.h),
+                child: MemphisButton(
+                  text: modeController.isChildMode
+                      ? "👀 仅供查看"
+                      : (isDone ? "🎁 立刻兑换" : "努力积攒中..."),
+                  color: isDone && !modeController.isChildMode
+                      ? AppTheme.teal
+                      : AppTheme.cream,
+                  borderRadius: 11.r,
+                  shadowOffset:
+                      isDone && !modeController.isChildMode ? 3.0 : 0.0,
+                  fontSize: 12.sp,
+                  padding: EdgeInsets.symmetric(vertical: 6.h),
+                  onTap: isDone && !modeController.isChildMode
+                      ? () => controller.redeemProduct(index)
+                      : null,
+                ),
+              )),
+        ],
+      ),
+    );
+  }
+
+  /// 已兑换商品卡片
+  Widget _buildRedeemedProductCard(Product product) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.cream,
+        borderRadius: BorderRadius.circular(20.r),
+        border: Border.all(color: AppTheme.ink, width: 2.2),
+        boxShadow: const [
+          BoxShadow(
+            color: AppTheme.ink,
+            offset: Offset(3, 3),
+            blurRadius: 0,
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            flex: 5,
+            child: Container(
+              margin: EdgeInsets.all(9.w),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14.r),
+                color: Colors.white,
+                border: Border.all(color: AppTheme.ink, width: 1.8),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12.r),
+                child: ColorFiltered(
+                  colorFilter: const ColorFilter.mode(
+                    Colors.grey,
+                    BlendMode.saturation,
+                  ),
+                  child: product.imagePath.isEmpty
+                      ? Center(
+                          child: Text(
+                            '🎁',
+                            style: TextStyle(fontSize: 44.sp),
+                          ),
+                        )
+                      : ImageUtils.displayImage(
+                          product.imagePath,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
+                        ),
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
@@ -365,229 +553,56 @@ class ShopPage extends StatelessWidget {
                   product.name,
                   style: TextStyle(
                     fontWeight: FontWeight.w800,
-                    fontSize: 14.sp,
-                    color: AppTheme.textMain,
+                    fontSize: 13.5.sp,
+                    color: AppTheme.textSub,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                SizedBox(height: 4.h),
-                Row(
-                  children: [
-                    Icon(
-                      product.priceType == 'star'
-                          ? Icons.stars
-                          : Icons.monetization_on,
-                      size: 14.sp,
-                      color: product.priceType == 'star'
-                          ? Colors.amber
-                          : Colors.orange,
-                    ),
-                    SizedBox(width: 4.w),
-                    Text(
-                      "${product.price.toInt()}",
-                      style: TextStyle(
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.textSub,
-                      ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      "${(progress * 100).toInt()}%",
-                      style: TextStyle(
-                        fontSize: 11.sp,
-                        fontWeight: FontWeight.bold,
-                        color: isDone ? Colors.green : AppTheme.textSub,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 6.h),
-                // 进度条
-                Container(
-                  height: 6.h,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(3.r),
-                  ),
-                  child: FractionallySizedBox(
-                    widthFactor: progress > 1 ? 1 : progress,
-                    alignment: Alignment.centerLeft,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: isDone
-                              ? [Colors.green, Colors.teal]
-                              : [AppTheme.primary, AppTheme.primaryDark],
-                        ),
-                        borderRadius: BorderRadius.circular(3.r),
-                      ),
-                    ),
+                SizedBox(height: 2.h),
+                Text(
+                  "${product.priceType == 'star' ? '⭐' : '¥'} ${product.price.toInt()}",
+                  style: TextStyle(
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.textSub,
+                    decoration: TextDecoration.lineThrough,
                   ),
                 ),
               ],
             ),
           ),
-          // 兑换按钮 - 使用 Obx 包裹以响应模式变化
-          Obx(() => Padding(
-                padding: EdgeInsets.fromLTRB(10.w, 4.h, 10.w, 10.h),
-                child: SizedBox(
-                  height: 32.h,
-                  child: ElevatedButton(
-                    // 只有在非儿童模式且进度达到100%时才可点击
-                    onPressed: isDone && !modeController.isChildMode
-                        ? () {
-                            controller.redeemProduct(index);
-                          }
-                        : null,
-                    style: ElevatedButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      backgroundColor: isDone && !modeController.isChildMode
-                          ? Colors.green
-                          : Colors.grey.shade200,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: Colors.grey.shade100,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10.r),
-                      ),
-                    ),
-                    child: Text(
-                      modeController.isChildMode
-                          ? "仅供查看"
-                          : (isDone ? "立刻兑换" : "努力中..."),
-                      style: TextStyle(fontSize: 12.sp),
-                    ),
-                  ),
-                ),
-              )),
-        ],
-      ),
-    );
-  }
-
-  /// 已兑换商品卡片 - 单独展示
-  Widget _buildRedeemedProductCard(Product product) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(24.r),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Stack(
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // 图片区域
-              Expanded(
-                flex: 5,
-                child: Container(
-                  margin: EdgeInsets.all(10.w),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(18.r),
-                    color: Colors.grey.shade100,
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(18.r),
-                    child: ColorFiltered(
-                      colorFilter: const ColorFilter.mode(
-                        Colors.grey,
-                        BlendMode.saturation,
-                      ),
-                      child: product.imagePath.isEmpty
-                          ? Center(
-                              child: Text(
-                                '🎁',
-                                style: TextStyle(fontSize: 48.sp),
-                              ),
-                            )
-                          : ImageUtils.displayImage(
-                              product.imagePath,
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                              height: double.infinity,
-                            ),
-                    ),
-                  ),
-                ),
+          Padding(
+            padding: EdgeInsets.fromLTRB(10.w, 4.h, 10.w, 10.h),
+            child: Container(
+              height: 30.h,
+              decoration: BoxDecoration(
+                color: AppTheme.tealSoft,
+                borderRadius: BorderRadius.circular(10.r),
+                border: Border.all(color: AppTheme.ink, width: 1.8),
               ),
-              // 信息区域
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
+              child: Center(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      product.name,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14.sp,
-                        color: Colors.grey,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    Icon(
+                      Icons.check_circle_rounded,
+                      size: 14.sp,
+                      color: AppTheme.ink,
                     ),
-                    SizedBox(height: 4.h),
-                    Row(
-                      children: [
-                        Icon(
-                          product.priceType == 'star'
-                              ? Icons.stars
-                              : Icons.monetization_on,
-                          size: 14.sp,
-                          color: Colors.grey.shade400,
-                        ),
-                        SizedBox(width: 4.w),
-                        Text(
-                          "${product.price.toInt()}",
-                          style: TextStyle(
-                            fontSize: 13.sp,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey,
-                            decoration: TextDecoration.lineThrough,
-                          ),
-                        ),
-                      ],
+                    SizedBox(width: 4.w),
+                    Text(
+                      "已兑换",
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        color: AppTheme.ink,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ],
                 ),
               ),
-              // 已兑换标签
-              Padding(
-                padding: EdgeInsets.fromLTRB(10.w, 4.h, 10.w, 10.h),
-                child: Container(
-                  height: 32.h,
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade50,
-                    borderRadius: BorderRadius.circular(10.r),
-                    border: Border.all(color: Colors.green.shade200),
-                  ),
-                  child: Center(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.check_circle,
-                          size: 14.sp,
-                          color: Colors.green,
-                        ),
-                        SizedBox(width: 4.w),
-                        Text(
-                          "已兑换",
-                          style: TextStyle(
-                            fontSize: 12.sp,
-                            color: Colors.green,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ],
       ),
@@ -597,12 +612,9 @@ class ShopPage extends StatelessWidget {
   void _showAddProductDialog(ShopController controller) {
     final nameController = TextEditingController();
     final priceController = TextEditingController();
-    String pType = 'star';
-
-    // Reactive variable for the image
+    final RxString pType = 'star'.obs;
     final Rx<String?> selectedImage = Rx<String?>(null);
 
-    // 使用原生 showModalBottomSheet 替代 Get.bottomSheet
     final context = Get.context;
     if (context == null) return;
 
@@ -611,22 +623,30 @@ class ShopPage extends StatelessWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
-        padding: EdgeInsets.all(24.w),
+        padding: EdgeInsets.only(
+          left: 22.w,
+          right: 22.w,
+          top: 22.h,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 22.h,
+        ),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32.r)),
+          color: AppTheme.cream,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28.r)),
+          border: Border.all(color: AppTheme.ink, width: 3.0),
         ),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                "添加心愿礼物",
-                style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.w900),
+                "🎁 添加心愿礼物",
+                style: TextStyle(
+                  fontSize: 20.sp,
+                  fontWeight: FontWeight.w900,
+                  color: AppTheme.ink,
+                ),
               ),
-              SizedBox(height: 20.h),
-
-              // Image Picker
+              SizedBox(height: 18.h),
               GestureDetector(
                 onTap: () async {
                   final img = await ImageUtils.pickImageAndToBase64();
@@ -634,32 +654,40 @@ class ShopPage extends StatelessWidget {
                 },
                 child: Obx(
                   () => Container(
-                    width: 100.w,
-                    height: 100.w,
+                    width: 96.w,
+                    height: 96.w,
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(16.r),
-                      border: Border.all(color: Colors.grey.shade300),
+                      border: Border.all(color: AppTheme.ink, width: 2.2),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: AppTheme.ink,
+                          offset: Offset(3, 3),
+                          blurRadius: 0,
+                        ),
+                      ],
                     ),
                     child: selectedImage.value != null
                         ? ClipRRect(
-                            borderRadius: BorderRadius.circular(16.r),
+                            borderRadius: BorderRadius.circular(14.r),
                             child: ImageUtils.displayImage(selectedImage.value),
                           )
                         : Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(
-                                Icons.add_a_photo,
-                                color: Colors.grey.shade400,
-                                size: 30.sp,
+                                Icons.add_a_photo_rounded,
+                                color: AppTheme.ink,
+                                size: 28.sp,
                               ),
                               SizedBox(height: 4.h),
                               Text(
-                                "传图",
+                                "上传图片",
                                 style: TextStyle(
-                                  fontSize: 10.sp,
-                                  color: Colors.grey,
+                                  fontSize: 11.sp,
+                                  color: AppTheme.ink,
+                                  fontWeight: FontWeight.w800,
                                 ),
                               ),
                             ],
@@ -667,70 +695,71 @@ class ShopPage extends StatelessWidget {
                   ),
                 ),
               ),
-              SizedBox(height: 10.h),
+              SizedBox(height: 12.h),
               TextField(
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: "或直接输入图片链接",
-                  prefixIcon: const Icon(Icons.link),
-                  border: const OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 10.w,
-                    vertical: 5.h,
-                  ),
+                  prefixIcon: Icon(Icons.link),
                 ),
                 style: TextStyle(fontSize: 12.sp),
                 onChanged: (val) {
                   if (val.isNotEmpty) selectedImage.value = val;
                 },
               ),
-              SizedBox(height: 20.h),
+              SizedBox(height: 12.h),
               TextField(
                 controller: nameController,
                 decoration: const InputDecoration(labelText: "礼物名称"),
               ),
+              SizedBox(height: 12.h),
               TextField(
                 controller: priceController,
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(labelText: "目标数额 (星星/零花钱)"),
               ),
-              SizedBox(height: 16.h),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text("兑换类型: "),
-                  ChoiceChip(
-                    label: const Text("星星"),
-                    selected: pType == 'star',
-                    onSelected: (s) => pType = 'star',
-                  ),
-                  SizedBox(width: 10.w),
-                  ChoiceChip(
-                    label: const Text("零花钱"),
-                    selected: pType == 'money',
-                    onSelected: (s) => pType = 'money',
-                  ),
-                ],
+              SizedBox(height: 14.h),
+              Obx(
+                () => Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      "兑换类型: ",
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    ChoiceChip(
+                      label: const Text("⭐ 星星"),
+                      selected: pType.value == 'star',
+                      onSelected: (s) => pType.value = 'star',
+                    ),
+                    SizedBox(width: 10.w),
+                    ChoiceChip(
+                      label: const Text("💰 零花钱"),
+                      selected: pType.value == 'money',
+                      onSelected: (s) => pType.value = 'money',
+                    ),
+                  ],
+                ),
               ),
-              SizedBox(height: 30.h),
+              SizedBox(height: 22.h),
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
+                child: MemphisButton(
+                  text: "确认添加心愿",
+                  color: AppTheme.yellow,
+                  onTap: () {
                     if (nameController.text.isNotEmpty &&
                         priceController.text.isNotEmpty) {
                       controller.addProduct(
                         Product(
                           name: nameController.text,
                           price: double.tryParse(priceController.text) ?? 50,
-                          priceType: pType,
+                          priceType: pType.value,
                           imagePath: selectedImage.value ?? '',
                         ),
                       );
-                      // 使用 Navigator.pop 替代 Get.back
                       Navigator.of(ctx).pop();
                     }
                   },
-                  child: const Text("添加心愿"),
                 ),
               ),
             ],
@@ -746,11 +775,8 @@ class ShopPage extends StatelessWidget {
     final priceController =
         TextEditingController(text: product.price.toString());
     final Rx<String> pType = product.priceType.obs;
-
-    // Reactive variable for the image
     final Rx<String?> selectedImage = Rx<String?>(product.imagePath);
 
-    // 使用原生 showModalBottomSheet
     final context = Get.context;
     if (context == null) return;
 
@@ -759,10 +785,16 @@ class ShopPage extends StatelessWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
-        padding: EdgeInsets.all(24.w),
+        padding: EdgeInsets.only(
+          left: 22.w,
+          right: 22.w,
+          top: 22.h,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 22.h,
+        ),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32.r)),
+          color: AppTheme.cream,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28.r)),
+          border: Border.all(color: AppTheme.ink, width: 3.0),
         ),
         child: SingleChildScrollView(
           child: Column(
@@ -770,11 +802,13 @@ class ShopPage extends StatelessWidget {
             children: [
               Text(
                 "编辑商品",
-                style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.w900),
+                style: TextStyle(
+                  fontSize: 20.sp,
+                  fontWeight: FontWeight.w900,
+                  color: AppTheme.ink,
+                ),
               ),
-              SizedBox(height: 20.h),
-
-              // Image Picker
+              SizedBox(height: 18.h),
               GestureDetector(
                 onTap: () async {
                   final img = await ImageUtils.pickImageAndToBase64();
@@ -782,33 +816,41 @@ class ShopPage extends StatelessWidget {
                 },
                 child: Obx(
                   () => Container(
-                    width: 100.w,
-                    height: 100.w,
+                    width: 96.w,
+                    height: 96.w,
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(16.r),
-                      border: Border.all(color: Colors.grey.shade300),
+                      border: Border.all(color: AppTheme.ink, width: 2.2),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: AppTheme.ink,
+                          offset: Offset(3, 3),
+                          blurRadius: 0,
+                        ),
+                      ],
                     ),
                     child: selectedImage.value != null &&
                             selectedImage.value!.isNotEmpty
                         ? ClipRRect(
-                            borderRadius: BorderRadius.circular(16.r),
+                            borderRadius: BorderRadius.circular(14.r),
                             child: ImageUtils.displayImage(selectedImage.value),
                           )
                         : Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(
-                                Icons.add_a_photo,
-                                color: Colors.grey.shade400,
-                                size: 30.sp,
+                                Icons.add_a_photo_rounded,
+                                color: AppTheme.ink,
+                                size: 28.sp,
                               ),
                               SizedBox(height: 4.h),
                               Text(
-                                "传图",
+                                "上传图片",
                                 style: TextStyle(
-                                  fontSize: 10.sp,
-                                  color: Colors.grey,
+                                  fontSize: 11.sp,
+                                  color: AppTheme.ink,
+                                  fontWeight: FontWeight.w800,
                                 ),
                               ),
                             ],
@@ -816,16 +858,11 @@ class ShopPage extends StatelessWidget {
                   ),
                 ),
               ),
-              SizedBox(height: 10.h),
+              SizedBox(height: 12.h),
               TextField(
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: "或直接输入图片链接",
-                  prefixIcon: const Icon(Icons.link),
-                  border: const OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 10.w,
-                    vertical: 5.h,
-                  ),
+                  prefixIcon: Icon(Icons.link),
                 ),
                 style: TextStyle(fontSize: 12.sp),
                 controller: TextEditingController(text: selectedImage.value),
@@ -833,44 +870,49 @@ class ShopPage extends StatelessWidget {
                   if (val.isNotEmpty) selectedImage.value = val;
                 },
               ),
-              SizedBox(height: 20.h),
+              SizedBox(height: 12.h),
               TextField(
                 controller: nameController,
                 decoration: const InputDecoration(labelText: "礼物名称"),
               ),
+              SizedBox(height: 12.h),
               TextField(
                 controller: priceController,
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(labelText: "目标数额 (星星/零花钱)"),
               ),
-              SizedBox(height: 16.h),
+              SizedBox(height: 14.h),
               Obx(
                 () => Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text("兑换类型: "),
+                    const Text(
+                      "兑换类型: ",
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
                     ChoiceChip(
-                      label: const Text("星星"),
+                      label: const Text("⭐ 星星"),
                       selected: pType.value == 'star',
                       onSelected: (s) => pType.value = 'star',
                     ),
                     SizedBox(width: 10.w),
                     ChoiceChip(
-                      label: const Text("零花钱"),
+                      label: const Text("💰 零花钱"),
                       selected: pType.value == 'money',
                       onSelected: (s) => pType.value = 'money',
                     ),
                   ],
                 ),
               ),
-              SizedBox(height: 30.h),
+              SizedBox(height: 22.h),
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
+                child: MemphisButton(
+                  text: "保存修改",
+                  color: AppTheme.teal,
+                  onTap: () {
                     if (nameController.text.isNotEmpty &&
                         priceController.text.isNotEmpty) {
-                      // 更新商品信息
                       product.name = nameController.text;
                       product.price = double.tryParse(priceController.text) ??
                           product.price;
@@ -882,7 +924,6 @@ class ShopPage extends StatelessWidget {
                       Get.snackbar('成功', '商品信息已更新');
                     }
                   },
-                  child: const Text("保存修改"),
                 ),
               ),
             ],
@@ -909,7 +950,7 @@ class ShopPage extends StatelessWidget {
               Get.back();
               Get.snackbar('成功', '商品已删除');
             },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: AppTheme.tomato),
             child: const Text('删除'),
           ),
         ],

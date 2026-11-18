@@ -10,64 +10,75 @@ import '../../../widgets/toast_utils.dart';
 import 'weiqi_board.dart';
 import 'weiqi_engine.dart';
 import 'weiqi_panda.dart';
-import 'weiqi_sfx.dart';
-import 'weiqi_service.dart';
 import 'weiqi_replay_page.dart';
+import 'weiqi_service.dart';
+import 'weiqi_sfx.dart';
 import 'weiqi_theme.dart';
 import 'weiqi_widgets.dart';
 
-/// 对手选择底部弹层（课程结算页与模块首页共用）。
-/// [exitToHomeAfterGame]：从课程结算进入时传 true，
-/// 对局结束点「回小岛休息一下」会连课程页一起退出，直接回到棋妙岛主页。
+/// 对手与商业级对局参数选择底部弹层（课程结算页与模块首页共用）。
 Future<void> showWqOpponentPicker(
   BuildContext context, {
   bool exitToHomeAfterGame = false,
 }) async {
+  final svc = Get.find<WeiqiService>();
   await showModalBottomSheet(
     context: context,
+    isScrollControlled: true,
     backgroundColor: Colors.transparent,
     builder: (ctx) {
       return Padding(
-        padding: const EdgeInsets.only(
-          left: 20,
-          right: 20,
-          bottom: 12,
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          bottom: MediaQuery.of(ctx).padding.bottom + 12,
         ),
         child: Align(
           alignment: Alignment.bottomCenter,
           child: FittedBox(
             fit: BoxFit.scaleDown,
             child: Container(
-              width: 320,
+              width: 340,
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
                 color: WqTheme.cream,
-                borderRadius: BorderRadius.circular(28),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: WqTheme.ink, width: 3.0),
+                boxShadow: const [
+                  BoxShadow(
+                    color: WqTheme.ink,
+                    offset: Offset(6, 6),
+                    blurRadius: 0,
+                  ),
+                ],
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-              const Text(
-                '今天和谁下一盘？',
-                textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-                color: WqTheme.ink,
-              ),
-            ),
-              const SizedBox(height: 10),
-              // 棋棋今天的状态：4 档棋力
-              Obx(() {
-                final sel = Get.find<WeiqiService>().aiLevelIndex.value;
+              child: Obx(() {
+                final selLevel =
+                    svc.aiLevelIndex.value.clamp(0, wqAiLevels.length - 1);
+                final isTerritory = svc.ruleMode.value == 'territory';
+                final curBoard = svc.boardSize.value;
+                final curHandicap = svc.handicap.value;
+
                 return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const Text(
-                      '棋棋今天的状态',
+                      '🎯 开启一局新对弈',
+                      textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        color: WqTheme.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // 1. 对局规则模式切换（吃子棋 vs 标准围地）
+                    const Text(
+                      '对局规则',
+                      style: TextStyle(
+                        fontSize: 11.5,
                         fontWeight: FontWeight.w900,
                         color: WqTheme.inkSoft,
                       ),
@@ -75,49 +86,182 @@ Future<void> showWqOpponentPicker(
                     const SizedBox(height: 6),
                     Row(
                       children: [
+                        Expanded(
+                          child: _modeTab(
+                            selected: !isTerritory,
+                            title: '🎯 吃子棋',
+                            sub: '先提 ${svc.winCaptures.value} 颗获胜',
+                            color: WqTheme.sun,
+                            onTap: () => svc.ruleMode.value = 'capture',
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _modeTab(
+                            selected: isTerritory,
+                            title: '🏆 标准围地',
+                            sub: '围空数子 · 正式规则',
+                            color: WqTheme.green,
+                            onTap: () => svc.ruleMode.value = 'territory',
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+
+                    // 2. 棋盘路数与让子设置
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                '棋盘大小',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                  color: WqTheme.inkSoft,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [9, 13, 19].map((sz) {
+                                  final on = curBoard == sz;
+                                  return Expanded(
+                                    child: GestureDetector(
+                                      onTap: () => svc.boardSize.value = sz,
+                                      child: Container(
+                                        margin: const EdgeInsets.only(right: 4),
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: on
+                                              ? WqTheme.pink
+                                              : Colors.white,
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                          border: Border.all(
+                                              color: WqTheme.ink, width: 1.8),
+                                        ),
+                                        alignment: Alignment.center,
+                                        child: Text(
+                                          '$sz路',
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w900,
+                                            color: WqTheme.ink,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                '黑方让子（亲子/闯关）',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                  color: WqTheme.inkSoft,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [0, 2, 3, 4].map((hc) {
+                                  final on = curHandicap == hc;
+                                  return Expanded(
+                                    child: GestureDetector(
+                                      onTap: () => svc.handicap.value = hc,
+                                      child: Container(
+                                        margin: const EdgeInsets.only(right: 4),
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: on
+                                              ? WqTheme.grape
+                                              : Colors.white,
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                          border: Border.all(
+                                              color: WqTheme.ink, width: 1.8),
+                                        ),
+                                        alignment: Alignment.center,
+                                        child: Text(
+                                          hc == 0 ? '分先' : '$hc子',
+                                          style: const TextStyle(
+                                            fontSize: 10.5,
+                                            fontWeight: FontWeight.w900,
+                                            color: WqTheme.ink,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+
+                    // 3. 棋棋 5 档少儿级位
+                    const Text(
+                      '棋棋今天的状态（AI 级位）',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                        color: WqTheme.inkSoft,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Row(
+                      children: [
                         for (var k = 0; k < wqAiLevels.length; k++)
                           Expanded(
                             child: GestureDetector(
-                              onTap: () => Get.find<WeiqiService>()
-                                  .aiLevelIndex
-                                  .value = k,
+                              onTap: () => svc.aiLevelIndex.value = k,
                               child: Container(
                                 margin: EdgeInsets.only(
-                                    right: k == wqAiLevels.length - 1 ? 0 : 5),
+                                    right: k == wqAiLevels.length - 1 ? 0 : 4),
                                 padding: const EdgeInsets.symmetric(
-                                    vertical: 7, horizontal: 2),
+                                    vertical: 6, horizontal: 2),
                                 decoration: BoxDecoration(
-                                  color: sel == k
-                                      ? WqTheme.greenSoft
-                                      : const Color(0xFFF0F2F7),
-                                  borderRadius: BorderRadius.circular(10),
+                                  color: selLevel == k
+                                      ? WqTheme.sun
+                                      : Colors.white,
+                                  borderRadius: BorderRadius.circular(9),
                                   border: Border.all(
-                                    color: sel == k
-                                        ? WqTheme.green
-                                        : Colors.transparent,
-                                    width: 1.5,
+                                    color: WqTheme.ink,
+                                    width: 1.8,
                                   ),
                                 ),
                                 child: Column(
                                   children: [
                                     Text(
                                       wqAiLevels[k].name,
-                                      style: TextStyle(
-                                        fontSize: 11,
+                                      style: const TextStyle(
+                                        fontSize: 10.5,
                                         fontWeight: FontWeight.w900,
-                                        color: sel == k
-                                            ? WqTheme.greenDeep
-                                            : WqTheme.inkFaint,
+                                        color: WqTheme.ink,
                                       ),
                                     ),
                                     Text(
-                                      wqAiLevels[k].persona,
-                                      style: TextStyle(
+                                      wqAiLevels[k].persona.split('·').first,
+                                      style: const TextStyle(
                                         fontSize: 8.5,
-                                        fontWeight: FontWeight.w700,
-                                        color: sel == k
-                                            ? WqTheme.greenDeep
-                                            : WqTheme.inkFaint,
+                                        fontWeight: FontWeight.w800,
+                                        color: WqTheme.inkSoft,
                                       ),
                                     ),
                                   ],
@@ -129,65 +273,123 @@ Future<void> showWqOpponentPicker(
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      wqAiLevels[sel].desc,
+                      wqAiLevels[selLevel].desc,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: WqTheme.inkFaint,
+                        fontWeight: FontWeight.w700,
+                        color: WqTheme.inkSoft,
                       ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // 4. 选择对手开始
+                    _opponentOption(
+                      ctx,
+                      panda: const WqPanda(mood: WqPandaMood.happy, size: 48),
+                      title: '和棋棋下',
+                      subtitle: isTerritory
+                          ? '$curBoard路标准围地 · AI 形势判断与点目'
+                          : '$curBoard路吃子棋 · 棋棋会陪你慢慢下',
+                      color: WqTheme.greenSoft,
+                      onTap: () {
+                        Navigator.of(ctx).pop();
+                        Get.to(() => WeiqiPlayPage(
+                              opponent: WqOpponent.ai,
+                              exitToHome: exitToHomeAfterGame,
+                            ));
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    _opponentOption(
+                      ctx,
+                      panda: Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: WqTheme.sun,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: WqTheme.ink, width: 2.0),
+                        ),
+                        child: const Center(
+                          child: Text('👪', style: TextStyle(fontSize: 24)),
+                        ),
+                      ),
+                      title: '和家长同机下',
+                      subtitle: isTerritory
+                          ? '同机轮流落子 · $curBoard路围地数子'
+                          : '同机轮流落子 · $curBoard路先提 ${svc.winCaptures.value} 颗赢',
+                      color: WqTheme.sunSoft,
+                      onTap: () {
+                        Navigator.of(ctx).pop();
+                        Get.to(() => WeiqiPlayPage(
+                              opponent: WqOpponent.parent,
+                              exitToHome: exitToHomeAfterGame,
+                            ));
+                      },
                     ),
                   ],
                 );
               }),
-              const SizedBox(height: 12),
-              _opponentOption(
-                ctx,
-                panda: const WqPanda(mood: WqPandaMood.happy, size: 52),
-                title: '和棋棋下',
-                subtitle: '棋棋会陪你慢慢下，还会悄悄犯错哦',
-                color: WqTheme.greenSoft,
-                onTap: () {
-                  Navigator.of(ctx).pop();
-                  Get.to(() => WeiqiPlayPage(
-                        opponent: WqOpponent.ai,
-                        exitToHome: exitToHomeAfterGame,
-                      ));
-                },
-              ),
-              const SizedBox(height: 10),
-              _opponentOption(
-                ctx,
-                panda: Container(
-                  width: 52,
-                  height: 52,
-                  decoration: const BoxDecoration(
-                    color: WqTheme.sunSoft,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Center(
-                      child: Text('👪', style: TextStyle(fontSize: 26))),
-                ),
-                title: '和家长下',
-                subtitle:
-                    '同一部手机轮流落子 · ${Get.find<WeiqiService>().boardSize.value} 路盘 · 先提 ${Get.find<WeiqiService>().winCaptures.value} 颗获胜',
-                color: WqTheme.sunSoft,
-                onTap: () {
-                  Navigator.of(ctx).pop();
-                  Get.to(() => WeiqiPlayPage(
-                        opponent: WqOpponent.parent,
-                        exitToHome: exitToHomeAfterGame,
-                      ));
-                },
-              ),
-            ],
-          ),
-        ),
+            ),
           ),
         ),
       );
     },
+  );
+}
+
+Widget _modeTab({
+  required bool selected,
+  required String title,
+  required String sub,
+  required Color color,
+  required VoidCallback onTap,
+}) {
+  return GestureDetector(
+    onTap: onTap,
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 120),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+      decoration: BoxDecoration(
+        color: selected ? color : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: WqTheme.ink, width: 2.2),
+        boxShadow: selected
+            ? const [
+                BoxShadow(
+                  color: WqTheme.ink,
+                  offset: Offset(3, 3),
+                  blurRadius: 0,
+                ),
+              ]
+            : const [],
+      ),
+      child: Column(
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+              color: WqTheme.ink,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            sub,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: WqTheme.inkSoft,
+            ),
+          ),
+        ],
+      ),
+    ),
   );
 }
 
@@ -199,54 +401,63 @@ Widget _opponentOption(
   required Color color,
   required VoidCallback onTap,
 }) {
-  return Material(
-    color: Colors.white,
-    borderRadius: BorderRadius.circular(20),
-    child: InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0x0F23324D)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-              child: Center(child: panda),
+  return GestureDetector(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.all(11),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: WqTheme.ink, width: 2.4),
+        boxShadow: const [
+          BoxShadow(
+            color: WqTheme.ink,
+            offset: Offset(4, 4),
+            blurRadius: 0,
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+              border: Border.all(color: WqTheme.ink, width: 2.0),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: WqTheme.ink,
-                    ),
+            child: Center(child: panda),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w900,
+                    color: WqTheme.ink,
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: WqTheme.inkSoft,
-                    ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: WqTheme.inkSoft,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            const Icon(Icons.chevron_right_rounded, color: WqTheme.inkFaint),
-          ],
-        ),
+          ),
+          const Icon(Icons.chevron_right_rounded, color: WqTheme.ink),
+        ],
       ),
     ),
   );
@@ -254,12 +465,12 @@ Widget _opponentOption(
 
 enum WqOpponent { ai, parent }
 
-/// 陪下模式：熊猫棋棋坐对面陪孩子下一局（吃子棋，先提 N 颗获胜，家长可调；
-/// 棋盘路数家长可在 9/13/19 之间调）。
+/// 商业级少儿围棋对局页：
+/// 支持「吃子棋」与「标准围地（数子/点目）」双规则、让子、棋钟计时、
+/// 实时形势判断（领地可视化）、虚手（Pass）、终局死子点选与点目结算、
+/// 13/19路十字准星防误触确认、点棋问气、三层引导求助与复盘记录。
 class WeiqiPlayPage extends StatefulWidget {
   final WqOpponent opponent;
-
-  /// 从课程结算进入的对局：结束时「回小岛休息一下」直接回到棋妙岛主页
   final bool exitToHome;
 
   const WeiqiPlayPage({
@@ -273,12 +484,10 @@ class WeiqiPlayPage extends StatefulWidget {
 }
 
 class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
-  /// 兜底终局阈值：盘面下到约 85% 满就收摊（9 路约 69 颗、13 路约 143 颗、19 路约 307 颗）。
-  /// 提子棋通常先撞提子目标；这里只防双方都提不到子的死局。
   int get _maxStones => (_game.n * _game.n * 0.85).round();
 
-  /// 提子目标（家长小屋可调），每局开始时从设置读取
   int _winCaptures = 3;
+  late WqRuleMode _ruleMode;
 
   late final WeiqiService _svc;
   late WqGame _game;
@@ -288,7 +497,7 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
   int _helpLeft = 3;
   int _helpStage = 0;
   String _helpKey = '';
-  int _turn = 1; // 家长陪下：1=孩子 2=家长
+  int _turn = 1; // 1=黑方(孩子) 2=白方(AI/家长)
   final Set<int> _reminded = {};
   int? _ownAtariBefore;
   bool _pendingCapture = false;
@@ -296,15 +505,13 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
   String? _improvement;
   Timer? _aiTimer;
 
-  /// 对局回放：每一手（颜色 + 落点）与关键手的讲解
+  /// 对局回放数据
   final List<({int color, int point})> _replayMoves = [];
   final Map<int, String> _replayNotes = {};
-  /// 讲解标记：着手序号 → 棋盘上要圈出的「最后一口气」位置
   final Map<int, int> _replayMarks = {};
-  /// 每手评级：着手序号 → great/good/ok/miss/danger
   final Map<int, String> _replayGrades = {};
-  /// 更好的下法：着手序号 → 建议落点
   final Map<int, int> _replayBetter = {};
+
   /// 孩子的棋被打吃时的最后一口气（警示小灯）
   Set<int> _dangerLibs = {};
 
@@ -312,7 +519,7 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
   Map<int, int> _explainGhosts = {};
   Timer? _explainTimer;
 
-  /// 点棋问棋棋：正在检视的棋组的气（绿色小灯展示）
+  /// 点棋问棋棋：正在检视的棋组的气
   Set<int> _inspectLibs = {};
   Timer? _blinkTimer;
 
@@ -322,11 +529,29 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
   String _bubbleText = '';
   WqPandaMood _mood = WqPandaMood.happy;
 
-  /// 终局信息：先停在盘面（被提的子一闪一闪），孩子点「看看战报」再弹结算卡
+  /// 终局信息与点目状态
   String _endResult = '';
+  String _endScoreSummaryText = '';
   Set<int> _endBlink = {};
 
+  /// 是否开启实时形势判断（领地叠加层）
+  bool _showTerritoryLive = false;
+
+  /// 是否处于终局死子确认与点目结算阶段（标准围地模式）
+  bool _scoringPhase = false;
+  Set<int> _deadStones = {};
+  WqScoreSummary? _scoreSummary;
+
+  /// 13/19路防误触十字准星预览点
+  int? _previewPoint;
+
+  /// 对局棋钟（秒）
+  Timer? _clockTimer;
+  int _blackSeconds = 0;
+  int _whiteSeconds = 0;
+
   bool get _isAi => widget.opponent == WqOpponent.ai;
+  bool get _isTerritory => _ruleMode == WqRuleMode.territory;
 
   @override
   void initState() {
@@ -340,22 +565,37 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
     _aiTimer?.cancel();
     _explainTimer?.cancel();
     _blinkTimer?.cancel();
+    _clockTimer?.cancel();
     _svc.stopSpeak();
     super.dispose();
   }
 
   void _resetGame() {
+    _aiTimer?.cancel();
+    _clockTimer?.cancel();
+    _ruleMode = _svc.currentRuleMode;
     _game = WqGame(n: _svc.boardSize.value.clamp(9, 19).toInt());
+    final hc = _svc.handicap.value;
+    if (hc >= 2) {
+      _game.setupHandicap(hc);
+    }
     _history.clear();
     _over = false;
     _busy = false;
+    _scoringPhase = false;
+    _showTerritoryLive = false;
+    _deadStones.clear();
+    _scoreSummary = null;
+    _previewPoint = null;
     _winCaptures = _svc.winCaptures.value;
     _endResult = '';
+    _endScoreSummaryText = '';
     _endBlink = {};
     _helpLeft = 3;
     _helpStage = 0;
     _helpKey = '';
-    _turn = 1;
+    // 让子局白棋先下，分先局黑棋先下
+    _turn = _game.handicap >= 2 ? 2 : 1;
     _reminded.clear();
     _ownAtariBefore = null;
     _pendingCapture = false;
@@ -373,14 +613,48 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
     _blinkTimer?.cancel();
     _blink = {};
     _glowCenter = null;
+
+    final limitMin = _svc.timeLimitMinutes.value;
+    _blackSeconds = limitMin > 0 ? limitMin * 60 : 0;
+    _whiteSeconds = limitMin > 0 ? limitMin * 60 : 0;
+    if (limitMin > 0) _startClock();
+
+    final hcText = _game.handicap >= 2 ? '（黑让 ${_game.handicap} 子，白棋先下）' : '（你执黑先下）';
     _say(
-      _isAi
-          ? '我来啦！我们玩吃子棋：轮流点棋盘上横竖线的交叉点落子，谁先把对方提走 $_winCaptures 颗棋子，谁就赢！你执黑先下～'
-          : '亲子吃子棋开始！点交叉点落子，黑先白后轮流下——谁先提走对方 $_winCaptures 颗棋子就赢！',
+      _isTerritory
+          ? '标准围地对局开始！${_game.n}路棋盘$hcText，先占金角、再占银边，终局看谁围的领地大！随时可点「形势」看地盘哦～'
+          : (_isAi
+              ? '我来啦！我们玩吃子棋$hcText：谁先把对方提走 $_winCaptures 颗棋子，谁就赢！'
+              : '亲子吃子棋开始$hcText！谁先提走对方 $_winCaptures 颗棋子就赢！'),
       WqPandaMood.happy,
       speakIt: true,
     );
     setState(() {});
+
+    // 如果让子局且对手是 AI，则由 AI 执白走第一手
+    if (_isAi && _turn == 2) {
+      _aiTurn();
+    }
+  }
+
+  void _startClock() {
+    _clockTimer?.cancel();
+    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted || _over || _scoringPhase) return;
+      setState(() {
+        if (_turn == 1 && !_busy) {
+          if (_blackSeconds > 0) _blackSeconds--;
+        } else {
+          if (_whiteSeconds > 0) _whiteSeconds--;
+        }
+      });
+    });
+  }
+
+  String _formatClock(int sec) {
+    final m = (sec ~/ 60).toString().padLeft(2, '0');
+    final s = (sec % 60).toString().padLeft(2, '0');
+    return '$m:$s';
   }
 
   void _say(String text, WqPandaMood mood, {bool speakIt = false}) {
@@ -390,20 +664,65 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
     if (speakIt) _svc.speak(text);
   }
 
-  // ================= 落子 =================
+  /// 构建当前棋盘上的手数映射（用于显示手数编号）
+  Map<int, int> _buildMoveNumbers() {
+    if (!_svc.showMoveNumbers.value) return const {};
+    final map = <int, int>{};
+    for (var k = 0; k < _replayMoves.length; k++) {
+      final pt = _replayMoves[k].point;
+      if (pt >= 0 && _game.s[pt] != 0) {
+        map[pt] = k + 1;
+      }
+    }
+    return map;
+  }
+
+  // ================= 落子与点目点击 =================
 
   void _onTap(int i) {
-    if (_over || _busy) return;
+    if (_over) return;
+
+    // 终局点目阶段：点击棋子切换死/活状态
+    if (_scoringPhase) {
+      _toggleDeadStoneGroup(i);
+      return;
+    }
+
+    if (_busy) return;
     if (_game.s[i] != 0) {
+      _previewPoint = null;
       _inspect(i); // 点棋问棋棋：查看这块棋的气
       return;
     }
+
+    // 13路/19路且开启落子确认时：首次点击显示十字准星，再次点击同一点或点底部确认才落子
+    final needConfirm = _game.n >= 13 && _svc.confirmMove.value;
+    if (needConfirm && _previewPoint != i) {
+      WqSfx.pop();
+      setState(() {
+        _previewPoint = i;
+        _inspectLibs = {};
+      });
+      return;
+    }
+    _previewPoint = null;
     _inspectLibs = {};
-    if (_isAi ? false : _turn == 2) {
+    if (!_isAi && _turn == 2) {
       _parentMove(i);
       return;
     }
     _childMove(i);
+  }
+
+  void _confirmPreviewMove() {
+    final pt = _previewPoint;
+    if (pt == null) return;
+    _previewPoint = null;
+    if (!_isAi && _turn == 2) {
+      _parentMove(pt);
+    } else {
+      _childMove(pt);
+    }
   }
 
   void _childMove(int i) {
@@ -418,7 +737,8 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
             WqPandaMood.think,
             speakIt: true);
       } else if (r.reason == 'suicide') {
-        _say('这里没有气，棋子站不住哦——这叫「禁入点」，换一个地方下吧！', WqPandaMood.think,
+        _say('这里没有气，棋子站不住哦——这叫「禁入点」，换一个地方下吧！',
+            WqPandaMood.think,
             speakIt: true);
         _blinkTemp(i);
       }
@@ -431,10 +751,8 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
     _explainGhosts = {};
     _inspectLibs = {};
     final myIdx = _replayMoves.length;
-    // 落子前先看一眼：白棋是否有只剩一口气的子（错过机会时，回放要圈出那口气）
     final whiteAtariLibs = _atariLibsOf(2);
-    // 落子前威胁快照：可提的点 / 该逃的点（用于每手评级与「更好的下法」）
-    final threatBefore = WqAi.hintTarget(_game, 1);
+    final threatBefore = WqAi.hintTarget(_game, 1, mode: _ruleMode);
     final enemyAtariBefore = _atariLibsOf(2).isNotEmpty;
     _replayMoves.add((color: 1, point: i));
     if (r.captured.isNotEmpty) {
@@ -454,11 +772,10 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
         WqPandaMood.cheer,
         speakIt: true,
       );
-      if (_game.capBlack >= _winCaptures) {
+      if (!_isTerritory && _game.capBlack >= _winCaptures) {
         return _endGame('win', captured: r.captured);
       }
     } else {
-      // 逃子里程碑
       if (_ownAtariBefore != null) {
         final grp = _game.groupAt(_ownAtariBefore!);
         if (grp.isNotEmpty && _game.libsOf(grp).length >= 2) {
@@ -468,7 +785,6 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
         }
         _ownAtariBefore = null;
       }
-      // 每手评级：错过提子 / 自己处于危险 / 打吃 / 普通
       if (_replayGrades[myIdx] == null) {
         if (threatBefore != null &&
             threatBefore.type == 'capture' &&
@@ -498,25 +814,35 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
           _replayGrades[myIdx] = 'ok';
         }
       }
-      // 机会溜走：之前有可提的白子却没提
       if (_pendingCapture) {
-        _improvement ??= '白棋的士兵曾只剩一口气，机会悄悄溜走了——下次看到「打吃」，先一手提走它！';
-        _replayNotes[myIdx] ??= '这一手之前，白棋有子只剩一口气——橙色圈就是那口气，应该在这里一手提掉哦';
+        _improvement ??=
+            '白棋的士兵曾只剩一口气，机会悄悄溜走了——下次看到「打吃」，先一手提走它！';
+        _replayNotes[myIdx] ??=
+            '这一手之前，白棋有子只剩一口气——橙色圈就是那口气，应该在这里一手提掉哦';
         if (whiteAtariLibs.isNotEmpty) {
           _replayMarks[myIdx] = whiteAtariLibs.first;
         }
         _pendingCapture = false;
       }
-      // 自己的棋落入打吃
       final myAtariLibs = _atariLibsOf(1);
       if (myAtariLibs.isNotEmpty) {
-        _replayNotes[myIdx] ??= '这手棋之后，自己的棋只剩一口气了——橙色圈就是那口气，被堵住就会被提走哦';
+        _replayNotes[myIdx] ??=
+            '这手棋之后，自己的棋只剩一口气了——橙色圈就是那口气，被堵住就会被提走哦';
         _replayMarks[myIdx] = myAtariLibs.first;
       }
     }
     _updateDanger();
-    if (_game.stoneCount() >= _maxStones) return _endGame('review');
+    if (_showTerritoryLive) _refreshLiveTerritory();
+
+    if (!_isTerritory && _game.stoneCount() >= _maxStones) {
+      return _endGame('review');
+    }
+    if (_isTerritory && _game.stoneCount() >= _maxStones) {
+      return _enterScoringPhase();
+    }
+
     if (_isAi) {
+      _turn = 2;
       _aiTurn();
     } else {
       _turn = 2;
@@ -541,21 +867,139 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
     if (r.captured.isNotEmpty) {
       WqSfx.capture();
       _boardCtrl.flyCaptures(r.captured, 1);
-      if (_game.capWhite >= _winCaptures) {
+      if (!_isTerritory && _game.capWhite >= _winCaptures) {
         return _endGame('lose', captured: r.captured);
       }
     }
     _updateDanger();
+    if (_showTerritoryLive) _refreshLiveTerritory();
     _turn = 1;
-    _say('轮到你啦！', WqPandaMood.happy, speakIt: false);
+    _say('轮到你（黑棋）啦！', WqPandaMood.happy, speakIt: false);
     setState(() {});
+  }
+
+  // ================= 虚手（Pass）与形势判断/点目结算 =================
+
+  /// 玩家或家长点击「虚手（停一手）」
+  void _handlePass() {
+    if (_over || _busy || _scoringPhase) return;
+    _history.add(_game.clone());
+    _previewPoint = null;
+    final whoColor = (!_isAi && _turn == 2) ? 2 : 1;
+    _game.pass(whoColor);
+    WqSfx.pop();
+
+    if (_game.consecutivePasses >= 2) {
+      _say('双方都选择了虚手（停一手），棋局收官完成！现在进入点目结算阶段～',
+          WqPandaMood.cheer,
+          speakIt: true);
+      _enterScoringPhase();
+      return;
+    }
+
+    if (_isAi) {
+      _say('你选择了虚手（停一手），让棋棋看看还有没有地方可下……', WqPandaMood.think,
+          speakIt: false);
+      _turn = 2;
+      _aiTurn();
+    } else {
+      _turn = 3 - _turn;
+      _say(
+        '${whoColor == 1 ? '黑棋' : '白棋'}选择了虚手（停一手）！如果对方也虚手，就进入终局数子结算。',
+        WqPandaMood.think,
+        speakIt: true,
+      );
+      setState(() {});
+    }
+  }
+
+  /// 切换实时形势判断（领地叠加层）
+  void _toggleLiveTerritory() {
+    WqSfx.pop();
+    setState(() {
+      _showTerritoryLive = !_showTerritoryLive;
+      if (_showTerritoryLive) {
+        _refreshLiveTerritory();
+        final s = _scoreSummary!;
+        final leadAbs = s.blackLead.abs().toStringAsFixed(1);
+        final who = s.isBlackWin ? '黑方(你)领先' : '白方领先';
+        _say(
+          '形势判断：黑方子空 ${s.blackArea}（${s.blackStones}子+${s.blackTerritory}空），白方子空 ${s.whiteArea}（贴${s.komi}目），目前$who $leadAbs 目！',
+          s.isBlackWin ? WqPandaMood.cheer : WqPandaMood.think,
+          speakIt: true,
+        );
+      } else {
+        _scoreSummary = null;
+      }
+    });
+  }
+
+  void _refreshLiveTerritory() {
+    _scoreSummary = WqTerritoryEstimator.estimate(
+      _game,
+      includeInfluence: true,
+    );
+  }
+
+  /// 进入终局死子确认与点目结算阶段（标准围地模式）
+  void _enterScoringPhase() {
+    _aiTimer?.cancel();
+    _busy = false;
+    _scoringPhase = true;
+    _previewPoint = null;
+    _deadStones = WqTerritoryEstimator.detectAutoDeadStones(_game);
+    _recalcFinalScore();
+  }
+
+  void _toggleDeadStoneGroup(int pt) {
+    if (_game.s[pt] == 0) return;
+    WqSfx.pop();
+    final grp = _game.groupAt(pt);
+    final alreadyDead = _deadStones.contains(pt);
+    setState(() {
+      if (alreadyDead) {
+        _deadStones.removeAll(grp);
+      } else {
+        _deadStones.addAll(grp);
+      }
+      _recalcFinalScore();
+    });
+  }
+
+  void _recalcFinalScore() {
+    final summary = WqTerritoryEstimator.estimate(
+      _game,
+      deadStones: _deadStones,
+      includeInfluence: false,
+    );
+    _scoreSummary = summary;
+    final leadAbs = summary.blackLead.abs().toStringAsFixed(1);
+    final winText = summary.isBlackWin ? '黑棋胜 $leadAbs 目' : '白棋胜 $leadAbs 目';
+    _endScoreSummaryText =
+        '黑 ${summary.blackArea} 子/空 vs 白 ${summary.whiteArea}+${summary.komi}贴目 · $winText';
+    _say(
+      '终局点目：$winText！（黑方 ${summary.blackStones}子+${summary.blackTerritory}空=${summary.blackArea}；白方 ${summary.whiteStones}子+${summary.whiteTerritory}空+贴${summary.komi}=${summary.whiteTotal.toStringAsFixed(1)}）。可点棋子切换死子，确认无误请点「确认结算」！',
+      summary.isBlackWin ? WqPandaMood.cheer : WqPandaMood.think,
+      speakIt: true,
+    );
+    setState(() {});
+  }
+
+  void _confirmTerritoryResult() {
+    final summary = _scoreSummary ??
+        WqTerritoryEstimator.estimate(_game, deadStones: _deadStones);
+    _scoringPhase = false;
+    _milestones.add(
+      '完成了一整局 ${_game.n} 路标准围地对局，围住 ${summary.blackTerritory} 目领地！',
+    );
+    _endGame(summary.isBlackWin ? 'win' : 'lose');
+    _showSettlement();
   }
 
   // ================= AI（棋棋） =================
 
-  /// 开局库：前几手在星位附近随机落子，避免每局一模一样（星位随棋盘路数生成）
   int? _openingMove() {
-    if (_game.stoneCount() > 2) return null;
+    if (_game.stoneCount() > 3) return null;
     final n = _game.n;
     final edge = n >= 13 ? 3 : 2;
     final mid = n ~/ 2;
@@ -570,10 +1014,6 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
             (n - 1 - edge) * n + edge,
             (n - 1 - edge) * n + (n - 1 - edge),
             mid * n + mid,
-            mid * n + edge,
-            mid * n + (n - 1 - edge),
-            edge * n + mid,
-            (n - 1 - edge) * n + mid,
           ];
     final candidates =
         openings.where((pt) => _game.s[pt] == 0).toList()..shuffle();
@@ -582,7 +1022,6 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
 
   void _aiTurn() {
     _busy = true;
-    // 关怀提醒：孩子的棋被打吃
     int? danger;
     final seen = <int>{};
     for (var j = 0; j < _game.n * _game.n; j++) {
@@ -596,19 +1035,51 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
     if (danger != null && !_reminded.contains(danger) && remind) {
       _reminded.add(danger);
       _ownAtariBefore = danger;
-      _say('咦？你的黑士兵好像只剩 1 口气啦……要不要先帮它找个逃跑的路？', WqPandaMood.think,
+      _say('咦？你的黑士兵好像只剩 1 口气啦……要不要先帮它找个逃跑的路？',
+          WqPandaMood.think,
           speakIt: true);
     }
-    _aiTimer = Timer(Duration(milliseconds: danger != null ? 1400 : 150), () {
-      if (!mounted || _over) return;
+    _aiTimer = Timer(Duration(milliseconds: danger != null ? 1300 : 150), () {
+      if (!mounted || _over || _scoringPhase) return;
       _say('棋棋想一下……', WqPandaMood.think, speakIt: false);
-      _aiTimer = Timer(Duration(milliseconds: 700 + math.Random().nextInt(600)), () {
-        if (!mounted || _over) return;
-        final level = wqAiLevels[_svc.aiLevelIndex.value
-            .clamp(0, wqAiLevels.length - 1)];
-        final mv = _openingMove() ??
-            WqAi.pickMove(_game, 2, level.skill, rnd: math.Random());
-        if (mv == null) return _endGame('review');
+      _aiTimer =
+          Timer(Duration(milliseconds: 650 + math.Random().nextInt(550)), () {
+        if (!mounted || _over || _scoringPhase) return;
+        final level = wqAiLevels[
+            _svc.aiLevelIndex.value.clamp(0, wqAiLevels.length - 1)];
+
+        // 如果玩家刚刚虚手且在围地模式下盘面已进入官子尾声，AI 评估是否跟着虚手终局
+        final mv = (_game.consecutivePasses > 0 &&
+                _isTerritory &&
+                _game.stoneCount() > _game.n * _game.n * 0.42)
+            ? null
+            : (_openingMove() ??
+                WqAi.pickMove(
+                  _game,
+                  2,
+                  level.skill,
+                  rnd: math.Random(),
+                  mode: _ruleMode,
+                ));
+
+        if (mv == null) {
+          _game.pass(2);
+          _busy = false;
+          _turn = 1;
+          if (_isTerritory) {
+            if (_game.consecutivePasses >= 2) {
+              _enterScoringPhase();
+            } else {
+              _say('棋棋觉得地盘已经围好啦，选择「虚手（停一手）」！如果你也觉得下完了，点「虚手」或「点目」就能算胜负啦！',
+                  WqPandaMood.cheer,
+                  speakIt: true);
+              setState(() {});
+            }
+            return;
+          }
+          return _endGame('review');
+        }
+
         final r = _game.tryPlay(mv, 2);
         WqSfx.stone();
         final aiIdx = _replayMoves.length;
@@ -617,20 +1088,22 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
           _replayMoves.add((color: 2, point: mv));
         }
         if (r.ok && r.captured.isEmpty) {
-          // AI 意图讲解：打吃 / 逃子 / 稳健
           final newAtari = _atariLibsOf(1).isNotEmpty;
           final aiSavedSelf = whiteAtariBeforeAi && _atariLibsOf(2).isEmpty;
           _replayNotes[aiIdx] ??= newAtari
               ? '棋棋在打吃你的棋——想一路把气堵光提掉它'
               : aiSavedSelf
                   ? '棋棋在逃自己被打吃的棋，不让白棋白白牺牲'
-                  : '棋棋在稳稳行棋：连接自己的棋、寻找下一步机会';
+                  : (_isTerritory
+                      ? '棋棋在占角拆边、围大自己的领地'
+                      : '棋棋在稳稳行棋：连接自己的棋、寻找下一步机会');
         }
         if (r.ok && r.captured.isNotEmpty) {
           WqSfx.capture();
           _boardCtrl.flyCaptures(r.captured, 1);
           _improvement ??= '有一手棋你的士兵被白棋提走了——下次落子前，先数一数自己还有几口气。';
-          _replayNotes[aiIdx] = '棋棋下了橙色圈这个点，堵住了你最后的气——${r.captured.length} 颗黑棋被提走了';
+          _replayNotes[aiIdx] =
+              '棋棋下了橙色圈这个点，堵住了你最后的气——${r.captured.length} 颗黑棋被提走了';
           _replayMarks[aiIdx] = mv;
           _showCaptureExplanation(
             captured: r.captured,
@@ -638,11 +1111,10 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
             movePoint: mv,
             moverColor: 2,
           );
-          if (_game.capWhite >= _winCaptures) {
+          if (!_isTerritory && _game.capWhite >= _winCaptures) {
             return _endGame('lose', captured: r.captured);
           }
         } else {
-          // 棋棋有没有留下「可提的白子」
           var atari = false;
           final s2 = <int>{};
           for (var j = 0; j < _game.n * _game.n; j++) {
@@ -655,16 +1127,23 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
           _pendingCapture = atari;
         }
         _updateDanger();
-        if (_game.capBlack >= _winCaptures) return _endGame('win');
-        if (_game.capWhite >= _winCaptures) return _endGame('lose');
-        if (_game.stoneCount() >= _maxStones) return _endGame('review');
+        if (_showTerritoryLive) _refreshLiveTerritory();
+
+        if (!_isTerritory) {
+          if (_game.capBlack >= _winCaptures) return _endGame('win');
+          if (_game.capWhite >= _winCaptures) return _endGame('lose');
+          if (_game.stoneCount() >= _maxStones) return _endGame('review');
+        } else if (_game.stoneCount() >= _maxStones) {
+          return _enterScoringPhase();
+        }
+
         _busy = false;
+        _turn = 1;
         final newDanger = _atariLibsOf(1);
         if (r.ok &&
             r.captured.isEmpty &&
             newDanger.isNotEmpty &&
             _svc.remindOn.value) {
-          // 打吃预告：高亮那口气 + 讲解，帮初学者看见威胁
           _blink = {newDanger.first};
           _say('棋棋打吃你的黑棋啦！闪烁的这口气再被堵住，棋子就会被提走——点自己的棋看看怎么救！',
               WqPandaMood.think,
@@ -676,9 +1155,11 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
         } else if (r.ok && r.captured.isEmpty) {
           if (math.Random().nextDouble() < 0.38) {
             _say(_encouragements[math.Random().nextInt(_encouragements.length)],
-                WqPandaMood.happy, speakIt: false);
+                WqPandaMood.happy,
+                speakIt: false);
           } else {
-            _say('轮到你啦！', WqPandaMood.happy, speakIt: false);
+            _say('轮到你（${wqCoordLabel(mv, _game.n)}）啦！', WqPandaMood.happy,
+                speakIt: false);
           }
         }
         setState(() {});
@@ -694,16 +1175,14 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
     '唔，白棋得小心一点了。',
   ];
 
-  /// 点棋问棋棋：点任意棋子，高亮它所在棋组的全部气（绿色小灯），
-  /// 棋棋口头解释这块棋的安全状况——初学者每一步的疑惑随时可查。
   void _inspect(int i) {
     final color = _game.s[i];
     final grp = _game.groupAt(i);
     final libs = _game.libsOf(grp);
     final isMine = color == 1;
     final n = libs.length;
-    final String text;
     if (n == 0) return;
+    final String text;
     if (n == 1) {
       text = isMine
           ? '这块黑棋只剩 1 口气啦（亮着的点）！再被堵住就会被提走——快逃跑或者反提！'
@@ -727,7 +1206,6 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
     setState(() => _inspectLibs = libs);
   }
 
-  /// 找出 [color] 方所有只剩一口气的棋组，返回它们的最后一口气集合
   Set<int> _atariLibsOf(int color) {
     final libs = <int>{};
     final seen = <int>{};
@@ -742,14 +1220,11 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
     return libs;
   }
 
-  /// 落子后刷新「被打吃」警示小灯（孩子的棋快没气时点亮，帮初学者看见危险）
   void _updateDanger() {
     _dangerLibs = _atariLibsOf(1);
     if (mounted) setState(() {});
   }
 
-  /// 提子现场讲解：被提的棋子以半透明残影重现、落子点闪烁，
-  /// 棋棋用一句话解释「为什么被提」。孩子落子或 2.4 秒后自动消散。
   void _showCaptureExplanation({
     required List<int> captured,
     required int capturedColor,
@@ -761,8 +1236,7 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
     final n = captured.length;
     final String text;
     if (capturedColor == 1) {
-      text = '$who下了最后一口气那个点——你的 $n 颗黑棋没有气了，就被提走啦。'
-          '下次落子前，先数一数自己的气哦！';
+      text = '$who下了最后一口气那个点——你的 $n 颗黑棋没有气了，就被提走啦。下次落子前，先数一数自己的气哦！';
     } else {
       text = n > 1
           ? '一手堵住最后一口气，$n 颗白棋一起被提走，这就是「双打」的力量！'
@@ -786,13 +1260,13 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
   // ================= 求助（三层引导） =================
 
   void _useHelp() {
-    if (_over || _busy) return;
+    if (_over || _busy || _scoringPhase) return;
     if (_helpLeft <= 0) {
       WqSfx.oops();
       ToastUtils.showInfo('这局的求助机会用完啦，再下一局就有哦～');
       return;
     }
-    final t = WqAi.hintTarget(_game, 1);
+    final t = WqAi.hintTarget(_game, 1, mode: _ruleMode);
     final key = t == null ? 'none' : '${t.type}${t.pt}';
     if (key != _helpKey) {
       _helpStage = 0;
@@ -802,32 +1276,36 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
     _helpLeft--;
     _clearMarks();
     if (t == null) {
-      _say('嗯……现在局面很安稳，把棋下在棋棋的子旁边，慢慢把它养大！', WqPandaMood.think);
+      _say('嗯……现在局面很安稳，把棋下在空旷的角或边上，慢慢围自己的地盘吧！', WqPandaMood.think);
       _helpStage = 0;
       return;
     }
     switch (stage) {
-      case 0: // L1 鼓励 + 方向微光
+      case 0:
         _say(
           t.type == 'capture'
-              ? '差一点点！看棋盘上，白棋有个小士兵快没气了——找找它的气在哪里？'
-              : '别急！你的士兵被包围了，它也想呼吸——帮它找一个能多口气的地方吧～',
+              ? '看棋盘上微光区域，白棋有个小士兵快没气了——找找它的气在哪里？'
+              : t.type == 'escape'
+                  ? '别急！你的士兵被包围了，帮它找一个能多口气的地方吧～'
+                  : '看这片微光区域，这里是目前围地和扩张最好的要点（${wqCoordLabel(t.pt, _game.n)}附近）！',
           WqPandaMood.think,
           speakIt: true,
         );
         setState(() => _glowCenter = t.grp[t.grp.length ~/ 2]);
         break;
-      case 1: // L2 明确提示：闪烁候选点
+      case 1:
         _say(
           t.type == 'capture'
-              ? '它只剩最后一口气啦！点这个闪光的交叉点试试？'
-              : '点这个闪光的点，你的士兵就能呼吸更多口气啦！',
+              ? '它只剩最后一口气啦！点这个闪光的交叉点（${wqCoordLabel(t.pt, _game.n)}）试试？'
+              : t.type == 'escape'
+                  ? '点这个闪光的点（${wqCoordLabel(t.pt, _game.n)}），你的士兵就能呼吸更多口气啦！'
+                  : '棋棋推荐下在闪光的要点（${wqCoordLabel(t.pt, _game.n)}），既稳健又能抢占先机！',
           WqPandaMood.think,
           speakIt: true,
         );
         setState(() => _blink = {t.pt});
         break;
-      default: // L3 动画演示
+      default:
         _say('看棋棋变魔法——', WqPandaMood.cheer, speakIt: true);
         setState(() => _blink = {t.pt});
         WqSfx.stone();
@@ -847,7 +1325,7 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
         _ghostStone = null;
         _blink = {};
       });
-      _say('魔法收回啦！现在轮到你，自己把它变出来吧！', WqPandaMood.happy, speakIt: true);
+      _say('魔法收回啦！现在轮到你，自己把它下出来吧！', WqPandaMood.happy, speakIt: true);
     });
   }
 
@@ -867,7 +1345,7 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
 
   Future<void> _confirmRestart() async {
     if (_history.isEmpty && !_over) {
-      _resetGame(); // 还没落子，直接重开
+      _resetGame();
       return;
     }
     final ok = await _confirm(
@@ -881,7 +1359,7 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
   }
 
   Future<void> _undo() async {
-    if (_over) return;
+    if (_over || _scoringPhase) return;
     if (_history.isEmpty) {
       ToastUtils.showInfo('还没有历史棋步哦');
       return;
@@ -890,29 +1368,27 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
       title: '真的要悔棋吗？',
       body: '棋棋觉得这步棋还有救哦～再想一下，或者悔一步重新想想也可以！',
       okText: '悔一步',
-      cancelText: '不下啦',
+      cancelText: '再想想',
     );
     if (!ok) return;
     _aiTimer?.cancel();
     _game.restoreFrom(_history.removeLast());
-    if (!_isAi) {
-      // 家长陪下：孩子执黑先行，一直回退到「轮到孩子」的偶数手局面
-      while (_history.isNotEmpty && _movesPlayed.isOdd) {
-        _game.restoreFrom(_history.removeLast());
-      }
-      _turn = 1;
+    if (_replayMoves.isNotEmpty) _replayMoves.removeLast();
+    if (_isAi && _replayMoves.isNotEmpty && _replayMoves.last.color == 2) {
+      _replayMoves.removeLast();
     }
     _busy = false;
+    _turn = 1;
+    _previewPoint = null;
     _helpStage = 0;
     _clearMarks();
+    _updateDanger();
+    if (_showTerritoryLive) _refreshLiveTerritory();
     _say('好，悔一步。棋棋再给你一次机会想清楚哦——这步棋一定还有更好的下法！',
         WqPandaMood.think,
         speakIt: true);
     setState(() {});
   }
-
-  /// 黑先白后：盘面手数（子数+提子数）为奇数说明最后落子的是黑方。
-  int get _movesPlayed => _game.stoneCount() + _game.capBlack + _game.capWhite;
 
   Future<bool> _confirm({
     required String title,
@@ -923,7 +1399,10 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
     final res = await Get.dialog<bool>(
       Dialog(
         backgroundColor: WqTheme.cream,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24.r),
+          side: const BorderSide(color: WqTheme.ink, width: 3.0),
+        ),
         child: Padding(
           padding: EdgeInsets.all(20.w),
           child: Column(
@@ -934,21 +1413,27 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
               Text(
                 title,
                 style: TextStyle(
-                    fontSize: 17.sp, fontWeight: FontWeight.w800, color: WqTheme.ink),
+                  fontSize: 17.sp,
+                  fontWeight: FontWeight.w900,
+                  color: WqTheme.ink,
+                ),
               ),
               SizedBox(height: 6.h),
               Text(
                 body,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                    fontSize: 13.sp, fontWeight: FontWeight.w600, color: WqTheme.inkSoft),
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w700,
+                  color: WqTheme.inkSoft,
+                ),
               ),
               SizedBox(height: 16.h),
               Row(
                 children: [
                   Expanded(
                     child: WqGhostButton(
-                      text: '再想想',
+                      text: cancelText,
                       onTap: () => Get.back<bool>(result: false),
                     ),
                   ),
@@ -974,36 +1459,59 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
     if (_over) return;
     _over = true;
     _busy = false;
+    _scoringPhase = false;
     _aiTimer?.cancel();
+    _clockTimer?.cancel();
     _endResult = result;
     _endBlink = Set.of(captured);
+
     final win = result == 'win' ||
         (result == 'review' && _game.capBlack >= _game.capWhite);
-    _svc.recordGame(result: result == 'win' ? 'win' : (result == 'lose' ? 'lose' : 'draw'));
-    if (_replayMoves.isNotEmpty) {
-      _svc.saveLastGame(_replayMoves, _replayNotes, _replayMarks, _replayGrades,
-          _replayBetter, _game.n);
+    _svc.recordGame(
+      result: result == 'win' ? 'win' : (result == 'lose' ? 'lose' : 'draw'),
+    );
+
+    if (_endScoreSummaryText.isEmpty) {
+      _endScoreSummaryText = _isTerritory
+          ? '围地模式 · 黑提${_game.capBlack} 白提${_game.capWhite}'
+          : '吃子棋 · 黑提${_game.capBlack} 比 白提${_game.capWhite}';
     }
+
+    if (_replayMoves.isNotEmpty) {
+      _svc.saveLastGame(
+        _replayMoves,
+        _replayNotes,
+        _replayMarks,
+        _replayGrades,
+        _replayBetter,
+        _game.n,
+        _isTerritory ? 'territory' : 'capture',
+        result,
+        _endScoreSummaryText,
+      );
+    }
+
     if (win) {
       WqSfx.star();
     } else {
       WqSfx.pop();
     }
-    // 不立刻弹结算卡：先停在盘面，刚被提走的棋子一闪一闪，
-    // 让孩子看清「赢在哪里 / 输在哪里」；想看战报时点底部「看看战报」
-    _say(
-      result == 'win'
-          ? '第 $_winCaptures 颗白棋被你提走啦，赢咯！看，棋盘上一闪一闪的就是刚被提走的白子。想看这一局的战报，点下面的「看看战报」！'
-          : result == 'lose'
-              ? '这手棋把你的黑子提走了……棋盘上一闪一闪的，就是刚才被提走的棋。想一想：它们为什么会只剩最后一口气？点「看看战报」一起找答案！'
-              : '棋盘上没剩几个空位啦，这一局就下到这里！点下面的「看看战报」，棋棋陪你一步一步回顾。',
-      win ? WqPandaMood.cheer : WqPandaMood.sad,
-      speakIt: true,
-    );
+
+    if (!_isTerritory) {
+      _say(
+        result == 'win'
+            ? '第 $_winCaptures 颗白棋被你提走啦，赢咯！看，棋盘上一闪一闪的就是刚被提走的白子。点下面的「看看战报」查看详细复盘卡！'
+            : result == 'lose'
+                ? '这手棋把你的黑子提走了……棋盘上一闪一闪的就是刚才被提走的棋。点「看看战报」一起找答案！'
+                : '这一局就下到这里！点下面的「看看战报」，棋棋陪你一步一步回顾。',
+        win ? WqPandaMood.cheer : WqPandaMood.sad,
+        speakIt: true,
+      );
+    }
     setState(() {});
   }
 
-  /// 结算卡（战报）：终局后由「看看战报」按钮打开，可反复回看
+  /// 结算卡（战报）
   void _showSettlement() {
     if (!_over) return;
     final result = _endResult;
@@ -1013,49 +1521,73 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
     final defaults = [
       '敢和 AI 陪练下满一整局，勇气满分！',
       '每一步都认真思考了，棋棋都看在眼里～',
-      '今天的你比昨天更会数气了！',
+      '今天的你比昨天更懂金角银边与数气了！',
     ];
     var di = 0;
     while (ms.length < 3) {
       ms.add(defaults[di++ % defaults.length]);
     }
-    final imp = _improvement ?? '下次可以试试「下完一步就数一数气」，棋棋保证你会更强！';
+    final imp = _improvement ?? '下次可以试试「落子前先看自己和对方的气」，棋棋保证你会更强！';
     final title = result == 'win'
         ? '你赢啦！'
         : win
             ? '你领先！'
             : (_isAi ? '棋棋险胜！' : '家长险胜！');
-    final sub = result == 'win'
-        ? '$_winCaptures 颗提子 · 你把白棋的呼吸全堵住了'
-        : result == 'lose'
-            ? '${_game.capWhite} 比 ${_game.capBlack} · 棋盘上闪一闪的就是被提走的棋'
-            : '本局结束 · 黑 ${_game.capBlack} 比 白 ${_game.capWhite}';
+    final sub = _isTerritory && _endScoreSummaryText.isNotEmpty
+        ? _endScoreSummaryText
+        : (result == 'win'
+            ? '$_winCaptures 颗提子 · 你把白棋的呼吸全堵住了'
+            : result == 'lose'
+                ? '${_game.capWhite} 比 ${_game.capBlack} · 棋盘上闪一闪的就是被提走的棋'
+                : '本局结束 · 黑 ${_game.capBlack} 比 白 ${_game.capWhite}');
+
+    final rank = _svc.rankInfo;
+
     Get.dialog(
       Dialog(
         backgroundColor: WqTheme.cream,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28.r)),
-        insetPadding: EdgeInsets.all(22.w),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(26.r),
+          side: const BorderSide(color: WqTheme.ink, width: 3.0),
+        ),
+        insetPadding: EdgeInsets.all(20.w),
         child: SingleChildScrollView(
           padding: EdgeInsets.all(18.w),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              WqPanda(mood: win ? WqPandaMood.cheer : WqPandaMood.sad, size: 84),
+              WqPanda(mood: win ? WqPandaMood.cheer : WqPandaMood.sad, size: 78),
               SizedBox(height: 6.h),
               Text(
                 title,
                 style: TextStyle(
-                    fontSize: 22.sp, fontWeight: FontWeight.w900, color: WqTheme.ink),
+                  fontSize: 22.sp,
+                  fontWeight: FontWeight.w900,
+                  color: WqTheme.ink,
+                ),
               ),
+              SizedBox(height: 2.h),
               Text(
                 sub,
+                textAlign: TextAlign.center,
                 style: TextStyle(
-                    fontSize: 13.sp, fontWeight: FontWeight.w700, color: WqTheme.inkSoft),
+                  fontSize: 12.5.sp,
+                  fontWeight: FontWeight.w800,
+                  color: WqTheme.inkSoft,
+                ),
               ),
               SizedBox(height: 8.h),
               WqStarsRow(stars: win ? 3 : 2, pop: true, size: 26),
-              SizedBox(height: 10.h),
-              WqChip(text: '✦ 3 + 1 复盘卡 ✦'),
+              SizedBox(height: 8.h),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  WqChip.sun(
+                    text: '当前棋力：${rank.rank} · ${rank.title}',
+                    tiltDeg: -2.0,
+                  ),
+                ],
+              ),
               SizedBox(height: 10.h),
               for (var k = 0; k < ms.length; k++)
                 _reviewCard(
@@ -1066,18 +1598,18 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
               _reviewCard(
                 rank: '★',
                 text: imp,
-                sub: '已放进藏宝箱，明天复习一下会更强哦',
+                sub: '已记入复盘笔记，重看棋局会更强哦',
                 improve: true,
               ),
-              SizedBox(height: 14.h),
+              SizedBox(height: 12.h),
               if (_replayMoves.isNotEmpty)
                 WqGhostButton(
                   text: '重看棋局 · 学一手',
                   height: 42.h,
                   fontSize: 13.5.sp,
                   onTap: () {
-                    Get.back(); // 关闭结算，留在对局页进入回放
-                      Get.to(() => WeiqiReplayPage(
+                    Get.back();
+                    Get.to(() => WeiqiReplayPage(
                           moves: _replayMoves,
                           notes: _replayNotes,
                           marks: _replayMarks,
@@ -1090,19 +1622,20 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
               if (_replayMoves.isNotEmpty) SizedBox(height: 8.h),
               WqPrimaryButton(
                 text: win ? '再来一局！' : '我们再战一局！',
+                color: WqTheme.sun,
                 onTap: () {
                   Get.back();
                   _resetGame();
                 },
               ),
-              SizedBox(height: 10.h),
+              SizedBox(height: 8.h),
               WqGhostButton(
                 text: '回小岛休息一下',
                 onTap: () {
-                  Get.back(); // 关闭结算
-                  Get.back(); // 退出对局
+                  Get.back();
+                  Get.back();
                   if (widget.exitToHome) {
-                    Get.back(); // 从课程结算进入：连课程页一起退出，回到课程地图
+                    Get.back();
                   }
                 },
               ),
@@ -1121,32 +1654,34 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
     bool improve = false,
   }) {
     return Container(
-      margin: EdgeInsets.only(bottom: 9.h),
-      padding: EdgeInsets.all(11.w),
+      margin: EdgeInsets.only(bottom: 8.h),
+      padding: EdgeInsets.all(10.w),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16.r),
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(color: WqTheme.ink, width: 2.0),
         boxShadow: const [
-          BoxShadow(color: Color(0x14233240), blurRadius: 8, offset: Offset(0, 3)),
+          BoxShadow(color: WqTheme.ink, blurRadius: 0, offset: Offset(3, 3)),
         ],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 30.w,
-            height: 30.w,
+            width: 28.w,
+            height: 28.w,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: improve ? WqTheme.sunSoft : WqTheme.greenSoft,
+              color: improve ? WqTheme.sun : WqTheme.green,
+              border: Border.all(color: WqTheme.ink, width: 1.6),
             ),
             child: Center(
               child: Text(
                 rank,
                 style: TextStyle(
-                  fontSize: 13.sp,
+                  fontSize: 12.5.sp,
                   fontWeight: FontWeight.w900,
-                  color: improve ? WqTheme.sunDeep : WqTheme.greenDeep,
+                  color: WqTheme.ink,
                 ),
               ),
             ),
@@ -1159,17 +1694,17 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
                 Text(
                   text,
                   style: TextStyle(
-                    fontSize: 13.5.sp,
-                    fontWeight: FontWeight.w800,
-                    height: 1.5,
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w900,
+                    height: 1.45,
                     color: WqTheme.ink,
                   ),
                 ),
                 Text(
                   sub,
                   style: TextStyle(
-                    fontSize: 11.5.sp,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w700,
                     color: WqTheme.inkSoft,
                   ),
                 ),
@@ -1196,6 +1731,7 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
 
   @override
   Widget build(BuildContext context) {
+    final limitMin = _svc.timeLimitMinutes.value;
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
@@ -1211,70 +1747,78 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
         body: SafeArea(
           child: Column(
             children: [
-              // 头部
+              // 顶部状态与专业工具栏
               Padding(
-                padding: EdgeInsets.fromLTRB(14.w, 10.h, 14.w, 2.h),
+                padding: EdgeInsets.fromLTRB(12.w, 8.h, 12.w, 2.h),
                 child: Row(
                   children: [
                     WqIconButton(
-                        icon: Icons.arrow_back_ios_new_rounded,
-                        size: 40,
-                        onTap: () async {
-                          final exit = await _confirmExit();
-                          if (exit && mounted) {
-                            _svc.stopSpeak();
-                            Get.back();
-                          }
-                        }),
-                    SizedBox(width: 8.w),
+                      icon: Icons.arrow_back_ios_new_rounded,
+                      size: 38,
+                      onTap: () async {
+                        final exit = await _confirmExit();
+                        if (exit && mounted) {
+                          _svc.stopSpeak();
+                          Get.back();
+                        }
+                      },
+                    ),
+                    SizedBox(width: 6.w),
                     Expanded(
                       child: Container(
                         padding: EdgeInsets.symmetric(
-                            horizontal: 10.w, vertical: 7.h),
+                            horizontal: 8.w, vertical: 6.h),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: WqTheme.ink, width: 2.0),
                           boxShadow: const [
                             BoxShadow(
-                                color: Color(0x14233240),
-                                blurRadius: 6,
-                                offset: Offset(0, 2)),
+                              color: WqTheme.ink,
+                              blurRadius: 0,
+                              offset: Offset(2.5, 2.5),
+                            ),
                           ],
                         ),
                         child: Row(
                           children: [
                             Container(
                               padding: EdgeInsets.symmetric(
-                                  horizontal: 8.w, vertical: 3.h),
-                            decoration: BoxDecoration(
-                              color: _turn == 1 || _isAi
-                                  ? const Color(0xFF2E2E38)
-                                  : WqTheme.creamDeep,
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Text(
-                              _isAi
-                                  ? '你 · 执黑'
-                                  : (_turn == 1 ? '孩子 · 执黑' : '家长 · 执白'),
-                              style: TextStyle(
-                                fontSize: 11.5.sp,
-                                fontWeight: FontWeight.w900,
-                                color: _turn == 1 || _isAi
-                                    ? Colors.white
-                                    : WqTheme.ink,
+                                  horizontal: 7.w, vertical: 2.5.h),
+                              decoration: BoxDecoration(
+                                color: _turn == 1 ? WqTheme.ink : WqTheme.sun,
+                                borderRadius: BorderRadius.circular(999),
+                                border:
+                                    Border.all(color: WqTheme.ink, width: 1.5),
+                              ),
+                              child: Text(
+                                _scoringPhase
+                                    ? '点目结算'
+                                    : (_isAi
+                                        ? (_turn == 1 ? '你·执黑' : '棋棋·执白')
+                                        : (_turn == 1 ? '孩子·黑' : '家长·白')),
+                                style: TextStyle(
+                                  fontSize: 10.5.sp,
+                                  fontWeight: FontWeight.w900,
+                                  color:
+                                      _turn == 1 ? Colors.white : WqTheme.ink,
+                                ),
                               ),
                             ),
-                          ),
-                          SizedBox(width: 8.w),
+                            SizedBox(width: 6.w),
                             Flexible(
                               child: Text(
-                                '先提 $_winCaptures 颗获胜',
+                                limitMin > 0
+                                    ? '⚫${_formatClock(_blackSeconds)} ⚪${_formatClock(_whiteSeconds)}'
+                                    : (_isTerritory
+                                        ? '${_game.n}路围地 · 贴${WqTerritoryEstimator.defaultKomi(_game.n, handicap: _game.handicap)}目'
+                                        : '先提 $_winCaptures 颗获胜'),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  fontSize: 11.5.sp,
+                                  fontSize: 10.5.sp,
                                   fontWeight: FontWeight.w800,
-                                  color: WqTheme.inkSoft,
+                                  color: WqTheme.ink,
                                 ),
                               ),
                             ),
@@ -1282,66 +1826,71 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
                         ),
                       ),
                     ),
-                    SizedBox(width: 8.w),
+                    SizedBox(width: 6.w),
+                    // 实时形势判断按钮
+                    WqIconButton(
+                      icon: Icons.grid_view_rounded,
+                      size: 38,
+                      bgColor: (_showTerritoryLive || _scoringPhase)
+                          ? WqTheme.sun
+                          : Colors.white,
+                      onTap: _scoringPhase ? null : _toggleLiveTerritory,
+                    ),
+                    SizedBox(width: 5.w),
+                    // 手数与坐标开关
                     Obx(() => WqIconButton(
-                          icon: _svc.atariLightsOn.value
-                              ? Icons.lightbulb_rounded
-                              : Icons.lightbulb_outline_rounded,
-                          size: 40,
-                          color: _svc.atariLightsOn.value
-                              ? WqTheme.sunDeep
-                              : WqTheme.inkFaint,
+                          icon: Icons.pin_rounded,
+                          size: 38,
+                          bgColor: _svc.showMoveNumbers.value
+                              ? WqTheme.greenSoft
+                              : Colors.white,
                           onTap: () {
-                            _svc.atariLightsOn.value =
-                                !_svc.atariLightsOn.value;
-                            _updateDanger();
+                            _svc.showMoveNumbers.value =
+                                !_svc.showMoveNumbers.value;
+                            setState(() {});
                           },
                         )),
-                    SizedBox(width: 6.w),
+                    SizedBox(width: 5.w),
                     WqIconButton(
                       icon: Icons.replay_rounded,
-                      size: 40,
+                      size: 38,
                       onTap: _confirmRestart,
-                    ),
-                    SizedBox(width: 6.w),
-                    WqIconButton(
-                      icon: WqSfx.enabled
-                          ? Icons.volume_up_rounded
-                          : Icons.volume_off_rounded,
-                      size: 40,
-                      onTap: () => setState(() => WqSfx.enabled = !WqSfx.enabled),
                     ),
                   ],
                 ),
               ),
-              // 棋棋气泡区
+
+              // 棋棋对话气泡区
               Flexible(
                 child: Padding(
-                  padding: EdgeInsets.fromLTRB(14.w, 6.h, 14.w, 0),
+                  padding: EdgeInsets.fromLTRB(12.w, 6.h, 12.w, 0),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          WqPanda(mood: _mood, size: 56),
+                          WqPanda(mood: _mood, size: 52),
                           if (_isAi)
                             Container(
                               margin: const EdgeInsets.only(top: 3),
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 7, vertical: 2),
+                                  horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
-                                color: WqTheme.sunSoft,
+                                color: WqTheme.sun,
                                 borderRadius: BorderRadius.circular(999),
+                                border:
+                                    Border.all(color: WqTheme.ink, width: 1.5),
                               ),
                               child: Obx(() {
                                 final lv = wqAiLevels[_svc.aiLevelIndex.value
                                     .clamp(0, wqAiLevels.length - 1)];
                                 return Text(
-                                  '棋棋·${lv.persona}',
+                                  lv.persona,
                                   style: const TextStyle(
-                                    fontSize: 9,
+                                    fontSize: 8.5,
                                     fontWeight: FontWeight.w900,
-                                    color: WqTheme.sunDeep,
+                                    color: WqTheme.ink,
                                   ),
                                 );
                               }),
@@ -1366,58 +1915,135 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
                   ),
                 ),
               ),
-              // 棋盘
+
+              // 棋盘主体
               Expanded(
                 child: Padding(
-                  padding: EdgeInsets.fromLTRB(14.w, 4.h, 14.w, 8.h),
+                  padding: EdgeInsets.fromLTRB(12.w, 4.h, 12.w, 4.h),
                   child: Center(
-                    child: WeiqiBoardView(
-                      n: _game.n,
-                      controller: _boardCtrl,
-                      stones: _game.s,
-                      lastMove: _game.last,
-                      blinkPoints: {..._blink, ..._endBlink},
-                      glowCenter: _glowCenter,
-                      glowRadius: 22,
-                      ghostStone: _ghostStone,
-                      ghostColor: 1,
-                      ghostStones: _explainGhosts,
-                      breathePoints: _inspectLibs.isNotEmpty
-                          ? _inspectLibs
-                          : (_isAi &&
-                                  _svc.remindOn.value &&
-                                  _svc.atariLightsOn.value
-                              ? _dangerLibs
-                              : const {}),
-                      breatheWarn: _inspectLibs.isEmpty,
-                      capByBlack: _game.capBlack,
-                      capByWhite: _game.capWhite,
-                      onPointTap: _onTap,
-                    ),
+                    child: Obx(() => WeiqiBoardView(
+                          n: _game.n,
+                          controller: _boardCtrl,
+                          stones: _game.s,
+                          lastMove: _game.last,
+                          showCoords: _svc.showCoords.value,
+                          moveNumbers: _buildMoveNumbers(),
+                          territoryOwnerMap:
+                              (_showTerritoryLive || _scoringPhase)
+                                  ? _scoreSummary?.ownerMap
+                                  : null,
+                          deadStones: _scoringPhase
+                              ? _deadStones
+                              : (_showTerritoryLive
+                                  ? (_scoreSummary?.deadStones ?? const {})
+                                  : const {}),
+                          previewPoint: _previewPoint,
+                          previewColor: (!_isAi && _turn == 2) ? 2 : 1,
+                          blinkPoints: {..._blink, ..._endBlink},
+                          glowCenter: _glowCenter,
+                          glowRadius: 22,
+                          ghostStone: _ghostStone,
+                          ghostColor: 1,
+                          ghostStones: _explainGhosts,
+                          breathePoints: _inspectLibs.isNotEmpty
+                              ? _inspectLibs
+                              : (_isAi &&
+                                      _svc.remindOn.value &&
+                                      _svc.atariLightsOn.value
+                                  ? _dangerLibs
+                                  : const {}),
+                          breatheWarn: _inspectLibs.isEmpty,
+                          capByBlack: _game.capBlack,
+                          capByWhite: _game.capWhite,
+                          onPointTap: _onTap,
+                        )),
                   ),
                 ),
               ),
-              // 底部操作
+
+              // 13/19路十字准星防误触确认条
+              if (_previewPoint != null && !_over && !_scoringPhase)
+                Padding(
+                  padding: EdgeInsets.fromLTRB(14.w, 0, 14.w, 4.h),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: WqPrimaryButton(
+                          text:
+                              '🎯 确认落子 (${wqCoordLabel(_previewPoint!, _game.n)})',
+                          height: 40.h,
+                          fontSize: 13.5.sp,
+                          color: WqTheme.sun,
+                          onTap: _confirmPreviewMove,
+                        ),
+                      ),
+                      SizedBox(width: 8.w),
+                      Expanded(
+                        child: WqGhostButton(
+                          text: '取消选点',
+                          height: 40.h,
+                          fontSize: 12.5.sp,
+                          onTap: () => setState(() => _previewPoint = null),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+              // 底部商业级操作栏
               Padding(
-                padding: EdgeInsets.fromLTRB(14.w, 4.h, 14.w, 10.h),
+                padding: EdgeInsets.fromLTRB(12.w, 2.h, 12.w, 10.h),
                 child: Row(
                   children: [
-                    if (_over) ...[
-                      // 终局后「悔棋/结束」已无意义，换成可反复打开的战报
-                      // 与再来一局，避免出现点了没反应的按钮
+                    if (_scoringPhase) ...[
+                      _actionButton(
+                        emoji: '✓',
+                        label: '确认结算',
+                        sub: '生成胜负战报',
+                        color: WqTheme.green,
+                        onTap: _confirmTerritoryResult,
+                      ),
+                      SizedBox(width: 8.w),
+                      _actionButton(
+                        emoji: '↩',
+                        label: '继续下棋',
+                        sub: '退出点目',
+                        color: Colors.white,
+                        onTap: () => setState(() {
+                          _scoringPhase = false;
+                          _scoreSummary = null;
+                        }),
+                      ),
+                    ] else if (_over) ...[
                       _actionButton(
                         emoji: '📋',
                         label: '看看战报',
-                        sub: '回顾这一局',
-                        care: true,
+                        sub: '3+1复盘卡',
+                        color: WqTheme.sun,
                         onTap: _showSettlement,
                       ),
-                      SizedBox(width: 10.w),
+                      SizedBox(width: 8.w),
+                      _actionButton(
+                        emoji: '🎬',
+                        label: '逐手复盘',
+                        sub: '含试下研究',
+                        color: WqTheme.greenSoft,
+                        onTap: () => Get.to(() => WeiqiReplayPage(
+                              moves: _replayMoves,
+                              notes: _replayNotes,
+                              marks: _replayMarks,
+                              grades: _replayGrades,
+                              better: _replayBetter,
+                              n: _game.n,
+                            )),
+                      ),
+                      SizedBox(width: 8.w),
                       _actionButton(
                         emoji: '🔄',
                         label: '再来一局',
                         sub: '重新开始',
-                        care: false,
+                        color: Colors.white,
                         onTap: _resetGame,
                       ),
                     ] else ...[
@@ -1425,67 +2051,46 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
                         _actionButton(
                           emoji: '💡',
                           label: '问棋棋',
-                          sub: '还剩 $_helpLeft 次',
-                          care: true,
+                          sub: '剩 $_helpLeft 次',
+                          color: WqTheme.sun,
                           onTap: _useHelp,
                         )
-                    else
-                      // 家长陪下没有"换人"动作：双方直接在棋盘轮流落子，
-                      // 这里只做轮次状态展示，避免出现点了没反应的假按钮
-                      Expanded(
-                        child: Container(
-                          padding: EdgeInsets.symmetric(vertical: 7.h),
-                          decoration: BoxDecoration(
-                            color: _turn == 1 ? WqTheme.sunSoft : WqTheme.skySoft,
-                            borderRadius: BorderRadius.circular(18.r),
-                            border: Border.all(
-                              color: _turn == 1
-                                  ? WqTheme.sunDeep.withValues(alpha: 0.25)
-                                  : WqTheme.sky.withValues(alpha: 0.35),
-                            ),
-                          ),
-                          child: Column(
-                            children: [
-                              Text(_turn == 1 ? '⚫' : '⚪',
-                                  style: TextStyle(fontSize: 16.sp)),
-                              Text(
-                                '轮到${_turn == 1 ? '孩子' : '家长'}',
-                                style: TextStyle(
-                                  fontSize: 11.5.sp,
-                                  fontWeight: FontWeight.w800,
-                                  color: WqTheme.ink,
-                                ),
-                              ),
-                              Text(
-                                '在棋盘上直接落子',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 9.5.sp,
-                                  fontWeight: FontWeight.w600,
-                                  color: WqTheme.inkSoft,
-                                ),
-                              ),
-                            ],
-                          ),
+                      else
+                        _actionButton(
+                          emoji: _turn == 1 ? '⚫' : '⚪',
+                          label: '轮到${_turn == 1 ? '孩子' : '家长'}',
+                          sub: '点棋盘落子',
+                          color:
+                              _turn == 1 ? WqTheme.sunSoft : WqTheme.skySoft,
                         ),
+                      SizedBox(width: 6.w),
+                      if (_isTerritory) ...[
+                        _actionButton(
+                          emoji: '⏸',
+                          label: '虚手',
+                          sub: '停一手Pass',
+                          color: WqTheme.pinkSoft,
+                          onTap: _handlePass,
+                        ),
+                        SizedBox(width: 6.w),
+                      ],
+                      _actionButton(
+                        emoji: '↩',
+                        label: '悔棋',
+                        sub: '退回一步',
+                        color: Colors.white,
+                        onTap: _undo,
                       ),
-                    SizedBox(width: 10.w),
-                    _actionButton(
-                      emoji: '↩',
-                      label: '悔棋',
-                      sub: '和棋棋商量一下',
-                      care: false,
-                      onTap: _undo,
-                    ),
-                    SizedBox(width: 10.w),
-                    _actionButton(
-                      emoji: '✓',
-                      label: '结束',
-                      sub: '生成复盘卡',
-                      care: false,
-                      onTap: () => _endGame('review'),
-                    ),
+                      SizedBox(width: 6.w),
+                      _actionButton(
+                        emoji: _isTerritory ? '🧮' : '✓',
+                        label: _isTerritory ? '点目' : '结束',
+                        sub: _isTerritory ? '数子判胜负' : '生成复盘卡',
+                        color: WqTheme.greenSoft,
+                        onTap: () => _isTerritory
+                            ? _enterScoringPhase()
+                            : _endGame('review'),
+                      ),
                     ],
                   ],
                 ),
@@ -1501,52 +2106,54 @@ class _WeiqiPlayPageState extends State<WeiqiPlayPage> {
     required String emoji,
     required String label,
     required String sub,
-    required bool care,
+    required Color color,
     VoidCallback? onTap,
   }) {
     return Expanded(
-      child: Material(
-        color: care ? WqTheme.sunSoft : Colors.white,
-        borderRadius: BorderRadius.circular(18.r),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(18.r),
-          child: Container(
-            padding: EdgeInsets.symmetric(vertical: 7.h),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18.r),
-              border: Border.all(
-                color: care
-                    ? WqTheme.sunDeep.withValues(alpha: 0.25)
-                    : const Color(0x0F23324D),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: EdgeInsets.symmetric(vertical: 6.5.h, horizontal: 2.w),
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(14.r),
+            border: Border.all(color: WqTheme.ink, width: 2.2),
+            boxShadow: const [
+              BoxShadow(
+                color: WqTheme.ink,
+                offset: Offset(3, 3),
+                blurRadius: 0,
               ),
-            ),
-            child: Column(
-              children: [
-                Text(
-                  emoji,
-                  style: TextStyle(fontSize: 16.sp),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                emoji,
+                style: TextStyle(fontSize: 15.sp),
+              ),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 11.sp,
+                  fontWeight: FontWeight.w900,
+                  color: WqTheme.ink,
                 ),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 11.5.sp,
-                    fontWeight: FontWeight.w800,
-                    color: WqTheme.ink,
-                  ),
+              ),
+              Text(
+                sub,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 9.sp,
+                  fontWeight: FontWeight.w700,
+                  color: WqTheme.inkSoft,
                 ),
-                Text(
-                  sub,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 9.5.sp,
-                    fontWeight: FontWeight.w600,
-                    color: WqTheme.inkSoft,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
